@@ -17,6 +17,7 @@ MetadataExtractor::MetadataExtractor(QObject *parent)
 
 MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &filePath)
 {
+    qDebug() << "MetadataExtractor: Extracting metadata from" << filePath;
     TrackMetadata meta;
     // TagLib uses C-style strings or std::wstring. Convert QString appropriately.
     // For UTF-8 paths, toWString() might not be needed if underlying system uses UTF-8 for char*
@@ -26,9 +27,15 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
     // On Windows, toStdWString().c_str() would be preferred.
     // Let's try with toLocal8Bit first, as it's common for Linux.
 
-    TagLib::FileRef f(filePath.toLocal8Bit().constData());
+    // Convert QString to char* for TagLib
+    QByteArray filePathBA = filePath.toLocal8Bit();
+    const char* filePathCStr = filePathBA.constData();
+    qDebug() << "MetadataExtractor: Converted path:" << filePathCStr;
+    
+    TagLib::FileRef f(filePathCStr);
 
     if (!f.isNull() && f.tag()) {
+        qDebug() << "MetadataExtractor: FileRef is valid and has tags";
         TagLib::Tag *tag = f.tag();
 
         meta.title = QString::fromStdString(tag->title().to8Bit(true));
