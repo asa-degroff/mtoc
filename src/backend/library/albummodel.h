@@ -3,8 +3,9 @@
 
 #include <QAbstractListModel>
 #include <QList>
+#include <QObject>
 
-#include "album.h"
+#include "album.h" // Forward declaration is used in the implementation file
 
 namespace Mtoc {
 

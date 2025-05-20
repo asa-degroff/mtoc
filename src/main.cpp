@@ -4,6 +4,7 @@
 
 #include "backend/systeminfo.h"
 #include "backend/utility/metadataextractor.h"
+#include "backend/library/librarymanager.h"
 
 int main(int argc, char *argv[])
 {
@@ -26,6 +27,9 @@ int main(int argc, char *argv[])
 
     Mtoc::MetadataExtractor metadataExtractor;
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MetadataExtractor", &metadataExtractor);
+
+    Mtoc::LibraryManager libraryManager;
+    qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "LibraryManager", &libraryManager);
 
     const QUrl url(QStringLiteral("qrc:/src/qml/Main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,

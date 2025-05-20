@@ -1,7 +1,8 @@
-import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
+import QtQuick 2.15
+import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
 import Mtoc.Backend 1.0
+import "Views/"
 
 ApplicationWindow {
     id: window
@@ -17,17 +18,12 @@ ApplicationWindow {
     RowLayout {
         anchors.fill: parent
 
-        // Library Pane (Placeholder)
-        Rectangle {
-            id: libraryPanePlaceholder
-            Layout.fillWidth: true // Ensure it participates in filling
+        // Library Pane
+        LibraryPane {
+            id: libraryPane
+            Layout.fillWidth: true
             Layout.preferredWidth: window.width * 0.35 // 35% of window width
             Layout.fillHeight: true
-            color: "lightgrey"
-            Text {
-                anchors.centerIn: parent
-                text: qsTr("Library Pane")
-            }
         }
 
         // Now Playing Pane (Placeholder)
@@ -127,22 +123,43 @@ ApplicationWindow {
         return minutes + ":" + (remainingSeconds < 10 ? "0" : "") + remainingSeconds;
     }
     
-    // Test MetadataExtractor functionality
+    // Initialize the application
     Component.onCompleted: {
-        console.log("Main.qml loaded - Testing MetadataExtractor");
+        console.log("Main.qml loaded - Initializing application");
         
         try {
-            // Load the audio file metadata
+            // Initialize LibraryManager
+            console.log("Initializing LibraryManager...");
+            
+            // Check if we have any music folders configured
+            if (LibraryManager.musicFolders.length === 0) {
+                // Add a default music folder for testing
+                var musicDir = "/home/asa/Music";
+                console.log("Adding default music folder for testing:", musicDir);
+                LibraryManager.addMusicFolder(musicDir);
+            } else {
+                console.log("Music folders already configured:", JSON.stringify(LibraryManager.musicFolders));
+            }
+            
+            // Test MetadataExtractor functionality
             var filePath = "/home/asa/Music/Beck/Guero/01 E‐Pro.m4a";
             var metadata = MetadataExtractor.extractAsVariantMap(filePath);
             
             // Store it in our property for display
             currentTrack = metadata;
             
-            // Log it to the console too
+            // Log metadata to the console
             console.log("Audio File Metadata loaded:", JSON.stringify(metadata, null, 2));
+            
+            // Start a library scan if needed
+            if (LibraryManager.trackCount === 0) {
+                console.log("Starting initial library scan...");
+                LibraryManager.startScan();
+            } else {
+                console.log("Library already contains", LibraryManager.trackCount, "tracks");
+            }
         } catch (e) {
-            console.error("Error in metadata extraction:", e);
+            console.error("Error during initialization:", e);
         }
     }
 }

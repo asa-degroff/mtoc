@@ -7,7 +7,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 COMPONENTS Core Quick Qml Multimedia DBus REQUIRED)
+find_package(Qt6 COMPONENTS Core Quick Qml Multimedia DBus Concurrent REQUIRED)
 # find_package(TagLib REQUIRED) # This failed, reverting to pkg-config
 
 find_package(PkgConfig REQUIRED) # Ensure PkgConfig is found
@@ -63,6 +63,7 @@ target_link_libraries(mtoc_app
     Qt6::Qml
     Qt6::Multimedia
     Qt6::DBus
+    Qt6::Concurrent
     ${TAGLIB_LIBRARIES} # Link against TagLib libraries
 )
 
