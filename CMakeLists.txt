@@ -7,15 +7,18 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 COMPONENTS Core Quick Multimedia DBus REQUIRED)
+find_package(Qt6 COMPONENTS Core Quick Qml Multimedia DBus REQUIRED)
+# find_package(TagLib REQUIRED) # This failed, reverting to pkg-config
 
-# Find TagLib for audio metadata extraction
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(TAGLIB REQUIRED IMPORTED_TARGET taglib)
+find_package(PkgConfig REQUIRED) # Ensure PkgConfig is found
+# Use pkg-config for TagLib. This will define TAGLIB_LIBRARIES, TAGLIB_INCLUDE_DIRS, etc.
+pkg_check_modules(TAGLIB REQUIRED taglib)
 
 # Set Qt policies to suppress warnings and define behavior
 qt_policy(SET QTP0001 OLD) # Keep qrc:/ as the base for module resources unless overridden by URI
 qt_policy(SET QTP0004 OLD) # Do not require qmldir for subdirs not acting as modules
+
+set(CMAKE_AUTOUIC ON)
 
 set(PROJECT_SOURCES
         src/main.cpp
@@ -48,13 +51,19 @@ qt_add_executable(mtoc_app
     ${PROJECT_SOURCES}
 )
 
+target_include_directories(mtoc_app PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src # For our own headers
+    ${TAGLIB_INCLUDE_DIRS} # Add TagLib include directories
+)
+
 target_link_libraries(mtoc_app
     PRIVATE
     Qt6::Core
     Qt6::Quick
+    Qt6::Qml
     Qt6::Multimedia
     Qt6::DBus
-    PkgConfig::TAGLIB
+    ${TAGLIB_LIBRARIES} # Link against TagLib libraries
 )
 
 qt_add_qml_module(mtoc

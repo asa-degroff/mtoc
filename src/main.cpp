@@ -1,7 +1,9 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
-#include <QQmlContext> // For setContextProperty, if used
-#include "backend/systeminfo.h" // Added
+#include <QQmlContext>
+
+#include "backend/systeminfo.h"
+#include "backend/utility/metadataextractor.h"
 
 int main(int argc, char *argv[])
 {
@@ -21,6 +23,9 @@ int main(int argc, char *argv[])
 
     SystemInfo systemInfo;
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "SystemInfo", &systemInfo);
+
+    Mtoc::MetadataExtractor metadataExtractor;
+    qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MetadataExtractor", &metadataExtractor);
 
     const QUrl url(QStringLiteral("qrc:/src/qml/Main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,

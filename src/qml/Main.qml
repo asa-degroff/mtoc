@@ -17,8 +17,8 @@ ApplicationWindow {
         // Library Pane (Placeholder)
         Rectangle {
             id: libraryPanePlaceholder
-            Layout.fillWidth: true
-            Layout.preferredWidth: 400 // Initial width, can be part of a SplitView later
+            Layout.fillWidth: true // Ensure it participates in filling
+            Layout.preferredWidth: window.width * 0.35 // 35% of window width
             Layout.fillHeight: true
             color: "lightgrey"
             Text {
@@ -30,23 +30,32 @@ ApplicationWindow {
         // Now Playing Pane (Placeholder)
         Rectangle {
             id: nowPlayingPanePlaceholder
-            Layout.fillWidth: true
+            Layout.fillWidth: true // Ensure it participates in filling
+            Layout.preferredWidth: window.width * 0.65 // 65% of window width
             Layout.fillHeight: true
             color: "whitesmoke"
             ColumnLayout {
-                anchors.centerIn: parent
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
                 spacing: 10 
                 Text {
                     text: "Now Playing Pane Placeholder" 
-                    Layout.alignment: Qt.AlignHCenter
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
                 }
                 Text {
                     text: "App Name: " + SystemInfo.appName
-                    Layout.alignment: Qt.AlignHCenter
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
                 }
                 Text {
                     text: "App Version: " + SystemInfo.appVersion
-                    Layout.alignment: Qt.AlignHCenter
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
                 }
             }
         }
