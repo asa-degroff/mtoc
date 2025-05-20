@@ -1,0 +1,16 @@
+<RCC>
+    <qresource prefix="/">
+        <file>src/qml/Main.qml</file>
+        <file>src/qml/Components/AlbumArtView.qml</file>
+        <file>src/qml/Components/BlurredBackground.qml</file>
+        <file>src/qml/Components/PlaybackControls.qml</file>
+        <file>src/qml/Components/ThumbnailGridDelegate.qml</file>
+        <file>src/qml/Views/LibraryPane.qml</file>
+        <file>src/qml/Views/NowPlayingPane.qml</file>
+        <file>src/qml/Views/PlaylistView.qml</file>
+        <file>src/qml/Constants.qml</file>
+        <file>src/qml/Styles.qml</file>
+        <!-- Add future resources like icons here -->
+        <!-- <file>resources/icons/app_icon.svg</file> -->
+    </qresource>
+</RCC>
