@@ -69,6 +69,80 @@ int LibraryManager::artistCount() const
     return m_artists.count();
 }
 
+QVariantList LibraryManager::artistModel() const
+{
+    QVariantList result;
+    
+    // Create a sorted list of artists (alphabetically by name)
+    QStringList artistNames = m_artists.keys();
+    std::sort(artistNames.begin(), artistNames.end(), [](const QString &a, const QString &b) {
+        return a.toLower() < b.toLower(); // Case-insensitive sorting
+    });
+    
+    // Convert to a list of artist objects with needed properties
+    for (const QString &name : artistNames) {
+        Artist *artist = m_artists.value(name);
+        if (artist) {
+            QVariantMap artistMap;
+            artistMap["name"] = artist->name();
+            artistMap["albumCount"] = artist->albumCount();
+            artistMap["trackCount"] = artist->trackCount();
+            
+            // Get the image from the first album if available
+            QList<Album*> albums = artist->albums();
+            if (!albums.isEmpty()) {
+                artistMap["image"] = albums.first()->coverArtUrl().toString();
+            } else {
+                artistMap["image"] = "";
+            }
+            
+            // Add this artist to the result
+            result.append(artistMap);
+        }
+    }
+    
+    return result;
+}
+
+QVariantList LibraryManager::albumModel() const
+{
+    QVariantList result;
+    
+    // Collect all albums
+    QList<Album*> albums = m_albums.values();
+    
+    // Sort albums by artist (alphabetically) then by year (newest first)
+    std::sort(albums.begin(), albums.end(), [](Album *a, Album *b) {
+        // First sort by artist name (case insensitive)
+        int artistCompare = a->artist().toLower().compare(b->artist().toLower());
+        if (artistCompare != 0) {
+            return artistCompare < 0;
+        }
+        
+        // Then sort by year (newest first)
+        if (a->year() != b->year()) {
+            return a->year() > b->year();
+        }
+        
+        // If same year, sort by title
+        return a->title().toLower() < b->title().toLower();
+    });
+    
+    // Convert to list of album objects
+    for (Album *album : albums) {
+        QVariantMap albumMap;
+        albumMap["title"] = album->title();
+        albumMap["artist"] = album->artist();
+        albumMap["year"] = album->year();
+        albumMap["trackCount"] = album->trackCount();
+        albumMap["image"] = album->coverArtUrl().toString();
+        
+        result.append(albumMap);
+    }
+    
+    return result;
+}
+
 QString LibraryManager::scanProgressText() const
 {
     if (!m_scanning) {
@@ -405,6 +479,7 @@ void LibraryManager::processScannedFiles()
             emit scanningChanged();
             emit scanProgressChanged();
             emit scanCompleted();
+            emit libraryChanged();
         }
         return;
     }
