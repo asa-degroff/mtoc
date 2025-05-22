@@ -32,9 +32,26 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
     const char* filePathCStr = filePathBA.constData();
     qDebug() << "MetadataExtractor: Converted path:" << filePathCStr;
     
+    QFileInfo fileInfo(filePath);
+    QString fileExt = fileInfo.suffix().toLower();
+    
     TagLib::FileRef f(filePathCStr);
 
     if (!f.isNull() && f.tag()) {
+        // Log file type
+        qDebug() << "MetadataExtractor: File type:" << fileExt;
+        
+        // Dump all available property keys for this file
+        TagLib::PropertyMap properties = f.tag()->properties();
+        qDebug() << "MetadataExtractor: Available properties for" << filePath;
+        for (TagLib::PropertyMap::ConstIterator it = properties.begin(); it != properties.end(); ++it) {
+            QString key = QString::fromStdString(it->first.to8Bit(true));
+            QString value = "Empty";
+            if (!it->second.isEmpty()) {
+                value = QString::fromStdString(it->second.front().to8Bit(true));
+            }
+            qDebug() << "  Property:" << key << "Values:" << value;
+        }
         qDebug() << "MetadataExtractor: FileRef is valid and has tags";
         TagLib::Tag *tag = f.tag();
 
@@ -48,7 +65,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
         // We'll leave it 0 for now or look into specific frame parsing later if needed.
 
         // Album Artist (often in TPE2 frame for ID3, or ALBUMARTIST for Vorbis/FLAC)
-        TagLib::PropertyMap properties = f.tag()->properties();
+        // properties is already declared above
         qDebug() << "MetadataExtractor: --- Checking Album Artist --- Path:" << filePath;
         if (properties.contains("ALBUMARTIST")) {
             qDebug() << "MetadataExtractor: Found 'ALBUMARTIST'. IsEmpty:" << properties["ALBUMARTIST"].isEmpty() << "Value(s):" << (properties["ALBUMARTIST"].isEmpty() ? "N/A" : QString::fromStdString(properties["ALBUMARTIST"].front().to8Bit(true)));
