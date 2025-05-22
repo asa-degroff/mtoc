@@ -637,6 +637,21 @@ void LibraryManager::addTrackToLibrary(Track *track)
              << "| Tagged Album Artist:" << track->albumArtist()
              << "| Effective Album Artist for Grouping:" << effectiveAlbumArtist;
 
+    // If album artist is empty, try to extract it from the file path
+    if (effectiveAlbumArtist.isEmpty()) {
+        QFileInfo fileInfo(track->filePath());
+        QDir dir = fileInfo.dir(); // Get the directory of the file
+        
+        // Go up one directory to get the artist folder (assuming structure like /Artist/Album/track.m4a)
+        if (dir.cdUp()) {
+            QString parentDirName = dir.dirName();
+            if (!parentDirName.isEmpty()) {
+                effectiveAlbumArtist = parentDirName;
+                qDebug() << "Using parent directory as album artist:" << effectiveAlbumArtist;
+            }
+        }
+    }
+
     // Create or find the album using the effective album artist
     Album *album = findOrCreateAlbum(track->album(), effectiveAlbumArtist);
     if (album) {

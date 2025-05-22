@@ -79,6 +79,18 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
         } else if (meta.albumArtist.isEmpty()) {
             qDebug() << "MetadataExtractor: 'TPE2' key not found or albumArtist already set.";
         }
+
+        // iTunes/M4A specific album artist tag
+        if (meta.albumArtist.isEmpty() && properties.contains("aART")) {
+            qDebug() << "MetadataExtractor: Found 'aART' (iTunes/M4A). IsEmpty:" << properties["aART"].isEmpty() << "Value(s):" << (properties["aART"].isEmpty() ? "N/A" : QString::fromStdString(properties["aART"].front().to8Bit(true)));
+            if (!properties["aART"].isEmpty()) {
+                 meta.albumArtist = QString::fromStdString(properties["aART"].front().to8Bit(true));
+                 qDebug() << "MetadataExtractor: Set albumArtist from aART:" << meta.albumArtist;
+            }
+        } else if (meta.albumArtist.isEmpty()) {
+            qDebug() << "MetadataExtractor: 'aART' key not found or albumArtist already set.";
+        }
+        
         qDebug() << "MetadataExtractor: Final meta.albumArtist before return:" << meta.albumArtist;
 
         if (f.audioProperties()) {
