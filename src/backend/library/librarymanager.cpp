@@ -365,6 +365,38 @@ TrackModel* LibraryManager::tracksForAlbum(const QString &albumTitle, const QStr
     return model;
 }
 
+QVariantList LibraryManager::getTracksForAlbumAsVariantList(const QString &artistName, const QString &albumTitle) const
+{
+    QVariantList trackList;
+    Album *album = albumByTitle(albumTitle, artistName);
+
+    if (album) {
+        QList<Track*> albumTracks = album->tracks(); // Assuming Album has a tracks() method
+
+        // Sort tracks by track number
+        std::sort(albumTracks.begin(), albumTracks.end(), [](Track *a, Track *b) {
+            return a->trackNumber() < b->trackNumber();
+        });
+
+        for (Track *track : albumTracks) {
+            if (track) {
+                QVariantMap trackMap;
+                trackMap["title"] = track->title();
+                trackMap["artist"] = track->artist(); // Corrected from artistName()
+                trackMap["album"] = track->album();   // Corrected from albumTitle()
+                trackMap["trackNumber"] = track->trackNumber();
+                trackMap["duration"] = track->duration(); // in seconds
+                trackMap["filePath"] = track->filePath(); // For playback
+                // Potentially add: trackMap["coverArtUrl"] = track->coverArtUrl().toString();
+                trackList.append(trackMap);
+            }
+        }
+    } else {
+        qWarning() << "getTracksForAlbumAsVariantList: Album not found -" << albumTitle << "by" << artistName;
+    }
+    return trackList;
+}
+
 // Search methods
 TrackModel* LibraryManager::searchTracks(const QString &query) const
 {

@@ -68,6 +68,7 @@ public:
     Q_INVOKABLE TrackModel* tracksForArtist(const QString &artistName) const;
     Q_INVOKABLE AlbumModel* albumsForArtist(const QString &artistName) const;
     Q_INVOKABLE TrackModel* tracksForAlbum(const QString &albumTitle, const QString &artistName = QString()) const;
+    Q_INVOKABLE QVariantList getTracksForAlbumAsVariantList(const QString &artistName, const QString &albumTitle) const;
     
     // Search methods
     Q_INVOKABLE TrackModel* searchTracks(const QString &query) const;

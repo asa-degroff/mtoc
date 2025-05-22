@@ -10,6 +10,21 @@ Item {
     width: parent.width
     height: parent.height
     
+    property var selectedAlbum: null
+
+    onSelectedAlbumChanged: {
+        // console.log("Selected album changed to: " + (selectedAlbum ? selectedAlbum.title : "none"));
+        if (selectedAlbum) {
+            // Assuming selectedAlbum has 'artist' and 'title' properties
+            var tracks = LibraryManager.getTracksForAlbumAsVariantList(selectedAlbum.artist, selectedAlbum.title);
+            rightPane.currentAlbumTracks = tracks;
+            rightPane.albumTitleText = selectedAlbum.artist + " - " + selectedAlbum.title;
+        } else {
+            rightPane.currentAlbumTracks = [];
+            rightPane.albumTitleText = "No album selected";
+        }
+    }
+    
     // Reference to the file dialog for selecting music folders
     FolderDialog {
         id: folderDialog
@@ -202,452 +217,295 @@ Item {
                             spacing: 8
                             
                             Label {
-                                Layout.fillWidth: true
                                 text: modelData
-                                elide: Text.ElideMiddle
                                 color: "white"
+                                elide: Text.ElideLeft
                             }
+                            
+                            Item { Layout.fillWidth: true } // Spacer
                             
                             Button {
                                 text: "Remove"
-                                onClicked: LibraryManager.removeMusicFolder(modelData)
+                                flat: true
+                                onClicked: {
+                                    LibraryManager.removeMusicFolder(modelData);
+                                }
                             }
                         }
                     }
+                    
+                    ScrollIndicator.vertical: ScrollIndicator { }
                 }
             }
         }
         
-        // Library browser view with albums grouped by artists
-        Rectangle {
+        // Main content area: Two-column layout
+        SplitView {
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            color: "#2a2a2a"
-            radius: 4
-            
-            // View mode selector
-            TabBar {
-                id: libraryTabBar
-                width: parent.width
-                
-                TabButton { text: "Artists" }
-                TabButton { text: "Albums" }
+            Layout.fillHeight: true // This will take the remaining space
+            orientation: Qt.Horizontal
+            handle: Rectangle { // Custom handle for better visibility
+                implicitWidth: 6
+                implicitHeight: 6
+                color: "#444444"
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 2
+                    height: parent.height * 0.3
+                    color: "#666666"
+                    radius: 1
+                }
             }
-            
-            // Views container
-            StackLayout {
-                id: viewStack
-                anchors.top: libraryTabBar.bottom
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                anchors.margins: 8
-                currentIndex: libraryTabBar.currentIndex
-                
-                // Artists with Albums view
-                Item {
-                    id: artistsView
-                    
-                    property string selectedArtist: ""
-                    
-                    // Split view with artists on left, albums on right
-                    RowLayout {
-                        anchors.fill: parent
-                        spacing: 10
+
+            // Left Pane: Artist List
+            Rectangle {
+                id: leftPaneContainer
+                SplitView.preferredWidth: splitView.width * 0.35
+                SplitView.minimumWidth: 280
+                Layout.fillHeight: true
+                color: "#2c2c2c"
+                radius: 4
+                clip: true // Ensure content doesn't overflow radius
+
+                ListView {
+                    id: artistsListView
+                    anchors.fill: parent
+                    anchors.margins: 4 // Small margin inside the pane
+                    clip: true
+                    model: LibraryManager.artistModel
+                    spacing: 2
+
+                    delegate: Column {
+                        width: ListView.view.width
+                        // Height will be dynamic based on albumsVisible
                         
-                        // Artists list (left side)
+                        property bool albumsVisible: false
+                        // Store modelData for easier access in nested views/functions
+                        property var artistData: modelData 
+
                         Rectangle {
-                            Layout.fillHeight: true
-                            Layout.preferredWidth: parent.width * 0.4
-                            color: "#252525"
-                            radius: 4
-                            clip: true
-                            
-                            // Header
-                            Rectangle {
-                                id: artistListHeader
-                                width: parent.width
-                                height: 40
-                                color: "#333333"
+                            width: parent.width
+                            height: 40
+                            color: artistsListView.currentIndex === index ? "#3f51b5" : "transparent"
+                            radius: 2
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 8
                                 
-                                Text {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 16
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: "Artists"
+                                Label {
+                                    text: artistData.name
                                     color: "white"
-                                    font.pixelSize: 16
-                                    font.bold: true
+                                    font.pixelSize: 14
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                                // Add an indicator for expansion (e.g., chevron)
+                                Label {
+                                    text: albumsVisible ? "\u25BC" : "\u25B6" // Down/Right arrow
+                                    color: "white"
+                                    font.pixelSize: 12
                                 }
                             }
-                            
-                            // Artist ListView
-                            ListView {
-                                id: artistsListView
-                                anchors.top: artistListHeader.bottom
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.bottom: parent.bottom
-                                anchors.margins: 1
-                                clip: true
-                                model: LibraryManager.artistModel
-                                
-                                // Highlight for selected artist
-                                highlight: Rectangle {
-                                    width: artistsListView.width
-                                    height: 50
-                                    color: "#3f51b5"
-                                    radius: 2
-                                }
-                                highlightFollowsCurrentItem: true
-                                focus: true
-                                
-                                // Artist item delegate
-                                delegate: Item {
-                                    id: artistDelegate
-                                    width: artistsListView.width
-                                    height: 50
-                                    
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        color: "transparent"
-                                        
-                                        RowLayout {
-                                            anchors.fill: parent
-                                            anchors.margins: 8
-                                            spacing: 10
-                                            
-                                            // Artist image/icon
-                                            Rectangle {
-                                                width: 36
-                                                height: 36
-                                                radius: 18
-                                                color: "#555555"
-                                                
-                                                Image {
-                                                    id: artistImage
-                                                    anchors.fill: parent
-                                                    anchors.margins: 1
-                                                    source: modelData.image || ""
-                                                    fillMode: Image.PreserveAspectCrop
-                                                    visible: source != ""
-                                                    clip: true
-                                                    // Simple mask for Qt 6
-                                                    layer.enabled: true
-                                                }
-                                                
-                                                // Fallback icon if no image
-                                                Rectangle {
-                                                    anchors.fill: parent
-                                                    color: "#555555"
-                                                    visible: artistImage.source == ""
-                                                    
-                                                    Text {
-                                                        anchors.centerIn: parent
-                                                        text: modelData.name ? modelData.name.charAt(0) : "?"
-                                                        color: "white"
-                                                        font.pixelSize: 18
-                                                        font.bold: true
-                                                    }
-                                                }
-                                            }
-                                            
-                                            // Artist info
-                                            Column {
-                                                Layout.fillWidth: true
-                                                spacing: 2
-                                                
-                                                Label {
-                                                    text: modelData.name
-                                                    font.pixelSize: 14
-                                                    color: artistsListView.currentIndex === index ? "white" : "#f0f0f0"
-                                                    elide: Text.ElideRight
-                                                    width: parent.width
-                                                }
-                                                
-                                                Label {
-                                                    text: modelData.albumCount + " album" + (modelData.albumCount !== 1 ? "s" : "")
-                                                    font.pixelSize: 11
-                                                    color: artistsListView.currentIndex === index ? "#e0e0e0" : "#909090"
-                                                }
-                                            }
-                                        }
-                                    }
-                                    
-                                    // Mouse interaction
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        onClicked: {
-                                            artistsListView.currentIndex = index
-                                            artistsView.selectedArtist = modelData.name
-                                        }
-                                    }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    albumsVisible = !albumsVisible;
+                                    artistsListView.currentIndex = index; // Optional: select on expand
                                 }
                             }
                         }
-                        
-                        // Albums grid for selected artist (right side)
+
+                        // Albums GridView - visible based on albumsVisible
                         Rectangle {
-                            Layout.fillHeight: true
-                            Layout.fillWidth: true
-                            color: "#252525"
-                            radius: 4
+                            id: artistAlbumsContainer
+                            width: parent.width
+                            // Dynamic height based on content
+                            height: albumsVisible ? (albumsGrid.contentHeight + (albumsGrid.count > 0 ? 16 : 0)) : 0 // Add padding if albums exist
+                            color: "#333333" // Slightly different background for albums section
+                            visible: albumsVisible
                             clip: true
-                            
-                            // Header
-                            Rectangle {
-                                id: albumsHeader
-                                width: parent.width
-                                height: 40
-                                color: "#333333"
-                                
-                                Text {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 16
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: artistsView.selectedArtist ? artistsView.selectedArtist + " - Albums" : "All Albums"
-                                    color: "white"
-                                    font.pixelSize: 16
-                                    font.bold: true
-                                }
-                            }
-                            
-                            // Albums grid showing albums for the selected artist
+                            Behavior on height { NumberAnimation { duration: 200; easing.type: Easing.InOutQuad } } // Smooth expand/collapse
+
                             GridView {
-                                id: artistAlbumsView
-                                anchors.top: albumsHeader.bottom
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.bottom: parent.bottom
-                                anchors.margins: 10
+                                id: albumsGrid
+                                anchors.fill: parent
+                                anchors.margins: 8
                                 clip: true
-                                cellWidth: 160
-                                cellHeight: 200
-                                
-                                // Filter albums by selected artist and sort by year (new to old)
+                                cellWidth: 100 + 8 // Thumbnail size + padding
+                                cellHeight: 120 + 8 // Thumbnail + title + padding
+                                interactive: false // Parent ListView handles scrolling primarily
+
                                 model: {
-                                    if (!artistsView.selectedArtist) 
-                                        return [];
-                                        
-                                    // Filter albums for selected artist
+                                    if (!albumsVisible) return []; // Don't process if not visible
                                     var artistAlbums = [];
                                     var allAlbums = LibraryManager.albumModel;
-                                    
                                     for (var i = 0; i < allAlbums.length; i++) {
-                                        if (allAlbums[i].artist === artistsView.selectedArtist) {
+                                        if (allAlbums[i].artist === artistData.name) {
                                             artistAlbums.push(allAlbums[i]);
                                         }
                                     }
-                                    
-                                    // Sort by year (newest first)
-                                    artistAlbums.sort(function(a, b) {
-                                        return b.year - a.year;
-                                    });
-                                    
+                                    // AlbumModel from LibraryManager should already be sorted by year for artists
+                                    // If not, sort here: artistAlbums.sort(function(a,b){ return b.year - a.year; });
                                     return artistAlbums;
                                 }
-                                
-                                delegate: Rectangle {
-                                    width: 150
-                                    height: 190
-                                    color: "#3a3a3a"
-                                    radius: 4
-                                    
-                                    Column {
+
+                                delegate: Item { 
+                                    width: albumsGrid.cellWidth - 8
+                                    height: albumsGrid.cellHeight - 8
+
+                                    ColumnLayout { 
                                         anchors.fill: parent
-                                        anchors.margins: 8
-                                        spacing: 8
-                                        
-                                        // Album cover
-                                        Rectangle {
-                                            width: parent.width
-                                            height: width
+                                        spacing: 4
+
+                                        Rectangle { // Album Art container
+                                            Layout.alignment: Qt.AlignHCenter
+                                            width: 90
+                                            height: 90
                                             color: "#555555"
-                                            
+                                            radius: 3
+
                                             Image {
                                                 anchors.fill: parent
                                                 source: modelData.image || ""
                                                 fillMode: Image.PreserveAspectCrop
+                                                clip: true
                                             }
                                         }
-                                        
-                                        // Album title
-                                        Label {
-                                            width: parent.width
+
+                                        Label { // Album Title
+                                            Layout.fillWidth: true
                                             text: modelData.title
-                                            elide: Text.ElideRight
-                                            wrapMode: Text.Wrap
-                                            maximumLineCount: 1
-                                            horizontalAlignment: Text.AlignHCenter
                                             color: "white"
-                                            font.pixelSize: 13
-                                        }
-                                        
-                                        // Year and track count
-                                        Label {
-                                            width: parent.width
-                                            text: modelData.year + " • " + modelData.trackCount + " track" + (modelData.trackCount !== 1 ? "s" : "")
+                                            font.pixelSize: 11
                                             elide: Text.ElideRight
                                             horizontalAlignment: Text.AlignHCenter
-                                            color: "#aaaaaa"
-                                            font.pixelSize: 11
+                                            maximumLineCount: 2
+                                            wrapMode: Text.WordWrap
                                         }
                                     }
-                                    
-                                    // Mouse interaction
-                                    MouseArea {
+                                    MouseArea { 
                                         anchors.fill: parent
                                         onClicked: {
-                                            // TODO: Show tracks for this album
-                                            console.log("Album clicked: " + modelData.title);
+                                            root.selectedAlbum = modelData; // Update the root's selectedAlbum property
                                         }
                                     }
                                 }
-                            }
-                            
-                            // Empty state message when no artist is selected
-                            Text {
-                                anchors.centerIn: parent
-                                text: "Select an artist to view their albums"
-                                color: "#808080"
-                                font.pixelSize: 16
-                                visible: !artistsView.selectedArtist
+                                ScrollIndicator.vertical: ScrollIndicator { }
                             }
                         }
                     }
+                    ScrollIndicator.vertical: ScrollIndicator { }
                 }
-                
-                // All Albums view - organized by artist
-                Rectangle {
-                    id: allAlbumsContainer
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    color: "transparent"
-                    clip: true
-                    
-                    // We use a ListView to display artists with their albums
+            }
+
+            // Right Pane: Track List
+            Rectangle {
+                id: rightPane
+                SplitView.minimumWidth: 250
+                SplitView.fillWidth: true
+                color: "#252525"
+                radius: 4
+                clip: true
+
+                property var currentAlbumTracks: []
+                property string albumTitleText: "No album selected"
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 4
+
+                    Label {
+                        id: trackListHeader
+                        Layout.fillWidth: true
+                        text: rightPane.albumTitleText
+                        color: "white"
+                        font.pixelSize: 16
+                        font.bold: true
+                        padding: 8
+                        elide: Text.ElideRight
+                        background: Rectangle {
+                            color: "#333333"
+                            radius: 2
+                        }
+                    }
+
                     ListView {
-                        id: artistGroupsListView
+                        id: trackListView
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         clip: true
-                        spacing: 10
-                        model: LibraryManager.artistModel
-                        
-                        // Each artist section is a delegate containing album grid
-                        delegate: Column {
-                            id: artistSection
-                            width: artistGroupsListView.width
-                            spacing: 5
-                            visible: modelData.albumCount > 0
-                            
-                            // Artist header
-                            Rectangle {
-                                width: parent.width
-                                height: 40
-                                color: "#333333"
-                                
-                                Text {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 16
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: modelData.name
+                        model: rightPane.currentAlbumTracks
+                        visible: rightPane.currentAlbumTracks.length > 0
+                        spacing: 1
+
+                        delegate: Rectangle {
+                            width: ListView.view.width
+                            height: 45
+                            color: index % 2 === 0 ? "#2e2e2e" : "#2a2a2a"
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 8
+                                spacing: 10
+
+                                Label { // Track Number
+                                    text: modelData.trackNumber ? String(modelData.trackNumber).padStart(2, '0') : "--"
+                                    color: "#aaaaaa"
+                                    font.pixelSize: 12
+                                    Layout.preferredWidth: 25
+                                    horizontalAlignment: Text.AlignRight
+                                }
+
+                                Label { // Track Title
+                                    text: modelData.title || "Unknown Track"
                                     color: "white"
-                                    font.pixelSize: 16
-                                    font.bold: true
+                                    font.pixelSize: 13
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+
+                                Label { // Track Duration
+                                    text: modelData.duration ? formatDuration(modelData.duration) : "0:00"
+                                    color: "#aaaaaa"
+                                    font.pixelSize: 12
+                                    Layout.preferredWidth: 40
                                 }
                             }
-                            
-                            // Albums for this artist
-                            GridView {
-                                id: artistAlbumsGrid
-                                width: parent.width
-                                height: Math.ceil(count / Math.floor(width / 160)) * 200
-                                clip: true
-                                cellWidth: 160
-                                cellHeight: 200
-                                interactive: false // Parent ListView handles scrolling
-                                
-                                // We filter the main album model to show only this artist's albums
-                                model: {
-                                    var artistAlbums = [];
-                                    var allAlbums = LibraryManager.albumModel;
-                                    
-                                    for (var i = 0; i < allAlbums.length; i++) {
-                                        if (allAlbums[i].artist === modelData.name) {
-                                            artistAlbums.push(allAlbums[i]);
-                                        }
-                                    }
-                                    
-                                    // Sort by year (newest first)
-                                    artistAlbums.sort(function(a, b) {
-                                        return b.year - a.year;
-                                    });
-                                    
-                                    return artistAlbums;
-                                }
-                                
-                                // Album item delegate
-                                delegate: Rectangle {
-                                    width: 150
-                                    height: 190
-                                    color: "#3a3a3a"
-                                    radius: 4
-                                    
-                                    Column {
-                                        anchors.fill: parent
-                                        anchors.margins: 8
-                                        spacing: 8
-                                        
-                                        // Album cover
-                                        Rectangle {
-                                            width: parent.width
-                                            height: width
-                                            color: "#555555"
-                                            
-                                            Image {
-                                                anchors.fill: parent
-                                                source: modelData.image || ""
-                                                fillMode: Image.PreserveAspectCrop
-                                            }
-                                        }
-                                        
-                                        // Album title
-                                        Label {
-                                            width: parent.width
-                                            text: modelData.title
-                                            elide: Text.ElideRight
-                                            wrapMode: Text.Wrap
-                                            maximumLineCount: 1
-                                            horizontalAlignment: Text.AlignHCenter
-                                            color: "white"
-                                            font.pixelSize: 13
-                                        }
-                                        
-                                        // Year
-                                        Label {
-                                            width: parent.width
-                                            text: modelData.year
-                                            elide: Text.ElideRight
-                                            horizontalAlignment: Text.AlignHCenter
-                                            color: "#aaaaaa"
-                                            font.pixelSize: 11
-                                        }
-                                    }
-                                    
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        onClicked: {
-                                            // TODO: Show tracks for this album
-                                            console.log("Album clicked: " + modelData.title);
-                                        }
-                                    }
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    console.log("Track clicked: " + modelData.title);
+                                    // TODO: Implement play track functionality
+                                    // LibraryManager.playTrack(modelData.filePath or uniqueId);
                                 }
                             }
                         }
+                        ScrollIndicator.vertical: ScrollIndicator { }
+                    }
+
+                    // Message for when no tracks are available or no album selected
+                    Label {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        text: rightPane.selectedAlbum ? "No tracks found for this album." : "Select an album to view tracks."
+                        color: "#808080"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        wrapMode: Text.WordWrap
+                        visible: rightPane.currentAlbumTracks.length === 0
+                        font.pixelSize: 14
                     }
                 }
             }
         }
+    }
+
+    function formatDuration(seconds) {
+        if (isNaN(seconds) || seconds < 0) return "0:00";
+        var min = Math.floor(seconds / 60);
+        var sec = Math.floor(seconds % 60);
+        return min + ":" + (sec < 10 ? "0" : "") + sec;
     }
 }
