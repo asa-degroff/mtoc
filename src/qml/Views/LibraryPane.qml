@@ -32,12 +32,36 @@ Item {
         currentFolder: StandardPaths.standardLocations(StandardPaths.MusicLocation)[0]
         
         onAccepted: {
-            // Extract the local file path
-            var path = folderDialog.selectedFolder.toString();
-            path = path.replace(/^(file:\/{2})/,"");
+            // Extract the local file path - safely handle potentially different property names
+            var folderUrl;
+            if (folderDialog.folder) {
+                // Qt 5.x often uses folder
+                folderUrl = folderDialog.folder;
+            } else if (folderDialog.currentFolder) {
+                // Some versions use currentFolder
+                folderUrl = folderDialog.currentFolder;
+            } else if (folderDialog.selectedFolder) {
+                // Others might use selectedFolder
+                folderUrl = folderDialog.selectedFolder;
+            }
             
-            // Add the folder to LibraryManager
-            LibraryManager.addMusicFolder(path);
+            if (folderUrl) {
+                var path = folderUrl.toString();
+                // Remove the file:// prefix but keep the leading slash for absolute paths
+                if (path.startsWith("file:///")) {
+                    // Linux/Mac format - preserve the leading slash
+                    path = path.replace(/^(file:\/\/\/)/,"/");
+                } else if (path.startsWith("file://")) {
+                    // Other format - typically Windows
+                    path = path.replace(/^(file:\/\/)/,"");
+                }
+                
+                console.log("Adding music folder: " + path);
+                // Add the folder to LibraryManager
+                LibraryManager.addMusicFolder(path);
+            } else {
+                console.error("Could not determine selected folder path");
+            }
         }
     }
     
@@ -241,6 +265,7 @@ Item {
         
         // Main content area: Two-column layout
         SplitView {
+            id: splitView
             Layout.fillWidth: true
             Layout.fillHeight: true // This will take the remaining space
             orientation: Qt.Horizontal

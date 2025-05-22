@@ -48,16 +48,38 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
         // We'll leave it 0 for now or look into specific frame parsing later if needed.
 
         // Album Artist (often in TPE2 frame for ID3, or ALBUMARTIST for Vorbis/FLAC)
-        // TagLib::PropertyMap properties = f.tag()->properties();
-        // if (properties.contains("ALBUMARTIST")) {
-        //     meta.albumArtist = QString::fromStdString(properties["ALBUMARTIST"].toStringList().front().to8Bit(true));
-        // } else if (properties.contains("ALBUM ARTIST")) {
-        //     meta.albumArtist = QString::fromStdString(properties["ALBUM ARTIST"].toStringList().front().to8Bit(true));
-        // }
-        // For simplicity, if album artist is empty, fallback to artist
-        if (meta.albumArtist.isEmpty()) {
-            meta.albumArtist = meta.artist;
+        TagLib::PropertyMap properties = f.tag()->properties();
+        qDebug() << "MetadataExtractor: --- Checking Album Artist --- Path:" << filePath;
+        if (properties.contains("ALBUMARTIST")) {
+            qDebug() << "MetadataExtractor: Found 'ALBUMARTIST'. IsEmpty:" << properties["ALBUMARTIST"].isEmpty() << "Value(s):" << (properties["ALBUMARTIST"].isEmpty() ? "N/A" : QString::fromStdString(properties["ALBUMARTIST"].front().to8Bit(true)));
+            if (!properties["ALBUMARTIST"].isEmpty()) {
+                meta.albumArtist = QString::fromStdString(properties["ALBUMARTIST"].front().to8Bit(true));
+                qDebug() << "MetadataExtractor: Set albumArtist from ALBUMARTIST:" << meta.albumArtist;
+            }
+        } else {
+            qDebug() << "MetadataExtractor: 'ALBUMARTIST' key not found.";
         }
+
+        if (meta.albumArtist.isEmpty() && properties.contains("ALBUM ARTIST")) { // Some taggers use a space
+            qDebug() << "MetadataExtractor: Found 'ALBUM ARTIST'. IsEmpty:" << properties["ALBUM ARTIST"].isEmpty() << "Value(s):" << (properties["ALBUM ARTIST"].isEmpty() ? "N/A" : QString::fromStdString(properties["ALBUM ARTIST"].front().to8Bit(true)));
+            if (!properties["ALBUM ARTIST"].isEmpty()) {
+                meta.albumArtist = QString::fromStdString(properties["ALBUM ARTIST"].front().to8Bit(true));
+                qDebug() << "MetadataExtractor: Set albumArtist from ALBUM ARTIST:" << meta.albumArtist;
+            }
+        } else if (meta.albumArtist.isEmpty()) {
+            qDebug() << "MetadataExtractor: 'ALBUM ARTIST' key not found or albumArtist already set.";
+        }
+
+        if (meta.albumArtist.isEmpty() && properties.contains("TPE2")) { // ID3v2 TPE2 frame
+            qDebug() << "MetadataExtractor: Found 'TPE2'. IsEmpty:" << properties["TPE2"].isEmpty() << "Value(s):" << (properties["TPE2"].isEmpty() ? "N/A" : QString::fromStdString(properties["TPE2"].front().to8Bit(true)));
+            if (!properties["TPE2"].isEmpty()) {
+                 meta.albumArtist = QString::fromStdString(properties["TPE2"].front().to8Bit(true));
+                 qDebug() << "MetadataExtractor: Set albumArtist from TPE2:" << meta.albumArtist;
+            }
+        } else if (meta.albumArtist.isEmpty()) {
+            qDebug() << "MetadataExtractor: 'TPE2' key not found or albumArtist already set.";
+        }
+        qDebug() << "MetadataExtractor: Final meta.albumArtist before return:" << meta.albumArtist;
 
         if (f.audioProperties()) {
             meta.duration = f.audioProperties()->lengthInSeconds();
@@ -74,7 +96,7 @@ QVariantMap MetadataExtractor::extractAsVariantMap(const QString &filePath)
     QVariantMap map;
     map.insert("title", details.title);
     map.insert("artist", details.artist);
-    map.insert("albumArtist", details.albumArtist.isEmpty() ? details.artist : details.albumArtist);
+    map.insert("albumArtist", details.albumArtist);
     map.insert("album", details.album);
     map.insert("genre", details.genre);
     map.insert("year", details.year);

@@ -205,6 +205,9 @@ void LibraryManager::startScan()
         return;
     }
     
+    // Clear the library first to ensure we don't have files from previous scans
+    clearLibrary();
+    
     m_scanning = true;
     m_cancelRequested = false;
     m_scanProgress = 0;
@@ -625,13 +628,29 @@ void LibraryManager::addTrackToLibrary(Track *track)
     // Add to all tracks model
     m_allTracksModel->addTrack(track);
     
-    // Organize into album and artist
-    Album *album = findOrCreateAlbum(track->album(), track->albumArtist());
-    album->addTrack(track);
-    
-    // Add to all albums model if new album
-    if (!m_allAlbumsModel->albums().contains(album)) {
-        m_allAlbumsModel->addAlbum(album);
+    // Organize into album and artist using album artist as primary identifier
+    QString effectiveAlbumArtist = track->albumArtist();
+
+    qDebug() << "Processing Track:" << track->title() 
+             << "| Album:" << track->album()
+             << "| Track Artist:" << track->artist()
+             << "| Tagged Album Artist:" << track->albumArtist()
+             << "| Effective Album Artist for Grouping:" << effectiveAlbumArtist;
+
+    // Create or find the album using the effective album artist
+    Album *album = findOrCreateAlbum(track->album(), effectiveAlbumArtist);
+    if (album) {
+        // Add track to album
+        album->addTrack(track);
+        
+        // Add to all albums model if new album
+        if (!m_allAlbumsModel->albums().contains(album)) {
+            m_allAlbumsModel->addAlbum(album);
+        }
+    } else {
+        qWarning() << "Could not find or create album for track:" << track->filePath() << " (Album title or effective artist might be empty)";
+        // For now, we'll skip adding tracks that can't be assigned to an album
+        // (this happens if album title or effectiveAlbumArtist is empty)
     }
     
     // Emit signals
