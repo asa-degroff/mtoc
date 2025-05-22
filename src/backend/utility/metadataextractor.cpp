@@ -1,6 +1,9 @@
 #include "metadataextractor.h"
+#include <QDebug>
+#include <QFileInfo>
 
-#include <taglib/tag.h>
+// TagLib MP4-specific includes
+#include <taglib/mp4file.h>
 #include <taglib/fileref.h>
 #include <taglib/tpropertymap.h> // For audioProperties
 #include <taglib/audioproperties.h>
@@ -35,6 +38,117 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
     QFileInfo fileInfo(filePath);
     QString fileExt = fileInfo.suffix().toLower();
     
+    // Special case for M4A/MP4 files (iTunes format)
+    if (fileExt == "m4a" || fileExt == "m4p" || fileExt == "mp4") {
+        qDebug() << "MetadataExtractor: Using MP4-specific handling for" << filePath;
+        TagLib::MP4::File mp4File(filePathCStr);
+        
+        if (mp4File.isValid() && mp4File.tag()) {
+            TagLib::MP4::Tag* mp4Tag = mp4File.tag();
+            TagLib::MP4::ItemMap items = mp4Tag->itemMap();
+            
+            // Dump all MP4 items
+            qDebug() << "MetadataExtractor: MP4 tags found in" << filePath;
+            for (TagLib::MP4::ItemMap::ConstIterator it = items.begin(); it != items.end(); ++it) {
+                QString key = QString::fromLatin1(it->first.toCString());
+                QString value = "[Complex value]";
+                
+                // For MP4::Item, we need to check what type it might be by trying to convert
+                // MP4 items can be StringList, IntPair, etc. without explicit type checking
+                try {
+                    // Try as a string list first (most common for text tags)
+                    TagLib::StringList stringList = it->second.toStringList();
+                    if (!stringList.isEmpty()) {
+                        value = QString::fromStdString(stringList.front().to8Bit(true));
+                    }
+                } catch (...) {
+                    // Not a string list, try other types or just leave as [Complex value]
+                }
+                
+                qDebug() << "  MP4 Item:" << key << "=" << value;
+            }
+            
+            // Extract standard iTunes tags
+            // Standard iTunes tag mapping:
+            // ©nam = title
+            // ©ART = artist
+            // aART = album artist
+            // ©alb = album
+            // ©gen = genre
+            // ©day = year/date
+            // trkn = track number
+            
+            // Use a helper function to safely extract string values
+            auto getStringValue = [&](const char* key) -> QString {
+                if (items.contains(key)) {
+                    try {
+                        TagLib::StringList values = items[key].toStringList();
+                        if (!values.isEmpty()) {
+                            return QString::fromStdString(values.front().to8Bit(true));
+                        }
+                    } catch (...) {
+                        // Not a string list
+                    }
+                }
+                return QString();
+            };
+            
+            // Title
+            meta.title = getStringValue("©nam");
+            
+            // Artist
+            meta.artist = getStringValue("©ART");
+            
+            // Album
+            meta.album = getStringValue("©alb");
+            
+            // Genre
+            meta.genre = getStringValue("©gen");
+            
+            // Year
+            QString yearStr = getStringValue("©day");
+            if (!yearStr.isEmpty()) {
+                // Often the year is in format YYYY or YYYY-MM-DD
+                meta.year = yearStr.left(4).toUInt();
+            }
+            
+            // Track number
+            if (items.contains("trkn")) {
+                try {
+                    // Track number is usually stored as a pair (track, total)
+                    TagLib::MP4::Item::IntPair trackPair = items["trkn"].toIntPair();
+                    meta.trackNumber = trackPair.first;
+                } catch (...) {
+                    // Failed to get track number
+                }
+            }
+            
+            // Album Artist - this is the key part for our issue
+            meta.albumArtist = getStringValue("aART");
+            if (!meta.albumArtist.isEmpty()) {
+                qDebug() << "MetadataExtractor: Found MP4 album artist tag (aART):" << meta.albumArtist;
+            } else {
+                qDebug() << "MetadataExtractor: No MP4 album artist tag (aART) found";
+                
+                // Try alternative custom tag
+                meta.albumArtist = getStringValue("----:com.apple.iTunes:ALBUMARTIST");
+                if (!meta.albumArtist.isEmpty()) {
+                    qDebug() << "MetadataExtractor: Found iTunes custom album artist tag:" << meta.albumArtist;
+                }
+            }
+            
+            // Audio properties from the MP4 file
+            if (mp4File.audioProperties()) {
+                meta.duration = mp4File.audioProperties()->lengthInSeconds();
+            }
+            
+            // Return here since we've handled everything MP4-specific
+            qDebug() << "MetadataExtractor: Final MP4 meta.albumArtist:" << meta.albumArtist;
+            return meta;
+        }
+    }
+    
+    // Standard handling for non-MP4 files
     TagLib::FileRef f(filePathCStr);
 
     if (!f.isNull() && f.tag()) {
