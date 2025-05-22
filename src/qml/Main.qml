@@ -8,6 +8,8 @@ ApplicationWindow {
     id: window
     width: 1280
     height: 720
+    minimumWidth: 800  // Set a reasonable minimum to fit all panes
+    minimumHeight: 500
     visible: true
     title: SystemInfo.appName + " - " + SystemInfo.appVersion
 

@@ -261,7 +261,7 @@ Item {
             Rectangle {
                 id: leftPaneContainer
                 SplitView.preferredWidth: splitView.width * 0.35
-                SplitView.minimumWidth: 280
+                SplitView.minimumWidth: 180  // Reduced from 280 to fit better in smaller windows
                 Layout.fillHeight: true
                 color: "#2c2c2c"
                 radius: 4
@@ -403,7 +403,7 @@ Item {
             // Right Pane: Track List
             Rectangle {
                 id: rightPane
-                SplitView.minimumWidth: 250
+                SplitView.minimumWidth: 160  // Reduced from 250 to fit better in smaller windows
                 SplitView.fillWidth: true
                 color: "#252525"
                 radius: 4
