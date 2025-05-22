@@ -7,6 +7,9 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Enable qDebug output even in release builds
+add_definitions(-DQT_MESSAGELOGCONTEXT -DQT_DEBUG)
+
 find_package(Qt6 COMPONENTS Core Quick Qml Multimedia DBus Concurrent Widgets REQUIRED)
 # find_package(TagLib REQUIRED) # This failed, reverting to pkg-config
 
