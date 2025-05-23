@@ -21,6 +21,7 @@
 #include "albummodel.h"
 #include "../utility/metadataextractor.h"
 #include "../database/databasemanager.h"
+#include "albumartmanager.h"
 
 namespace Mtoc {
 
@@ -80,6 +81,9 @@ public:
     Q_INVOKABLE Track* trackByPath(const QString &path) const;
     Q_INVOKABLE Album* albumByTitle(const QString &title, const QString &artistName = QString()) const;
     Q_INVOKABLE Artist* artistByName(const QString &name) const;
+    
+    // Access to database manager (for image provider)
+    DatabaseManager* databaseManager() const { return m_databaseManager; }
 
 signals:
     void scanningChanged();
@@ -120,6 +124,7 @@ private:
     // Private data
     MetadataExtractor m_metadataExtractor;
     DatabaseManager *m_databaseManager;
+    AlbumArtManager *m_albumArtManager;
     QStringList m_musicFolders;
     QMap<QString, Track*> m_tracks;      // Path -> Track
     QMap<QString, Album*> m_albums;      // "Artist:Album" -> Album

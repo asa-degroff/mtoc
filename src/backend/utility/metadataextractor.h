@@ -28,12 +28,18 @@ public:
         int trackNumber = 0;
         int discNumber = 0;
         int duration = 0; // in seconds
-        // QImage albumArt; // We'll handle album art separately, perhaps as a path or QByteArray
+        // Album art data
+        QByteArray albumArtData;
+        QString albumArtMimeType;
     };
 
     Q_INVOKABLE TrackMetadata extract(const QString &filePath);
     // For QML, returning a QVariantMap might be more direct
     Q_INVOKABLE QVariantMap extractAsVariantMap(const QString &filePath);
+    
+    // Extract album art specifically
+    Q_INVOKABLE QByteArray extractAlbumArt(const QString &filePath);
+    Q_INVOKABLE bool hasAlbumArt(const QString &filePath);
 
 };
 

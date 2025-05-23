@@ -10,6 +10,7 @@
 #include "backend/systeminfo.h"
 #include "backend/utility/metadataextractor.h"
 #include "backend/library/librarymanager.h"
+#include "backend/library/albumartimageprovider.h"
 
 // Message handler to redirect qDebug output to file and console
 void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
@@ -111,6 +112,11 @@ int main(int argc, char *argv[])
     // MetadataExtractor might not need to be a singleton since it's used by LibraryManager
     Mtoc::MetadataExtractor *metadataExtractor = new Mtoc::MetadataExtractor(&engine);
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MetadataExtractor", metadataExtractor);
+    
+    // Register album art image provider
+    qDebug() << "Main: Registering album art image provider...";
+    engine.addImageProvider("albumart", new Mtoc::AlbumArtImageProvider(libraryManager->databaseManager()));
+    qDebug() << "Main: Album art image provider registered";
 
     qDebug() << "Main: About to load QML...";
     

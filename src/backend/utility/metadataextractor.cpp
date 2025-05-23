@@ -9,6 +9,11 @@
 #include <taglib/fileref.h>
 #include <taglib/tpropertymap.h>
 #include <taglib/audioproperties.h>
+#include <taglib/attachedpictureframe.h>
+#include <taglib/id3v2framefactory.h>
+#include <taglib/mp4coverart.h>
+#include <taglib/flacfile.h>
+#include <taglib/flacpicture.h>
 
 namespace Mtoc {
 
@@ -112,6 +117,30 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 } else if (properties.contains("ALBUM ARTIST") && !properties["ALBUM ARTIST"].isEmpty()) {
                     meta.albumArtist = QString::fromStdString(properties["ALBUM ARTIST"].front().to8Bit(true));
                     qDebug() << "MetadataExtractor: Found 'ALBUM ARTIST' property:" << meta.albumArtist;
+                }
+            }
+            
+            // Extract album art from ID3v2 tag
+            if (mpegFile.hasID3v2Tag()) {
+                TagLib::ID3v2::Tag* id3v2Tag = mpegFile.ID3v2Tag();
+                TagLib::ID3v2::FrameList frameList = id3v2Tag->frameList("APIC");
+                
+                if (!frameList.isEmpty()) {
+                    // Get the first picture frame
+                    TagLib::ID3v2::AttachedPictureFrame* pictureFrame = 
+                        dynamic_cast<TagLib::ID3v2::AttachedPictureFrame*>(frameList.front());
+                    
+                    if (pictureFrame) {
+                        // Get the picture data
+                        TagLib::ByteVector pictureData = pictureFrame->picture();
+                        if (!pictureData.isEmpty()) {
+                            meta.albumArtData = QByteArray(pictureData.data(), pictureData.size());
+                            
+                            // Get MIME type
+                            TagLib::String mimeType = pictureFrame->mimeType();
+                            meta.albumArtMimeType = QString::fromStdString(mimeType.to8Bit(true));
+                        }
+                    }
                 }
             }
             
@@ -277,6 +306,36 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 meta.duration = mp4File.audioProperties()->lengthInSeconds();
             }
             
+            // Extract album art
+            if (items.contains("covr")) {
+                const TagLib::MP4::Item& coverItem = items["covr"];
+                if (coverItem.isValid()) {
+                    TagLib::MP4::CoverArtList coverArtList = coverItem.toCoverArtList();
+                    if (!coverArtList.isEmpty()) {
+                        // Get the first cover art
+                        const TagLib::MP4::CoverArt& coverArt = coverArtList.front();
+                        TagLib::ByteVector coverData = coverArt.data();
+                        
+                        if (!coverData.isEmpty()) {
+                            meta.albumArtData = QByteArray(coverData.data(), coverData.size());
+                            
+                            // Determine MIME type based on format
+                            switch (coverArt.format()) {
+                                case TagLib::MP4::CoverArt::JPEG:
+                                    meta.albumArtMimeType = "image/jpeg";
+                                    break;
+                                case TagLib::MP4::CoverArt::PNG:
+                                    meta.albumArtMimeType = "image/png";
+                                    break;
+                                default:
+                                    meta.albumArtMimeType = "image/unknown";
+                                    break;
+                            }
+                        }
+                    }
+                }
+            }
+            
             // Return here since we've handled everything MP4-specific
             // qDebug() << "MetadataExtractor: Final MP4 meta.albumArtist:" << meta.albumArtist;
             return meta;
@@ -384,7 +443,22 @@ QVariantMap MetadataExtractor::extractAsVariantMap(const QString &filePath)
     map.insert("discNumber", details.discNumber);
     map.insert("duration", details.duration);
     map.insert("filePath", filePath); // Also include the original file path
+    map.insert("hasAlbumArt", !details.albumArtData.isEmpty());
+    map.insert("albumArtData", details.albumArtData);
+    map.insert("albumArtMimeType", details.albumArtMimeType);
     return map;
+}
+
+QByteArray MetadataExtractor::extractAlbumArt(const QString &filePath)
+{
+    TrackMetadata details = extract(filePath);
+    return details.albumArtData;
+}
+
+bool MetadataExtractor::hasAlbumArt(const QString &filePath)
+{
+    TrackMetadata details = extract(filePath);
+    return !details.albumArtData.isEmpty();
 }
 
 } // namespace Mtoc

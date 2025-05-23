@@ -184,6 +184,26 @@ bool DatabaseManager::createTables()
         return false;
     }
     
+    // Album art table
+    if (!query.exec(
+        "CREATE TABLE IF NOT EXISTS album_art ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "album_id INTEGER NOT NULL UNIQUE,"
+        "full_path TEXT,"
+        "full_hash TEXT,"
+        "thumbnail BLOB,"
+        "thumbnail_size INTEGER,"
+        "width INTEGER,"
+        "height INTEGER,"
+        "format TEXT,"
+        "file_size INTEGER,"
+        "extracted_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+        "FOREIGN KEY (album_id) REFERENCES albums(id) ON DELETE CASCADE"
+        ")")) {
+        logError("Create album_art table", query);
+        return false;
+    }
+    
     return true;
 }
 
@@ -706,10 +726,12 @@ QVariantList DatabaseManager::getAllAlbums()
     QSqlQuery query(m_db);
     query.exec(
         "SELECT al.*, aa.name as album_artist_name, "
-        "COUNT(t.id) as track_count, SUM(t.duration) as total_duration "
+        "COUNT(t.id) as track_count, SUM(t.duration) as total_duration, "
+        "art.thumbnail as art_thumbnail, art.full_path as art_path "
         "FROM albums al "
         "LEFT JOIN album_artists aa ON al.album_artist_id = aa.id "
         "LEFT JOIN tracks t ON al.id = t.album_id "
+        "LEFT JOIN album_art art ON al.id = art.album_id "
         "GROUP BY al.id "
         "ORDER BY al.title"
     );
@@ -722,6 +744,9 @@ QVariantList DatabaseManager::getAllAlbums()
         album["year"] = query.value("year");
         album["trackCount"] = query.value("track_count");
         album["duration"] = query.value("total_duration");
+        album["hasArt"] = !query.value("art_thumbnail").isNull();
+        album["artThumbnail"] = query.value("art_thumbnail");
+        album["artPath"] = query.value("art_path");
         albums.append(album);
     }
     
@@ -770,10 +795,12 @@ QVariantList DatabaseManager::getAlbumsByAlbumArtist(int albumArtistId)
     QSqlQuery query(m_db);
     query.prepare(
         "SELECT al.*, aa.name as album_artist_name, "
-        "COUNT(t.id) as track_count, SUM(t.duration) as total_duration "
+        "COUNT(t.id) as track_count, SUM(t.duration) as total_duration, "
+        "art.thumbnail as art_thumbnail, art.full_path as art_path "
         "FROM albums al "
         "LEFT JOIN album_artists aa ON al.album_artist_id = aa.id "
         "LEFT JOIN tracks t ON al.id = t.album_id "
+        "LEFT JOIN album_art art ON al.id = art.album_id "
         "WHERE al.album_artist_id = :artist_id "
         "GROUP BY al.id "
         "ORDER BY al.year DESC, al.title"
@@ -789,6 +816,9 @@ QVariantList DatabaseManager::getAlbumsByAlbumArtist(int albumArtistId)
             album["year"] = query.value("year");
             album["trackCount"] = query.value("track_count");
             album["duration"] = query.value("total_duration");
+            album["hasArt"] = !query.value("art_thumbnail").isNull();
+            album["artThumbnail"] = query.value("art_thumbnail");
+            album["artPath"] = query.value("art_path");
             albums.append(album);
         }
     } else {
@@ -855,6 +885,108 @@ QSqlDatabase DatabaseManager::createThreadConnection(const QString& connectionNa
 void DatabaseManager::removeThreadConnection(const QString& connectionName)
 {
     QSqlDatabase::removeDatabase(connectionName);
+}
+
+bool DatabaseManager::insertAlbumArt(int albumId, const QString& fullPath, const QString& hash, 
+                                   const QByteArray& thumbnail, int width, int height, 
+                                   const QString& format, qint64 fileSize)
+{
+    if (!m_db.isOpen()) return false;
+    
+    QSqlQuery query(m_db);
+    query.prepare(
+        "INSERT OR REPLACE INTO album_art "
+        "(album_id, full_path, full_hash, thumbnail, thumbnail_size, "
+        "width, height, format, file_size) "
+        "VALUES (:album_id, :full_path, :full_hash, :thumbnail, :thumbnail_size, "
+        ":width, :height, :format, :file_size)"
+    );
+    
+    query.bindValue(":album_id", albumId);
+    query.bindValue(":full_path", fullPath);
+    query.bindValue(":full_hash", hash);
+    query.bindValue(":thumbnail", thumbnail);
+    query.bindValue(":thumbnail_size", thumbnail.size());
+    query.bindValue(":width", width);
+    query.bindValue(":height", height);
+    query.bindValue(":format", format);
+    query.bindValue(":file_size", fileSize);
+    
+    if (!query.exec()) {
+        logError("Insert album art", query);
+        return false;
+    }
+    
+    return true;
+}
+
+QVariantMap DatabaseManager::getAlbumArt(int albumId)
+{
+    QVariantMap result;
+    if (!m_db.isOpen()) return result;
+    
+    QSqlQuery query(m_db);
+    query.prepare(
+        "SELECT * FROM album_art WHERE album_id = :album_id"
+    );
+    query.bindValue(":album_id", albumId);
+    
+    if (query.exec() && query.next()) {
+        result["id"] = query.value("id");
+        result["albumId"] = query.value("album_id");
+        result["fullPath"] = query.value("full_path");
+        result["fullHash"] = query.value("full_hash");
+        result["thumbnail"] = query.value("thumbnail");
+        result["thumbnailSize"] = query.value("thumbnail_size");
+        result["width"] = query.value("width");
+        result["height"] = query.value("height");
+        result["format"] = query.value("format");
+        result["fileSize"] = query.value("file_size");
+        result["extractedDate"] = query.value("extracted_date");
+    }
+    
+    return result;
+}
+
+bool DatabaseManager::albumArtExists(int albumId)
+{
+    if (!m_db.isOpen()) return false;
+    
+    QSqlQuery query(m_db);
+    query.prepare("SELECT 1 FROM album_art WHERE album_id = :album_id LIMIT 1");
+    query.bindValue(":album_id", albumId);
+    
+    return query.exec() && query.next();
+}
+
+QString DatabaseManager::getAlbumArtPath(int albumId)
+{
+    if (!m_db.isOpen()) return QString();
+    
+    QSqlQuery query(m_db);
+    query.prepare("SELECT full_path FROM album_art WHERE album_id = :album_id");
+    query.bindValue(":album_id", albumId);
+    
+    if (query.exec() && query.next()) {
+        return query.value(0).toString();
+    }
+    
+    return QString();
+}
+
+QByteArray DatabaseManager::getAlbumArtThumbnail(int albumId)
+{
+    if (!m_db.isOpen()) return QByteArray();
+    
+    QSqlQuery query(m_db);
+    query.prepare("SELECT thumbnail FROM album_art WHERE album_id = :album_id");
+    query.bindValue(":album_id", albumId);
+    
+    if (query.exec() && query.next()) {
+        return query.value(0).toByteArray();
+    }
+    
+    return QByteArray();
 }
 
 void DatabaseManager::logError(const QString& operation, const QSqlQuery& query)

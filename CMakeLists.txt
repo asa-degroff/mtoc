@@ -29,6 +29,10 @@ set(PROJECT_SOURCES
         src/backend/systeminfo.cpp
         src/backend/library/librarymanager.h
         src/backend/library/librarymanager.cpp
+        src/backend/library/albumartmanager.h
+        src/backend/library/albumartmanager.cpp
+        src/backend/library/albumartimageprovider.h
+        src/backend/library/albumartimageprovider.cpp
         src/backend/library/track.h
         src/backend/library/track.cpp
         src/backend/library/album.h

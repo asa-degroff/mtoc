@@ -397,9 +397,24 @@ Item {
 
                                             Image {
                                                 anchors.fill: parent
-                                                source: modelData.image || ""
+                                                source: modelData.hasArt ? "image://albumart/" + modelData.id + "/thumbnail" : ""
                                                 fillMode: Image.PreserveAspectCrop
                                                 clip: true
+                                                asynchronous: true
+                                                
+                                                // Placeholder when no art available
+                                                Rectangle {
+                                                    anchors.fill: parent
+                                                    color: "#444444"
+                                                    visible: parent.status !== Image.Ready
+                                                    
+                                                    Label {
+                                                        anchors.centerIn: parent
+                                                        text: "♪"
+                                                        font.pixelSize: 32
+                                                        color: "#666666"
+                                                    }
+                                                }
                                             }
                                         }
 

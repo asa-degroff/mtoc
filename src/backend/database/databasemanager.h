@@ -69,6 +69,15 @@ public:
     // Thread-safe operations
     static QSqlDatabase createThreadConnection(const QString& connectionName);
     static void removeThreadConnection(const QString& connectionName);
+    
+    // Album art operations
+    bool insertAlbumArt(int albumId, const QString& fullPath, const QString& hash, 
+                       const QByteArray& thumbnail, int width, int height, 
+                       const QString& format, qint64 fileSize);
+    QVariantMap getAlbumArt(int albumId);
+    bool albumArtExists(int albumId);
+    QString getAlbumArtPath(int albumId);
+    QByteArray getAlbumArtThumbnail(int albumId);
 
 signals:
     void databaseError(const QString& error);
