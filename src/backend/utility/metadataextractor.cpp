@@ -93,20 +93,52 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 return QString();
             };
             
-            // Title
+            // Also check the standard PropertyMap
+            TagLib::PropertyMap properties = mp4Tag->properties();
+            qDebug() << "MetadataExtractor: Also checking standard properties for" << filePath;
+            for (TagLib::PropertyMap::ConstIterator it = properties.begin(); it != properties.end(); ++it) {
+                QString key = QString::fromStdString(it->first.to8Bit(true));
+                QString value = "Empty";
+                if (!it->second.isEmpty()) {
+                    value = QString::fromStdString(it->second.front().to8Bit(true));
+                }
+                qDebug() << "  Standard Property:" << key << "Values:" << value;
+            }
+            
+            // TITLE - try iTunes tag first, then standard tag
             meta.title = getStringValue("©nam");
+            if (meta.title.isEmpty() && properties.contains("TITLE") && !properties["TITLE"].isEmpty()) {
+                meta.title = QString::fromStdString(properties["TITLE"].front().to8Bit(true));
+                qDebug() << "MetadataExtractor: Using standard TITLE tag:" << meta.title;
+            }
             
-            // Artist
+            // ARTIST - try iTunes tag first, then standard tag
             meta.artist = getStringValue("©ART");
+            if (meta.artist.isEmpty() && properties.contains("ARTIST") && !properties["ARTIST"].isEmpty()) {
+                meta.artist = QString::fromStdString(properties["ARTIST"].front().to8Bit(true));
+                qDebug() << "MetadataExtractor: Using standard ARTIST tag:" << meta.artist;
+            }
             
-            // Album
+            // ALBUM - try iTunes tag first, then standard tag
             meta.album = getStringValue("©alb");
+            if (meta.album.isEmpty() && properties.contains("ALBUM") && !properties["ALBUM"].isEmpty()) {
+                meta.album = QString::fromStdString(properties["ALBUM"].front().to8Bit(true));
+                qDebug() << "MetadataExtractor: Using standard ALBUM tag:" << meta.album;
+            }
             
-            // Genre
+            // GENRE - try iTunes tag first, then standard tag
             meta.genre = getStringValue("©gen");
+            if (meta.genre.isEmpty() && properties.contains("GENRE") && !properties["GENRE"].isEmpty()) {
+                meta.genre = QString::fromStdString(properties["GENRE"].front().to8Bit(true));
+                qDebug() << "MetadataExtractor: Using standard GENRE tag:" << meta.genre;
+            }
             
-            // Year
+            // YEAR - try iTunes tag first, then standard tag
             QString yearStr = getStringValue("©day");
+            if (yearStr.isEmpty() && properties.contains("DATE") && !properties["DATE"].isEmpty()) {
+                yearStr = QString::fromStdString(properties["DATE"].front().to8Bit(true));
+                qDebug() << "MetadataExtractor: Using standard DATE tag for year:" << yearStr;
+            }
             if (!yearStr.isEmpty()) {
                 // Often the year is in format YYYY or YYYY-MM-DD
                 meta.year = yearStr.left(4).toUInt();
