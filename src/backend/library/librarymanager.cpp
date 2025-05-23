@@ -23,6 +23,7 @@ LibraryManager::LibraryManager(QObject *parent)
     , m_totalFilesToScan(0)
     , m_filesScanned(0)
     , m_cancelRequested(false)
+    , m_albumModelCacheValid(false)
 {
     qDebug() << "LibraryManager: Constructor started";
     
@@ -109,6 +110,9 @@ void LibraryManager::loadLibraryFromDatabase()
     
     // For now, we'll load data on-demand rather than loading everything into memory
     // This is more efficient for large libraries
+    
+    // Invalidate cache
+    m_albumModelCacheValid = false;
     
     emit libraryChanged();
     emit trackCountChanged();
@@ -454,6 +458,9 @@ void LibraryManager::onScanFinished()
     
     // Transaction is now handled in the background thread
     
+    // Invalidate cache after scan
+    m_albumModelCacheValid = false;
+    
     // Use queued connections to ensure signals are emitted from main thread
     QMetaObject::invokeMethod(this, "scanningChanged", Qt::QueuedConnection);
     QMetaObject::invokeMethod(this, "scanProgressChanged", Qt::QueuedConnection);
@@ -610,7 +617,24 @@ QVariantList LibraryManager::albumModel() const
     if (!m_databaseManager || !m_databaseManager->isOpen()) {
         return QVariantList();
     }
-    return m_databaseManager->getAllAlbums();
+    
+    // Use cached data if valid
+    if (m_albumModelCacheValid) {
+        return m_cachedAlbumModel;
+    }
+    
+    // Otherwise fetch from database and cache
+    m_cachedAlbumModel = m_databaseManager->getAllAlbums();
+    m_albumModelCacheValid = true;
+    return m_cachedAlbumModel;
+}
+
+QVariantList LibraryManager::getAlbumsForArtist(const QString &artistName) const
+{
+    if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        return QVariantList();
+    }
+    return m_databaseManager->getAlbumsByAlbumArtistName(artistName);
 }
 
 TrackModel* LibraryManager::searchTracks(const QString &query) const

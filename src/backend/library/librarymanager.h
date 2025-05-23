@@ -71,6 +71,7 @@ public:
     Q_INVOKABLE AlbumModel* albumsForArtist(const QString &artistName) const;
     Q_INVOKABLE TrackModel* tracksForAlbum(const QString &albumTitle, const QString &artistName = QString()) const;
     Q_INVOKABLE QVariantList getTracksForAlbumAsVariantList(const QString &artistName, const QString &albumTitle) const;
+    Q_INVOKABLE QVariantList getAlbumsForArtist(const QString &artistName) const;
     
     // Search methods
     Q_INVOKABLE TrackModel* searchTracks(const QString &query) const;
@@ -132,6 +133,10 @@ private:
     mutable QMutex m_databaseMutex;     // Protect database access
     QList<QVariantMap> m_pendingTracks; // Tracks waiting to be inserted
     mutable QMutex m_pendingTracksMutex; // Protect pending tracks list
+    
+    // Cache for performance
+    mutable QVariantList m_cachedAlbumModel;
+    mutable bool m_albumModelCacheValid;
     
     // Models for UI
     TrackModel *m_allTracksModel;

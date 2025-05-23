@@ -362,23 +362,7 @@ Item {
                                 cellHeight: 120 + 8 // Thumbnail + title + padding
                                 interactive: false // Parent ListView handles scrolling primarily
 
-                                model: {
-                                    if (!albumsVisible) return []; // Don't process if not visible
-                                    var artistAlbums = [];
-                                    var allAlbums = LibraryManager.albumModel;
-                                    console.log("Looking for albums by artist:", artistData.name);
-                                    console.log("Total albums in library:", allAlbums.length);
-                                    for (var i = 0; i < allAlbums.length; i++) {
-                                        // Use albumArtist instead of artist
-                                        if (allAlbums[i].albumArtist === artistData.name) {
-                                            artistAlbums.push(allAlbums[i]);
-                                        }
-                                    }
-                                    console.log("Found", artistAlbums.length, "albums for artist:", artistData.name);
-                                    // AlbumModel from LibraryManager should already be sorted by year for artists
-                                    // If not, sort here: artistAlbums.sort(function(a,b){ return b.year - a.year; });
-                                    return artistAlbums;
-                                }
+                                model: albumsVisible ? LibraryManager.getAlbumsForArtist(artistData.name) : []
 
                                 delegate: Item { 
                                     width: albumsGrid.cellWidth - 8
