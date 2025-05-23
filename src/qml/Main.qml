@@ -143,20 +143,16 @@ ApplicationWindow {
                 console.log("Music folders already configured:", JSON.stringify(LibraryManager.musicFolders));
             }
             
-            // Test MetadataExtractor functionality
-            var filePath = "/home/asa/Music/Beck/Guero/01 E‐Pro.m4a";
-            var metadata = MetadataExtractor.extractAsVariantMap(filePath);
-            
-            // Store it in our property for display
-            currentTrack = metadata;
-            
-            // Log metadata to the console
-            console.log("Audio File Metadata loaded:", JSON.stringify(metadata, null, 2));
+            // Skip MetadataExtractor test for now
+            // This was causing issues during startup
             
             // Start a library scan if needed
             if (LibraryManager.trackCount === 0) {
                 console.log("Starting initial library scan...");
-                LibraryManager.startScan();
+                // Delay the scan slightly to ensure everything is initialized
+                Qt.callLater(function() {
+                    LibraryManager.startScan();
+                });
             } else {
                 console.log("Library already contains", LibraryManager.trackCount, "tracks");
             }

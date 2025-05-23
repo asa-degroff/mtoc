@@ -14,9 +14,12 @@
 // Message handler to redirect qDebug output to file and console
 void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
     // Filter out unwanted debug messages
-    // Only show messages from MetadataExtractor and specific test messages
+    // Show messages from our components and test messages
     if (type == QtDebugMsg && 
         !msg.contains("MetadataExtractor") && 
+        !msg.contains("DatabaseManager") &&
+        !msg.contains("LibraryManager") &&
+        !msg.contains("Main:") &&
         !msg.contains("DEBUG TEST") && 
         !msg.contains("STDOUT TEST") && 
         !msg.contains("STDERR TEST")) {
@@ -92,22 +95,51 @@ int main(int argc, char *argv[])
     // engine ownership might be considered.
     // However, qmlRegisterSingletonInstance is the modern way for uncreatable types.
 
-    SystemInfo systemInfo;
-    qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "SystemInfo", &systemInfo);
+    // Create objects on heap and parent them to the engine for proper lifetime management
+    SystemInfo *systemInfo = new SystemInfo(&engine);
+    qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "SystemInfo", systemInfo);
 
-    Mtoc::MetadataExtractor metadataExtractor;
-    qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MetadataExtractor", &metadataExtractor);
+    // Create LibraryManager first to see if it's the issue
+    qDebug() << "Main: Creating LibraryManager...";
+    Mtoc::LibraryManager *libraryManager = new Mtoc::LibraryManager(&engine);
+    qDebug() << "Main: LibraryManager created successfully";
+    
+    qDebug() << "Main: Registering LibraryManager with QML...";
+    qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "LibraryManager", libraryManager);
+    qDebug() << "Main: LibraryManager registered";
+    
+    // MetadataExtractor might not need to be a singleton since it's used by LibraryManager
+    Mtoc::MetadataExtractor *metadataExtractor = new Mtoc::MetadataExtractor(&engine);
+    qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MetadataExtractor", metadataExtractor);
 
-    Mtoc::LibraryManager libraryManager;
-    qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "LibraryManager", &libraryManager);
-
+    qDebug() << "Main: About to load QML...";
+    
     const QUrl url(QStringLiteral("qrc:/src/qml/Main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
         &app, [url](QObject *obj, const QUrl &objUrl) {
+            qDebug() << "Main: QML object created:" << (obj ? "success" : "failed");
             if (!obj && url == objUrl)
                 QCoreApplication::exit(-1);
         }, Qt::QueuedConnection);
+        
+    qDebug() << "Main: Loading QML from:" << url;
     engine.load(url);
-
-    return app.exec();
+    
+    // Connect to application aboutToQuit signal for cleanup
+    QObject::connect(&app, &QApplication::aboutToQuit, [&]() {
+        qDebug() << "Main: Application about to quit, performing cleanup...";
+        
+        // Cancel any ongoing scans
+        if (libraryManager->isScanning()) {
+            libraryManager->cancelScan();
+        }
+        
+        qDebug() << "Main: Cleanup completed";
+    });
+    
+    qDebug() << "Main: Starting event loop...";
+    int result = app.exec();
+    
+    qDebug() << "Main: Event loop ended with result:" << result;
+    return result;
 }

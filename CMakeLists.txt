@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Enable qDebug output even in release builds
 add_definitions(-DQT_MESSAGELOGCONTEXT -DQT_DEBUG)
 
-find_package(Qt6 COMPONENTS Core Quick Qml Multimedia DBus Concurrent Widgets REQUIRED)
+find_package(Qt6 COMPONENTS Core Quick Qml Multimedia DBus Concurrent Widgets Sql REQUIRED)
 # find_package(TagLib REQUIRED) # This failed, reverting to pkg-config
 
 find_package(PkgConfig REQUIRED) # Ensure PkgConfig is found
@@ -39,6 +39,8 @@ set(PROJECT_SOURCES
         src/backend/library/albummodel.cpp
         src/backend/library/trackmodel.h
         src/backend/library/trackmodel.cpp
+        src/backend/database/databasemanager.h
+        src/backend/database/databasemanager.cpp
         src/backend/playback/mediaplayer.h
         src/backend/playback/mediaplayer.cpp
         src/backend/playback/playlist.h
@@ -68,6 +70,7 @@ target_link_libraries(mtoc_app
     Qt6::DBus
     Qt6::Concurrent
     Qt6::Widgets
+    Qt6::Sql
     ${TAGLIB_LIBRARIES} # Link against TagLib libraries
 )
 

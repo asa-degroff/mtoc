@@ -20,6 +20,7 @@
 #include "trackmodel.h"
 #include "albummodel.h"
 #include "../utility/metadataextractor.h"
+#include "../database/databasemanager.h"
 
 namespace Mtoc {
 
@@ -110,11 +111,14 @@ private:
     void addTrackToLibrary(Track *track);
     Album* findOrCreateAlbum(const QString &title, const QString &artistName);
     Artist* findOrCreateArtist(const QString &name);
-    void saveLibraryToDisk();
-    void loadLibraryFromDisk();
+    void initializeDatabase();
+    void loadLibraryFromDatabase();
+    void syncWithDatabase(const QString &filePath);
+    void processNextFile(const QStringList &files);
     
     // Private data
     MetadataExtractor m_metadataExtractor;
+    DatabaseManager *m_databaseManager;
     QStringList m_musicFolders;
     QMap<QString, Track*> m_tracks;      // Path -> Track
     QMap<QString, Album*> m_albums;      // "Artist:Album" -> Album

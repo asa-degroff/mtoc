@@ -15,10 +15,10 @@ Item {
     onSelectedAlbumChanged: {
         // console.log("Selected album changed to: " + (selectedAlbum ? selectedAlbum.title : "none"));
         if (selectedAlbum) {
-            // Assuming selectedAlbum has 'artist' and 'title' properties
-            var tracks = LibraryManager.getTracksForAlbumAsVariantList(selectedAlbum.artist, selectedAlbum.title);
+            // Use albumArtist instead of artist
+            var tracks = LibraryManager.getTracksForAlbumAsVariantList(selectedAlbum.albumArtist, selectedAlbum.title);
             rightPane.currentAlbumTracks = tracks;
-            rightPane.albumTitleText = selectedAlbum.artist + " - " + selectedAlbum.title;
+            rightPane.albumTitleText = selectedAlbum.albumArtist + " - " + selectedAlbum.title;
         } else {
             rightPane.currentAlbumTracks = [];
             rightPane.albumTitleText = "No album selected";
@@ -366,11 +366,15 @@ Item {
                                     if (!albumsVisible) return []; // Don't process if not visible
                                     var artistAlbums = [];
                                     var allAlbums = LibraryManager.albumModel;
+                                    console.log("Looking for albums by artist:", artistData.name);
+                                    console.log("Total albums in library:", allAlbums.length);
                                     for (var i = 0; i < allAlbums.length; i++) {
-                                        if (allAlbums[i].artist === artistData.name) {
+                                        // Use albumArtist instead of artist
+                                        if (allAlbums[i].albumArtist === artistData.name) {
                                             artistAlbums.push(allAlbums[i]);
                                         }
                                     }
+                                    console.log("Found", artistAlbums.length, "albums for artist:", artistData.name);
                                     // AlbumModel from LibraryManager should already be sorted by year for artists
                                     // If not, sort here: artistAlbums.sort(function(a,b){ return b.year - a.year; });
                                     return artistAlbums;

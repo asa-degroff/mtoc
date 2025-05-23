@@ -19,7 +19,8 @@ MetadataExtractor::MetadataExtractor(QObject *parent)
 
 MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &filePath)
 {
-    qDebug() << "MetadataExtractor: Extracting metadata from" << filePath;
+    // Reduce logging to prevent performance issues
+    // qDebug() << "MetadataExtractor: Extracting metadata from" << filePath;
     TrackMetadata meta;
     
     // Check if file exists and is readable
@@ -33,6 +34,8 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
         qWarning() << "MetadataExtractor: File is not readable:" << filePath;
         return meta;
     }
+    
+    try {
     // TagLib uses C-style strings or std::wstring. Convert QString appropriately.
     // For UTF-8 paths, toWString() might not be needed if underlying system uses UTF-8 for char*
     // However, TagLib's FileRef constructor can take a wchar_t* or a char*.
@@ -44,13 +47,13 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
     // Convert QString to char* for TagLib
     QByteArray filePathBA = filePath.toLocal8Bit();
     const char* filePathCStr = filePathBA.constData();
-    qDebug() << "MetadataExtractor: Processing path:" << filePath;
+    // qDebug() << "MetadataExtractor: Processing path:" << filePath;
     
     QString fileExt = fileInfo.suffix().toLower();
     
     // Special case for MP3 files with ID3v2 tags
     if (fileExt == "mp3") {
-        qDebug() << "MetadataExtractor: Using MP3-specific handling for" << filePath;
+        // qDebug() << "MetadataExtractor: Using MP3-specific handling for" << filePath;
         TagLib::MPEG::File mpegFile(filePathCStr);
         
         if (mpegFile.isValid()) {
@@ -133,14 +136,16 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
     
     // Special case for M4A/MP4 files (iTunes format)
     if (fileExt == "m4a" || fileExt == "m4p" || fileExt == "mp4") {
-        qDebug() << "MetadataExtractor: Using MP4-specific handling for" << filePath;
+        // qDebug() << "MetadataExtractor: Using MP4-specific handling for" << filePath;
         TagLib::MP4::File mp4File(filePathCStr);
         
         if (mp4File.isValid() && mp4File.tag()) {
             TagLib::MP4::Tag* mp4Tag = mp4File.tag();
             TagLib::MP4::ItemMap items = mp4Tag->itemMap();
             
-            // Dump all MP4 items
+            // Dump all MP4 items (disabled for now due to crashes)
+            // TODO: Re-enable with proper error handling
+            /*
             qDebug() << "MetadataExtractor: MP4 tags found in" << filePath;
             for (TagLib::MP4::ItemMap::ConstIterator it = items.begin(); it != items.end(); ++it) {
                 QString key = QString::fromLatin1(it->first.toCString());
@@ -183,6 +188,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 
                 qDebug() << "  MP4 Item:" << key << "=" << value;
             }
+            */
             
             // Extract standard iTunes tags
             // Standard iTunes tag mapping:
@@ -201,11 +207,9 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             auto getStringValue = [&](const char* key) -> QString {
                 if (items.contains(key)) {
                     const TagLib::MP4::Item& item = items[key];
-                    if (item.toStringList().isEmpty()) {
-                        TagLib::StringList values = item.toStringList();
-                        if (!values.isEmpty()) {
-                            return QString::fromStdString(values.front().to8Bit(true));
-                        }
+                    TagLib::StringList values = item.toStringList();
+                    if (!values.isEmpty()) {
+                        return QString::fromStdString(values.front().to8Bit(true));
                     }
                 }
                 return QString();
@@ -213,15 +217,6 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             
             // Also check the standard PropertyMap
             TagLib::PropertyMap properties = mp4Tag->properties();
-            qDebug() << "MetadataExtractor: Also checking standard properties for" << filePath;
-            for (TagLib::PropertyMap::ConstIterator it = properties.begin(); it != properties.end(); ++it) {
-                QString key = QString::fromStdString(it->first.to8Bit(true));
-                QString value = "Empty";
-                if (!it->second.isEmpty()) {
-                    value = QString::fromStdString(it->second.front().to8Bit(true));
-                }
-                qDebug() << "  Standard Property:" << key << "Values:" << value;
-            }
             
             // TITLE - try iTunes tag first, then standard tag
             meta.title = getStringValue("©nam");
@@ -284,24 +279,11 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 }
             }
             
-            // Album Artist - this is the key part for our issue
+            // Album Artist - simplified to avoid crashes
             meta.albumArtist = getStringValue("aART");
-            if (!meta.albumArtist.isEmpty()) {
-                qDebug() << "MetadataExtractor: Found MP4 album artist tag (aART):" << meta.albumArtist;
-            } else {
-                qDebug() << "MetadataExtractor: No MP4 album artist tag (aART) found";
-                
-                // Try alternative custom tags
-                meta.albumArtist = getStringValue("----:com.apple.iTunes:ALBUMARTIST");
-                if (!meta.albumArtist.isEmpty()) {
-                    qDebug() << "MetadataExtractor: Found iTunes custom album artist tag:" << meta.albumArtist;
-                } else {
-                    // Also check standard properties for MP4
-                    if (properties.contains("ALBUMARTIST") && !properties["ALBUMARTIST"].isEmpty()) {
-                        meta.albumArtist = QString::fromStdString(properties["ALBUMARTIST"].front().to8Bit(true));
-                        qDebug() << "MetadataExtractor: Found ALBUMARTIST in MP4 properties:" << meta.albumArtist;
-                    }
-                }
+            if (meta.albumArtist.isEmpty()) {
+                // Fallback to artist if no album artist
+                meta.albumArtist = meta.artist;
             }
             
             // Audio properties from the MP4 file
@@ -402,6 +384,12 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
     } else {
         qWarning() << "Could not read metadata for:" << filePath;
     }
+    } catch (const std::exception& e) {
+        qCritical() << "MetadataExtractor: Exception while extracting metadata from" << filePath << ":" << e.what();
+    } catch (...) {
+        qCritical() << "MetadataExtractor: Unknown exception while extracting metadata from" << filePath;
+    }
+    
     return meta;
 }
 
