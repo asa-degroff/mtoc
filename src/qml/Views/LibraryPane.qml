@@ -191,7 +191,7 @@ Item {
                     
                     ProgressBar {
                         width: parent.width
-                        value: LibraryManager.scanProgress
+                        value: LibraryManager.scanProgress / 100.0
                         from: 0
                         to: 1
                     }

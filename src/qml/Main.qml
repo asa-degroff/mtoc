@@ -134,6 +134,7 @@ ApplicationWindow {
             console.log("Initializing LibraryManager...");
             
             // Check if we have any music folders configured
+            console.log("Checking musicFolders property...");
             if (LibraryManager.musicFolders.length === 0) {
                 // Add a default music folder for testing
                 var musicDir = "/home/asa/Music";

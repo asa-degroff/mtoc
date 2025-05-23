@@ -114,7 +114,7 @@ private:
     void initializeDatabase();
     void loadLibraryFromDatabase();
     void syncWithDatabase(const QString &filePath);
-    void processNextFile(const QStringList &files);
+    void scanInBackground();
     
     // Private data
     MetadataExtractor m_metadataExtractor;
@@ -123,6 +123,9 @@ private:
     QMap<QString, Track*> m_tracks;      // Path -> Track
     QMap<QString, Album*> m_albums;      // "Artist:Album" -> Album
     QMap<QString, Artist*> m_artists;    // Name -> Artist
+    mutable QMutex m_databaseMutex;     // Protect database access
+    QList<QVariantMap> m_pendingTracks; // Tracks waiting to be inserted
+    mutable QMutex m_pendingTracksMutex; // Protect pending tracks list
     
     // Models for UI
     TrackModel *m_allTracksModel;

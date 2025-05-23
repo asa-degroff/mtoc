@@ -4,6 +4,8 @@
 #include <QStandardPaths>
 #include <QTimer>
 #include <QFileInfo>
+#include <QThread>
+#include <QMutexLocker>
 #include <exception>
 
 namespace Mtoc {
@@ -114,6 +116,7 @@ void LibraryManager::loadLibraryFromDatabase()
 // Property getters
 bool LibraryManager::isScanning() const
 {
+    qDebug() << "LibraryManager::isScanning() called, returning" << m_scanning;
     return m_scanning;
 }
 
@@ -133,22 +136,44 @@ QString LibraryManager::scanProgressText() const
 
 QStringList LibraryManager::musicFolders() const
 {
+    qDebug() << "LibraryManager::musicFolders() called, returning" << m_musicFolders.size() << "folders";
     return m_musicFolders;
 }
 
 int LibraryManager::trackCount() const
 {
-    return m_databaseManager->getTotalTracks();
+    qDebug() << "LibraryManager::trackCount() called";
+    if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        qDebug() << "LibraryManager::trackCount() - database not ready, returning 0";
+        return 0;
+    }
+    int count = m_databaseManager->getTotalTracks();
+    qDebug() << "LibraryManager::trackCount() returning" << count;
+    return count;
 }
 
 int LibraryManager::albumCount() const
 {
-    return m_databaseManager->getTotalAlbums();
+    qDebug() << "LibraryManager::albumCount() called";
+    if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        qDebug() << "LibraryManager::albumCount() - database not ready, returning 0";
+        return 0;
+    }
+    int count = m_databaseManager->getTotalAlbums();
+    qDebug() << "LibraryManager::albumCount() returning" << count;
+    return count;
 }
 
 int LibraryManager::artistCount() const
 {
-    return m_databaseManager->getTotalArtists();
+    qDebug() << "LibraryManager::artistCount() called";
+    if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        qDebug() << "LibraryManager::artistCount() - database not ready, returning 0";
+        return 0;
+    }
+    int count = m_databaseManager->getTotalArtists();
+    qDebug() << "LibraryManager::artistCount() returning" << count;
+    return count;
 }
 
 // Property setters
@@ -163,6 +188,7 @@ void LibraryManager::setMusicFolders(const QStringList &folders)
 // Library management methods
 bool LibraryManager::addMusicFolder(const QString &path)
 {
+    qDebug() << "LibraryManager::addMusicFolder() called with path:" << path;
     QDir dir(path);
     if (!dir.exists()) {
         qWarning() << "Music folder does not exist:" << path;
@@ -172,10 +198,12 @@ bool LibraryManager::addMusicFolder(const QString &path)
     QString canonicalPath = dir.canonicalPath();
     if (!m_musicFolders.contains(canonicalPath)) {
         m_musicFolders.append(canonicalPath);
+        qDebug() << "LibraryManager::addMusicFolder() - folder added, emitting signal";
         emit musicFoldersChanged();
         return true;
     }
     
+    qDebug() << "LibraryManager::addMusicFolder() - folder already exists";
     return false;
 }
 
@@ -195,26 +223,72 @@ bool LibraryManager::removeMusicFolder(const QString &path)
 
 void LibraryManager::startScan()
 {
+    qDebug() << "LibraryManager::startScan() called";
+    
     if (m_scanning) {
         qDebug() << "Scan already in progress";
         return;
     }
     
+    qDebug() << "Starting scan - checking music folders...";
+    if (m_musicFolders.isEmpty()) {
+        qWarning() << "No music folders configured for scanning";
+        return;
+    }
+    
+    qDebug() << "Setting scan state to true...";
     m_scanning = true;
     m_scanProgress = 0;
     m_filesScanned = 0;
     m_cancelRequested = false;
     m_pendingFiles.clear();
     
+    qDebug() << "Emitting scan state change signals...";
     emit scanningChanged();
     emit scanProgressChanged();
     emit scanProgressTextChanged();
     
+    qDebug() << "Starting database transaction...";
     // Start transaction for better performance
-    m_databaseManager->beginTransaction();
+    if (!m_databaseManager->beginTransaction()) {
+        qWarning() << "Failed to start database transaction";
+        m_scanning = false;
+        emit scanningChanged();
+        return;
+    }
     
-    // Process files in the main thread to avoid threading issues
-    QTimer::singleShot(0, this, [this]() {
+    // Clear pending tracks
+    m_pendingTracks.clear();
+    
+    qDebug() << "Starting QtConcurrent task...";
+    // Start async scanning - but serialize all operations to avoid TagLib threading issues
+    try {
+        m_scanFuture = QtConcurrent::run([this]() {
+            qDebug() << "QtConcurrent task started";
+            scanInBackground();
+        });
+        
+        qDebug() << "Setting up future watcher...";
+        m_scanWatcher.setFuture(m_scanFuture);
+        qDebug() << "LibraryManager::startScan() completed successfully";
+    } catch (const std::exception& e) {
+        qCritical() << "Exception starting scan:" << e.what();
+        m_scanning = false;
+        emit scanningChanged();
+        m_databaseManager->rollbackTransaction();
+    } catch (...) {
+        qCritical() << "Unknown exception starting scan";
+        m_scanning = false;
+        emit scanningChanged();
+        m_databaseManager->rollbackTransaction();
+    }
+}
+
+void LibraryManager::scanInBackground()
+{
+    qDebug() << "scanInBackground() starting";
+    
+    try {
         // Find all music files
         QStringList allFiles;
         for (const QString &folder : m_musicFolders) {
@@ -228,10 +302,97 @@ void LibraryManager::startScan()
         m_totalFilesToScan = allFiles.size();
         qDebug() << "Found" << m_totalFilesToScan << "music files to scan";
         
-        // Process files one at a time with event processing
-        m_filesScanned = 0;
-        processNextFile(allFiles);
-    });
+        // Create a single metadata extractor for this thread
+        Mtoc::MetadataExtractor threadExtractor;
+        
+        // Process files in batches for better database performance
+        const int batchSize = 50; // Batch size for database operations
+        QList<QVariantMap> batchMetadata;
+        
+        for (int i = 0; i < allFiles.size() && !m_cancelRequested; ++i) {
+            const QString &filePath = allFiles[i];
+            QFileInfo fileInfo(filePath);
+            
+            // Check if file exists
+            if (!fileInfo.exists()) {
+                continue;
+            }
+            
+            // Check if already in database before extracting metadata
+            {
+                QMutexLocker locker(&m_databaseMutex);
+                if (m_databaseManager->trackExists(filePath)) {
+                    m_filesScanned++;
+                    continue;
+                }
+            }
+            
+            // Extract metadata (serialized to avoid TagLib threading issues)
+            try {
+                QVariantMap metadata = threadExtractor.extractAsVariantMap(filePath);
+                
+                // Validate metadata before using
+                if (metadata.isEmpty() || !metadata.contains("filePath")) {
+                    qWarning() << "Invalid metadata extracted from" << filePath;
+                    m_filesScanned++;
+                    continue;
+                }
+                
+                // Add file info to metadata
+                metadata["fileSize"] = fileInfo.size();
+                metadata["fileModified"] = fileInfo.lastModified();
+                metadata["filePath"] = filePath;
+                
+                // Add to batch
+                batchMetadata.append(metadata);
+            } catch (const std::exception& e) {
+                qWarning() << "Error extracting metadata from" << filePath << ":" << e.what();
+                m_filesScanned++;
+                continue;
+            } catch (...) {
+                qWarning() << "Unknown error extracting metadata from" << filePath;
+                m_filesScanned++;
+                continue;
+            }
+            
+            // Update scanned count after successful extraction
+            m_filesScanned++;
+            
+            // Insert batch when it reaches the batch size or at the end
+            if (batchMetadata.size() >= batchSize || i == allFiles.size() - 1) {
+                // Insert batch into database
+                {
+                    QMutexLocker locker(&m_databaseMutex);
+                    for (const QVariantMap &metadata : batchMetadata) {
+                        if (m_cancelRequested) {
+                            break;
+                        }
+                        m_databaseManager->insertTrack(metadata);
+                    }
+                }
+                batchMetadata.clear();
+            }
+            
+            // Update progress
+            int newProgress = (m_filesScanned * 100) / m_totalFilesToScan;
+            if (newProgress != m_scanProgress) {
+                m_scanProgress = newProgress;
+                QMetaObject::invokeMethod(this, "scanProgressChanged", Qt::QueuedConnection);
+                QMetaObject::invokeMethod(this, "scanProgressTextChanged", Qt::QueuedConnection);
+            }
+            
+            // Occasionally allow other threads to run
+            if (i % 100 == 0) {
+                QThread::msleep(1);
+            }
+        }
+        
+        qDebug() << "scanInBackground() completed successfully";
+    } catch (const std::exception& e) {
+        qCritical() << "Exception in scanInBackground():" << e.what();
+    } catch (...) {
+        qCritical() << "Unknown exception in scanInBackground()";
+    }
 }
 
 void LibraryManager::cancelScan()
@@ -246,27 +407,32 @@ void LibraryManager::cancelScan()
 
 void LibraryManager::onScanFinished()
 {
+    qDebug() << "LibraryManager::onScanFinished() called";
+    
     m_scanning = false;
     m_scanProgress = 100;
     
     // Commit transaction
     m_databaseManager->commitTransaction();
     
-    emit scanningChanged();
-    emit scanProgressChanged();
-    emit scanProgressTextChanged();
+    // Use queued connections to ensure signals are emitted from main thread
+    QMetaObject::invokeMethod(this, "scanningChanged", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(this, "scanProgressChanged", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(this, "scanProgressTextChanged", Qt::QueuedConnection);
     
     if (m_cancelRequested) {
-        emit scanCancelled();
+        QMetaObject::invokeMethod(this, "scanCancelled", Qt::QueuedConnection);
     } else {
-        emit scanCompleted();
+        QMetaObject::invokeMethod(this, "scanCompleted", Qt::QueuedConnection);
     }
     
-    // Refresh all counts and models
-    emit libraryChanged();
-    emit trackCountChanged();
-    emit albumCountChanged();
-    emit artistCountChanged();
+    // Refresh all counts and models - ensure these are from main thread
+    QMetaObject::invokeMethod(this, "libraryChanged", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(this, "trackCountChanged", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(this, "albumCountChanged", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(this, "artistCountChanged", Qt::QueuedConnection);
+    
+    qDebug() << "LibraryManager::onScanFinished() completed";
 }
 
 void LibraryManager::clearLibrary()
@@ -326,11 +492,13 @@ bool LibraryManager::isMusicFile(const QFileInfo &fileInfo) const
 
 void LibraryManager::syncWithDatabase(const QString &filePath)
 {
+    // This method is now primarily used for single file updates, not bulk scanning
     QFileInfo fileInfo(filePath);
     
     // Check if file still exists
     if (!fileInfo.exists()) {
         // Remove from database if it exists there
+        QMutexLocker locker(&m_databaseMutex);
         int trackId = m_databaseManager->getTrackIdByPath(filePath);
         if (trackId > 0) {
             m_databaseManager->deleteTrack(trackId);
@@ -339,9 +507,12 @@ void LibraryManager::syncWithDatabase(const QString &filePath)
     }
     
     // Check if file is already in database and hasn't been modified
-    if (m_databaseManager->trackExists(filePath)) {
-        // TODO: Check file modification time and update if needed
-        return;
+    {
+        QMutexLocker locker(&m_databaseMutex);
+        if (m_databaseManager->trackExists(filePath)) {
+            // TODO: Check file modification time and update if needed
+            return;
+        }
     }
     
     // Extract metadata - create a local extractor to avoid thread issues
@@ -353,6 +524,7 @@ void LibraryManager::syncWithDatabase(const QString &filePath)
     metadata["fileModified"] = fileInfo.lastModified();
     
     // Insert into database
+    QMutexLocker locker(&m_databaseMutex);
     m_databaseManager->insertTrack(metadata);
 }
 
@@ -372,6 +544,10 @@ AlbumModel* LibraryManager::allAlbumsModel() const
 QStringList LibraryManager::allArtists() const
 {
     QStringList artists;
+    if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        return artists;
+    }
+    
     QVariantList artistData = m_databaseManager->getAllArtists();
     
     for (const QVariant &v : artistData) {
@@ -384,11 +560,17 @@ QStringList LibraryManager::allArtists() const
 
 QVariantList LibraryManager::artistModel() const
 {
+    if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        return QVariantList();
+    }
     return m_databaseManager->getAllArtists();
 }
 
 QVariantList LibraryManager::albumModel() const
 {
+    if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        return QVariantList();
+    }
     return m_databaseManager->getAllAlbums();
 }
 
@@ -447,6 +629,9 @@ TrackModel* LibraryManager::tracksForAlbum(const QString &albumTitle, const QStr
 
 QVariantList LibraryManager::getTracksForAlbumAsVariantList(const QString &artistName, const QString &albumTitle) const
 {
+    if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        return QVariantList();
+    }
     return m_databaseManager->getTracksByAlbumAndArtist(albumTitle, artistName);
 }
 
@@ -504,41 +689,6 @@ Artist* LibraryManager::findOrCreateArtist(const QString &name)
 void LibraryManager::processScannedFiles()
 {
     // This is now handled differently with the database approach
-}
-
-void LibraryManager::processNextFile(const QStringList &files)
-{
-    if (m_cancelRequested || m_filesScanned >= files.size()) {
-        // Scanning complete or cancelled
-        onScanFinished();
-        return;
-    }
-    
-    // Process one file
-    const QString &filePath = files.at(m_filesScanned);
-    
-    try {
-        syncWithDatabase(filePath);
-    } catch (const std::exception& e) {
-        qWarning() << "Error processing file" << filePath << ":" << e.what();
-    } catch (...) {
-        qWarning() << "Unknown error processing file" << filePath;
-    }
-    
-    m_filesScanned++;
-    
-    // Update progress
-    int newProgress = (m_filesScanned * 100) / m_totalFilesToScan;
-    if (newProgress != m_scanProgress) {
-        m_scanProgress = newProgress;
-        emit scanProgressChanged();
-        emit scanProgressTextChanged();
-    }
-    
-    // Process next file after a small delay to prevent UI freezing
-    QTimer::singleShot(1, this, [this, files]() {
-        processNextFile(files);
-    });
 }
 
 } // namespace Mtoc
