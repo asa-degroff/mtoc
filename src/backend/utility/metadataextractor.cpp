@@ -7,11 +7,8 @@
 #include <taglib/mpegfile.h>
 #include <taglib/id3v2tag.h>
 #include <taglib/fileref.h>
-#include <taglib/tpropertymap.h> // For audioProperties
+#include <taglib/tpropertymap.h>
 #include <taglib/audioproperties.h>
-
-#include <QFileInfo>
-#include <QDebug>
 
 namespace Mtoc {
 
@@ -24,6 +21,18 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
 {
     qDebug() << "MetadataExtractor: Extracting metadata from" << filePath;
     TrackMetadata meta;
+    
+    // Check if file exists and is readable
+    if (!QFileInfo::exists(filePath)) {
+        qWarning() << "MetadataExtractor: File does not exist:" << filePath;
+        return meta;
+    }
+    
+    QFileInfo fileInfo(filePath);
+    if (!fileInfo.isReadable()) {
+        qWarning() << "MetadataExtractor: File is not readable:" << filePath;
+        return meta;
+    }
     // TagLib uses C-style strings or std::wstring. Convert QString appropriately.
     // For UTF-8 paths, toWString() might not be needed if underlying system uses UTF-8 for char*
     // However, TagLib's FileRef constructor can take a wchar_t* or a char*.
@@ -35,9 +44,8 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
     // Convert QString to char* for TagLib
     QByteArray filePathBA = filePath.toLocal8Bit();
     const char* filePathCStr = filePathBA.constData();
-    qDebug() << "MetadataExtractor: Converted path:" << filePathCStr;
+    qDebug() << "MetadataExtractor: Processing path:" << filePath;
     
-    QFileInfo fileInfo(filePath);
     QString fileExt = fileInfo.suffix().toLower();
     
     // Special case for MP3 files with ID3v2 tags
@@ -75,6 +83,17 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                     qDebug() << "MetadataExtractor: Found ID3v2 album artist (TPE2):" << meta.albumArtist;
                 } else {
                     qDebug() << "MetadataExtractor: No ID3v2 album artist (TPE2) found";
+                }
+                
+                // Look for TPOS frame (Disc Number in ID3v2)
+                TagLib::ID3v2::FrameList TPOSFrames = id3v2Tag->frameListMap()["TPOS"];
+                if (!TPOSFrames.isEmpty() && !TPOSFrames.front()->toString().isEmpty()) {
+                    QString discStr = QString::fromStdString(TPOSFrames.front()->toString().to8Bit(true));
+                    // Disc number might be in format "1" or "1/2"
+                    bool ok;
+                    meta.discNumber = discStr.split('/').first().toInt(&ok);
+                    if (!ok) meta.discNumber = 0;
+                    qDebug() << "MetadataExtractor: Found ID3v2 disc number (TPOS):" << meta.discNumber;
                 }
             }
             
@@ -127,16 +146,39 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 QString key = QString::fromLatin1(it->first.toCString());
                 QString value = "[Complex value]";
                 
-                // For MP4::Item, we need to check what type it might be by trying to convert
-                // MP4 items can be StringList, IntPair, etc. without explicit type checking
-                try {
-                    // Try as a string list first (most common for text tags)
-                    TagLib::StringList stringList = it->second.toStringList();
-                    if (!stringList.isEmpty()) {
-                        value = QString::fromStdString(stringList.front().to8Bit(true));
+                // For MP4::Item, we need to try different conversions to determine the type
+                // MP4 items don't have a direct type() method to check their content type
+                // We'll try different conversions in sequence to determine the actual type
+                
+                // Try to convert to StringList first
+                TagLib::StringList stringList = it->second.toStringList();
+                if (!stringList.isEmpty()) {
+                    value = QString::fromStdString(stringList.front().to8Bit(true));
+                }
+                // Try as an IntPair
+                else {
+                    try {
+                        TagLib::MP4::Item::IntPair pair = it->second.toIntPair();
+                        value = QString("%1, %2").arg(pair.first).arg(pair.second);
                     }
-                } catch (...) {
-                    // Not a string list, try other types or just leave as [Complex value]
+                    catch (...) {
+                        // Try as a regular integer
+                        try {
+                            int intValue = it->second.toInt();
+                            value = QString::number(intValue);
+                        }
+                        catch (...) {
+                            // Try as a boolean
+                            try {
+                                bool boolValue = it->second.toBool();
+                                value = boolValue ? "true" : "false";
+                            }
+                            catch (...) {
+                                // Keep the default value if all conversions fail
+                                value = "[Complex value]";
+                            }
+                        }
+                    }
                 }
                 
                 qDebug() << "  MP4 Item:" << key << "=" << value;
@@ -144,9 +186,12 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             
             // Extract standard iTunes tags
             // Standard iTunes tag mapping:
-            // ©nam = title
-            // ©ART = artist
+            // = title
+            // = artist
             // aART = album artist
+            // = album
+            // = genre
+            // = year/date
             // ©alb = album
             // ©gen = genre
             // ©day = year/date
@@ -155,13 +200,12 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             // Use a helper function to safely extract string values
             auto getStringValue = [&](const char* key) -> QString {
                 if (items.contains(key)) {
-                    try {
-                        TagLib::StringList values = items[key].toStringList();
+                    const TagLib::MP4::Item& item = items[key];
+                    if (item.toStringList().isEmpty()) {
+                        TagLib::StringList values = item.toStringList();
                         if (!values.isEmpty()) {
                             return QString::fromStdString(values.front().to8Bit(true));
                         }
-                    } catch (...) {
-                        // Not a string list
                     }
                 }
                 return QString();
@@ -215,17 +259,28 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             }
             if (!yearStr.isEmpty()) {
                 // Often the year is in format YYYY or YYYY-MM-DD
-                meta.year = yearStr.left(4).toUInt();
+                bool ok;
+                meta.year = yearStr.left(4).toUInt(&ok);
+                if (!ok) {
+                    meta.year = 0;
+                }
             }
             
             // Track number
             if (items.contains("trkn")) {
-                try {
-                    // Track number is usually stored as a pair (track, total)
-                    TagLib::MP4::Item::IntPair trackPair = items["trkn"].toIntPair();
+                const TagLib::MP4::Item& trackItem = items["trkn"];
+                if (trackItem.isValid()) {
+                    TagLib::MP4::Item::IntPair trackPair = trackItem.toIntPair();
                     meta.trackNumber = trackPair.first;
-                } catch (...) {
-                    // Failed to get track number
+                }
+            }
+            
+            // Disc number
+            if (items.contains("disk")) {
+                const TagLib::MP4::Item& discItem = items["disk"];
+                if (discItem.isValid()) {
+                    TagLib::MP4::Item::IntPair discPair = discItem.toIntPair();
+                    meta.discNumber = discPair.first;
                 }
             }
             
@@ -236,10 +291,16 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             } else {
                 qDebug() << "MetadataExtractor: No MP4 album artist tag (aART) found";
                 
-                // Try alternative custom tag
+                // Try alternative custom tags
                 meta.albumArtist = getStringValue("----:com.apple.iTunes:ALBUMARTIST");
                 if (!meta.albumArtist.isEmpty()) {
                     qDebug() << "MetadataExtractor: Found iTunes custom album artist tag:" << meta.albumArtist;
+                } else {
+                    // Also check standard properties for MP4
+                    if (properties.contains("ALBUMARTIST") && !properties["ALBUMARTIST"].isEmpty()) {
+                        meta.albumArtist = QString::fromStdString(properties["ALBUMARTIST"].front().to8Bit(true));
+                        qDebug() << "MetadataExtractor: Found ALBUMARTIST in MP4 properties:" << meta.albumArtist;
+                    }
                 }
             }
             
@@ -281,8 +342,13 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
         meta.genre = QString::fromStdString(tag->genre().to8Bit(true));
         meta.year = tag->year();
         meta.trackNumber = tag->track();
-        // discNumber is not a standard TagLib tag property, often stored in custom ways or TXXX frames.
-        // We'll leave it 0 for now or look into specific frame parsing later if needed.
+        // Check for disc number in standard properties
+        if (properties.contains("DISCNUMBER") && !properties["DISCNUMBER"].isEmpty()) {
+            QString discStr = QString::fromStdString(properties["DISCNUMBER"].front().to8Bit(true));
+            bool ok;
+            meta.discNumber = discStr.split('/').first().toInt(&ok);
+            if (!ok) meta.discNumber = 0;
+        }
 
         // Album Artist (often in TPE2 frame for ID3, or ALBUMARTIST for Vorbis/FLAC)
         // properties is already declared above
