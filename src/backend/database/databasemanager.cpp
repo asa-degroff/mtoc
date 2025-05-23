@@ -742,7 +742,12 @@ QVariantList DatabaseManager::getAllArtists()
         "LEFT JOIN albums al ON aa.id = al.album_artist_id "
         "LEFT JOIN tracks t ON al.id = t.album_id "
         "GROUP BY aa.id "
-        "ORDER BY aa.name"
+        "ORDER BY "
+        "CASE "
+        "  WHEN LOWER(SUBSTR(aa.name, 1, 1)) BETWEEN 'a' AND 'z' THEN 0 "
+        "  ELSE 1 "
+        "END, "
+        "LOWER(aa.name)"
     );
     
     while (query.next()) {
