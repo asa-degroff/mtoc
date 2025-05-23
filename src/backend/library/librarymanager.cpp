@@ -6,6 +6,8 @@
 #include <QFileInfo>
 #include <QThread>
 #include <QMutexLocker>
+#include <QSqlError>
+#include <QSqlQuery>
 #include <exception>
 
 namespace Mtoc {
@@ -248,24 +250,22 @@ void LibraryManager::startScan()
     emit scanProgressChanged();
     emit scanProgressTextChanged();
     
-    qDebug() << "Starting database transaction...";
-    // Start transaction for better performance
-    if (!m_databaseManager->beginTransaction()) {
-        qWarning() << "Failed to start database transaction";
-        m_scanning = false;
-        emit scanningChanged();
-        return;
-    }
-    
     // Clear pending tracks
     m_pendingTracks.clear();
     
     qDebug() << "Starting QtConcurrent task...";
+    qDebug() << "Current thread:" << QThread::currentThread();
     // Start async scanning - but serialize all operations to avoid TagLib threading issues
     try {
         m_scanFuture = QtConcurrent::run([this]() {
-            qDebug() << "QtConcurrent task started";
-            scanInBackground();
+            qDebug() << "QtConcurrent task started in thread:" << QThread::currentThread();
+            try {
+                scanInBackground();
+            } catch (const std::exception& e) {
+                qCritical() << "Exception in QtConcurrent lambda:" << e.what();
+            } catch (...) {
+                qCritical() << "Unknown exception in QtConcurrent lambda";
+            }
         });
         
         qDebug() << "Setting up future watcher...";
@@ -275,20 +275,37 @@ void LibraryManager::startScan()
         qCritical() << "Exception starting scan:" << e.what();
         m_scanning = false;
         emit scanningChanged();
-        m_databaseManager->rollbackTransaction();
     } catch (...) {
         qCritical() << "Unknown exception starting scan";
         m_scanning = false;
         emit scanningChanged();
-        m_databaseManager->rollbackTransaction();
     }
 }
 
 void LibraryManager::scanInBackground()
 {
-    qDebug() << "scanInBackground() starting";
+    qDebug() << "scanInBackground() starting in thread:" << QThread::currentThread();
+    
+    // Create a thread-local database connection
+    QString connectionName = QString("ScanThread_%1").arg(quintptr(QThread::currentThreadId()));
+    QSqlDatabase db = DatabaseManager::createThreadConnection(connectionName);
+    
+    if (!db.isOpen()) {
+        qCritical() << "Failed to create thread database connection";
+        return;
+    }
     
     try {
+        qDebug() << "About to start database transaction...";
+        // Start transaction in the background thread
+        QSqlQuery query(db);
+        if (!query.exec("BEGIN TRANSACTION")) {
+            qWarning() << "Failed to start database transaction:" << query.lastError().text();
+            DatabaseManager::removeThreadConnection(connectionName);
+            return;
+        }
+        qDebug() << "Transaction started successfully";
+        
         // Find all music files
         QStringList allFiles;
         for (const QString &folder : m_musicFolders) {
@@ -320,8 +337,10 @@ void LibraryManager::scanInBackground()
             
             // Check if already in database before extracting metadata
             {
-                QMutexLocker locker(&m_databaseMutex);
-                if (m_databaseManager->trackExists(filePath)) {
+                QSqlQuery checkQuery(db);
+                checkQuery.prepare("SELECT 1 FROM tracks WHERE file_path = :path LIMIT 1");
+                checkQuery.bindValue(":path", filePath);
+                if (checkQuery.exec() && checkQuery.next()) {
                     m_filesScanned++;
                     continue;
                 }
@@ -361,14 +380,13 @@ void LibraryManager::scanInBackground()
             // Insert batch when it reaches the batch size or at the end
             if (batchMetadata.size() >= batchSize || i == allFiles.size() - 1) {
                 // Insert batch into database
-                {
-                    QMutexLocker locker(&m_databaseMutex);
-                    for (const QVariantMap &metadata : batchMetadata) {
-                        if (m_cancelRequested) {
-                            break;
-                        }
-                        m_databaseManager->insertTrack(metadata);
+                for (const QVariantMap &metadata : batchMetadata) {
+                    if (m_cancelRequested) {
+                        break;
                     }
+                    
+                    // Insert track using thread-local database connection
+                    insertTrackInThread(db, metadata);
                 }
                 batchMetadata.clear();
             }
@@ -387,12 +405,33 @@ void LibraryManager::scanInBackground()
             }
         }
         
+        // Commit the transaction if not cancelled
+        if (!m_cancelRequested) {
+            QSqlQuery commitQuery(db);
+            if (!commitQuery.exec("COMMIT")) {
+                qWarning() << "Failed to commit database transaction:" << commitQuery.lastError().text();
+            }
+        } else {
+            // Rollback if cancelled
+            QSqlQuery rollbackQuery(db);
+            rollbackQuery.exec("ROLLBACK");
+        }
+        
         qDebug() << "scanInBackground() completed successfully";
     } catch (const std::exception& e) {
         qCritical() << "Exception in scanInBackground():" << e.what();
+        // Rollback transaction on error
+        QSqlQuery rollbackQuery(db);
+        rollbackQuery.exec("ROLLBACK");
     } catch (...) {
         qCritical() << "Unknown exception in scanInBackground()";
+        // Rollback transaction on error
+        QSqlQuery rollbackQuery(db);
+        rollbackQuery.exec("ROLLBACK");
     }
+    
+    // Clean up thread-local database connection
+    DatabaseManager::removeThreadConnection(connectionName);
 }
 
 void LibraryManager::cancelScan()
@@ -412,8 +451,7 @@ void LibraryManager::onScanFinished()
     m_scanning = false;
     m_scanProgress = 100;
     
-    // Commit transaction
-    m_databaseManager->commitTransaction();
+    // Transaction is now handled in the background thread
     
     // Use queued connections to ensure signals are emitted from main thread
     QMetaObject::invokeMethod(this, "scanningChanged", Qt::QueuedConnection);
@@ -689,6 +727,151 @@ Artist* LibraryManager::findOrCreateArtist(const QString &name)
 void LibraryManager::processScannedFiles()
 {
     // This is now handled differently with the database approach
+}
+
+void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& metadata)
+{
+    // Extract data
+    QString filePath = metadata.value("filePath").toString();
+    QString title = metadata.value("title").toString();
+    QString artist = metadata.value("artist").toString();
+    QString albumArtist = metadata.value("albumArtist").toString();
+    QString album = metadata.value("album").toString();
+    QString genre = metadata.value("genre").toString();
+    int year = metadata.value("year").toInt();
+    int trackNumber = metadata.value("trackNumber").toInt();
+    int discNumber = metadata.value("discNumber").toInt();
+    int duration = metadata.value("duration").toInt();
+    qint64 fileSize = metadata.value("fileSize", 0).toLongLong();
+    QDateTime fileModified = metadata.value("fileModified").toDateTime();
+    
+    // Helper function to insert or get artist
+    auto insertOrGetArtist = [&db](const QString& artistName) -> int {
+        if (artistName.isEmpty()) return 0;
+        
+        QSqlQuery query(db);
+        
+        // Try to find existing artist
+        query.prepare("SELECT id FROM artists WHERE name = :name");
+        query.bindValue(":name", artistName);
+        
+        if (query.exec() && query.next()) {
+            return query.value(0).toInt();
+        }
+        
+        // Insert new artist
+        query.prepare("INSERT INTO artists (name) VALUES (:name)");
+        query.bindValue(":name", artistName);
+        
+        if (query.exec()) {
+            return query.lastInsertId().toInt();
+        }
+        
+        return 0;
+    };
+    
+    // Helper function to insert or get album artist
+    auto insertOrGetAlbumArtist = [&db](const QString& albumArtistName) -> int {
+        if (albumArtistName.isEmpty()) return 0;
+        
+        QSqlQuery query(db);
+        
+        // Try to find existing album artist
+        query.prepare("SELECT id FROM album_artists WHERE name = :name");
+        query.bindValue(":name", albumArtistName);
+        
+        if (query.exec() && query.next()) {
+            return query.value(0).toInt();
+        }
+        
+        // Insert new album artist
+        query.prepare("INSERT INTO album_artists (name) VALUES (:name)");
+        query.bindValue(":name", albumArtistName);
+        
+        if (query.exec()) {
+            return query.lastInsertId().toInt();
+        }
+        
+        return 0;
+    };
+    
+    // Helper function to insert or get album
+    auto insertOrGetAlbum = [&db](const QString& albumName, int albumArtistId) -> int {
+        if (albumName.isEmpty()) return 0;
+        
+        QSqlQuery query(db);
+        
+        // Try to find existing album
+        if (albumArtistId > 0) {
+            query.prepare("SELECT id FROM albums WHERE title = :title AND album_artist_id = :artist_id");
+            query.bindValue(":title", albumName);
+            query.bindValue(":artist_id", albumArtistId);
+        } else {
+            query.prepare("SELECT id FROM albums WHERE title = :title AND album_artist_id IS NULL");
+            query.bindValue(":title", albumName);
+        }
+        
+        if (query.exec() && query.next()) {
+            return query.value(0).toInt();
+        }
+        
+        // Insert new album
+        query.prepare("INSERT INTO albums (title, album_artist_id) VALUES (:title, :artist_id)");
+        query.bindValue(":title", albumName);
+        query.bindValue(":artist_id", albumArtistId > 0 ? albumArtistId : QVariant());
+        
+        if (query.exec()) {
+            return query.lastInsertId().toInt();
+        }
+        
+        return 0;
+    };
+    
+    // Get or create artist
+    int artistId = 0;
+    if (!artist.isEmpty()) {
+        artistId = insertOrGetArtist(artist);
+    }
+    
+    // Get or create album artist
+    int albumArtistId = 0;
+    if (!albumArtist.isEmpty()) {
+        albumArtistId = insertOrGetAlbumArtist(albumArtist);
+    } else if (!artist.isEmpty()) {
+        // Fallback to artist if no album artist specified
+        albumArtistId = insertOrGetAlbumArtist(artist);
+    }
+    
+    // Get or create album
+    int albumId = 0;
+    if (!album.isEmpty()) {
+        albumId = insertOrGetAlbum(album, albumArtistId);
+    }
+    
+    // Insert track
+    QSqlQuery query(db);
+    query.prepare(
+        "INSERT INTO tracks (file_path, title, artist_id, album_id, genre, year, "
+        "track_number, disc_number, duration, file_size, file_modified) "
+        "VALUES (:file_path, :title, :artist_id, :album_id, :genre, :year, "
+        ":track_number, :disc_number, :duration, :file_size, :file_modified)"
+    );
+    
+    query.bindValue(":file_path", filePath);
+    query.bindValue(":title", title);
+    query.bindValue(":artist_id", artistId > 0 ? artistId : QVariant());
+    query.bindValue(":album_id", albumId > 0 ? albumId : QVariant());
+    query.bindValue(":genre", genre);
+    query.bindValue(":year", year > 0 ? year : QVariant());
+    query.bindValue(":track_number", trackNumber > 0 ? trackNumber : QVariant());
+    query.bindValue(":disc_number", discNumber > 0 ? discNumber : QVariant());
+    query.bindValue(":duration", duration > 0 ? duration : QVariant());
+    query.bindValue(":file_size", fileSize > 0 ? fileSize : QVariant());
+    query.bindValue(":file_modified", fileModified.isValid() ? fileModified : QVariant());
+    
+    if (!query.exec()) {
+        qWarning() << "Failed to insert track:" << filePath << "-" << query.lastError().text();
+    }
 }
 
 } // namespace Mtoc

@@ -65,6 +65,10 @@ public:
     bool beginTransaction();
     bool commitTransaction();
     bool rollbackTransaction();
+    
+    // Thread-safe operations
+    static QSqlDatabase createThreadConnection(const QString& connectionName);
+    static void removeThreadConnection(const QString& connectionName);
 
 signals:
     void databaseError(const QString& error);

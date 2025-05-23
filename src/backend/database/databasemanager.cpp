@@ -823,6 +823,35 @@ QString DatabaseManager::getDatabasePath() const
     return QDir(dataPath).filePath("mtoc_library.db");
 }
 
+QSqlDatabase DatabaseManager::createThreadConnection(const QString& connectionName)
+{
+    QString dataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QString dbPath = QDir(dataPath).filePath("mtoc_library.db");
+    
+    QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", connectionName);
+    db.setDatabaseName(dbPath);
+    
+    if (!db.open()) {
+        qCritical() << "Failed to open thread database connection:" << db.lastError().text();
+        return db;
+    }
+    
+    // Enable foreign keys and optimizations
+    QSqlQuery query(db);
+    query.exec("PRAGMA foreign_keys = ON");
+    query.exec("PRAGMA journal_mode = WAL");
+    query.exec("PRAGMA synchronous = NORMAL");
+    query.exec("PRAGMA cache_size = -64000");
+    query.exec("PRAGMA temp_store = MEMORY");
+    
+    return db;
+}
+
+void DatabaseManager::removeThreadConnection(const QString& connectionName)
+{
+    QSqlDatabase::removeDatabase(connectionName);
+}
+
 void DatabaseManager::logError(const QString& operation, const QSqlQuery& query)
 {
     QString error = QString("Database error in %1: %2").arg(operation, query.lastError().text());

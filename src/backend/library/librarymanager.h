@@ -115,6 +115,7 @@ private:
     void loadLibraryFromDatabase();
     void syncWithDatabase(const QString &filePath);
     void scanInBackground();
+    void insertTrackInThread(QSqlDatabase& db, const QVariantMap& metadata);
     
     // Private data
     MetadataExtractor m_metadataExtractor;
