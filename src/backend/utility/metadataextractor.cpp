@@ -2,8 +2,10 @@
 #include <QDebug>
 #include <QFileInfo>
 
-// TagLib MP4-specific includes
+// TagLib format-specific includes
 #include <taglib/mp4file.h>
+#include <taglib/mpegfile.h>
+#include <taglib/id3v2tag.h>
 #include <taglib/fileref.h>
 #include <taglib/tpropertymap.h> // For audioProperties
 #include <taglib/audioproperties.h>
@@ -37,6 +39,78 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
     
     QFileInfo fileInfo(filePath);
     QString fileExt = fileInfo.suffix().toLower();
+    
+    // Special case for MP3 files with ID3v2 tags
+    if (fileExt == "mp3") {
+        qDebug() << "MetadataExtractor: Using MP3-specific handling for" << filePath;
+        TagLib::MPEG::File mpegFile(filePathCStr);
+        
+        if (mpegFile.isValid()) {
+            // Get the basic metadata first using the generic tag interface
+            if (mpegFile.tag()) {
+                TagLib::Tag* tag = mpegFile.tag();
+                meta.title = QString::fromStdString(tag->title().to8Bit(true));
+                meta.artist = QString::fromStdString(tag->artist().to8Bit(true));
+                meta.album = QString::fromStdString(tag->album().to8Bit(true));
+                meta.genre = QString::fromStdString(tag->genre().to8Bit(true));
+                meta.year = tag->year();
+                meta.trackNumber = tag->track();
+            }
+            
+            // Now try to get album artist from ID3v2 tag specifically
+            if (mpegFile.hasID3v2Tag()) {
+                TagLib::ID3v2::Tag* id3v2Tag = mpegFile.ID3v2Tag();
+                
+                // Debug all ID3v2 frames
+                qDebug() << "MetadataExtractor: ID3v2 frames in" << filePath;
+                TagLib::ID3v2::FrameList allFrames = id3v2Tag->frameList();
+                for (TagLib::ID3v2::FrameList::ConstIterator it = allFrames.begin(); it != allFrames.end(); ++it) {
+                    qDebug() << "  ID3v2 Frame:" << (*it)->frameID().data() << "=" << ((*it)->toString().isEmpty() ? "[Empty]" : QString::fromStdString((*it)->toString().to8Bit(true)));
+                }
+                
+                // Look for TPE2 frame (Album Artist in ID3v2)
+                TagLib::ID3v2::FrameList TPE2Frames = id3v2Tag->frameListMap()["TPE2"];
+                if (!TPE2Frames.isEmpty() && !TPE2Frames.front()->toString().isEmpty()) {
+                    meta.albumArtist = QString::fromStdString(TPE2Frames.front()->toString().to8Bit(true));
+                    qDebug() << "MetadataExtractor: Found ID3v2 album artist (TPE2):" << meta.albumArtist;
+                } else {
+                    qDebug() << "MetadataExtractor: No ID3v2 album artist (TPE2) found";
+                }
+            }
+            
+            // Get audio properties
+            if (mpegFile.audioProperties()) {
+                meta.duration = mpegFile.audioProperties()->lengthInSeconds();
+            }
+            
+            // If album artist still empty, check the standard properties too
+            if (meta.albumArtist.isEmpty()) {
+                TagLib::PropertyMap properties = mpegFile.properties();
+                
+                qDebug() << "MetadataExtractor: Also checking standard properties for" << filePath;
+                for (TagLib::PropertyMap::ConstIterator it = properties.begin(); it != properties.end(); ++it) {
+                    QString key = QString::fromStdString(it->first.to8Bit(true));
+                    QString value = "Empty";
+                    if (!it->second.isEmpty()) {
+                        value = QString::fromStdString(it->second.front().to8Bit(true));
+                    }
+                    qDebug() << "  Standard Property:" << key << "Values:" << value;
+                }
+                
+                // Check standard album artist tags
+                if (properties.contains("ALBUMARTIST") && !properties["ALBUMARTIST"].isEmpty()) {
+                    meta.albumArtist = QString::fromStdString(properties["ALBUMARTIST"].front().to8Bit(true));
+                    qDebug() << "MetadataExtractor: Found ALBUMARTIST property:" << meta.albumArtist;
+                } else if (properties.contains("ALBUM ARTIST") && !properties["ALBUM ARTIST"].isEmpty()) {
+                    meta.albumArtist = QString::fromStdString(properties["ALBUM ARTIST"].front().to8Bit(true));
+                    qDebug() << "MetadataExtractor: Found 'ALBUM ARTIST' property:" << meta.albumArtist;
+                }
+            }
+            
+            qDebug() << "MetadataExtractor: Final MP3 meta.albumArtist:" << meta.albumArtist;
+            return meta;
+        }
+    }
     
     // Special case for M4A/MP4 files (iTunes format)
     if (fileExt == "m4a" || fileExt == "m4p" || fileExt == "mp4") {
