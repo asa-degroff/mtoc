@@ -3,6 +3,7 @@
         <file>src/qml/Main.qml</file>
         <file>src/qml/Components/AlbumArtView.qml</file>
         <file>src/qml/Components/BlurredBackground.qml</file>
+        <file>src/qml/Components/HorizontalAlbumBrowser.qml</file>
         <file>src/qml/Components/PlaybackControls.qml</file>
         <file>src/qml/Components/ThumbnailGridDelegate.qml</file>
         <file>src/qml/Views/LibraryPane.qml</file>

@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.15
 import Qt.labs.platform 1.1
 import QtQuick.Effects
 import Mtoc.Backend 1.0
+import "../Components"
 
 Item {
     id: root
@@ -358,6 +359,17 @@ Item {
             }
         }
         
+        // Horizontal Album Browser
+        HorizontalAlbumBrowser {
+            id: albumBrowser
+            Layout.fillWidth: true
+            Layout.preferredHeight: 240
+            
+            onAlbumClicked: function(album) {
+                root.selectedAlbum = album
+            }
+        }
+        
         // Main content area: Two-column layout
         SplitView {
             id: splitView
@@ -574,6 +586,7 @@ Item {
                                         anchors.fill: parent
                                         onClicked: {
                                             root.selectedAlbum = modelData; // Update the root's selectedAlbum property
+                                            albumBrowser.jumpToAlbum(modelData); // Jump to album in carousel
                                         }
                                     }
                                 }
