@@ -155,77 +155,86 @@ Item {
                 ]
                 
                 Item {
-                    id: albumContainer
-                    anchors.centerIn: parent
-                    anchors.verticalCenterOffset: -20  // Shift up to make room for reflection
+                    id: visualContainer
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    anchors.topMargin: 10  // Small margin to shift the album view up
                     width: 140
-                    height: 140
+                    height: 200  // Height for album + reflection
                     
-                    Image {
-                        id: albumImage
-                        anchors.fill: parent
-                        source: modelData.hasArt ? "image://albumart/" + modelData.id + "/thumbnail" : ""
-                        fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
-                        antialiasing: true
-                        smooth: true
+                    Item {
+                        id: albumContainer
+                        anchors.top: parent.top
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: 140
+                        height: 140
+                        
+                        Image {
+                            id: albumImage
+                            anchors.fill: parent
+                            source: modelData.hasArt ? "image://albumart/" + modelData.id + "/thumbnail" : ""
+                            fillMode: Image.PreserveAspectCrop
+                            asynchronous: true
+                            antialiasing: true
+                            smooth: true
+                            
+                            Rectangle {
+                                anchors.fill: parent
+                                color: "#444444"
+                                visible: parent.status !== Image.Ready
+                                
+                                Label {
+                                    anchors.centerIn: parent
+                                    text: "♪"
+                                    font.pixelSize: 48
+                                    color: "#666666"
+                                }
+                            }
+                        }
                         
                         Rectangle {
                             anchors.fill: parent
-                            color: "#444444"
-                            visible: parent.status !== Image.Ready
-                            
-                            Label {
-                                anchors.centerIn: parent
-                                text: "♪"
-                                font.pixelSize: 48
-                                color: "#666666"
+                            color: "transparent"
+                            border.color: listView.currentIndex === index ? "#3f51b5" : "transparent"
+                            border.width: 2
+                            visible: listView.currentIndex === index
+                        }
+                        
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                listView.currentIndex = index
+                                root.albumClicked(modelData)
                             }
                         }
                     }
                     
-                    Rectangle {
-                        anchors.fill: parent
-                        color: "transparent"
-                        border.color: listView.currentIndex === index ? "#3f51b5" : "transparent"
-                        border.width: 2
-                        visible: listView.currentIndex === index
+                    // Reflection
+                    ShaderEffectSource {
+                        id: reflection
+                        anchors.top: albumContainer.bottom
+                        anchors.topMargin: 2
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: albumContainer.width
+                        height: 60
+                        sourceItem: albumContainer
+                        opacity: 0.4
+                        transform: [
+                            Scale {
+                                yScale: -1
+                                origin.y: reflection.height / 2
+                            }
+                        ]
                     }
                     
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            listView.currentIndex = index
-                            root.albumClicked(modelData)
+                    // Gradient overlay for reflection
+                    Rectangle {
+                        anchors.fill: reflection
+                        gradient: Gradient {
+                            GradientStop { position: 0.0; color: "transparent" }
+                            GradientStop { position: 0.5; color: Qt.rgba(0.1, 0.1, 0.1, 0.6) }
+                            GradientStop { position: 1.0; color: "#1a1a1a" }
                         }
-                    }
-                }
-                
-                // Reflection
-                ShaderEffectSource {
-                    id: reflection
-                    anchors.top: albumContainer.bottom
-                    anchors.topMargin: 2
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    width: albumContainer.width
-                    height: 60
-                    sourceItem: albumContainer
-                    opacity: 0.4
-                    transform: [
-                        Scale {
-                            yScale: -1
-                            origin.y: reflection.height / 2
-                        }
-                    ]
-                }
-                
-                // Gradient overlay for reflection
-                Rectangle {
-                    anchors.fill: reflection
-                    gradient: Gradient {
-                        GradientStop { position: 0.0; color: "transparent" }
-                        GradientStop { position: 0.5; color: Qt.rgba(0.1, 0.1, 0.1, 0.6) }
-                        GradientStop { position: 1.0; color: "#1a1a1a" }
                     }
                 }
             }
