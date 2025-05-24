@@ -11,6 +11,7 @@ Item {
     height: parent.height
     
     property var selectedAlbum: null
+    property var expandedArtists: ({})  // Object to store expansion state by artist name
 
     onSelectedAlbumChanged: {
         // console.log("Selected album changed to: " + (selectedAlbum ? selectedAlbum.title : "none"));
@@ -305,7 +306,7 @@ Item {
                         width: ListView.view.width
                         // Height will be dynamic based on albumsVisible
                         
-                        property bool albumsVisible: false
+                        property bool albumsVisible: root.expandedArtists[modelData.name] || false
                         // Store modelData for easier access in nested views/functions
                         property var artistData: modelData 
 
@@ -338,7 +339,15 @@ Item {
                             MouseArea {
                                 anchors.fill: parent
                                 onClicked: {
-                                    albumsVisible = !albumsVisible;
+                                    // Toggle expansion state in persistent storage
+                                    var newExpandedState = !(root.expandedArtists[artistData.name] || false);
+                                    var updatedExpanded = Object.assign({}, root.expandedArtists);
+                                    if (newExpandedState) {
+                                        updatedExpanded[artistData.name] = true;
+                                    } else {
+                                        delete updatedExpanded[artistData.name];
+                                    }
+                                    root.expandedArtists = updatedExpanded;
                                     artistsListView.currentIndex = index; // Optional: select on expand
                                 }
                             }
