@@ -370,29 +370,57 @@ Item {
                                     width: albumsGrid.cellWidth - 10
                                     height: albumsGrid.cellHeight - 10
 
-                                    ColumnLayout { 
+                                    Item { 
                                         anchors.fill: parent
-                                        spacing: 4
 
                                         Rectangle { // Album Art container
-                                            Layout.alignment: Qt.AlignHCenter
+                                            id: albumArtContainer
+                                            anchors.top: parent.top
+                                            anchors.horizontalCenter: parent.horizontalCenter
                                             width: 110
                                             height: 110
-                                            color: "#555555"
+                                            color: "transparent"
                                             radius: 3
 
                                             Image {
+                                                id: albumImage
                                                 anchors.fill: parent
                                                 source: modelData.hasArt ? "image://albumart/" + modelData.id + "/thumbnail" : ""
-                                                fillMode: Image.PreserveAspectCrop
-                                                clip: true
+                                                fillMode: Image.PreserveAspectFit
+                                                clip: false
                                                 asynchronous: true
+                                                
+                                                // Custom positioning based on aspect ratio
+                                                onStatusChanged: {
+                                                    if (status === Image.Ready && sourceSize.width > 0 && sourceSize.height > 0) {
+                                                        var aspectRatio = sourceSize.width / sourceSize.height;
+                                                        if (aspectRatio > 1.0) {
+                                                            // Wider than square - align to bottom
+                                                            anchors.fill = undefined;
+                                                            anchors.bottom = parent.bottom;
+                                                            anchors.left = parent.left;
+                                                            anchors.right = parent.right;
+                                                            height = parent.width / aspectRatio;
+                                                        } else if (aspectRatio < 1.0) {
+                                                            // Taller than square - center horizontally
+                                                            anchors.fill = undefined;
+                                                            anchors.verticalCenter = parent.verticalCenter;
+                                                            anchors.horizontalCenter = parent.horizontalCenter;
+                                                            width = parent.height * aspectRatio;
+                                                            height = parent.height;
+                                                        } else {
+                                                            // Square - fill parent
+                                                            anchors.fill = parent;
+                                                        }
+                                                    }
+                                                }
                                                 
                                                 // Placeholder when no art available
                                                 Rectangle {
                                                     anchors.fill: parent
                                                     color: "#444444"
                                                     visible: parent.status !== Image.Ready
+                                                    radius: 3
                                                     
                                                     Label {
                                                         anchors.centerIn: parent
@@ -404,15 +432,21 @@ Item {
                                             }
                                         }
 
-                                        Label { // Album Title
-                                            Layout.fillWidth: true
+                                        Text { // Album Title
+                                            anchors.top: albumArtContainer.bottom
+                                            anchors.topMargin: 4
+                                            anchors.left: parent.left
+                                            anchors.right: parent.right
+                                            height: 30  // Fixed height for 2 lines max
                                             text: modelData.title
                                             color: "white"
                                             font.pixelSize: 11
                                             elide: Text.ElideRight
                                             horizontalAlignment: Text.AlignHCenter
                                             maximumLineCount: 2
-                                            wrapMode: Text.WordWrap
+                                            wrapMode: Text.Wrap
+                                            verticalAlignment: Text.AlignTop
+                                            clip: true
                                         }
                                     }
                                     MouseArea { 
