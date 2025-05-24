@@ -364,10 +364,9 @@ Item {
         HorizontalAlbumBrowser {
             id: albumBrowser
             Layout.fillWidth: true
-            Layout.preferredHeight: 240
+            Layout.preferredHeight: 260  // Height for albums with reflections
             
             onAlbumClicked: function(album) {
-                console.log("Album clicked handler in LibraryPane:", album.title)
                 root.selectedAlbum = album
                 
                 // Highlight the album's artist

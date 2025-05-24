@@ -71,7 +71,7 @@ Item {
             id: listView
             anchors.fill: parent
             anchors.topMargin: 30      // Increased margin to accommodate rotation
-            anchors.bottomMargin: 50    // Also increase bottom margin for symmetry
+            anchors.bottomMargin: 30    // Bottom margin for reflection and info bar
             model: allAlbums
             orientation: ListView.Horizontal
             spacing: -60
@@ -126,7 +126,7 @@ Item {
             delegate: Item {
                 id: delegateItem
                 width: 140
-                height: 140
+                height: 220  // Height for album plus reflection
                 
                 property real itemAngle: {
                     var centerX = listView.width / 2
@@ -157,8 +157,9 @@ Item {
                 Item {
                     id: albumContainer
                     anchors.centerIn: parent
-                    width: parent.width
-                    height: parent.height
+                    anchors.verticalCenterOffset: -20  // Shift up to make room for reflection
+                    width: 140
+                    height: 140
                     
                     Image {
                         id: albumImage
@@ -194,10 +195,37 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
-                            console.log("Album clicked in horizontal browser:", modelData.title, "by", modelData.albumArtist)
                             listView.currentIndex = index
                             root.albumClicked(modelData)
                         }
+                    }
+                }
+                
+                // Reflection
+                ShaderEffectSource {
+                    id: reflection
+                    anchors.top: albumContainer.bottom
+                    anchors.topMargin: 2
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: albumContainer.width
+                    height: 60
+                    sourceItem: albumContainer
+                    opacity: 0.4
+                    transform: [
+                        Scale {
+                            yScale: -1
+                            origin.y: reflection.height / 2
+                        }
+                    ]
+                }
+                
+                // Gradient overlay for reflection
+                Rectangle {
+                    anchors.fill: reflection
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: "transparent" }
+                        GradientStop { position: 0.5; color: Qt.rgba(0.1, 0.1, 0.1, 0.6) }
+                        GradientStop { position: 1.0; color: "#1a1a1a" }
                     }
                 }
             }
