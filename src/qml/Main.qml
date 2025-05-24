@@ -6,8 +6,8 @@ import "Views/"
 
 ApplicationWindow {
     id: window
-    width: 1280
-    height: 720
+    width: 1920
+    height: 1200
     minimumWidth: 800  // Set a reasonable minimum to fit all panes
     minimumHeight: 500
     visible: true
@@ -24,7 +24,7 @@ ApplicationWindow {
         LibraryPane {
             id: libraryPane
             Layout.fillWidth: true
-            Layout.preferredWidth: window.width * 0.35 // 35% of window width
+            Layout.preferredWidth: window.width * 0.45 // 45% of window width
             Layout.fillHeight: true
         }
 
@@ -32,7 +32,7 @@ ApplicationWindow {
         Rectangle {
             id: nowPlayingPanePlaceholder
             Layout.fillWidth: true // Ensure it participates in filling
-            Layout.preferredWidth: window.width * 0.65 // 65% of window width
+            Layout.preferredWidth: window.width * 0.55 // 55% of window width
             Layout.fillHeight: true
             color: "whitesmoke"
             ColumnLayout {

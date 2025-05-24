@@ -285,8 +285,8 @@ Item {
             // Left Pane: Artist List
             Rectangle {
                 id: leftPaneContainer
-                SplitView.preferredWidth: splitView.width * 0.35
-                SplitView.minimumWidth: 180  // Reduced from 280 to fit better in smaller windows
+                SplitView.preferredWidth: 420  // Width to fit 3 album covers (3*130 + margins)
+                SplitView.minimumWidth: 280  // Minimum for 2 album covers
                 Layout.fillHeight: true
                 color: "#2c2c2c"
                 radius: 4
@@ -296,6 +296,7 @@ Item {
                     id: artistsListView
                     anchors.fill: parent
                     anchors.margins: 4 // Small margin inside the pane
+                    anchors.rightMargin: 10 // Adjusted margin for repositioned scrollbar
                     clip: true
                     model: LibraryManager.artistModel
                     spacing: 2
@@ -330,6 +331,7 @@ Item {
                                     text: albumsVisible ? "\u25BC" : "\u25B6" // Down/Right arrow
                                     color: "white"
                                     font.pixelSize: 12
+                                    Layout.rightMargin: 10 // Space to avoid scrollbar overlap
                                 }
                             }
 
@@ -358,15 +360,15 @@ Item {
                                 anchors.fill: parent
                                 anchors.margins: 8
                                 clip: true
-                                cellWidth: 100 + 8 // Thumbnail size + padding
-                                cellHeight: 120 + 8 // Thumbnail + title + padding
+                                cellWidth: 120 + 10 // Thumbnail size + padding
+                                cellHeight: 140 + 10 // Thumbnail + title + padding
                                 interactive: false // Parent ListView handles scrolling primarily
 
                                 model: albumsVisible ? LibraryManager.getAlbumsForArtist(artistData.name) : []
 
                                 delegate: Item { 
-                                    width: albumsGrid.cellWidth - 8
-                                    height: albumsGrid.cellHeight - 8
+                                    width: albumsGrid.cellWidth - 10
+                                    height: albumsGrid.cellHeight - 10
 
                                     ColumnLayout { 
                                         anchors.fill: parent
@@ -374,8 +376,8 @@ Item {
 
                                         Rectangle { // Album Art container
                                             Layout.alignment: Qt.AlignHCenter
-                                            width: 90
-                                            height: 90
+                                            width: 110
+                                            height: 110
                                             color: "#555555"
                                             radius: 3
 
@@ -424,7 +426,32 @@ Item {
                             }
                         }
                     }
-                    ScrollIndicator.vertical: ScrollIndicator { }
+                    ScrollBar.vertical: ScrollBar {
+                        id: artistScrollBar
+                        width: 10
+                        policy: ScrollBar.AlwaysOn
+                        visible: artistsListView.contentHeight > artistsListView.height
+                        anchors.right: parent.right
+                        anchors.rightMargin: 2
+                        anchors.topMargin: 4
+                        anchors.bottomMargin: 4
+                        
+                        contentItem: Rectangle {
+                            implicitWidth: 10
+                            radius: 5
+                            color: artistScrollBar.pressed ? "#60606080" : artistScrollBar.hovered ? "#50505080" : "#40404060"
+                            
+                            Behavior on color {
+                                ColorAnimation { duration: 150 }
+                            }
+                        }
+                        
+                        background: Rectangle {
+                            implicitWidth: 10
+                            color: "#20202040"
+                            radius: 5
+                        }
+                    }
                 }
             }
 
