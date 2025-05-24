@@ -13,6 +13,7 @@ Item {
     
     property var selectedAlbum: null
     property var expandedArtists: ({})  // Object to store expansion state by artist name
+    property string highlightedArtist: ""  // Track which artist to highlight
 
     onSelectedAlbumChanged: {
         // console.log("Selected album changed to: " + (selectedAlbum ? selectedAlbum.title : "none"));
@@ -366,7 +367,20 @@ Item {
             Layout.preferredHeight: 240
             
             onAlbumClicked: function(album) {
+                console.log("Album clicked handler in LibraryPane:", album.title)
                 root.selectedAlbum = album
+                
+                // Highlight the album's artist
+                root.highlightedArtist = album.albumArtist
+                
+                // Find the artist in the list and ensure it's visible
+                var artists = LibraryManager.artistModel
+                for (var i = 0; i < artists.length; i++) {
+                    if (artists[i].name === album.albumArtist) {
+                        artistsListView.positionViewAtIndex(i, ListView.Contain)
+                        break
+                    }
+                }
             }
         }
         
@@ -437,7 +451,15 @@ Item {
                         Rectangle {
                             width: parent.width
                             height: 40
-                            color: artistsListView.currentIndex === index ? "#3f51b5" : "transparent"
+                            color: {
+                                if (artistsListView.currentIndex === index) {
+                                    return "#3f51b5"  // Selected color
+                                } else if (root.highlightedArtist === artistData.name) {
+                                    return "#2a2a50"  // Highlighted color
+                                } else {
+                                    return "transparent"
+                                }
+                            }
                             radius: 2
 
                             RowLayout {

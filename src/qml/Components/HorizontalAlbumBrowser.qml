@@ -94,12 +94,17 @@ Item {
             // Mouse wheel support
             MouseArea {
                 anchors.fill: parent
+                propagateComposedEvents: true
                 onWheel: function(wheel) {
                     if (wheel.angleDelta.y > 0) {
                         listView.decrementCurrentIndex()
                     } else {
                         listView.incrementCurrentIndex()
                     }
+                    wheel.accepted = true
+                }
+                onPressed: function(mouse) {
+                    mouse.accepted = false  // Let click events through to delegates
                 }
             }
             
@@ -189,6 +194,7 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
+                            console.log("Album clicked in horizontal browser:", modelData.title, "by", modelData.albumArtist)
                             listView.currentIndex = index
                             root.albumClicked(modelData)
                         }
