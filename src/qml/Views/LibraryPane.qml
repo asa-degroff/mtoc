@@ -66,6 +66,265 @@ Item {
         }
     }
     
+    // Edit Library Dialog
+    Popup {
+        id: editLibraryDialog
+        modal: true
+        width: 600
+        height: 500
+        anchors.centerIn: parent
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+        
+        background: Rectangle {
+            color: "#2a2a2a"
+            radius: 8
+            border.color: "#444444"
+            border.width: 1
+        }
+        
+        contentItem: Item {
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 20
+                spacing: 16
+                
+                // Title and close button
+                RowLayout {
+                    Layout.fillWidth: true
+                    
+                    Label {
+                        text: "Edit Library"
+                        font.pixelSize: 20
+                        font.bold: true
+                        color: "white"
+                    }
+                    
+                    Item { Layout.fillWidth: true }
+                    
+                    Button {
+                        text: "✕"
+                        flat: true
+                        onClicked: editLibraryDialog.close()
+                        Layout.preferredWidth: 30
+                        Layout.preferredHeight: 30
+                    }
+                }
+            
+            // Library statistics section
+            Rectangle {
+                Layout.fillWidth: true
+                height: 100
+                color: "#333333"
+                radius: 4
+                
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 24
+                    
+                    // Artists count
+                    Column {
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: 4
+                        
+                        Label {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: LibraryManager.artistCount
+                            font.pixelSize: 32
+                            font.bold: true
+                            color: "white"
+                        }
+                        
+                        Label {
+                            text: "Artists"
+                            font.pixelSize: 14
+                            color: "#cccccc"
+                        }
+                    }
+                    
+                    // Albums count
+                    Column {
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: 4
+                        
+                        Label {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: LibraryManager.albumCount
+                            font.pixelSize: 32
+                            font.bold: true
+                            color: "white"
+                        }
+                        
+                        Label {
+                            text: "Albums"
+                            font.pixelSize: 14
+                            color: "#cccccc"
+                        }
+                    }
+                    
+                    // Tracks count
+                    Column {
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: 4
+                        
+                        Label {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: LibraryManager.trackCount
+                            font.pixelSize: 32
+                            font.bold: true
+                            color: "white"
+                        }
+                        
+                        Label {
+                            text: "Tracks"
+                            font.pixelSize: 14
+                            color: "#cccccc"
+                        }
+                    }
+                    
+                    // Scan progress
+                    Column {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.fillWidth: true
+                        spacing: 4
+                        visible: LibraryManager.scanning
+                        
+                        ProgressBar {
+                            width: parent.width
+                            value: LibraryManager.scanProgress / 100.0
+                            from: 0
+                            to: 1
+                        }
+                        
+                        Label {
+                            text: "Scanning: " + LibraryManager.scanProgressText
+                            font.pixelSize: 12
+                            color: "#cccccc"
+                        }
+                    }
+                }
+            }
+            
+            // Music folders section
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                color: "#333333"
+                radius: 4
+                
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 8
+                    
+                    RowLayout {
+                        Layout.fillWidth: true
+                        
+                        Label {
+                            text: "Music Folders"
+                            font.pixelSize: 16
+                            font.bold: true
+                            color: "white"
+                        }
+                        
+                        Item { Layout.fillWidth: true }
+                        
+                        Button {
+                            text: "Add Folder"
+                            onClicked: folderDialog.open()
+                        }
+                    }
+                    
+                    ListView {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
+                        model: LibraryManager.musicFolders
+                        
+                        delegate: Rectangle {
+                            width: ListView.view.width
+                            height: 40
+                            color: index % 2 === 0 ? "#3a3a3a" : "#353535"
+                            
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 8
+                                spacing: 8
+                                
+                                Label {
+                                    text: modelData
+                                    color: "white"
+                                    elide: Text.ElideLeft
+                                    Layout.fillWidth: true
+                                }
+                                
+                                Button {
+                                    text: "Remove"
+                                    flat: true
+                                    onClicked: {
+                                        LibraryManager.removeMusicFolder(modelData);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        ScrollIndicator.vertical: ScrollIndicator { }
+                    }
+                }
+            }
+            
+            // Info text and action buttons
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 80
+                color: "#404040"
+                radius: 4
+                
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 8
+                    
+                    Label {
+                        text: "Scan your library to add files from the chosen folders to the music collection."
+                        color: "#cccccc"
+                        font.pixelSize: 12
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+                    
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        
+                        Button {
+                            text: "Clear Library"
+                            onClicked: {
+                                LibraryManager.clearLibrary();
+                            }
+                        }
+                        
+                        Item { Layout.fillWidth: true }
+                        
+                        Button {
+                            text: LibraryManager.scanning ? "Cancel Scan" : "Scan Library"
+                            highlighted: true
+                            enabled: true
+                            onClicked: {
+                                if (LibraryManager.scanning) {
+                                    LibraryManager.cancelScan();
+                                } else {
+                                    LibraryManager.startScan();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            }
+        }
+    }
+    
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 16
@@ -93,173 +352,8 @@ Item {
                 Item { Layout.fillWidth: true } // Spacer
                 
                 Button {
-                    text: "Add Folder"
-                    onClicked: folderDialog.open()
-                }
-                
-                Button {
-                    text: LibraryManager.scanning ? "Cancel Scan" : "Scan Library"
-                    enabled: true // Always enabled - LibraryManager handles cancel state internally
-                    onClicked: {
-                        if (LibraryManager.scanning) {
-                            LibraryManager.cancelScan();
-                        } else {
-                            LibraryManager.startScan();
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Library statistics section
-        Rectangle {
-            Layout.fillWidth: true
-            height: 100
-            color: "#2a2a2a"
-            radius: 4
-            
-            RowLayout {
-                anchors.fill: parent
-                anchors.margins: 12
-                spacing: 24
-                
-                // Artists count
-                Column {
-                    Layout.alignment: Qt.AlignHCenter
-                    spacing: 4
-                    
-                    Label {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: LibraryManager.artistCount
-                        font.pixelSize: 32
-                        font.bold: true
-                        color: "white"
-                    }
-                    
-                    Label {
-                        text: "Artists"
-                        font.pixelSize: 14
-                        color: "#cccccc"
-                    }
-                }
-                
-                // Albums count
-                Column {
-                    Layout.alignment: Qt.AlignHCenter
-                    spacing: 4
-                    
-                    Label {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: LibraryManager.albumCount
-                        font.pixelSize: 32
-                        font.bold: true
-                        color: "white"
-                    }
-                    
-                    Label {
-                        text: "Albums"
-                        font.pixelSize: 14
-                        color: "#cccccc"
-                    }
-                }
-                
-                // Tracks count
-                Column {
-                    Layout.alignment: Qt.AlignHCenter
-                    spacing: 4
-                    
-                    Label {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: LibraryManager.trackCount
-                        font.pixelSize: 32
-                        font.bold: true
-                        color: "white"
-                    }
-                    
-                    Label {
-                        text: "Tracks"
-                        font.pixelSize: 14
-                        color: "#cccccc"
-                    }
-                }
-                
-                // Scan progress
-                Column {
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.fillWidth: true
-                    spacing: 4
-                    visible: LibraryManager.scanning
-                    
-                    ProgressBar {
-                        width: parent.width
-                        value: LibraryManager.scanProgress / 100.0
-                        from: 0
-                        to: 1
-                    }
-                    
-                    Label {
-                        text: "Scanning: " + LibraryManager.scanProgressText
-                        font.pixelSize: 12
-                        color: "#cccccc"
-                    }
-                }
-            }
-        }
-        
-        // Music folders section
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 150
-            color: "#2a2a2a"
-            radius: 4
-            
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 12
-                spacing: 8
-                
-                Label {
-                    text: "Music Folders"
-                    font.pixelSize: 16
-                    font.bold: true
-                    color: "white"
-                }
-                
-                ListView {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    clip: true
-                    model: LibraryManager.musicFolders
-                    
-                    delegate: Rectangle {
-                        width: ListView.view.width
-                        height: 40
-                        color: index % 2 === 0 ? "#3a3a3a" : "#353535"
-                        
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            spacing: 8
-                            
-                            Label {
-                                text: modelData
-                                color: "white"
-                                elide: Text.ElideLeft
-                            }
-                            
-                            Item { Layout.fillWidth: true } // Spacer
-                            
-                            Button {
-                                text: "Remove"
-                                flat: true
-                                onClicked: {
-                                    LibraryManager.removeMusicFolder(modelData);
-                                }
-                            }
-                        }
-                    }
-                    
-                    ScrollIndicator.vertical: ScrollIndicator { }
+                    text: "Edit Library"
+                    onClicked: editLibraryDialog.open()
                 }
             }
         }
@@ -301,6 +395,24 @@ Item {
                     clip: true
                     model: LibraryManager.artistModel
                     spacing: 2
+                    
+                    // Increase scroll speed
+                    flickDeceleration: 8000  // Default is 1500, can increase for faster stopping
+                    maximumFlickVelocity: 2750  // Default is 2500, increase for faster scrolling
+                    
+                    // Smooth scrolling with bounds
+                    boundsMovement: Flickable.StopAtBounds
+                    boundsBehavior: Flickable.StopAtBounds
+                    
+                    // Increase wheel scroll speed while keeping smooth animation
+                    WheelHandler {
+                        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                        onWheel: function(event) {
+                            // Multiply the pixel delta for faster scrolling
+                            var pixelDelta = event.pixelDelta.y || event.angleDelta.y / 4;
+                            artistsListView.flick(0, pixelDelta * 400); // Change this value to adjust scroll speed
+                        }
+                    }
 
                     delegate: Column {
                         width: ListView.view.width
@@ -537,6 +649,23 @@ Item {
                         model: rightPane.currentAlbumTracks
                         visible: rightPane.currentAlbumTracks.length > 0
                         spacing: 1
+                        
+                        // Increase scroll speed to match artist list
+                        flickDeceleration: 8000
+                        maximumFlickVelocity: 2750
+                        
+                        // Smooth scrolling with bounds
+                        boundsMovement: Flickable.StopAtBounds
+                        boundsBehavior: Flickable.StopAtBounds
+                        
+                        // Increase wheel scroll speed while keeping smooth animation
+                        WheelHandler {
+                            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                            onWheel: function(event) {
+                                var pixelDelta = event.pixelDelta.y || event.angleDelta.y / 4;
+                                trackListView.flick(0, pixelDelta * 400);
+                            }
+                        }
 
                         delegate: Rectangle {
                             width: ListView.view.width
