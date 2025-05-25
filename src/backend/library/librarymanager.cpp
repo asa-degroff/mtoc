@@ -79,10 +79,15 @@ LibraryManager::~LibraryManager()
     }
     
     // Database is automatically closed by DatabaseManager destructor
-    qDebug() << "LibraryManager: Clearing library data...";
+    qDebug() << "LibraryManager: Clearing in-memory data...";
     
-    // Clear all data
-    clearLibrary();
+    // Clear only in-memory data, not the database
+    qDeleteAll(m_tracks);
+    m_tracks.clear();
+    qDeleteAll(m_albums);
+    m_albums.clear();
+    qDeleteAll(m_artists);
+    m_artists.clear();
     
     qDebug() << "LibraryManager: Destructor completed";
 }
@@ -353,9 +358,8 @@ void LibraryManager::scanInBackground()
             }
             
             // Extract metadata (serialized to avoid TagLib threading issues)
-            // Skip album art during scan for performance
             try {
-                QVariantMap metadata = threadExtractor.extractAsVariantMap(filePath, false);
+                QVariantMap metadata = threadExtractor.extractAsVariantMap(filePath);
                 
                 // Validate metadata before using
                 if (metadata.isEmpty() || !metadata.contains("filePath")) {
@@ -875,8 +879,55 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
     if (!album.isEmpty()) {
         albumId = insertOrGetAlbum(album, albumArtistId);
         
-        // Skip album art processing during scan for better performance
-        // Album art can be extracted on-demand when needed
+        // Process album art if we have it and it's not already stored
+        if (albumId > 0 && metadata.contains("hasAlbumArt") && metadata.value("hasAlbumArt").toBool()) {
+            // Check if album art already exists
+            QSqlQuery artCheckQuery(db);
+            artCheckQuery.prepare("SELECT 1 FROM album_art WHERE album_id = :album_id LIMIT 1");
+            artCheckQuery.bindValue(":album_id", albumId);
+            
+            if (artCheckQuery.exec() && !artCheckQuery.next()) {
+                // Album art doesn't exist, process and store it
+                QByteArray albumArtData = metadata.value("albumArtData").toByteArray();
+                QString mimeType = metadata.value("albumArtMimeType").toString();
+                
+                if (!albumArtData.isEmpty()) {
+                    // Process album art
+                    AlbumArtManager albumArtManager;
+                    AlbumArtManager::ProcessedAlbumArt processed = 
+                        albumArtManager.processAlbumArt(albumArtData, album, 
+                                                       albumArtistId > 0 ? albumArtist : artist,
+                                                       mimeType);
+                    
+                    if (processed.success) {
+                        // Insert album art into database
+                        QSqlQuery artQuery(db);
+                        artQuery.prepare(
+                            "INSERT INTO album_art "
+                            "(album_id, full_path, full_hash, thumbnail, thumbnail_size, "
+                            "width, height, format, file_size) "
+                            "VALUES (:album_id, :full_path, :full_hash, :thumbnail, :thumbnail_size, "
+                            ":width, :height, :format, :file_size)"
+                        );
+                        
+                        artQuery.bindValue(":album_id", albumId);
+                        artQuery.bindValue(":full_path", processed.fullImagePath);
+                        artQuery.bindValue(":full_hash", processed.hash);
+                        artQuery.bindValue(":thumbnail", processed.thumbnailData);
+                        artQuery.bindValue(":thumbnail_size", processed.thumbnailData.size());
+                        artQuery.bindValue(":width", processed.originalSize.width());
+                        artQuery.bindValue(":height", processed.originalSize.height());
+                        artQuery.bindValue(":format", processed.format);
+                        artQuery.bindValue(":file_size", processed.fileSize);
+                        
+                        if (!artQuery.exec()) {
+                            qWarning() << "Failed to insert album art for album:" << album 
+                                      << "-" << artQuery.lastError().text();
+                        }
+                    }
+                }
+            }
+        }
     }
     
     // Insert track
