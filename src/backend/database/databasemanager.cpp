@@ -58,6 +58,8 @@ bool DatabaseManager::initializeDatabase(const QString& dbPath)
     query.exec("PRAGMA synchronous = NORMAL");
     query.exec("PRAGMA cache_size = -64000"); // 64MB cache
     query.exec("PRAGMA temp_store = MEMORY");
+    query.exec("PRAGMA mmap_size = 268435456"); // 256MB memory-mapped I/O
+    query.exec("PRAGMA page_size = 4096"); // 4KB page size
     
     if (!createTables()) {
         return false;
@@ -667,7 +669,12 @@ int DatabaseManager::getTotalTracks()
     if (!m_db.isOpen()) return 0;
     
     QSqlQuery query(m_db);
-    query.exec("SELECT COUNT(*) FROM tracks");
+    query.prepare("SELECT COUNT(*) FROM tracks");
+    
+    if (!query.exec()) {
+        qWarning() << "Failed to get track count:" << query.lastError().text();
+        return 0;
+    }
     
     if (query.next()) {
         return query.value(0).toInt();
@@ -681,7 +688,12 @@ int DatabaseManager::getTotalAlbums()
     if (!m_db.isOpen()) return 0;
     
     QSqlQuery query(m_db);
-    query.exec("SELECT COUNT(*) FROM albums");
+    query.prepare("SELECT COUNT(*) FROM albums");
+    
+    if (!query.exec()) {
+        qWarning() << "Failed to get album count:" << query.lastError().text();
+        return 0;
+    }
     
     if (query.next()) {
         return query.value(0).toInt();
@@ -695,7 +707,12 @@ int DatabaseManager::getTotalArtists()
     if (!m_db.isOpen()) return 0;
     
     QSqlQuery query(m_db);
-    query.exec("SELECT COUNT(*) FROM artists");
+    query.prepare("SELECT COUNT(*) FROM artists");
+    
+    if (!query.exec()) {
+        qWarning() << "Failed to get artist count:" << query.lastError().text();
+        return 0;
+    }
     
     if (query.next()) {
         return query.value(0).toInt();
@@ -724,17 +741,22 @@ QVariantList DatabaseManager::getAllAlbums()
     if (!m_db.isOpen()) return albums;
     
     QSqlQuery query(m_db);
-    query.exec(
-        "SELECT al.*, aa.name as album_artist_name, "
+    query.prepare(
+        "SELECT al.id, al.title, al.year, aa.name as album_artist_name, "
         "COUNT(t.id) as track_count, SUM(t.duration) as total_duration, "
-        "art.thumbnail as art_thumbnail, art.full_path as art_path "
+        "CASE WHEN art.id IS NOT NULL THEN 1 ELSE 0 END as has_art "
         "FROM albums al "
         "LEFT JOIN album_artists aa ON al.album_artist_id = aa.id "
         "LEFT JOIN tracks t ON al.id = t.album_id "
         "LEFT JOIN album_art art ON al.id = art.album_id "
-        "GROUP BY al.id "
+        "GROUP BY al.id, al.title, al.year, aa.name, art.id "
         "ORDER BY al.title"
     );
+    
+    if (!query.exec()) {
+        qWarning() << "Failed to get all albums:" << query.lastError().text();
+        return albums;
+    }
     
     while (query.next()) {
         QVariantMap album;
@@ -744,9 +766,7 @@ QVariantList DatabaseManager::getAllAlbums()
         album["year"] = query.value("year");
         album["trackCount"] = query.value("track_count");
         album["duration"] = query.value("total_duration");
-        album["hasArt"] = !query.value("art_thumbnail").isNull();
-        album["artThumbnail"] = query.value("art_thumbnail");
-        album["artPath"] = query.value("art_path");
+        album["hasArt"] = query.value("has_art").toBool();
         albums.append(album);
     }
     
@@ -878,6 +898,8 @@ QSqlDatabase DatabaseManager::createThreadConnection(const QString& connectionNa
     query.exec("PRAGMA synchronous = NORMAL");
     query.exec("PRAGMA cache_size = -64000");
     query.exec("PRAGMA temp_store = MEMORY");
+    query.exec("PRAGMA mmap_size = 268435456");
+    query.exec("PRAGMA page_size = 4096");
     
     return db;
 }

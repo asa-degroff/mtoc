@@ -71,18 +71,15 @@ int main(int argc, char *argv[])
     // First, ensure debug output is not disabled
     QLoggingCategory::setFilterRules("*.debug=true");
     
-    // Print directly to standard output for testing
-    std::cout << "STDOUT TEST: This should appear on stdout" << std::endl;
-    std::cerr << "STDERR TEST: This should appear on stderr" << std::endl;
-    
     // Install the custom message handler
     qInstallMessageHandler(messageHandler);
     
-    // Force a debug message to test if the handler is working
-    qDebug() << "DEBUG TEST: Application starting...";
-    fprintf(stderr, "Direct stderr test message\n");
+    qDebug() << "Application starting...";
     
     QApplication app(argc, argv);
+    
+    // Increase pixmap cache size for album art (128MB)
+    QPixmapCache::setCacheLimit(128 * 1024);
 
     QQmlApplicationEngine engine;
 

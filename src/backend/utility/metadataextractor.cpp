@@ -370,46 +370,29 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
 
         // Album Artist (often in TPE2 frame for ID3, or ALBUMARTIST for Vorbis/FLAC)
         // properties is already declared above
-        qDebug() << "MetadataExtractor: --- Checking Album Artist --- Path:" << filePath;
         if (properties.contains("ALBUMARTIST")) {
-            qDebug() << "MetadataExtractor: Found 'ALBUMARTIST'. IsEmpty:" << properties["ALBUMARTIST"].isEmpty() << "Value(s):" << (properties["ALBUMARTIST"].isEmpty() ? "N/A" : QString::fromStdString(properties["ALBUMARTIST"].front().to8Bit(true)));
             if (!properties["ALBUMARTIST"].isEmpty()) {
                 meta.albumArtist = QString::fromStdString(properties["ALBUMARTIST"].front().to8Bit(true));
-                qDebug() << "MetadataExtractor: Set albumArtist from ALBUMARTIST:" << meta.albumArtist;
             }
-        } else {
-            qDebug() << "MetadataExtractor: 'ALBUMARTIST' key not found.";
         }
 
         if (meta.albumArtist.isEmpty() && properties.contains("ALBUM ARTIST")) { // Some taggers use a space
-            qDebug() << "MetadataExtractor: Found 'ALBUM ARTIST'. IsEmpty:" << properties["ALBUM ARTIST"].isEmpty() << "Value(s):" << (properties["ALBUM ARTIST"].isEmpty() ? "N/A" : QString::fromStdString(properties["ALBUM ARTIST"].front().to8Bit(true)));
             if (!properties["ALBUM ARTIST"].isEmpty()) {
                 meta.albumArtist = QString::fromStdString(properties["ALBUM ARTIST"].front().to8Bit(true));
-                qDebug() << "MetadataExtractor: Set albumArtist from ALBUM ARTIST:" << meta.albumArtist;
             }
-        } else if (meta.albumArtist.isEmpty()) {
-            qDebug() << "MetadataExtractor: 'ALBUM ARTIST' key not found or albumArtist already set.";
         }
 
         if (meta.albumArtist.isEmpty() && properties.contains("TPE2")) { // ID3v2 TPE2 frame
-            qDebug() << "MetadataExtractor: Found 'TPE2'. IsEmpty:" << properties["TPE2"].isEmpty() << "Value(s):" << (properties["TPE2"].isEmpty() ? "N/A" : QString::fromStdString(properties["TPE2"].front().to8Bit(true)));
             if (!properties["TPE2"].isEmpty()) {
                  meta.albumArtist = QString::fromStdString(properties["TPE2"].front().to8Bit(true));
-                 qDebug() << "MetadataExtractor: Set albumArtist from TPE2:" << meta.albumArtist;
             }
-        } else if (meta.albumArtist.isEmpty()) {
-            qDebug() << "MetadataExtractor: 'TPE2' key not found or albumArtist already set.";
         }
 
         // iTunes/M4A specific album artist tag
         if (meta.albumArtist.isEmpty() && properties.contains("aART")) {
-            qDebug() << "MetadataExtractor: Found 'aART' (iTunes/M4A). IsEmpty:" << properties["aART"].isEmpty() << "Value(s):" << (properties["aART"].isEmpty() ? "N/A" : QString::fromStdString(properties["aART"].front().to8Bit(true)));
             if (!properties["aART"].isEmpty()) {
                  meta.albumArtist = QString::fromStdString(properties["aART"].front().to8Bit(true));
-                 qDebug() << "MetadataExtractor: Set albumArtist from aART:" << meta.albumArtist;
             }
-        } else if (meta.albumArtist.isEmpty()) {
-            qDebug() << "MetadataExtractor: 'aART' key not found or albumArtist already set.";
         }
         
         // qDebug() << "MetadataExtractor: Final meta.albumArtist before return:" << meta.albumArtist;

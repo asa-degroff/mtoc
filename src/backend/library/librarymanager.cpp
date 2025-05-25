@@ -52,10 +52,11 @@ LibraryManager::LibraryManager(QObject *parent)
     
     qDebug() << "LibraryManager: About to load library from database";
     
-    // Load library from database
-    loadLibraryFromDatabase();
+    // Don't load library data immediately - wait for first access
+    // This should speed up startup
+    m_albumModelCacheValid = false;
     
-    qDebug() << "LibraryManager: Library loaded from database";
+    qDebug() << "LibraryManager: Deferred library loading initialized";
     
     // Connect scan watcher
     connect(&m_scanWatcher, &QFutureWatcher<void>::finished,
