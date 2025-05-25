@@ -64,7 +64,7 @@ Item {
     
     Rectangle {
         anchors.fill: parent
-        color: "#1a1a1a"
+        color: "#000000"
         clip: true  // Clip at the component boundary
         
         ListView {
@@ -74,7 +74,7 @@ Item {
             anchors.bottomMargin: 30    // Bottom margin for reflection and info bar
             model: allAlbums
             orientation: ListView.Horizontal
-            spacing: -60
+            spacing: -80
             preferredHighlightBegin: width / 2 - 70
             preferredHighlightEnd: width / 2 + 70
             highlightRangeMode: ListView.StrictlyEnforceRange
@@ -83,6 +83,7 @@ Item {
             clip: false                 // Disable clipping to allow rotated albums to show
             maximumFlickVelocity: 1500  // Limit scroll speed
             flickDeceleration: 3000     // Faster deceleration
+            boundsBehavior: Flickable.StopAtBounds  // Ensure we can reach the bounds
             
             onCurrentIndexChanged: {
                 if (currentIndex >= 0 && currentIndex < allAlbums.length) {
@@ -143,7 +144,18 @@ Item {
                     }
                 }
                 
-                z: Math.round((1 - Math.abs(itemAngle) / 60) * 10)
+                property real distanceFromCenter: {
+                    var centerX = listView.width / 2
+                    var itemCenterX = x + width / 2 - listView.contentX
+                    return itemCenterX - centerX
+                }
+                
+                z: {
+                    var absDistance = Math.abs(distanceFromCenter)
+                    // Center album has highest z-order, decreasing with distance
+                    // Max z-order is 100, min is around 0
+                    return Math.max(0, 100 - absDistance / 5)
+                }
                 
                 transform: [
                     Rotation {
@@ -195,8 +207,8 @@ Item {
                         Rectangle {
                             anchors.fill: parent
                             color: "transparent"
-                            border.color: listView.currentIndex === index ? "#3f51b5" : "transparent"
-                            border.width: 2
+                            border.color: listView.currentIndex === index ? "#ffffff" : "transparent"
+                            border.width: 0 // hidden for now
                             visible: listView.currentIndex === index
                         }
                         
@@ -209,31 +221,43 @@ Item {
                         }
                     }
                     
-                    // Reflection
-                    ShaderEffectSource {
-                        id: reflection
+                    // Reflection container
+                    Item {
+                        id: reflectionContainer
                         anchors.top: albumContainer.bottom
                         anchors.topMargin: 2
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: albumContainer.width
                         height: 60
-                        sourceItem: albumContainer
-                        opacity: 0.4
-                        transform: [
-                            Scale {
-                                yScale: -1
-                                origin.y: reflection.height / 2
-                            }
-                        ]
+                        
+                        // The reflection itself
+                        ShaderEffectSource {
+                            id: reflection
+                            anchors.fill: parent
+                            sourceItem: albumContainer
+                            transform: [
+                                Scale {
+                                    yScale: -1
+                                    origin.y: reflection.height / 2
+                                }
+                            ]
+                        }
+                        
+                        // Dark overlay to dim the reflection
+                        Rectangle {
+                            anchors.fill: parent
+                            color: "#000000"
+                            opacity: 0.6
+                        }
                     }
                     
                     // Gradient overlay for reflection
                     Rectangle {
-                        anchors.fill: reflection
+                        anchors.fill: reflectionContainer
                         gradient: Gradient {
                             GradientStop { position: 0.0; color: "transparent" }
                             GradientStop { position: 0.5; color: Qt.rgba(0.1, 0.1, 0.1, 0.6) }
-                            GradientStop { position: 1.0; color: "#1a1a1a" }
+                            GradientStop { position: 1.0; color: "#000000" }
                         }
                     }
                 }
