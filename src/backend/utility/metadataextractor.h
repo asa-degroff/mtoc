@@ -34,8 +34,10 @@ public:
     };
 
     Q_INVOKABLE TrackMetadata extract(const QString &filePath);
+    TrackMetadata extract(const QString &filePath, bool extractAlbumArt);
     // For QML, returning a QVariantMap might be more direct
     Q_INVOKABLE QVariantMap extractAsVariantMap(const QString &filePath);
+    QVariantMap extractAsVariantMap(const QString &filePath, bool extractAlbumArt);
     
     // Extract album art specifically
     Q_INVOKABLE QByteArray extractAlbumArt(const QString &filePath);

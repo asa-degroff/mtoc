@@ -124,7 +124,7 @@ void LibraryManager::loadLibraryFromDatabase()
 // Property getters
 bool LibraryManager::isScanning() const
 {
-    qDebug() << "LibraryManager::isScanning() called, returning" << m_scanning;
+    // qDebug() << "LibraryManager::isScanning() called, returning" << m_scanning;
     return m_scanning;
 }
 
@@ -144,43 +144,43 @@ QString LibraryManager::scanProgressText() const
 
 QStringList LibraryManager::musicFolders() const
 {
-    qDebug() << "LibraryManager::musicFolders() called, returning" << m_musicFolders.size() << "folders";
+    // qDebug() << "LibraryManager::musicFolders() called, returning" << m_musicFolders.size() << "folders";
     return m_musicFolders;
 }
 
 int LibraryManager::trackCount() const
 {
-    qDebug() << "LibraryManager::trackCount() called";
+    // qDebug() << "LibraryManager::trackCount() called";
     if (!m_databaseManager || !m_databaseManager->isOpen()) {
-        qDebug() << "LibraryManager::trackCount() - database not ready, returning 0";
+        // qDebug() << "LibraryManager::trackCount() - database not ready, returning 0";
         return 0;
     }
     int count = m_databaseManager->getTotalTracks();
-    qDebug() << "LibraryManager::trackCount() returning" << count;
+    // qDebug() << "LibraryManager::trackCount() returning" << count;
     return count;
 }
 
 int LibraryManager::albumCount() const
 {
-    qDebug() << "LibraryManager::albumCount() called";
+    // qDebug() << "LibraryManager::albumCount() called";
     if (!m_databaseManager || !m_databaseManager->isOpen()) {
-        qDebug() << "LibraryManager::albumCount() - database not ready, returning 0";
+        // qDebug() << "LibraryManager::albumCount() - database not ready, returning 0";
         return 0;
     }
     int count = m_databaseManager->getTotalAlbums();
-    qDebug() << "LibraryManager::albumCount() returning" << count;
+    // qDebug() << "LibraryManager::albumCount() returning" << count;
     return count;
 }
 
 int LibraryManager::artistCount() const
 {
-    qDebug() << "LibraryManager::artistCount() called";
+    // qDebug() << "LibraryManager::artistCount() called";
     if (!m_databaseManager || !m_databaseManager->isOpen()) {
-        qDebug() << "LibraryManager::artistCount() - database not ready, returning 0";
+        // qDebug() << "LibraryManager::artistCount() - database not ready, returning 0";
         return 0;
     }
     int count = m_databaseManager->getTotalArtists();
-    qDebug() << "LibraryManager::artistCount() returning" << count;
+    // qDebug() << "LibraryManager::artistCount() returning" << count;
     return count;
 }
 
@@ -353,8 +353,9 @@ void LibraryManager::scanInBackground()
             }
             
             // Extract metadata (serialized to avoid TagLib threading issues)
+            // Skip album art during scan for performance
             try {
-                QVariantMap metadata = threadExtractor.extractAsVariantMap(filePath);
+                QVariantMap metadata = threadExtractor.extractAsVariantMap(filePath, false);
                 
                 // Validate metadata before using
                 if (metadata.isEmpty() || !metadata.contains("filePath")) {
@@ -625,6 +626,7 @@ QVariantList LibraryManager::albumModel() const
     }
     
     // Otherwise fetch from database and cache
+    // Note: getAllAlbums() can be expensive with large libraries
     m_cachedAlbumModel = m_databaseManager->getAllAlbums();
     m_albumModelCacheValid = true;
     return m_cachedAlbumModel;
@@ -873,55 +875,8 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
     if (!album.isEmpty()) {
         albumId = insertOrGetAlbum(album, albumArtistId);
         
-        // Process album art if we have it and it's not already stored
-        if (albumId > 0 && metadata.contains("hasAlbumArt") && metadata.value("hasAlbumArt").toBool()) {
-            // Check if album art already exists
-            QSqlQuery artCheckQuery(db);
-            artCheckQuery.prepare("SELECT 1 FROM album_art WHERE album_id = :album_id LIMIT 1");
-            artCheckQuery.bindValue(":album_id", albumId);
-            
-            if (artCheckQuery.exec() && !artCheckQuery.next()) {
-                // Album art doesn't exist, process and store it
-                QByteArray albumArtData = metadata.value("albumArtData").toByteArray();
-                QString mimeType = metadata.value("albumArtMimeType").toString();
-                
-                if (!albumArtData.isEmpty()) {
-                    // Process album art
-                    AlbumArtManager albumArtManager;
-                    AlbumArtManager::ProcessedAlbumArt processed = 
-                        albumArtManager.processAlbumArt(albumArtData, album, 
-                                                       albumArtistId > 0 ? albumArtist : artist,
-                                                       mimeType);
-                    
-                    if (processed.success) {
-                        // Insert album art into database
-                        QSqlQuery artQuery(db);
-                        artQuery.prepare(
-                            "INSERT INTO album_art "
-                            "(album_id, full_path, full_hash, thumbnail, thumbnail_size, "
-                            "width, height, format, file_size) "
-                            "VALUES (:album_id, :full_path, :full_hash, :thumbnail, :thumbnail_size, "
-                            ":width, :height, :format, :file_size)"
-                        );
-                        
-                        artQuery.bindValue(":album_id", albumId);
-                        artQuery.bindValue(":full_path", processed.fullImagePath);
-                        artQuery.bindValue(":full_hash", processed.hash);
-                        artQuery.bindValue(":thumbnail", processed.thumbnailData);
-                        artQuery.bindValue(":thumbnail_size", processed.thumbnailData.size());
-                        artQuery.bindValue(":width", processed.originalSize.width());
-                        artQuery.bindValue(":height", processed.originalSize.height());
-                        artQuery.bindValue(":format", processed.format);
-                        artQuery.bindValue(":file_size", processed.fileSize);
-                        
-                        if (!artQuery.exec()) {
-                            qWarning() << "Failed to insert album art for album:" << album 
-                                      << "-" << artQuery.lastError().text();
-                        }
-                    }
-                }
-            }
-        }
+        // Skip album art processing during scan for better performance
+        // Album art can be extracted on-demand when needed
     }
     
     // Insert track

@@ -147,16 +147,8 @@ ApplicationWindow {
             // Skip MetadataExtractor test for now
             // This was causing issues during startup
             
-            // Start a library scan if needed
-            if (LibraryManager.trackCount === 0) {
-                console.log("Starting initial library scan...");
-                // Delay the scan slightly to ensure everything is initialized
-                Qt.callLater(function() {
-                    LibraryManager.startScan();
-                });
-            } else {
-                console.log("Library already contains", LibraryManager.trackCount, "tracks");
-            }
+            // Don't automatically scan on startup - let user initiate
+            console.log("Library contains", LibraryManager.trackCount, "tracks");
         } catch (e) {
             console.error("Error during initialization:", e);
         }

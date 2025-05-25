@@ -24,6 +24,11 @@ MetadataExtractor::MetadataExtractor(QObject *parent)
 
 MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &filePath)
 {
+    return extract(filePath, true);  // Default to extracting album art for backward compatibility
+}
+
+MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &filePath, bool extractAlbumArt)
+{
     // Reduce logging to prevent performance issues
     // qDebug() << "MetadataExtractor: Extracting metadata from" << filePath;
     TrackMetadata meta;
@@ -121,7 +126,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             }
             
             // Extract album art from ID3v2 tag
-            if (mpegFile.hasID3v2Tag()) {
+            if (extractAlbumArt && mpegFile.hasID3v2Tag()) {
                 TagLib::ID3v2::Tag* id3v2Tag = mpegFile.ID3v2Tag();
                 TagLib::ID3v2::FrameList frameList = id3v2Tag->frameList("APIC");
                 
@@ -307,7 +312,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             }
             
             // Extract album art
-            if (items.contains("covr")) {
+            if (extractAlbumArt && items.contains("covr")) {
                 const TagLib::MP4::Item& coverItem = items["covr"];
                 if (coverItem.isValid()) {
                     TagLib::MP4::CoverArtList coverArtList = coverItem.toCoverArtList();
@@ -414,7 +419,12 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
 
 QVariantMap MetadataExtractor::extractAsVariantMap(const QString &filePath)
 {
-    TrackMetadata details = extract(filePath);
+    return extractAsVariantMap(filePath, true);
+}
+
+QVariantMap MetadataExtractor::extractAsVariantMap(const QString &filePath, bool extractAlbumArt)
+{
+    TrackMetadata details = extract(filePath, extractAlbumArt);
     QVariantMap map;
     map.insert("title", details.title);
     map.insert("artist", details.artist);
