@@ -746,19 +746,14 @@ Item {
                                 }
                                 onDoubleClicked: {
                                     console.log("Track double-clicked:", modelData.title, "path:", modelData.filePath);
-                                    // Get the track object using the file path
-                                    var track = LibraryManager.trackByPath(modelData.filePath);
-                                    if (track) {
-                                        console.log("Track found, playing...");
-                                        // If we have a selected album, play the album starting from this track
-                                        if (root.selectedAlbum) {
-                                            MediaPlayer.playAlbumByName(root.selectedAlbum.albumArtist, root.selectedAlbum.title, index);
-                                        } else {
-                                            // Otherwise just play the single track
-                                            MediaPlayer.playTrack(track);
-                                        }
+                                    
+                                    // If we have a selected album, play the album starting from this track
+                                    if (root.selectedAlbum) {
+                                        MediaPlayer.playAlbumByName(root.selectedAlbum.albumArtist, root.selectedAlbum.title, index);
                                     } else {
-                                        console.log("Track not found for path:", modelData.filePath);
+                                        // Otherwise create a single-track playlist
+                                        // We'll need to add a method to play a single track from variant data
+                                        MediaPlayer.playTrackFromData(modelData);
                                     }
                                 }
                             }

@@ -273,6 +273,38 @@ void MediaPlayer::playAlbumByName(const QString& artist, const QString& title, i
     }
 }
 
+void MediaPlayer::playTrackFromData(const QVariant& trackData)
+{
+    auto trackMap = trackData.toMap();
+    QString title = trackMap.value("title").toString();
+    QString filePath = trackMap.value("filePath").toString();
+    
+    qDebug() << "MediaPlayer::playTrackFromData called with track:" << title << "path:" << filePath;
+    
+    if (filePath.isEmpty()) {
+        qWarning() << "Empty filePath for track:" << title;
+        return;
+    }
+    
+    // Clear any existing queue
+    clearQueue();
+    
+    // Create a new Track object from the data
+    Mtoc::Track* track = new Mtoc::Track(this);
+    track->setTitle(title);
+    track->setArtist(trackMap.value("artist").toString());
+    track->setAlbum(trackMap.value("album").toString());
+    track->setAlbumArtist(trackMap.value("albumArtist").toString());
+    track->setTrackNumber(trackMap.value("trackNumber").toInt());
+    track->setDuration(trackMap.value("duration").toInt());
+    track->setFileUrl(QUrl::fromLocalFile(filePath));
+    
+    // Play the single track
+    playTrack(track);
+    
+    // Clean up will happen when clearQueue is called next time
+}
+
 void MediaPlayer::updateCurrentTrack(Mtoc::Track* track)
 {
     if (m_currentTrack != track) {
