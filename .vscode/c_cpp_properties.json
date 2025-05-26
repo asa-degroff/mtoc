@@ -10,7 +10,8 @@
                 "/usr/include/qt6/QtConcurrent",
                 "/usr/include/qt6/QtWidgets",
                 "/usr/include/qt6/QtQml",
-                "/usr/include/qt6/QtSql"
+                "/usr/include/qt6/QtSql",
+                "/usr/include/qt6/QtQuick"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
