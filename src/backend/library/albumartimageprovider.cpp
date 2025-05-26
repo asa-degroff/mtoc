@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <QPixmap>
 #include <QImage>
+#include <QUrl>
 
 namespace Mtoc {
 
@@ -13,21 +14,40 @@ AlbumArtImageProvider::AlbumArtImageProvider(DatabaseManager* dbManager)
 
 QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, const QSize &requestedSize)
 {
-    // The id format is "albumId" or "albumId/type" where type is "thumbnail" or "full"
+    // The id format is "albumId/type" or "artist/album/type" where type is "thumbnail" or "full"
     QStringList parts = id.split('/');
     if (parts.isEmpty()) {
         qWarning() << "AlbumArtImageProvider: Invalid image id:" << id;
         return QPixmap();
     }
     
-    bool ok;
-    int albumId = parts[0].toInt(&ok);
-    if (!ok || albumId <= 0) {
-        qWarning() << "AlbumArtImageProvider: Invalid album id:" << parts[0];
-        return QPixmap();
-    }
+    int albumId = 0;
+    QString type = "thumbnail";
     
-    QString type = parts.size() > 1 ? parts[1] : "thumbnail";
+    // Try to parse as numeric album ID first
+    bool ok;
+    albumId = parts[0].toInt(&ok);
+    if (ok && albumId > 0) {
+        // Numeric ID format: "albumId" or "albumId/type"
+        type = parts.size() > 1 ? parts[1] : "thumbnail";
+    } else {
+        // String format: "artist/album/type"
+        if (parts.size() >= 2) {
+            QString artist = QUrl::fromPercentEncoding(parts[0].toUtf8());
+            QString album = QUrl::fromPercentEncoding(parts[1].toUtf8());
+            type = parts.size() > 2 ? parts[2] : "thumbnail";
+            
+            // Look up album ID from artist and album name
+            albumId = m_databaseManager->getAlbumIdByArtistAndTitle(artist, album);
+            if (albumId <= 0) {
+                qWarning() << "AlbumArtImageProvider: Album not found:" << artist << "-" << album;
+                return QPixmap();
+            }
+        } else {
+            qWarning() << "AlbumArtImageProvider: Invalid album id:" << parts[0];
+            return QPixmap();
+        }
+    }
     
     // Check pixmap cache first
     QString cacheKey = QString("album_%1_%2").arg(albumId).arg(type);

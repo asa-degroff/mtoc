@@ -857,6 +857,26 @@ QVariantList DatabaseManager::getAlbumsByAlbumArtistName(const QString& albumArt
     return QVariantList();
 }
 
+int DatabaseManager::getAlbumIdByArtistAndTitle(const QString& albumArtist, const QString& albumTitle)
+{
+    if (!m_db.isOpen() || albumArtist.isEmpty() || albumTitle.isEmpty()) return 0;
+    
+    QSqlQuery query(m_db);
+    query.prepare(
+        "SELECT al.id FROM albums al "
+        "JOIN album_artists aa ON al.album_artist_id = aa.id "
+        "WHERE aa.name = :artist AND al.title = :title"
+    );
+    query.bindValue(":artist", albumArtist);
+    query.bindValue(":title", albumTitle);
+    
+    if (query.exec() && query.next()) {
+        return query.value(0).toInt();
+    }
+    
+    return 0;
+}
+
 int DatabaseManager::getAlbumArtistIdByName(const QString& albumArtistName)
 {
     if (!m_db.isOpen() || albumArtistName.isEmpty()) return 0;

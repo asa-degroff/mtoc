@@ -23,17 +23,21 @@ Item {
         z: -2
     }
     
-    // Update album art only when album changes
+    // Update album art when track changes (based on album of the track)
     Connections {
         target: MediaPlayer
         
-        function onCurrentAlbumChanged(album) {
-            if (album) {
-                var newAlbumId = album.artist + "_" + album.title
+        function onCurrentTrackChanged(track) {
+            if (track && track.album && track.albumArtist) {
+                var newAlbumId = track.albumArtist + "_" + track.album
                 if (newAlbumId !== currentAlbumId) {
                     currentAlbumId = newAlbumId
-                    albumArtUrl = "image://albumart/" + album.artist + "/" + album.title + "/full"
-                    thumbnailUrl = "image://albumart/" + album.artist + "/" + album.title + "/thumbnail"
+                    // Use the album artist and album title from the track, URL-encoded
+                    var encodedArtist = encodeURIComponent(track.albumArtist)
+                    var encodedAlbum = encodeURIComponent(track.album)
+                    albumArtUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/full"
+                    thumbnailUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/thumbnail"
+                    console.log("Album art updated for:", track.albumArtist, "-", track.album);
                 }
             } else {
                 currentAlbumId = ""
@@ -71,8 +75,8 @@ Item {
             Image {
                 id: albumArt
                 anchors.centerIn: parent
-                width: Math.min(parent.width - 40, parent.height - 40, 400)
-                height: width
+                width: parent.width * 0.7
+                height: parent.height
                 source: albumArtUrl
                 fillMode: Image.PreserveAspectFit
                 cache: true

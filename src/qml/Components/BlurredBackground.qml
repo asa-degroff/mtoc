@@ -6,7 +6,7 @@ Item {
     id: root
     
     property alias source: sourceImage.source
-    property real blurRadius: 64
+    property real blurRadius: 256
     property real backgroundOpacity: 0.3
     
     Image {

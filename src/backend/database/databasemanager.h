@@ -37,6 +37,7 @@ public:
     QVariantList getAllAlbums();
     QVariantList getAlbumsByAlbumArtist(int albumArtistId);
     QVariantList getAlbumsByAlbumArtistName(const QString& albumArtistName);
+    int getAlbumIdByArtistAndTitle(const QString& albumArtist, const QString& albumTitle);
     
     // Artist operations
     int insertOrGetArtist(const QString& artistName);
