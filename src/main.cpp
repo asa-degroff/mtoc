@@ -11,20 +11,42 @@
 #include "backend/utility/metadataextractor.h"
 #include "backend/library/librarymanager.h"
 #include "backend/library/albumartimageprovider.h"
+#include "backend/library/track.h"
+#include "backend/library/album.h"
+#include "backend/playback/mediaplayer.h"
 
 // Message handler to redirect qDebug output to file and console
 void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
-    // Filter out unwanted debug messages
-    // Show messages from our components and test messages
-    if (type == QtDebugMsg && 
-        !msg.contains("MetadataExtractor") && 
-        !msg.contains("DatabaseManager") &&
-        !msg.contains("LibraryManager") &&
-        !msg.contains("Main:") &&
-        !msg.contains("DEBUG TEST") && 
-        !msg.contains("STDOUT TEST") && 
-        !msg.contains("STDERR TEST")) {
-        return; // Skip unwanted debug messages
+    // Filter out Qt internal event messages
+    if (type == QtDebugMsg) {
+        if (msg.contains("QEvent::") || 
+            msg.contains("QEventPoint") || 
+            msg.contains("localPos:") ||
+            msg.contains("scenePos:") ||
+            msg.contains("wasHovering") ||
+            msg.contains("isHovering") ||
+            msg.contains("QQuickRectangle") ||
+            msg.contains("geometry=") ||
+            msg.contains("considering signature") ||
+            msg.contains("QQuickItem::") ||
+            msg.contains("HorizontalAlbumBrowser_QMLTYPE")) {
+            return; // Skip Qt internal debug messages
+        }
+        
+        // Show messages from our components and test messages
+        if (!msg.contains("MetadataExtractor") && 
+            !msg.contains("DatabaseManager") &&
+            !msg.contains("LibraryManager") &&
+            !msg.contains("MediaPlayer") &&
+            !msg.contains("Main:") &&
+            !msg.contains("DEBUG TEST") && 
+            !msg.contains("STDOUT TEST") && 
+            !msg.contains("STDERR TEST") &&
+            !msg.contains("qml:") &&  // Include QML console.log messages
+            !msg.contains("Track") &&  // Include track-related messages
+            !msg.contains("Album")) {  // Include album-related messages
+            return; // Skip other unwanted debug messages
+        }
     }
     
     // Open a file for logging with absolute path
@@ -93,6 +115,10 @@ int main(int argc, char *argv[])
     // engine ownership might be considered.
     // However, qmlRegisterSingletonInstance is the modern way for uncreatable types.
 
+    // Register types for QML
+    qmlRegisterType<Mtoc::Track>("Mtoc.Backend", 1, 0, "Track");
+    qmlRegisterType<Mtoc::Album>("Mtoc.Backend", 1, 0, "Album");
+    
     // Create objects on heap and parent them to the engine for proper lifetime management
     SystemInfo *systemInfo = new SystemInfo(&engine);
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "SystemInfo", systemInfo);
@@ -109,6 +135,13 @@ int main(int argc, char *argv[])
     // MetadataExtractor might not need to be a singleton since it's used by LibraryManager
     Mtoc::MetadataExtractor *metadataExtractor = new Mtoc::MetadataExtractor(&engine);
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MetadataExtractor", metadataExtractor);
+    
+    // Create and register MediaPlayer
+    qDebug() << "Main: Creating MediaPlayer...";
+    MediaPlayer *mediaPlayer = new MediaPlayer(&engine);
+    mediaPlayer->setLibraryManager(libraryManager);
+    qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MediaPlayer", mediaPlayer);
+    qDebug() << "Main: MediaPlayer registered";
     
     // Register album art image provider
     qDebug() << "Main: Registering album art image provider...";

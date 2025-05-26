@@ -28,92 +28,15 @@ ApplicationWindow {
             Layout.fillHeight: true
         }
 
-        // Now Playing Pane (Placeholder)
-        Rectangle {
-            id: nowPlayingPanePlaceholder
-            Layout.fillWidth: true // Ensure it participates in filling
+        // Now Playing Pane
+        NowPlayingPane {
+            id: nowPlayingPane
+            Layout.fillWidth: true
             Layout.preferredWidth: window.width * 0.55 // 55% of window width
             Layout.fillHeight: true
-            color: "whitesmoke"
-            ColumnLayout {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: 20
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 15
-                
-                // Now Playing Header
-                Text {
-                    text: "Now Playing"
-                    font.pixelSize: 24
-                    font.bold: true
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.bottomMargin: 10
-                }
-                
-                // Track Title
-                Text {
-                    text: "Title: " + (currentTrack.title || "Unknown")
-                    font.pixelSize: 18
-                    font.bold: true
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                }
-                
-                // Artist
-                Text {
-                    text: "Artist: " + (currentTrack.artist || "Unknown")
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                }
-                
-                // Album
-                Text {
-                    text: "Album: " + (currentTrack.album || "Unknown")
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                }
-                
-                // Additional metadata in a grid
-                GridLayout {
-                    columns: 2
-                    Layout.fillWidth: true
-                    columnSpacing: 20
-                    rowSpacing: 5
-                    
-                    Text { text: "Track Number:" }
-                    Text { text: currentTrack.trackNumber || "--" }
-                    
-                    Text { text: "Year:" }
-                    Text { text: currentTrack.year || "--" }
-                    
-                    Text { text: "Genre:" }
-                    Text { text: currentTrack.genre || "--" }
-                    
-                    Text { text: "Duration:" }
-                    Text { 
-                        text: currentTrack.duration ? formatDuration(currentTrack.duration) : "--" 
-                    }
-                }
-                
-                // File path (small, for debug purposes)
-                Text {
-                    text: "File: " + (currentTrack.filePath || "--")
-                    font.pixelSize: 10
-                    color: "gray"
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    Layout.topMargin: 20
-                }
-                
-                // System information at the bottom
-                Text {
-                    text: SystemInfo.appName + " v" + SystemInfo.appVersion
-                    font.pixelSize: 10
-                    color: "gray"
-                    Layout.alignment: Qt.AlignRight
-                    Layout.topMargin: 20
-                }
+            
+            Component.onCompleted: {
+                console.log("NowPlayingPane added to Main.qml");
             }
         }
     }

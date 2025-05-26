@@ -16,6 +16,8 @@ find_package(Qt6 COMPONENTS Core Quick Qml Multimedia DBus Concurrent Widgets Sq
 find_package(PkgConfig REQUIRED) # Ensure PkgConfig is found
 # Use pkg-config for TagLib. This will define TAGLIB_LIBRARIES, TAGLIB_INCLUDE_DIRS, etc.
 pkg_check_modules(TAGLIB REQUIRED taglib)
+# Use pkg-config for GStreamer
+pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
 
 # Set Qt policies to suppress warnings and define behavior
 qt_policy(SET QTP0001 OLD) # Keep qrc:/ as the base for module resources unless overridden by URI
@@ -45,6 +47,8 @@ set(PROJECT_SOURCES
         src/backend/library/trackmodel.cpp
         src/backend/database/databasemanager.h
         src/backend/database/databasemanager.cpp
+        src/backend/playback/audioengine.h
+        src/backend/playback/audioengine.cpp
         src/backend/playback/mediaplayer.h
         src/backend/playback/mediaplayer.cpp
         src/backend/playback/playlist.h
@@ -63,6 +67,7 @@ qt_add_executable(mtoc_app
 target_include_directories(mtoc_app PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src # For our own headers
     ${TAGLIB_INCLUDE_DIRS} # Add TagLib include directories
+    ${GSTREAMER_INCLUDE_DIRS} # Add GStreamer include directories
 )
 
 target_link_libraries(mtoc_app
@@ -76,6 +81,7 @@ target_link_libraries(mtoc_app
     Qt6::Widgets
     Qt6::Sql
     ${TAGLIB_LIBRARIES} # Link against TagLib libraries
+    ${GSTREAMER_LIBRARIES} # Link against GStreamer libraries
 )
 
 qt_add_qml_module(mtoc

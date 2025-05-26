@@ -609,6 +609,11 @@ Item {
                                             root.selectedAlbum = modelData; // Update the root's selectedAlbum property
                                             albumBrowser.jumpToAlbum(modelData); // Jump to album in carousel
                                         }
+                                        onDoubleClicked: {
+                                            // Play the album on double-click
+                                            console.log("Album double-clicked:", modelData.albumArtist, "-", modelData.title);
+                                            MediaPlayer.playAlbumByName(modelData.albumArtist, modelData.title, 0);
+                                        }
                                     }
                                 }
                                 ScrollIndicator.vertical: ScrollIndicator { }
@@ -737,9 +742,24 @@ Item {
                             MouseArea {
                                 anchors.fill: parent
                                 onClicked: {
-                                    console.log("Track clicked: " + modelData.title);
-                                    // TODO: Implement play track functionality
-                                    // LibraryManager.playTrack(modelData.filePath or uniqueId);
+                                    trackListView.currentIndex = index;
+                                }
+                                onDoubleClicked: {
+                                    console.log("Track double-clicked:", modelData.title, "path:", modelData.filePath);
+                                    // Get the track object using the file path
+                                    var track = LibraryManager.trackByPath(modelData.filePath);
+                                    if (track) {
+                                        console.log("Track found, playing...");
+                                        // If we have a selected album, play the album starting from this track
+                                        if (root.selectedAlbum) {
+                                            MediaPlayer.playAlbumByName(root.selectedAlbum.albumArtist, root.selectedAlbum.title, index);
+                                        } else {
+                                            // Otherwise just play the single track
+                                            MediaPlayer.playTrack(track);
+                                        }
+                                    } else {
+                                        console.log("Track not found for path:", modelData.filePath);
+                                    }
                                 }
                             }
                         }

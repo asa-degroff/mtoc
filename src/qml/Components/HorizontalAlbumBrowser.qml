@@ -218,6 +218,10 @@ Item {
                                 listView.currentIndex = index
                                 root.albumClicked(modelData)
                             }
+                            onDoubleClicked: {
+                                // Play the album on double-click
+                                MediaPlayer.playAlbumByName(modelData.albumArtist, modelData.title, 0)
+                            }
                         }
                     }
                     
