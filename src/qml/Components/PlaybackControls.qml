@@ -44,14 +44,20 @@ Item {
                 id: previousButton
                 Layout.preferredWidth: 48
                 Layout.preferredHeight: 48
-                icon.name: "media-skip-backward"
-                icon.width: 24
-                icon.height: 24
                 onClicked: root.previousClicked()
+                
+                contentItem: Text {
+                    text: "⏮"
+                    font.pixelSize: 24
+                    color: "white"
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
                 
                 background: Rectangle {
                     radius: 24
-                    color: previousButton.down ? "#303030" : (previousButton.hovered ? "#282828" : "transparent")
+                    color: previousButton.down ? "white" : (previousButton.hovered ? "white" : "transparent")
+                    opacity: previousButton.down ? 0.2 : (previousButton.hovered ? 0.1 : 1.0)
                 }
             }
             
@@ -59,14 +65,24 @@ Item {
                 id: playPauseButton
                 Layout.preferredWidth: 56
                 Layout.preferredHeight: 56
-                icon.name: MediaPlayer.state === MediaPlayer.PlayingState ? "media-playback-pause" : "media-playback-start"
-                icon.width: 32
-                icon.height: 32
                 onClicked: root.playPauseClicked()
+                
+                contentItem: Item {
+                    Text {
+                        text: MediaPlayer.state === MediaPlayer.PlayingState ? "⏸" : "▶"
+                        font.pixelSize: MediaPlayer.state === MediaPlayer.PlayingState ? 28 : 24
+                        color: "white"
+                        anchors.centerIn: parent
+                        anchors.horizontalCenterOffset: MediaPlayer.state === MediaPlayer.PlayingState ? 0 : 2
+                    }
+                }
                 
                 background: Rectangle {
                     radius: 28
-                    color: playPauseButton.down ? "#404040" : (playPauseButton.hovered ? "#383838" : "#303030")
+                    color: playPauseButton.down ? "white" : (playPauseButton.hovered ? "white" : "transparent")
+                    opacity: playPauseButton.down ? 0.2 : (playPauseButton.hovered ? 0.1 : 1.0)
+                    border.color: "white"
+                    border.width: 2
                 }
             }
             
@@ -74,16 +90,22 @@ Item {
                 id: nextButton
                 Layout.preferredWidth: 48
                 Layout.preferredHeight: 48
-                icon.name: "media-skip-forward"
-                icon.width: 24
-                icon.height: 24
                 enabled: MediaPlayer.hasNext
                 onClicked: root.nextClicked()
                 
+                contentItem: Text {
+                    text: "⏭"
+                    font.pixelSize: 24
+                    color: "white"
+                    opacity: nextButton.enabled ? 1.0 : 0.3
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                
                 background: Rectangle {
                     radius: 24
-                    color: nextButton.down ? "#303030" : (nextButton.hovered ? "#282828" : "transparent")
-                    opacity: nextButton.enabled ? 1.0 : 0.3
+                    color: nextButton.down ? "white" : (nextButton.hovered ? "white" : "transparent")
+                    opacity: nextButton.enabled ? (nextButton.down ? 0.2 : (nextButton.hovered ? 0.1 : 1.0)) : 0.3
                 }
             }
             
