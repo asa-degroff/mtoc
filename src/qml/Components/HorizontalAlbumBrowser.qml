@@ -133,17 +133,19 @@ Item {
                     var centerX = listView.width / 2
                     var itemCenterX = x + width / 2 - listView.contentX
                     var distance = itemCenterX - centerX
-                    var threshold = 110  // Distance from center where rotation starts
-                    var deadZone = 5    // Small zone where rotation is exactly 0
+                    var absDistance = Math.abs(distance)
+                    var deadZone = 5      // Small zone where rotation is exactly 0
+                    var transitionEnd = 80 // Where smooth transition ends and fixed angle begins
                     
-                    if (Math.abs(distance) < deadZone) {
+                    if (absDistance < deadZone) {
                         // Dead zone - no rotation for perfectly centered album
                         return 0
-                    } else if (Math.abs(distance) < threshold) {
-                        // Smooth transition in the center area
-                        return -(distance / threshold) * 60
+                    } else if (absDistance < transitionEnd) {
+                        // Smooth transition from dead zone to fixed angle
+                        var normalizedDistance = (absDistance - deadZone) / (transitionEnd - deadZone)
+                        return distance > 0 ? -normalizedDistance * 60 : normalizedDistance * 60
                     } else {
-                        // Fixed angle for all albums outside the center
+                        // Fixed angle for all albums outside the transition zone
                         return distance > 0 ? -60 : 60
                     }
                 }
