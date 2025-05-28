@@ -158,9 +158,27 @@ Item {
                 
                 z: {
                     var absDistance = Math.abs(distanceFromCenter)
-                    // Center album has highest z-order, decreasing with distance
-                    // Max z-order is 100, min is around 0
-                    return Math.max(0, 100 - absDistance / 5)
+                    // Center album has highest z-order
+                    if (absDistance < 5) {
+                        return 1000  // Ensure center album is always on top
+                    }
+                    
+                    // Use index-based z-ordering to ensure consistent layering
+                    // The visual order should match the index order when viewed from the perspective
+                    var centerIndex = listView.currentIndex
+                    var indexDiff = index - centerIndex
+                    
+                    if (indexDiff === 0) {
+                        return 1000  // Center album
+                    } else if (indexDiff > 0) {
+                        // Albums to the right of center (higher index)
+                        // Closer to center = higher z-order
+                        return Math.max(0, 500 - indexDiff * 10)
+                    } else {
+                        // Albums to the left of center (lower index)
+                        // Closer to center = higher z-order
+                        return Math.max(0, 500 + indexDiff * 10)
+                    }
                 }
                 
                 transform: [
