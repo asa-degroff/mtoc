@@ -74,7 +74,7 @@ Item {
             anchors.bottomMargin: 30    // Bottom margin for reflection and info bar
             model: allAlbums
             orientation: ListView.Horizontal
-            spacing: -130
+            spacing: -150
             preferredHighlightBegin: width / 2 - 110
             preferredHighlightEnd: width / 2 + 110
             highlightRangeMode: ListView.StrictlyEnforceRange
@@ -129,24 +129,54 @@ Item {
                 width: 220
                 height: 340  // Height for album plus reflection
                 
+                property real horizontalOffset: {
+                    // Create extra spacing around the center album by pushing entire sides outward
+                    var centerIndex = listView.currentIndex
+                    var indexDiff = index - centerIndex
+                    var extraSpacing = 35  // Extra pixels of spacing on each side of center
+                    
+                    if (indexDiff === 0) {
+                        // Center album - no offset
+                        return 0
+                    } else if (indexDiff > 0) {
+                        // Albums to the right - push all of them right uniformly
+                        return extraSpacing
+                    } else {
+                        // Albums to the left - push all of them left uniformly
+                        return -extraSpacing
+                    }
+                }
+                
                 property real itemAngle: {
                     var centerX = listView.width / 2
                     var itemCenterX = x + width / 2 - listView.contentX
-                    var distance = itemCenterX - centerX
+                    // Calculate distance based on original position (before translation)
+                    var distance = itemCenterX - centerX - horizontalOffset
                     var absDistance = Math.abs(distance)
                     var deadZone = 5      // Small zone where rotation is exactly 0
                     var transitionEnd = 80 // Where smooth transition ends and fixed angle begins
+                    
+                    // For adjacent albums, we need to account for the extra spacing
+                    // They should rotate as if they're at their visual position, not their logical position
+                    // var centerIndex = listView.currentIndex
+                    // var indexDiff = index - centerIndex
                     
                     if (absDistance < deadZone) {
                         // Dead zone - no rotation for perfectly centered album
                         return 0
                     } else if (absDistance < transitionEnd) {
                         // Smooth transition from dead zone to fixed angle
-                        var normalizedDistance = (absDistance - deadZone) / (transitionEnd - deadZone)
-                        return distance > 0 ? -normalizedDistance * 60 : normalizedDistance * 60
+                        var normalizedDistance = (absDistance - deadZone) / (transitionEnd - deadZone) 
+                    // else if (Math.abs(indexDiff) === 1) {
+                    //     // Adjacent albums - use fixed angle immediately
+                    //     return indexDiff > 0 ? -65 : 65
+                    // } else if (absDistance < 80) {
+                    //     // Other albums in transition zone
+                    //     var normalizedDistance = (absDistance - deadZone) / (80 - deadZone)
+                        return distance > 0 ? -normalizedDistance * 65 : normalizedDistance * 65
                     } else {
                         // Fixed angle for all albums outside the transition zone
-                        return distance > 0 ? -60 : 60
+                        return distance > 0 ? -65 : 65
                     }
                 }
                 
@@ -181,7 +211,41 @@ Item {
                     }
                 }
                 
+                property real scaleAmount: {
+                    // Keep center album at full size, scale down others
+                    var absDistance = Math.abs(distanceFromCenter)
+                    if (absDistance < 5) {
+                        return 1.0  // Full size for center
+                    } else if (absDistance < 80) {
+                        // Smooth transition from full size to scaled down
+                        var normalizedDistance = (absDistance - 5) / 75
+                        return 1.0 - (0.05 * normalizedDistance)  // Scale down to 95%
+                    } else {
+                        return 0.95  // 5% smaller for distant albums
+                    }
+                }
+                
                 transform: [
+                    Translate {
+                        x: horizontalOffset
+                        
+                        Behavior on x {
+                            NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+                        }
+                    },
+                    Scale {
+                        origin.x: delegateItem.width / 2
+                        origin.y: delegateItem.height / 2
+                        xScale: scaleAmount
+                        yScale: scaleAmount
+                        
+                        Behavior on xScale {
+                            NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+                        }
+                        Behavior on yScale {
+                            NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+                        }
+                    },
                     Rotation {
                         origin.x: delegateItem.width / 2
                         origin.y: delegateItem.height / 2
