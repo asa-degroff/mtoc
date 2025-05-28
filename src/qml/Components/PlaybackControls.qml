@@ -142,28 +142,41 @@ Item {
                     x: progressSlider.leftPadding
                     y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
                     implicitWidth: 200
-                    implicitHeight: 4
+                    implicitHeight: 8
                     width: progressSlider.availableWidth
                     height: implicitHeight
-                    radius: 2
-                    color: "#202020"
+                    radius: 4
+                    color: "white"
+                    opacity: 0.2
                     
                     Rectangle {
                         width: progressSlider.visualPosition * parent.width
                         height: parent.height
-                        color: "#1db954"
-                        radius: 2
+                        color: "white"
+                        opacity: 0.6
+                        radius: 4
                     }
                 }
                 
                 handle: Rectangle {
                     x: progressSlider.leftPadding + progressSlider.visualPosition * (progressSlider.availableWidth - width)
                     y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
-                    implicitWidth: 12
-                    implicitHeight: 12
-                    radius: 6
-                    color: progressSlider.pressed ? "#1ed760" : "#ffffff"
+                    implicitWidth: 16
+                    implicitHeight: 16
+                    radius: 8
+                    color: "white"
+                    opacity: progressSlider.pressed ? 1.0 : 0.8
                     visible: progressSlider.hovered || progressSlider.pressed
+                    
+                    // Inner glow effect
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: parent.width - 4
+                        height: parent.height - 4
+                        radius: (width / 2)
+                        color: "white"
+                        opacity: 0.3
+                    }
                 }
             }
             
