@@ -5,7 +5,7 @@ import Mtoc.Backend 1.0
 
 Item {
     id: root
-    height: 200
+    height: 320
     
     property var selectedAlbum: null
     property int currentIndex: -1
@@ -74,9 +74,9 @@ Item {
             anchors.bottomMargin: 30    // Bottom margin for reflection and info bar
             model: allAlbums
             orientation: ListView.Horizontal
-            spacing: -80
-            preferredHighlightBegin: width / 2 - 70
-            preferredHighlightEnd: width / 2 + 70
+            spacing: -130
+            preferredHighlightBegin: width / 2 - 110
+            preferredHighlightEnd: width / 2 + 110
             highlightRangeMode: ListView.StrictlyEnforceRange
             highlightMoveDuration: 500  // Smooth animation duration
             currentIndex: root.currentIndex
@@ -126,16 +126,20 @@ Item {
             
             delegate: Item {
                 id: delegateItem
-                width: 140
-                height: 220  // Height for album plus reflection
+                width: 220
+                height: 340  // Height for album plus reflection
                 
                 property real itemAngle: {
                     var centerX = listView.width / 2
                     var itemCenterX = x + width / 2 - listView.contentX
                     var distance = itemCenterX - centerX
-                    var threshold = 70  // Distance from center where rotation starts
+                    var threshold = 110  // Distance from center where rotation starts
+                    var deadZone = 5    // Small zone where rotation is exactly 0
                     
-                    if (Math.abs(distance) < threshold) {
+                    if (Math.abs(distance) < deadZone) {
+                        // Dead zone - no rotation for perfectly centered album
+                        return 0
+                    } else if (Math.abs(distance) < threshold) {
                         // Smooth transition in the center area
                         return -(distance / threshold) * 60
                     } else {
@@ -171,16 +175,20 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.top: parent.top
                     anchors.topMargin: 10  // Small margin to shift the album view up
-                    width: 140
-                    height: 200  // Height for album + reflection
+                    width: 220
+                    height: 310  // Height for album + reflection
+                    
+                    // Enable layer rendering for better antialiasing during rotation
+                    layer.enabled: true
+                    layer.smooth: true // smoothing the layer looks better than smoothing the image
                     
                     Item {
                         id: albumContainer
                         anchors.top: parent.top
                         anchors.horizontalCenter: parent.horizontalCenter
-                        width: 140
-                        height: 140
-                        
+                        width: 200
+                        height: 200
+                            
                         Image {
                             id: albumImage
                             anchors.fill: parent
@@ -188,18 +196,17 @@ Item {
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
                             antialiasing: true
-                            smooth: true
-                            
-                            Rectangle {
-                                anchors.fill: parent
-                                color: "#444444"
-                                visible: parent.status !== Image.Ready
-                                
-                                Label {
-                                    anchors.centerIn: parent
-                                    text: "♪"
-                                    font.pixelSize: 48
-                                    color: "#666666"
+                        
+                                Rectangle {
+                                    anchors.fill: parent
+                                    color: "#444444"
+                                    visible: parent.status !== Image.Ready
+                                    
+                                    Label {
+                                        anchors.centerIn: parent
+                                        text: "♪"
+                                        font.pixelSize: 48
+                                        color: "#666666"
                                 }
                             }
                         }
@@ -232,7 +239,7 @@ Item {
                         anchors.topMargin: 2
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: albumContainer.width
-                        height: 60
+                        height: 90
                         
                         // The reflection itself
                         ShaderEffectSource {

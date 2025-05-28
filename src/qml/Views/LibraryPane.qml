@@ -364,7 +364,7 @@ Item {
         HorizontalAlbumBrowser {
             id: albumBrowser
             Layout.fillWidth: true
-            Layout.preferredHeight: 260  // Height for albums with reflections
+            Layout.preferredHeight: 360  // Height for albums with reflections
             
             onAlbumClicked: function(album) {
                 root.selectedAlbum = album
