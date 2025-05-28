@@ -130,12 +130,33 @@ Item {
                 Layout.fillWidth: true
                 from: 0
                 to: MediaPlayer.duration
-                value: MediaPlayer.position
+                
+                property real targetValue: 0
+                property bool isSeeking: false
+                
+                value: isSeeking ? targetValue : MediaPlayer.position
                 
                 onPressedChanged: {
-                    if (!pressed && value !== MediaPlayer.position) {
-                        root.seekRequested(value)
+                    if (pressed) {
+                        isSeeking = true
+                        targetValue = value
+                    } else if (isSeeking) {
+                        root.seekRequested(targetValue)
+                        // Keep isSeeking true briefly to prevent snap-back
+                        seekDelayTimer.start()
                     }
+                }
+                
+                onMoved: {
+                    if (pressed) {
+                        targetValue = value
+                    }
+                }
+                
+                Timer {
+                    id: seekDelayTimer
+                    interval: 100
+                    onTriggered: progressSlider.isSeeking = false
                 }
                 
                 background: Rectangle {
