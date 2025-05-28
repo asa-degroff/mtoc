@@ -130,49 +130,39 @@ Item {
                 height: 340  // Height for album plus reflection
                 
                 property real horizontalOffset: {
-                    // Create extra spacing around the center album by pushing entire sides outward
-                    var centerIndex = listView.currentIndex
-                    var indexDiff = index - centerIndex
+                    // Apply spacing only after rotation is mostly complete
+                    var centerX = listView.width / 2
+                    var itemCenterX = x + width / 2 - listView.contentX
+                    var distance = itemCenterX - centerX
+                    var absDistance = Math.abs(distance)
+                    var spacingThreshold = 60  // Start spacing when rotation is mostly done
                     var extraSpacing = 35  // Extra pixels of spacing on each side of center
                     
-                    if (indexDiff === 0) {
-                        // Center album - no offset
+                    if (absDistance < spacingThreshold) {
+                        // No spacing near center while rotating
                         return 0
-                    } else if (indexDiff > 0) {
-                        // Albums to the right - push all of them right uniformly
-                        return extraSpacing
                     } else {
-                        // Albums to the left - push all of them left uniformly
-                        return -extraSpacing
+                        // Smooth transition to full spacing
+                        var normalizedDistance = Math.min(1, (absDistance - spacingThreshold) / 20)
+                        var spacing = extraSpacing * normalizedDistance
+                        return distance > 0 ? spacing : -spacing
                     }
                 }
                 
                 property real itemAngle: {
                     var centerX = listView.width / 2
                     var itemCenterX = x + width / 2 - listView.contentX
-                    // Calculate distance based on original position (before translation)
-                    var distance = itemCenterX - centerX - horizontalOffset
+                    var distance = itemCenterX - centerX
                     var absDistance = Math.abs(distance)
                     var deadZone = 5      // Small zone where rotation is exactly 0
                     var transitionEnd = 80 // Where smooth transition ends and fixed angle begins
-                    
-                    // For adjacent albums, we need to account for the extra spacing
-                    // They should rotate as if they're at their visual position, not their logical position
-                    // var centerIndex = listView.currentIndex
-                    // var indexDiff = index - centerIndex
                     
                     if (absDistance < deadZone) {
                         // Dead zone - no rotation for perfectly centered album
                         return 0
                     } else if (absDistance < transitionEnd) {
                         // Smooth transition from dead zone to fixed angle
-                        var normalizedDistance = (absDistance - deadZone) / (transitionEnd - deadZone) 
-                    // else if (Math.abs(indexDiff) === 1) {
-                    //     // Adjacent albums - use fixed angle immediately
-                    //     return indexDiff > 0 ? -65 : 65
-                    // } else if (absDistance < 80) {
-                    //     // Other albums in transition zone
-                    //     var normalizedDistance = (absDistance - deadZone) / (80 - deadZone)
+                        var normalizedDistance = (absDistance - deadZone) / (transitionEnd - deadZone)
                         return distance > 0 ? -normalizedDistance * 65 : normalizedDistance * 65
                     } else {
                         // Fixed angle for all albums outside the transition zone
