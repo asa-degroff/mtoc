@@ -130,22 +130,35 @@ Item {
                 height: 340  // Height for album plus reflection
                 
                 property real horizontalOffset: {
-                    // Apply spacing only after rotation is mostly complete
                     var centerX = listView.width / 2
                     var itemCenterX = x + width / 2 - listView.contentX
                     var distance = itemCenterX - centerX
                     var absDistance = Math.abs(distance)
-                    var spacingThreshold = 60  // Start spacing when rotation is mostly done
-                    var extraSpacing = 35  // Extra pixels of spacing on each side of center
                     
-                    if (absDistance < spacingThreshold) {
-                        // No spacing near center while rotating
-                        return 0
+                    // Phase 1: Small slide in dead zone (0-20px)
+                    var slideDeadZone = 20
+                    var phase1Spacing = 50  // Significantly increased initial slide amount
+                    
+                    // Phase 3: Additional slide after rotation (60-80px)
+                    var phase3Start = 60
+                    var phase3End = 80
+                    var phase3Spacing = 40  // Increased additional spacing
+                    
+                    if (absDistance < slideDeadZone) {
+                        // Phase 1: Proportional slide in dead zone
+                        var phase1Progress = absDistance / slideDeadZone
+                        return distance > 0 ? phase1Spacing * phase1Progress : -phase1Spacing * phase1Progress
+                    } else if (absDistance < phase3Start) {
+                        // Phase 2: Maintain slide during rotation
+                        return distance > 0 ? phase1Spacing : -phase1Spacing
+                    } else if (absDistance < phase3End) {
+                        // Phase 3: Additional slide after rotation
+                        var phase3Progress = (absDistance - phase3Start) / (phase3End - phase3Start)
+                        var totalSpacing = phase1Spacing + (phase3Spacing * phase3Progress)
+                        return distance > 0 ? totalSpacing : -totalSpacing
                     } else {
-                        // Smooth transition to full spacing
-                        var normalizedDistance = Math.min(1, (absDistance - spacingThreshold) / 20)
-                        var spacing = extraSpacing * normalizedDistance
-                        return distance > 0 ? spacing : -spacing
+                        // Final spacing
+                        return distance > 0 ? (phase1Spacing + phase3Spacing) : -(phase1Spacing + phase3Spacing)
                     }
                 }
                 
@@ -154,18 +167,18 @@ Item {
                     var itemCenterX = x + width / 2 - listView.contentX
                     var distance = itemCenterX - centerX
                     var absDistance = Math.abs(distance)
-                    var deadZone = 5      // Small zone where rotation is exactly 0
-                    var transitionEnd = 80 // Where smooth transition ends and fixed angle begins
+                    var slideDeadZone = 20  // Dead zone for sliding only
+                    var rotationEnd = 60    // Where rotation completes
                     
-                    if (absDistance < deadZone) {
-                        // Dead zone - no rotation for perfectly centered album
+                    if (absDistance < slideDeadZone) {
+                        // Dead zone - no rotation, only sliding
                         return 0
-                    } else if (absDistance < transitionEnd) {
-                        // Smooth transition from dead zone to fixed angle
-                        var normalizedDistance = (absDistance - deadZone) / (transitionEnd - deadZone)
+                    } else if (absDistance < rotationEnd) {
+                        // Smooth rotation after dead zone
+                        var normalizedDistance = (absDistance - slideDeadZone) / (rotationEnd - slideDeadZone)
                         return distance > 0 ? -normalizedDistance * 65 : normalizedDistance * 65
                     } else {
-                        // Fixed angle for all albums outside the transition zone
+                        // Fixed angle for all albums outside the rotation zone
                         return distance > 0 ? -65 : 65
                     }
                 }
@@ -202,16 +215,28 @@ Item {
                 }
                 
                 property real scaleAmount: {
-                    // Keep center album at full size, scale down others
+                    // Scale to enhance perspective illusion with rotation
                     var absDistance = Math.abs(distanceFromCenter)
-                    if (absDistance < 5) {
-                        return 1.0  // Full size for center
-                    } else if (absDistance < 80) {
-                        // Smooth transition from full size to scaled down
-                        var normalizedDistance = (absDistance - 5) / 75
-                        return 1.0 - (0.05 * normalizedDistance)  // Scale down to 95%
+                    var slideDeadZone = 20
+                    var scaleEnd = 60
+                    
+                    // Calculate perspective-corrected scale based on rotation angle
+                    var rotationFactor = Math.abs(itemAngle) / 65  // 0 to 1 based on rotation
+                    
+                    if (absDistance < slideDeadZone) {
+                        // Slight scale down even in dead zone for smooth transition
+                        var deadZoneProgress = absDistance / slideDeadZone
+                        return 1.0 - (0.02 * deadZoneProgress)  // Up to 2% smaller
+                    } else if (absDistance < scaleEnd) {
+                        // Scale down during rotation
+                        var normalizedDistance = (absDistance - slideDeadZone) / (scaleEnd - slideDeadZone)
+                        // Combine distance-based and rotation-based scaling
+                        var distanceScale = 0.08 * normalizedDistance  // Up to 8% from distance
+                        var rotationScale = 0.05 * rotationFactor      // Up to 5% from rotation
+                        return 1.0 - distanceScale - rotationScale
                     } else {
-                        return 0.95  // 5% smaller for distant albums
+                        // Fixed scale for fully rotated albums - more subtle depth
+                        return 0.85  // 15% smaller for rotated albums (changed from 25%)
                     }
                 }
                 
@@ -237,10 +262,26 @@ Item {
                         }
                     },
                     Rotation {
-                        origin.x: delegateItem.width / 2
+                        // Asymmetric rotation axis - 1/10 from the "front" edge
+                        origin.x: {
+                            if (distanceFromCenter > 0) {
+                                // Moving right
+                                return delegateItem.width * 0.75
+                            } else if (distanceFromCenter < 0) {
+                                // Moving left
+                                return delegateItem.width * 0.25
+                            } else {
+                                // Center - default to middle
+                                return delegateItem.width / 2
+                            }
+                        }
                         origin.y: delegateItem.height / 2
                         axis { x: 0; y: 1; z: 0 }
                         angle: itemAngle
+                        
+                        Behavior on angle {
+                            NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+                        }
                     }
                 ]
                 
