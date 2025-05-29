@@ -74,7 +74,7 @@ Item {
             anchors.bottomMargin: 30    // Bottom margin for reflection and info bar
             model: allAlbums
             orientation: ListView.Horizontal
-            spacing: -150
+            spacing: -165
             preferredHighlightBegin: width / 2 - 110
             preferredHighlightEnd: width / 2 + 110
             highlightRangeMode: ListView.StrictlyEnforceRange
@@ -167,7 +167,7 @@ Item {
                     var itemCenterX = x + width / 2 - listView.contentX
                     var distance = itemCenterX - centerX
                     var absDistance = Math.abs(distance)
-                    var slideDeadZone = 20  // Dead zone for sliding only
+                    var slideDeadZone = 10  // Dead zone for sliding only
                     var rotationEnd = 60    // Where rotation completes
                     
                     if (absDistance < slideDeadZone) {
@@ -278,10 +278,6 @@ Item {
                         origin.y: delegateItem.height / 2
                         axis { x: 0; y: 1; z: 0 }
                         angle: itemAngle
-                        
-                        Behavior on angle {
-                            NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
-                        }
                     }
                 ]
                 
