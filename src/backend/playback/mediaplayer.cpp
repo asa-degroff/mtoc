@@ -20,7 +20,11 @@ MediaPlayer::MediaPlayer(QObject *parent)
     }
 }
 
-MediaPlayer::~MediaPlayer() = default;
+MediaPlayer::~MediaPlayer()
+{
+    // Clean up any remaining tracks in the queue
+    clearQueue();
+}
 
 void MediaPlayer::setupConnections()
 {
@@ -299,10 +303,14 @@ void MediaPlayer::playTrackFromData(const QVariant& trackData)
     track->setDuration(trackMap.value("duration").toInt());
     track->setFileUrl(QUrl::fromLocalFile(filePath));
     
+    // Add to queue so it gets cleaned up properly
+    m_playbackQueue.append(track);
+    m_currentQueueIndex = 0;
+    
     // Play the single track
     playTrack(track);
     
-    // Clean up will happen when clearQueue is called next time
+    emit playbackQueueChanged();
 }
 
 void MediaPlayer::updateCurrentTrack(Mtoc::Track* track)
