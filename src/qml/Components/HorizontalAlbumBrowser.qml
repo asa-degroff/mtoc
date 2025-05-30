@@ -353,6 +353,7 @@ Item {
                             id: reflection
                             anchors.fill: parent
                             sourceItem: albumContainer
+                            sourceRect: Qt.rect(0, 0, albumContainer.width, 90)
                             transform: [
                                 Scale {
                                     yScale: -1
