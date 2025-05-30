@@ -357,7 +357,8 @@ Item {
                             id: reflection
                             anchors.fill: parent
                             sourceItem: albumContainer
-                            sourceRect: Qt.rect(0, 0, albumContainer.width, 90)
+                            // Capture the bottom portion of the album for reflection
+                            sourceRect: Qt.rect(0, albumContainer.height - 90, albumContainer.width, 90)
                             transform: [
                                 Scale {
                                     yScale: -1
