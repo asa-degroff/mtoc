@@ -78,7 +78,7 @@ Item {
             preferredHighlightBegin: width / 2 - 110
             preferredHighlightEnd: width / 2 + 110
             highlightRangeMode: ListView.StrictlyEnforceRange
-            highlightMoveDuration: 500  // Smooth animation duration
+            highlightMoveDuration: 200  // Smooth animation duration
             currentIndex: root.currentIndex
             clip: false                 // Disable clipping to allow rotated albums to show
             maximumFlickVelocity: 1500  // Limit scroll speed
@@ -243,10 +243,6 @@ Item {
                 transform: [
                     Translate {
                         x: horizontalOffset
-                        
-                        Behavior on x {
-                            NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
-                        }
                     },
                     Scale {
                         origin.x: delegateItem.width / 2
@@ -255,10 +251,10 @@ Item {
                         yScale: scaleAmount
                         
                         Behavior on xScale {
-                            NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+                            NumberAnimation { duration: 300; easing.type: Easing.OutExpo }
                         }
                         Behavior on yScale {
-                            NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+                            NumberAnimation { duration: 300; easing.type: Easing.OutExpo }
                         }
                     },
                     Rotation {
