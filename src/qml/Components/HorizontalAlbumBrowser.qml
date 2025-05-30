@@ -105,12 +105,16 @@ Item {
                     wheel.accepted = true
                 }
                 onPressed: function(mouse) {
+                    // Ensure ListView has focus when clicked
+                    listView.forceActiveFocus()
                     mouse.accepted = false  // Let click events through to delegates
                 }
             }
             
             // Keyboard navigation
             focus: true
+            activeFocusOnTab: true
+            
             Keys.onLeftPressed: listView.decrementCurrentIndex()
             Keys.onRightPressed: listView.incrementCurrentIndex()
             Keys.onSpacePressed: {

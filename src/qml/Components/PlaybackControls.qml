@@ -131,6 +131,9 @@ Item {
                 from: 0
                 to: MediaPlayer.duration
                 
+                // Prevent keyboard focus to avoid arrow key conflicts
+                focusPolicy: Qt.NoFocus
+                
                 property real targetValue: 0
                 property bool isSeeking: false
                 
