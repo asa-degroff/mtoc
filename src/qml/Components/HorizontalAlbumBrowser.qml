@@ -33,15 +33,15 @@ Item {
             albums.push(sourceAlbums[i])
         }
         
-        // Sort albums by artist first, then by year within each artist
+        // Sort albums by artist first, then by year (descending) within each artist
         albums.sort(function(a, b) {
             // First compare by album artist
             var artistCompare = a.albumArtist.localeCompare(b.albumArtist)
             if (artistCompare !== 0) {
                 return artistCompare
             }
-            // If same artist, sort by year
-            return (a.year || 0) - (b.year || 0)
+            // If same artist, sort by year descending (newest first)
+            return (b.year || 0) - (a.year || 0)
         })
         
         allAlbums = albums
