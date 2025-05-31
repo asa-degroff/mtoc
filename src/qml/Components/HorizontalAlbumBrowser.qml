@@ -85,6 +85,35 @@ Item {
             flickDeceleration: 3000     // Faster deceleration
             boundsBehavior: Flickable.StopAtBounds  // Ensure we can reach the bounds
             
+            property int predictedIndex: -1
+            property bool isPredicting: false
+            
+            onFlickStarted: {
+                // Calculate where we'll end up based on velocity and deceleration
+                var velocity = horizontalVelocity
+                var deceleration = flickDeceleration
+                var currentPos = contentX
+                
+                // Physics calculation: distance = velocity²/(2*deceleration)
+                var distance = (velocity * Math.abs(velocity)) / (2 * deceleration)
+                var predictedContentX = currentPos - distance
+                
+                // Calculate which index this corresponds to
+                var itemWidth = 220 + spacing // 220 - 165 = 55 effective width per item
+                var centerOffset = width / 2 - 110
+                var predictedCenterX = predictedContentX + centerOffset
+                var rawIndex = Math.round(predictedCenterX / itemWidth)
+                
+                // Clamp to valid range
+                predictedIndex = Math.max(0, Math.min(allAlbums.length - 1, rawIndex))
+                isPredicting = true
+            }
+            
+            onMovementEnded: {
+                isPredicting = false
+                predictedIndex = -1
+            }
+            
             onCurrentIndexChanged: {
                 if (currentIndex >= 0 && currentIndex < allAlbums.length) {
                     root.currentIndex = currentIndex
@@ -219,6 +248,11 @@ Item {
                 }
                 
                 property real scaleAmount: {
+                    // If this is the predicted destination, start scaling up early
+                    if (listView.isPredicting && index === listView.predictedIndex) {
+                        return 1.0  // Full size for predicted destination
+                    }
+                    
                     // Scale to enhance perspective illusion with rotation
                     var absDistance = Math.abs(distanceFromCenter)
                     var slideDeadZone = 20
@@ -255,10 +289,16 @@ Item {
                         yScale: scaleAmount
                         
                         Behavior on xScale {
-                            NumberAnimation { duration: 300; easing.type: Easing.OutExpo }
+                            NumberAnimation {
+                                duration: listView.isPredicting && index === listView.predictedIndex ? 150 : 300
+                                easing.type: Easing.OutCubic 
+                            }
                         }
                         Behavior on yScale {
-                            NumberAnimation { duration: 300; easing.type: Easing.OutExpo }
+                            NumberAnimation { 
+                                duration: listView.isPredicting && index === listView.predictedIndex ? 150 : 300
+                                easing.type: Easing.OutCubic 
+                            }
                         }
                     },
                     Rotation {
