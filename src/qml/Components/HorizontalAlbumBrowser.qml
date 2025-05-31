@@ -88,6 +88,8 @@ Item {
             property int predictedIndex: -1
             property bool isPredicting: false
             
+            // Predictive approach - commented out for now
+            /*
             onFlickStarted: {
                 // Calculate where we'll end up based on velocity and deceleration
                 var velocity = horizontalVelocity
@@ -113,7 +115,7 @@ Item {
                 isPredicting = false
                 predictedIndex = -1
             }
-            
+            */            
             onCurrentIndexChanged: {
                 if (currentIndex >= 0 && currentIndex < allAlbums.length) {
                     root.currentIndex = currentIndex
@@ -290,13 +292,15 @@ Item {
                         
                         Behavior on xScale {
                             NumberAnimation {
-                                duration: listView.isPredicting && index === listView.predictedIndex ? 150 : 300
+                                //duration: listView.isPredicting && index === listView.predictedIndex ? 150 : 300
+                                duration: 300
                                 easing.type: Easing.OutCubic 
                             }
                         }
                         Behavior on yScale {
                             NumberAnimation { 
-                                duration: listView.isPredicting && index === listView.predictedIndex ? 150 : 300
+                                //duration: listView.isPredicting && index === listView.predictedIndex ? 150 : 300
+                                duration: 300
                                 easing.type: Easing.OutCubic 
                             }
                         }
