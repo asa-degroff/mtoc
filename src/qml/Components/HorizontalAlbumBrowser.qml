@@ -19,7 +19,7 @@ Item {
     
     Connections {
         target: LibraryManager
-        function onAlbumModelChanged() {
+        function onLibraryChanged() {
             loadAllAlbums()
         }
     }

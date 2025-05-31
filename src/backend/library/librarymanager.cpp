@@ -319,8 +319,11 @@ void LibraryManager::scanInBackground()
         
         // Find all music files
         QStringList allFiles;
+        qDebug() << "Scanning music folders:" << m_musicFolders;
         for (const QString &folder : m_musicFolders) {
-            allFiles.append(findMusicFiles(folder));
+            QStringList filesInFolder = findMusicFiles(folder);
+            qDebug() << "Found" << filesInFolder.size() << "files in" << folder;
+            allFiles.append(filesInFolder);
             
             if (m_cancelRequested) {
                 break;
@@ -329,6 +332,9 @@ void LibraryManager::scanInBackground()
         
         m_totalFilesToScan = allFiles.size();
         qDebug() << "Found" << m_totalFilesToScan << "music files to scan";
+        if (m_totalFilesToScan > 0) {
+            qDebug() << "First few files found:" << allFiles.mid(0, 5);
+        }
         
         // Create a single metadata extractor for this thread
         Mtoc::MetadataExtractor threadExtractor;
@@ -351,9 +357,14 @@ void LibraryManager::scanInBackground()
                 QSqlQuery checkQuery(db);
                 checkQuery.prepare("SELECT 1 FROM tracks WHERE file_path = :path LIMIT 1");
                 checkQuery.bindValue(":path", filePath);
-                if (checkQuery.exec() && checkQuery.next()) {
+                if (!checkQuery.exec()) {
+                    qWarning() << "Failed to check track existence:" << checkQuery.lastError().text();
+                } else if (checkQuery.next()) {
+                    // qDebug() << "Track already exists in database, skipping:" << filePath;
                     m_filesScanned++;
                     continue;
+                } else {
+                    // Track not in database, will process
                 }
             }
             
@@ -416,11 +427,25 @@ void LibraryManager::scanInBackground()
             }
         }
         
+        // Process any remaining items in the batch
+        if (!batchMetadata.isEmpty() && !m_cancelRequested) {
+            qDebug() << "Processing final batch with" << batchMetadata.size() << "tracks";
+            for (const QVariantMap &metadata : batchMetadata) {
+                if (m_cancelRequested) {
+                    break;
+                }
+                insertTrackInThread(db, metadata);
+            }
+            batchMetadata.clear();
+        }
+        
         // Commit the transaction if not cancelled
         if (!m_cancelRequested) {
             QSqlQuery commitQuery(db);
             if (!commitQuery.exec("COMMIT")) {
                 qWarning() << "Failed to commit database transaction:" << commitQuery.lastError().text();
+            } else {
+                qDebug() << "Successfully committed database transaction";
             }
         } else {
             // Rollback if cancelled
@@ -466,6 +491,7 @@ void LibraryManager::onScanFinished()
     
     // Invalidate cache after scan
     m_albumModelCacheValid = false;
+    qDebug() << "Album model cache invalidated after scan";
     
     // Use queued connections to ensure signals are emitted from main thread
     QMetaObject::invokeMethod(this, "scanningChanged", Qt::QueuedConnection);
