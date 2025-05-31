@@ -611,7 +611,6 @@ Item {
                                         }
                                         onDoubleClicked: {
                                             // Play the album on double-click
-                                            console.log("Album double-clicked:", modelData.albumArtist, "-", modelData.title);
                                             MediaPlayer.playAlbumByName(modelData.albumArtist, modelData.title, 0);
                                         }
                                     }
@@ -745,8 +744,6 @@ Item {
                                     trackListView.currentIndex = index;
                                 }
                                 onDoubleClicked: {
-                                    console.log("Track double-clicked:", modelData.title, "path:", modelData.filePath);
-                                    
                                     // If we have a selected album, play the album starting from this track
                                     if (root.selectedAlbum) {
                                         MediaPlayer.playAlbumByName(root.selectedAlbum.albumArtist, root.selectedAlbum.title, index);

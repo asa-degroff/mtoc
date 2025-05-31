@@ -261,7 +261,6 @@ void MediaPlayer::playAlbumByName(const QString& artist, const QString& title, i
             track->setDuration(trackMap.value("duration").toInt());
             track->setFileUrl(QUrl::fromLocalFile(filePath));
             
-            qDebug() << "Created track object for:" << title << "path:" << filePath;
             m_playbackQueue.append(track);
         }
         

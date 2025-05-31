@@ -12,9 +12,6 @@ Item {
     property url albumArtUrl: ""
     property url thumbnailUrl: ""
     
-    Component.onCompleted: {
-        console.log("NowPlayingPane loaded");
-    }
     
     // Temporary debug rectangle
     Rectangle {
@@ -37,7 +34,6 @@ Item {
                     var encodedAlbum = encodeURIComponent(track.album)
                     albumArtUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/full"
                     thumbnailUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/thumbnail"
-                    console.log("Album art updated for:", track.albumArtist, "-", track.album);
                 }
             } else {
                 currentAlbumId = ""
