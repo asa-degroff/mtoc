@@ -474,10 +474,24 @@ Item {
                                 }
                                 // Add an indicator for expansion (e.g., chevron)
                                 Label {
-                                    text: albumsVisible ? "\u25BC" : "\u25B6" // Down/Right arrow
+                                    id: chevronLabel
+                                    text: "\u203A" // Right-pointing chevron
                                     color: "white"
-                                    font.pixelSize: 12
+                                    font.pixelSize: 16
                                     Layout.rightMargin: 10 // Space to avoid scrollbar overlap
+                                    
+                                    transform: Rotation {
+                                        origin.x: chevronLabel.width / 2  // Center based on actual width
+                                        origin.y: chevronLabel.height / 2  // Center based on actual height
+                                        angle: albumsVisible ? 90 : 0  // Rotate 90 degrees when expanded
+                                        
+                                        Behavior on angle {
+                                            NumberAnimation {
+                                                duration: 200
+                                                easing.type: Easing.InOutQuad
+                                            }
+                                        }
+                                    }
                                 }
                             }
 
