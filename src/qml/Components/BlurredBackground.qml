@@ -14,7 +14,7 @@ Item {
         anchors.fill: parent
         fillMode: Image.PreserveAspectCrop
         visible: false
-        cache: false
+        cache: true  // Enable caching to avoid reloading
         asynchronous: true
     }
     

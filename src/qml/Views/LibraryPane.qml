@@ -35,13 +35,16 @@ Item {
             rightPane.albumTitleText = selectedAlbum.albumArtist + " - " + selectedAlbum.title;
             
             // Update the thumbnail URL for the background when an album is selected
-            if (selectedAlbum.hasArt) {
+            // Only update if not currently playing or if this is the playing album
+            if (selectedAlbum.hasArt && (!MediaPlayer.currentTrack || 
+                (MediaPlayer.currentTrack.albumArtist === selectedAlbum.albumArtist && 
+                 MediaPlayer.currentTrack.album === selectedAlbum.title))) {
                 thumbnailUrl = "image://albumart/" + selectedAlbum.id + "/thumbnail";
-                console.log("LibraryPane: Set thumbnailUrl from selected album:", thumbnailUrl);
             }
         } else {
             rightPane.currentAlbumTracks = [];
             rightPane.albumTitleText = "No album selected";
+            // Don't clear thumbnailUrl here - let MediaPlayer control it when playing
         }
     }
     
@@ -54,17 +57,16 @@ Item {
                 var newAlbumId = track.albumArtist + "_" + track.album
                 if (newAlbumId !== currentAlbumId) {
                     currentAlbumId = newAlbumId
+                    // Use encoded format for the URLs to avoid iteration issues
                     var encodedArtist = encodeURIComponent(track.albumArtist)
                     var encodedAlbum = encodeURIComponent(track.album)
                     albumArtUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/full"
                     thumbnailUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/thumbnail"
-                    console.log("LibraryPane: Updated thumbnailUrl to:", thumbnailUrl)
                 }
             } else {
                 currentAlbumId = ""
                 albumArtUrl = ""
                 thumbnailUrl = ""
-                console.log("LibraryPane: Cleared thumbnailUrl")
             }
         }
     }
@@ -372,6 +374,7 @@ Item {
     Item {
         anchors.fill: parent
         z: -2  // Put this behind the dark overlay
+        visible: thumbnailUrl !== ""
         
         // Horizontal flip transform
         transform: Scale {
@@ -380,6 +383,7 @@ Item {
         }
         
         BlurredBackground {
+            id: blurredBg
             anchors.fill: parent
             source: thumbnailUrl
             blurRadius: 80
