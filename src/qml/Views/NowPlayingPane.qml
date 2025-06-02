@@ -71,7 +71,7 @@ Item {
             Image {
                 id: albumArt
                 anchors.centerIn: parent
-                width: parent.width * 0.7
+                width: parent.width * 0.9
                 height: parent.height
                 source: albumArtUrl
                 fillMode: Image.PreserveAspectFit

@@ -3,6 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import Qt.labs.platform 1.1
 import QtQuick.Effects
+import Qt5Compat.GraphicalEffects
 import Mtoc.Backend 1.0
 import "../Components"
 
@@ -11,9 +12,19 @@ Item {
     width: parent.width
     height: parent.height
     
+    // Ensure we have a dark background as a base
+    Rectangle {
+        anchors.fill: parent
+        color: "#1a1a1a"
+        z: -3  // Behind everything else
+    }
+    
     property var selectedAlbum: null
     property var expandedArtists: ({})  // Object to store expansion state by artist name
     property string highlightedArtist: ""  // Track which artist to highlight
+    property string currentAlbumId: ""
+    property url albumArtUrl: ""
+    property url thumbnailUrl: ""
 
     onSelectedAlbumChanged: {
         // console.log("Selected album changed to: " + (selectedAlbum ? selectedAlbum.title : "none"));
@@ -22,9 +33,39 @@ Item {
             var tracks = LibraryManager.getTracksForAlbumAsVariantList(selectedAlbum.albumArtist, selectedAlbum.title);
             rightPane.currentAlbumTracks = tracks;
             rightPane.albumTitleText = selectedAlbum.albumArtist + " - " + selectedAlbum.title;
+            
+            // Update the thumbnail URL for the background when an album is selected
+            if (selectedAlbum.hasArt) {
+                thumbnailUrl = "image://albumart/" + selectedAlbum.id + "/thumbnail";
+                console.log("LibraryPane: Set thumbnailUrl from selected album:", thumbnailUrl);
+            }
         } else {
             rightPane.currentAlbumTracks = [];
             rightPane.albumTitleText = "No album selected";
+        }
+    }
+    
+    // Update album art URLs when track changes
+    Connections {
+        target: MediaPlayer
+        
+        function onCurrentTrackChanged(track) {
+            if (track && track.album && track.albumArtist) {
+                var newAlbumId = track.albumArtist + "_" + track.album
+                if (newAlbumId !== currentAlbumId) {
+                    currentAlbumId = newAlbumId
+                    var encodedArtist = encodeURIComponent(track.albumArtist)
+                    var encodedAlbum = encodeURIComponent(track.album)
+                    albumArtUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/full"
+                    thumbnailUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/thumbnail"
+                    console.log("LibraryPane: Updated thumbnailUrl to:", thumbnailUrl)
+                }
+            } else {
+                currentAlbumId = ""
+                albumArtUrl = ""
+                thumbnailUrl = ""
+                console.log("LibraryPane: Cleared thumbnailUrl")
+            }
         }
     }
     
@@ -325,6 +366,33 @@ Item {
             }
             }
         }
+    }
+    
+    // Flipped blurred background
+    Item {
+        anchors.fill: parent
+        z: -2  // Put this behind the dark overlay
+        
+        // Horizontal flip transform
+        transform: Scale {
+            xScale: -1
+            origin.x: parent.width / 2
+        }
+        
+        BlurredBackground {
+            anchors.fill: parent
+            source: thumbnailUrl
+            blurRadius: 80
+            backgroundOpacity: 0.3
+        }
+    }
+    
+    // Dark overlay for better contrast
+    Rectangle {
+        anchors.fill: parent
+        color: "black"
+        opacity: 0.5
+        z: -1  // This should be above the blurred background but below content
     }
     
     ColumnLayout {
