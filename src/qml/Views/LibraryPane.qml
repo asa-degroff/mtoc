@@ -474,16 +474,27 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true // This will take the remaining space
             orientation: Qt.Horizontal
-            handle: Rectangle { // Custom handle for better visibility
+            handle: Rectangle { // Custom handle with frosted glass appearance
                 implicitWidth: 6
                 implicitHeight: 6
-                color: "#444444"
+                color: Qt.rgba(1, 1, 1, 0.06)
+                
+                // Vertical grip indicator
                 Rectangle {
                     anchors.centerIn: parent
                     width: 2
                     height: parent.height * 0.3
-                    color: "#666666"
+                    color: Qt.rgba(1, 1, 1, 0.15)
                     radius: 1
+                    
+                    // Subtle highlight effect
+                    Rectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.left: parent.left
+                        width: 1
+                        height: parent.height * 0.8
+                        color: Qt.rgba(1, 1, 1, 0.08)
+                    }
                 }
             }
 
