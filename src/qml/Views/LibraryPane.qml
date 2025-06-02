@@ -511,14 +511,18 @@ Item {
                     border.color: Qt.rgba(0, 0, 0, 0.25)
                 }
 
-                ListView {
-                    id: artistsListView
+                // Container for ListView and ScrollBar
+                Item {
                     anchors.fill: parent
-                    anchors.margins: 4 // Small margin inside the pane
-                    anchors.rightMargin: 10 // Adjusted margin for repositioned scrollbar
-                    clip: true
-                    model: LibraryManager.artistModel
-                    spacing: 2
+                    anchors.margins: 4
+                    
+                    ListView {
+                        id: artistsListView
+                        anchors.fill: parent
+                        anchors.rightMargin: 12 // Space for scrollbar
+                        clip: true
+                        model: LibraryManager.artistModel
+                        spacing: 2
                     
                     // Increase scroll speed
                     flickDeceleration: 8000  // Default is 1500, can increase for faster stopping
@@ -548,8 +552,9 @@ Item {
 
                         Rectangle {
                             id: artistItemRect
-                            width: parent.width - 8
-                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: parent.width - 4
+                            anchors.left: parent.left
+                            anchors.leftMargin: 2
                             height: 40
                             color: {
                                 if (artistsListView.currentIndex === index) {
@@ -598,7 +603,7 @@ Item {
                                     text: "\u203A" // Right-pointing chevron
                                     color: "white"
                                     font.pixelSize: 16
-                                    Layout.rightMargin: 10 // Space to avoid scrollbar overlap
+                                    Layout.rightMargin: 4
                                     
                                     transform: Rotation {
                                         origin.x: chevronLabel.width / 2  // Center based on actual width
@@ -653,8 +658,9 @@ Item {
                         // Albums GridView - visible based on albumsVisible
                         Rectangle {
                             id: artistAlbumsContainer
-                            width: parent.width - 12
-                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: parent.width - 8
+                            anchors.left: parent.left
+                            anchors.leftMargin: 4
                             // Dynamic height based on content
                             height: albumsVisible ? (albumsGrid.contentHeight + (albumsGrid.count > 0 ? 16 : 0)) : 0 // Add padding if albums exist
                             color: Qt.rgba(1, 1, 1, 0.04) // Very subtle frosted background
@@ -777,15 +783,28 @@ Item {
                             }
                         }
                     }
-                    ScrollBar.vertical: ScrollBar {
+                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOff }
+                    }
+                    
+                    // Custom scrollbar positioned to the right
+                    ScrollBar {
                         id: artistScrollBar
-                        width: 10
+                        width: 8
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        anchors.topMargin: 2
+                        anchors.bottomMargin: 2
                         policy: ScrollBar.AlwaysOn
                         visible: artistsListView.contentHeight > artistsListView.height
-                        anchors.right: parent.right
-                        anchors.rightMargin: 4
-                        anchors.topMargin: 6
-                        anchors.bottomMargin: 6
+                        position: artistsListView.contentY / artistsListView.contentHeight
+                        size: artistsListView.height / artistsListView.contentHeight
+                        
+                        onPositionChanged: {
+                            if (pressed) {
+                                artistsListView.contentY = position * artistsListView.contentHeight
+                            }
+                        }
                         
                         contentItem: Rectangle {
                             implicitWidth: 8
