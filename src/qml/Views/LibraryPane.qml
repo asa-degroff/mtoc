@@ -409,8 +409,20 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             height: 60
-            color: "#2a2a2a"
-            radius: 4
+            color: Qt.rgba(0.1, 0.1, 0.1, 0.38)  // Semi-transparent dark
+            radius: 8
+            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, 0.08)
+            
+            // Inner shadow for depth
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: parent.radius - 1
+                color: "transparent"
+                border.width: 1
+                border.color: Qt.rgba(0, 0, 0, 0.25)
+            }
             
             RowLayout {
                 anchors.fill: parent
@@ -481,9 +493,23 @@ Item {
                 SplitView.preferredWidth: 420  // Width to fit 3 album covers (3*130 + margins)
                 SplitView.minimumWidth: 280  // Minimum for 2 album covers
                 Layout.fillHeight: true
-                color: "#2c2c2c"
-                radius: 4
+                color: Qt.rgba(0.1, 0.1, 0.1, 0.25)  // Semi-transparent dark with smoky tint
+                radius: 8
                 clip: true // Ensure content doesn't overflow radius
+                
+                // 3D border effect - lit from above
+                border.width: 1
+                border.color: Qt.rgba(1, 1, 1, 0.08)
+                
+                // Inner shadow for depth
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    radius: parent.radius - 1
+                    color: "transparent"
+                    border.width: 1
+                    border.color: Qt.rgba(0, 0, 0, 0.25)
+                }
 
                 ListView {
                     id: artistsListView
@@ -521,18 +547,39 @@ Item {
                         property var artistData: modelData 
 
                         Rectangle {
-                            width: parent.width
+                            id: artistItemRect
+                            width: parent.width - 8
+                            anchors.horizontalCenter: parent.horizontalCenter
                             height: 40
                             color: {
                                 if (artistsListView.currentIndex === index) {
-                                    return "#3f51b5"  // Selected color
+                                    return Qt.rgba(0.25, 0.32, 0.71, 0.38)  // Selected color with transparency
                                 } else if (root.highlightedArtist === artistData.name) {
-                                    return "#2a2a50"  // Highlighted color
+                                    return Qt.rgba(0.16, 0.16, 0.31, 0.25)  // Highlighted color with transparency
                                 } else {
-                                    return "transparent"
+                                    return Qt.rgba(1, 1, 1, 0.03)  // Subtle background
                                 }
                             }
-                            radius: 2
+                            radius: 6
+                            
+                            // 3D border effect
+                            border.width: 1
+                            border.color: {
+                                if (artistsListView.currentIndex === index) {
+                                    return Qt.rgba(0.37, 0.44, 0.84, 0.5)  // Brighter for selected
+                                } else {
+                                    return Qt.rgba(1, 1, 1, 0.06)  // Subtle top highlight
+                                }
+                            }
+                            
+                            // Bottom shadow for 3D depth
+                            Rectangle {
+                                anchors.bottom: parent.bottom
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                height: 1
+                                color: artistsListView.currentIndex === index ? Qt.rgba(0.1, 0.1, 0.29, 0.5) : Qt.rgba(0, 0, 0, 0.19)
+                            }
 
                             RowLayout {
                                 anchors.fill: parent
@@ -569,7 +616,11 @@ Item {
                             }
 
                             MouseArea {
+                                id: artistMouseArea
                                 anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                
                                 onClicked: {
                                     // Toggle expansion state in persistent storage
                                     var newExpandedState = !(root.expandedArtists[artistData.name] || false);
@@ -583,18 +634,38 @@ Item {
                                     artistsListView.currentIndex = index; // Optional: select on expand
                                 }
                             }
+                            
+                            // Hover effect
+                            states: State {
+                                when: artistMouseArea.containsMouse && artistsListView.currentIndex !== index
+                                PropertyChanges {
+                                    target: artistItemRect
+                                    color: Qt.rgba(1, 1, 1, 0.06)
+                                    border.color: Qt.rgba(1, 1, 1, 0.09)
+                                }
+                            }
+                            
+                            transitions: Transition {
+                                ColorAnimation { duration: 150 }
+                            }
                         }
 
                         // Albums GridView - visible based on albumsVisible
                         Rectangle {
                             id: artistAlbumsContainer
-                            width: parent.width
+                            width: parent.width - 12
+                            anchors.horizontalCenter: parent.horizontalCenter
                             // Dynamic height based on content
                             height: albumsVisible ? (albumsGrid.contentHeight + (albumsGrid.count > 0 ? 16 : 0)) : 0 // Add padding if albums exist
-                            color: "#333333" // Slightly different background for albums section
+                            color: Qt.rgba(1, 1, 1, 0.04) // Very subtle frosted background
+                            radius: 6
                             visible: albumsVisible
                             clip: true
                             Behavior on height { NumberAnimation { duration: 200; easing.type: Easing.InOutQuad } } // Smooth expand/collapse
+                            
+                            // Subtle inset shadow
+                            border.width: 1
+                            border.color: Qt.rgba(0, 0, 0, 0.13)
 
                             GridView {
                                 id: albumsGrid
@@ -712,24 +783,32 @@ Item {
                         policy: ScrollBar.AlwaysOn
                         visible: artistsListView.contentHeight > artistsListView.height
                         anchors.right: parent.right
-                        anchors.rightMargin: 2
-                        anchors.topMargin: 4
-                        anchors.bottomMargin: 4
+                        anchors.rightMargin: 4
+                        anchors.topMargin: 6
+                        anchors.bottomMargin: 6
                         
                         contentItem: Rectangle {
-                            implicitWidth: 10
-                            radius: 5
-                            color: artistScrollBar.pressed ? "#60606080" : artistScrollBar.hovered ? "#50505080" : "#40404060"
+                            implicitWidth: 8
+                            radius: 4
+                            color: artistScrollBar.pressed ? Qt.rgba(1, 1, 1, 0.25) : artistScrollBar.hovered ? Qt.rgba(1, 1, 1, 0.19) : Qt.rgba(1, 1, 1, 0.13)
+                            border.width: 1
+                            border.color: artistScrollBar.pressed ? Qt.rgba(1, 1, 1, 0.38) : "transparent"
                             
                             Behavior on color {
+                                ColorAnimation { duration: 150 }
+                            }
+                            
+                            Behavior on border.color {
                                 ColorAnimation { duration: 150 }
                             }
                         }
                         
                         background: Rectangle {
-                            implicitWidth: 10
-                            color: "#20202040"
-                            radius: 5
+                            implicitWidth: 8
+                            color: Qt.rgba(0, 0, 0, 0.19)
+                            radius: 4
+                            border.width: 1
+                            border.color: Qt.rgba(1, 1, 1, 0.03)
                         }
                     }
                 }
@@ -740,9 +819,23 @@ Item {
                 id: rightPane
                 SplitView.minimumWidth: 160  // Reduced from 250 to fit better in smaller windows
                 SplitView.fillWidth: true
-                color: "#252525"
-                radius: 4
+                color: Qt.rgba(0.1, 0.1, 0.1, 0.25)  // Semi-transparent dark with smoky tint
+                radius: 8
                 clip: true
+                
+                // 3D border effect - lit from above
+                border.width: 1
+                border.color: Qt.rgba(1, 1, 1, 0.08)
+                
+                // Inner shadow for depth
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    radius: parent.radius - 1
+                    color: "transparent"
+                    border.width: 1
+                    border.color: Qt.rgba(0, 0, 0, 0.25)
+                }
 
                 property var currentAlbumTracks: []
                 property string albumTitleText: "No album selected"
@@ -751,18 +844,34 @@ Item {
                     anchors.fill: parent
                     anchors.margins: 4
 
-                    Label {
-                        id: trackListHeader
+                    Rectangle {
                         Layout.fillWidth: true
-                        text: rightPane.albumTitleText
-                        color: "white"
-                        font.pixelSize: 16
-                        font.bold: true
-                        padding: 8
-                        elide: Text.ElideRight
-                        background: Rectangle {
-                            color: "#333333"
-                            radius: 2
+                        Layout.margins: 4
+                        height: 40
+                        color: Qt.rgba(1, 1, 1, 0.07)
+                        radius: 6
+                        border.width: 1
+                        border.color: Qt.rgba(1, 1, 1, 0.13)
+                        
+                        // Bottom shadow
+                        Rectangle {
+                            anchors.bottom: parent.bottom
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            height: 1
+                            color: Qt.rgba(0, 0, 0, 0.25)
+                        }
+                        
+                        Label {
+                            id: trackListHeader
+                            anchors.fill: parent
+                            text: rightPane.albumTitleText
+                            color: "white"
+                            font.pixelSize: 16
+                            font.bold: true
+                            padding: 8
+                            elide: Text.ElideRight
+                            verticalAlignment: Text.AlignVCenter
                         }
                     }
 
@@ -793,9 +902,26 @@ Item {
                         }
 
                         delegate: Rectangle {
-                            width: ListView.view.width
+                            id: trackDelegate
+                            width: ListView.view.width - 8
+                            anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
                             height: 45
-                            color: index % 2 === 0 ? "#2e2e2e" : "#2a2a2a"
+                            color: trackListView.currentIndex === index ? Qt.rgba(0.25, 0.32, 0.71, 0.25) : Qt.rgba(1, 1, 1, 0.02)
+                            radius: 4
+                            
+                            // 3D effect
+                            border.width: 1
+                            border.color: trackListView.currentIndex === index ? Qt.rgba(0.37, 0.44, 0.84, 0.38) : "transparent"
+                            
+                            // Bottom shadow for selected items
+                            Rectangle {
+                                anchors.bottom: parent.bottom
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                height: 1
+                                color: trackListView.currentIndex === index ? Qt.rgba(0.1, 0.1, 0.29, 0.38) : "transparent"
+                                visible: trackListView.currentIndex === index
+                            }
 
                             RowLayout {
                                 anchors.fill: parent
@@ -826,7 +952,11 @@ Item {
                                 }
                             }
                             MouseArea {
+                                id: trackMouseArea
                                 anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                
                                 onClicked: {
                                     trackListView.currentIndex = index;
                                 }
@@ -840,6 +970,20 @@ Item {
                                         MediaPlayer.playTrackFromData(modelData);
                                     }
                                 }
+                            }
+                            
+                            // Hover effect
+                            states: State {
+                                when: trackMouseArea.containsMouse && trackListView.currentIndex !== index
+                                PropertyChanges {
+                                    target: trackDelegate
+                                    color: Qt.rgba(1, 1, 1, 0.04)
+                                    border.color: Qt.rgba(1, 1, 1, 0.06)
+                                }
+                            }
+                            
+                            transitions: Transition {
+                                ColorAnimation { duration: 150 }
                             }
                         }
                         ScrollIndicator.vertical: ScrollIndicator { }
