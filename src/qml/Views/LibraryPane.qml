@@ -25,6 +25,15 @@ Item {
     property string currentAlbumId: ""
     property url albumArtUrl: ""
     property url thumbnailUrl: ""
+    
+    Component.onCompleted: {
+        // Set initial thumbnail from MediaPlayer if available
+        if (MediaPlayer.currentTrack && MediaPlayer.currentTrack.album && MediaPlayer.currentTrack.albumArtist) {
+            var encodedArtist = encodeURIComponent(MediaPlayer.currentTrack.albumArtist)
+            var encodedAlbum = encodeURIComponent(MediaPlayer.currentTrack.album)
+            thumbnailUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/thumbnail"
+        }
+    }
 
     onSelectedAlbumChanged: {
         // console.log("Selected album changed to: " + (selectedAlbum ? selectedAlbum.title : "none"));
@@ -39,7 +48,10 @@ Item {
             if (selectedAlbum.hasArt && (!MediaPlayer.currentTrack || 
                 (MediaPlayer.currentTrack.albumArtist === selectedAlbum.albumArtist && 
                  MediaPlayer.currentTrack.album === selectedAlbum.title))) {
-                thumbnailUrl = "image://albumart/" + selectedAlbum.id + "/thumbnail";
+                // Use encoded format for consistency
+                var encodedArtist = encodeURIComponent(selectedAlbum.albumArtist);
+                var encodedAlbum = encodeURIComponent(selectedAlbum.title);
+                thumbnailUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/thumbnail";
             }
         } else {
             rightPane.currentAlbumTracks = [];
@@ -370,25 +382,14 @@ Item {
         }
     }
     
-    // Flipped blurred background
-    Item {
+    // Blurred background
+    BlurredBackground {
+        id: blurredBg
         anchors.fill: parent
+        source: thumbnailUrl
+        blurRadius: 80
+        backgroundOpacity: 0.3
         z: -2  // Put this behind the dark overlay
-        visible: thumbnailUrl !== ""
-        
-        // Horizontal flip transform
-        transform: Scale {
-            xScale: -1
-            origin.x: parent.width / 2
-        }
-        
-        BlurredBackground {
-            id: blurredBg
-            anchors.fill: parent
-            source: thumbnailUrl
-            blurRadius: 80
-            backgroundOpacity: 0.3
-        }
     }
     
     // Dark overlay for better contrast
