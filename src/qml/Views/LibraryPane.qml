@@ -529,7 +529,7 @@ Item {
             // Left Pane: Artist List
             Rectangle {
                 id: leftPaneContainer
-                SplitView.preferredWidth: 435  // Width to fit 3 album covers
+                SplitView.preferredWidth: 450  // Width to fit 3 album covers
                 SplitView.minimumWidth: 280  // Minimum for 2 album covers
                 Layout.fillHeight: true
                 color: Qt.rgba(0.1, 0.1, 0.1, 0.25)  // Semi-transparent dark with smoky tint
@@ -562,7 +562,7 @@ Item {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.rightMargin: 24 // Space for alphabetical scrollbar
-                        placeholderText: "Search artists, albums, tracks..."
+                        placeholderText: "Search library..."
                         z: 1
                         
                         onSearchRequested: function(searchTerm) {
@@ -642,9 +642,8 @@ Item {
 
                         Rectangle {
                             id: artistItemRect
-                            width: parent.width - 4
+                            width: parent.width
                             anchors.left: parent.left
-                            anchors.leftMargin: 2
                             height: 40
                             color: {
                                 if (artistsListView.currentIndex === index) {
@@ -750,9 +749,8 @@ Item {
                         // Albums GridView - visible based on albumsVisible
                         Rectangle {
                             id: artistAlbumsContainer
-                            width: parent.width - 8
+                            width: parent.width
                             anchors.left: parent.left
-                            anchors.leftMargin: 4
                             // Dynamic height based on content
                             height: albumsVisible ? (albumsGrid.contentHeight + (albumsGrid.count > 0 ? 16 : 0)) : 0 // Add padding if albums exist
                             color: Qt.rgba(1, 1, 1, 0.04) // Very subtle frosted background
@@ -1008,8 +1006,7 @@ Item {
 
                         delegate: Rectangle {
                             id: trackDelegate
-                            width: ListView.view.width - 8
-                            anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
+                            width: ListView.view.width
                             height: 45
                             color: {
                                 if (trackListView.currentIndex === index) {
