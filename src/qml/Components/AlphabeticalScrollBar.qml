@@ -24,9 +24,9 @@ Item {
     // Fixed-size handle
     Rectangle {
         id: handle
-        width: parent.width - 4
+        width: parent.width - 6
         height: 60  // Fixed height
-        x: 2
+        x: 3
         
         property real dragY: 0
         property real minY: 2

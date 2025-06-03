@@ -13,7 +13,8 @@
         <file>src/qml/Views/PlaylistView.qml</file>
         <file>src/qml/Constants.qml</file>
         <file>src/qml/Styles.qml</file>
-        <!-- Add future resources like icons here -->
-        <!-- <file>resources/icons/app_icon.svg</file> -->
+        <!-- Icons -->
+        <file>resources/icons/app_icon.svg</file>
+        <file>resources/icons/speaker.svg</file>
     </qresource>
 </RCC>

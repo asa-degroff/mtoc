@@ -1062,6 +1062,17 @@ Item {
                                     Layout.fillWidth: true
                                 }
 
+                                // Now Playing Indicator
+                                Image {
+                                    source: "qrc:/resources/icons/speaker.svg"
+                                    Layout.preferredWidth: 16
+                                    Layout.preferredHeight: 16
+                                    visible: MediaPlayer.currentTrack && 
+                                            MediaPlayer.currentTrack.filePath === modelData.filePath &&
+                                            MediaPlayer.state === MediaPlayer.PlayingState
+                                    opacity: 0.9
+                                }
+
                                 Label { // Track Duration
                                     text: modelData.duration ? formatDuration(modelData.duration) : "0:00"
                                     color: "#aaaaaa"
