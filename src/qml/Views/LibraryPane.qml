@@ -533,7 +533,7 @@ Item {
             // Left Pane: Artist List
             Rectangle {
                 id: leftPaneContainer
-                SplitView.preferredWidth: 420  // Width to fit 3 album covers (3*130 + margins)
+                SplitView.preferredWidth: 435  // Width to fit 3 album covers
                 SplitView.minimumWidth: 280  // Minimum for 2 album covers
                 Layout.fillHeight: true
                 color: Qt.rgba(0.1, 0.1, 0.1, 0.25)  // Semi-transparent dark with smoky tint
@@ -616,13 +616,13 @@ Item {
                     boundsMovement: Flickable.StopAtBounds
                     boundsBehavior: Flickable.StopAtBounds
                     
-                    // Increase wheel scroll speed while keeping smooth animation
+                    // Smooth wheel scrolling with moderate speed
                     WheelHandler {
                         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
                         onWheel: function(event) {
-                            // Multiply the pixel delta for faster scrolling
+                            // Use a more moderate multiplier for better control
                             var pixelDelta = event.pixelDelta.y || event.angleDelta.y / 4;
-                            artistsListView.flick(0, pixelDelta * 400); // Change this value to adjust scroll speed
+                            artistsListView.flick(0, pixelDelta * 60); // Reduced from 400 for better control
                         }
                     }
 
@@ -896,12 +896,26 @@ Item {
                         anchors.bottomMargin: 2
                         policy: ScrollBar.AlwaysOn
                         visible: artistsListView.contentHeight > artistsListView.height
-                        position: artistsListView.contentY / artistsListView.contentHeight
-                        size: artistsListView.height / artistsListView.contentHeight
+                        
+                        // Bind scrollbar to the ListView properly
+                        Binding {
+                            target: artistScrollBar
+                            property: "position"
+                            value: artistsListView.contentY / (artistsListView.contentHeight - artistsListView.height)
+                            when: !artistScrollBar.pressed
+                        }
+                        
+                        Binding {
+                            target: artistScrollBar
+                            property: "size"
+                            value: artistsListView.height / artistsListView.contentHeight
+                        }
                         
                         onPositionChanged: {
                             if (pressed) {
-                                artistsListView.contentY = position * artistsListView.contentHeight
+                                // Calculate the correct content position accounting for viewport size
+                                var newContentY = position * (artistsListView.contentHeight - artistsListView.height)
+                                artistsListView.contentY = Math.max(0, Math.min(newContentY, artistsListView.contentHeight - artistsListView.height))
                             }
                         }
                         
@@ -1010,12 +1024,12 @@ Item {
                         boundsMovement: Flickable.StopAtBounds
                         boundsBehavior: Flickable.StopAtBounds
                         
-                        // Increase wheel scroll speed while keeping smooth animation
+                        // Smooth wheel scrolling with moderate speed
                         WheelHandler {
                             acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
                             onWheel: function(event) {
                                 var pixelDelta = event.pixelDelta.y || event.angleDelta.y / 4;
-                                trackListView.flick(0, pixelDelta * 400);
+                                trackListView.flick(0, pixelDelta * 60); // Reduced for better control, matching artist list
                             }
                         }
 
