@@ -68,9 +68,9 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
             if (image.loadFromData(thumbnailData)) {
                 pixmap = QPixmap::fromImage(image);
                 
-                // Scale if requested size is different
+                // Scale if requested size is different - use faster transformation
                 if (requestedSize.isValid() && requestedSize != pixmap.size()) {
-                    pixmap = pixmap.scaled(requestedSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                    pixmap = pixmap.scaled(requestedSize, Qt::KeepAspectRatio, Qt::FastTransformation);
                 }
                 
                 // Cache the pixmap
@@ -89,10 +89,10 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
             pixmap.load(imagePath);
             
             if (!pixmap.isNull()) {
-                // Scale if requested size is different
+                // Scale if requested size is different - use faster transformation
                 if (requestedSize.isValid() && 
                     (requestedSize.width() < pixmap.width() || requestedSize.height() < pixmap.height())) {
-                    pixmap = pixmap.scaled(requestedSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                    pixmap = pixmap.scaled(requestedSize, Qt::KeepAspectRatio, Qt::FastTransformation);
                 }
                 
                 // Cache the pixmap

@@ -165,12 +165,13 @@ Item {
                 width: 220
                 height: 370  // Height for album plus reflection
                 
+                // Cache expensive calculations
+                property real centerX: listView.width / 2
+                property real itemCenterX: x + width / 2 - listView.contentX
+                property real distance: itemCenterX - centerX
+                property real absDistance: Math.abs(distance)
+                
                 property real horizontalOffset: {
-                    var centerX = listView.width / 2
-                    var itemCenterX = x + width / 2 - listView.contentX
-                    var distance = itemCenterX - centerX
-                    var absDistance = Math.abs(distance)
-                    
                     // Phase 1: Small slide in dead zone (0-20px)
                     var slideDeadZone = 20
                     var phase1Spacing = 50  // Significantly increased initial slide amount
@@ -199,10 +200,6 @@ Item {
                 }
                 
                 property real itemAngle: {
-                    var centerX = listView.width / 2
-                    var itemCenterX = x + width / 2 - listView.contentX
-                    var distance = itemCenterX - centerX
-                    var absDistance = Math.abs(distance)
                     var slideDeadZone = 10  // Dead zone for sliding only
                     var rotationEnd = 60    // Where rotation completes
                     
@@ -219,11 +216,8 @@ Item {
                     }
                 }
                 
-                property real distanceFromCenter: {
-                    var centerX = listView.width / 2
-                    var itemCenterX = x + width / 2 - listView.contentX
-                    return itemCenterX - centerX
-                }
+                // Reuse cached distance calculation
+                property real distanceFromCenter: distance
                 
                 z: {
                     var absDistance = Math.abs(distanceFromCenter)
@@ -334,9 +328,9 @@ Item {
                     width: 220
                     height: 340  // Height for album + reflection
                     
-                    // Enable layer rendering for better antialiasing during rotation
-                    layer.enabled: true
-                    layer.smooth: true // smoothing the layer looks better than smoothing the image
+                    // Conditional layer rendering - only for visible items near center
+                    layer.enabled: Math.abs(distanceFromCenter) < 400
+                    layer.smooth: true
                     
                     Item {
                         id: albumContainer
@@ -397,11 +391,12 @@ Item {
                         width: albumContainer.width
                         height: 120
                         
-                        // The reflection itself
+                        // Conditional reflection - only for center items to reduce GPU load
                         ShaderEffectSource {
                             id: reflection
                             anchors.fill: parent
                             sourceItem: albumContainer
+                            visible: Math.abs(distanceFromCenter) < 300
                             // Capture the bottom portion of the album for reflection
                             sourceRect: Qt.rect(0, albumContainer.height - 120, albumContainer.width, 120)
                             transform: [
