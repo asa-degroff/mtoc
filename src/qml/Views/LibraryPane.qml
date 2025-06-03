@@ -565,7 +565,7 @@ Item {
                         anchors.top: parent.top
                         anchors.left: parent.left
                         anchors.right: parent.right
-                        anchors.rightMargin: 12 // Space for scrollbar
+                        anchors.rightMargin: 24 // Space for alphabetical scrollbar
                         placeholderText: "Search artists, albums, tracks..."
                         z: 1
                         
@@ -603,7 +603,7 @@ Item {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
-                        anchors.rightMargin: 12 // Space for scrollbar
+                        anchors.rightMargin: 24 // Space for alphabetical scrollbar
                         clip: true
                         model: LibraryManager.artistModel
                         spacing: 2
@@ -885,63 +885,20 @@ Item {
                         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOff }
                     }
                     
-                    // Custom scrollbar positioned to the right
-                    ScrollBar {
+                    // Alphabetical scrollbar positioned to the right
+                    AlphabeticalScrollBar {
                         id: artistScrollBar
-                        width: 8
                         anchors.right: parent.right
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
                         anchors.topMargin: 2
                         anchors.bottomMargin: 2
-                        policy: ScrollBar.AlwaysOn
+                        
+                        targetListView: artistsListView
+                        artistModel: LibraryManager.artistModel
+                        expandedArtists: root.expandedArtists
+                        
                         visible: artistsListView.contentHeight > artistsListView.height
-                        
-                        // Bind scrollbar to the ListView properly
-                        Binding {
-                            target: artistScrollBar
-                            property: "position"
-                            value: artistsListView.contentY / (artistsListView.contentHeight - artistsListView.height)
-                            when: !artistScrollBar.pressed
-                        }
-                        
-                        Binding {
-                            target: artistScrollBar
-                            property: "size"
-                            value: artistsListView.height / artistsListView.contentHeight
-                        }
-                        
-                        onPositionChanged: {
-                            if (pressed) {
-                                // Calculate the correct content position accounting for viewport size
-                                var newContentY = position * (artistsListView.contentHeight - artistsListView.height)
-                                artistsListView.contentY = Math.max(0, Math.min(newContentY, artistsListView.contentHeight - artistsListView.height))
-                            }
-                        }
-                        
-                        contentItem: Rectangle {
-                            implicitWidth: 8
-                            radius: 4
-                            color: artistScrollBar.pressed ? Qt.rgba(1, 1, 1, 0.25) : artistScrollBar.hovered ? Qt.rgba(1, 1, 1, 0.19) : Qt.rgba(1, 1, 1, 0.13)
-                            border.width: 1
-                            border.color: artistScrollBar.pressed ? Qt.rgba(1, 1, 1, 0.38) : "transparent"
-                            
-                            Behavior on color {
-                                ColorAnimation { duration: 150 }
-                            }
-                            
-                            Behavior on border.color {
-                                ColorAnimation { duration: 150 }
-                            }
-                        }
-                        
-                        background: Rectangle {
-                            implicitWidth: 8
-                            color: Qt.rgba(0, 0, 0, 0.19)
-                            radius: 4
-                            border.width: 1
-                            border.color: Qt.rgba(1, 1, 1, 0.03)
-                        }
                     }
                 }
             }
