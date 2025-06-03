@@ -27,7 +27,20 @@ Item {
         width: parent.width - 4
         height: 60  // Fixed height
         x: 2
-        y: Math.max(2, Math.min(mouseArea.drag.active ? mouseArea.mouseY - height/2 : computeHandlePosition(), parent.height - height - 2))
+        
+        property real dragY: 0
+        property real minY: 2
+        property real maxY: parent.height - height - 2
+        
+        y: {
+            if (mouseArea.pressed) {
+                // When dragging, constrain to bounds
+                return Math.max(minY, Math.min(dragY, maxY))
+            } else {
+                // When not dragging, compute position from scroll
+                return computeHandlePosition()
+            }
+        }
         
         color: mouseArea.pressed ? Qt.rgba(1, 1, 1, 0.25) : mouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.19) : Qt.rgba(1, 1, 1, 0.13)
         radius: 4
@@ -39,7 +52,7 @@ Item {
         }
         
         Behavior on y {
-            enabled: !mouseArea.drag.active
+            enabled: !mouseArea.pressed
             NumberAnimation { duration: 150 }
         }
     }
@@ -98,16 +111,16 @@ Item {
     // Compute handle position based on current scroll
     function computeHandlePosition() {
         if (!targetListView || targetListView.contentHeight <= targetListView.height) {
-            return 2
+            return handle.minY
         }
         
-        var scrollRatio = targetListView.contentY / (targetListView.contentHeight - targetListView.height)
-        return 2 + scrollRatio * (parent.height - handle.height - 4)
+        var scrollRatio = Math.max(0, Math.min(1, targetListView.contentY / (targetListView.contentHeight - targetListView.height)))
+        return handle.minY + scrollRatio * (handle.maxY - handle.minY)
     }
     
     // Get letter for a given y position
     function getLetterForPosition(y) {
-        var ratio = Math.max(0, Math.min(1, y / (parent.height - 4)))
+        var ratio = Math.max(0, Math.min(1, (y - handle.minY) / (handle.maxY - handle.minY)))
         var letters = Object.keys(letterPositions).sort()
         
         if (letters.length === 0) return "A"
@@ -164,25 +177,29 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         
-        drag.target: handle
-        drag.axis: Drag.YAxis
-        drag.minimumY: 2
-        drag.maximumY: parent.height - handle.height - 2
+        drag.target: null  // We'll handle dragging manually
         
-        onPressed: {
+        onPressed: function(mouse) {
+            handle.dragY = mouse.y - handle.height/2
             var letter = getLetterForPosition(mouse.y)
             currentLetter = letter
             scrollToLetter(letter)
         }
         
-        onPositionChanged: {
+        onPositionChanged: function(mouse) {
             if (pressed) {
+                handle.dragY = mouse.y - handle.height/2
                 var letter = getLetterForPosition(mouse.y)
                 if (letter !== currentLetter) {
                     currentLetter = letter
                     scrollToLetter(letter)
                 }
             }
+        }
+        
+        onReleased: {
+            // Ensure handle position is synced after drag
+            handle.dragY = handle.y
         }
     }
     
