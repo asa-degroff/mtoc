@@ -506,26 +506,22 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true // This will take the remaining space
             orientation: Qt.Horizontal
-            handle: Rectangle { // Custom handle with frosted glass appearance
-                implicitWidth: 6
-                implicitHeight: 6
-                color: Qt.rgba(1, 1, 1, 0.06)
+            handle: Rectangle { // Thin, subtle handle
+                implicitWidth: 3
+                implicitHeight: 3
+                color: Qt.rgba(1, 1, 1, 0.03)
                 
-                // Vertical grip indicator
+                // Very subtle vertical indicator on hover
                 Rectangle {
                     anchors.centerIn: parent
-                    width: 2
-                    height: parent.height * 0.3
-                    color: Qt.rgba(1, 1, 1, 0.15)
-                    radius: 1
+                    width: 1
+                    height: parent.height * 0.2
+                    color: Qt.rgba(1, 1, 1, 0.08)
+                    radius: 0.5
+                    opacity: parent.parent.hovered ? 1.0 : 0.3
                     
-                    // Subtle highlight effect
-                    Rectangle {
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.left: parent.left
-                        width: 1
-                        height: parent.height * 0.8
-                        color: Qt.rgba(1, 1, 1, 0.08)
+                    Behavior on opacity {
+                        NumberAnimation { duration: 150 }
                     }
                 }
             }
@@ -607,6 +603,16 @@ Item {
                         clip: true
                         model: LibraryManager.artistModel
                         spacing: 2
+                        
+                        // Add layer to properly mask content with rounded corners
+                        layer.enabled: true
+                        layer.effect: OpacityMask {
+                            maskSource: Rectangle {
+                                width: artistsListView.width
+                                height: artistsListView.height
+                                radius: 6
+                            }
+                        }
                     
                     // Increase scroll speed
                     flickDeceleration: 8000  // Default is 1500, can increase for faster stopping
@@ -972,6 +978,16 @@ Item {
                         model: rightPane.currentAlbumTracks
                         visible: rightPane.currentAlbumTracks.length > 0
                         spacing: 1
+                        
+                        // Add layer to properly mask content with rounded corners
+                        layer.enabled: true
+                        layer.effect: OpacityMask {
+                            maskSource: Rectangle {
+                                width: trackListView.width
+                                height: trackListView.height
+                                radius: 4
+                            }
+                        }
                         
                         // Increase scroll speed to match artist list
                         flickDeceleration: 8000
