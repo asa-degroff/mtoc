@@ -19,6 +19,7 @@ ApplicationWindow {
     // Basic two-pane layout (placeholders)
     RowLayout {
         anchors.fill: parent
+        spacing: 0  // Remove default spacing
 
         // Library Pane
         LibraryPane {
@@ -26,6 +27,21 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.preferredWidth: window.width * 0.45 // 45% of window width
             Layout.fillHeight: true
+        }
+
+        // Subtle divider
+        Rectangle {
+            Layout.preferredWidth: 1
+            Layout.fillHeight: true
+            color: Qt.rgba(255, 255, 255, 0.1)  // Very subtle white line
+            
+            // Gradient for fade effect at top and bottom
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "transparent" }
+                GradientStop { position: 0.05; color: Qt.rgba(255, 255, 255, 0.1) }
+                GradientStop { position: 0.95; color: Qt.rgba(255, 255, 255, 0.1) }
+                GradientStop { position: 1.0; color: "transparent" }
+            }
         }
 
         // Now Playing Pane
