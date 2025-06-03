@@ -14,7 +14,7 @@ Rectangle {
     border.color: Qt.rgba(1, 1, 1, 0.08)
     
     property alias text: textInput.text
-    property string placeholderText: "Search artists, albums, tracks..."
+    property string placeholderText: "Search library..."
     property bool hasFocus: textInput.activeFocus
     
     signal searchRequested(string searchTerm)
@@ -36,15 +36,54 @@ Rectangle {
         anchors.margins: 8
         spacing: 8
         
-        // Search icon
-        Label {
-            text: "\uD83D\uDD0D" // 🔍
-            color: textInput.activeFocus ? "white" : "#999999"
-            font.pixelSize: 14
+        // Search icon - monochromatic SVG-style icon
+        Canvas {
+            id: searchIcon
             Layout.preferredWidth: 16
+            Layout.preferredHeight: 16
+            antialiasing: true
             
-            Behavior on color {
+            property color iconColor: textInput.activeFocus ? "white" : "#999999"
+            
+            Behavior on iconColor {
                 ColorAnimation { duration: 150 }
+            }
+            
+            onIconColorChanged: requestPaint()
+            Component.onCompleted: requestPaint()
+            
+            onPaint: {
+                var ctx = getContext("2d")
+                ctx.reset()
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, width, height)
+                
+                // Set stroke style
+                ctx.strokeStyle = iconColor
+                ctx.lineWidth = 1.5
+                ctx.lineCap = "round"
+                ctx.lineJoin = "round"
+                
+                // Draw search circle (centered, with padding)
+                var centerX = width * 0.4
+                var centerY = height * 0.4
+                var radius = width * 0.25
+                
+                ctx.beginPath()
+                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI)
+                ctx.stroke()
+                
+                // Draw search handle (diagonal line from bottom-right of circle)
+                var handleStartX = centerX + radius * 0.7
+                var handleStartY = centerY + radius * 0.7
+                var handleEndX = width * 0.85
+                var handleEndY = height * 0.85
+                
+                ctx.beginPath()
+                ctx.moveTo(handleStartX, handleStartY)
+                ctx.lineTo(handleEndX, handleEndY)
+                ctx.stroke()
             }
         }
         

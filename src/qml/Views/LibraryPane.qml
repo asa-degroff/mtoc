@@ -11,6 +11,7 @@ Item {
     id: root
     width: parent.width
     height: parent.height
+    focus: true  // Enable keyboard focus for the whole pane
     
     // Ensure we have a dark background as a base
     Rectangle {
@@ -31,6 +32,31 @@ Item {
     property var searchResults: ({})
     property bool isSearching: false
     property string previousExpandedState: ""  // Store expanded state before search
+    
+    // Navigation state for keyboard controls
+    property string navigationMode: "none"  // "none", "artist", "album", "track"
+    property int selectedArtistIndex: -1
+    property int selectedAlbumIndex: -1
+    property int selectedTrackIndex: -1
+    property string selectedArtistName: ""
+    property var selectedAlbumData: null
+    
+    // Keyboard navigation handler
+    Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Tab || event.key === Qt.Key_Down) {
+            handleNavigationDown()
+            event.accepted = true
+        } else if (event.key === Qt.Key_Backtab || event.key === Qt.Key_Up) {
+            handleNavigationUp()
+            event.accepted = true
+        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+            handleNavigationActivate()
+            event.accepted = true
+        } else if (event.key === Qt.Key_Escape) {
+            resetNavigation()
+            event.accepted = true
+        }
+    }
     
     Component.onCompleted: {
         // Set initial thumbnail from MediaPlayer if available
@@ -552,8 +578,21 @@ Item {
                         }
                         
                         onFocusRequested: {
-                            // Optionally scroll to top when search is focused
+                            // Scroll to top when search is focused and reset navigation
                             artistsListView.positionViewAtBeginning()
+                            resetNavigation()
+                        }
+                        
+                        // Handle Tab key to transfer focus to library navigation
+                        Keys.onTabPressed: {
+                            if (currentSearchTerm.length > 0 && searchResults.bestMatch) {
+                                // Start navigation from search result
+                                setupNavigationFromSearch()
+                            } else {
+                                // Start navigation from beginning
+                                startArtistNavigation()
+                            }
+                            root.forceActiveFocus()
                         }
                     }
                     
@@ -604,6 +643,8 @@ Item {
                             color: {
                                 if (artistsListView.currentIndex === index) {
                                     return Qt.rgba(0.25, 0.32, 0.71, 0.38)  // Selected color with transparency
+                                } else if (root.selectedArtistIndex === index && root.navigationMode === "artist") {
+                                    return Qt.rgba(0.35, 0.42, 0.81, 0.3)  // Keyboard navigation focus
                                 } else if (root.highlightedArtist === artistData.name) {
                                     return Qt.rgba(0.16, 0.16, 0.31, 0.25)  // Highlighted color with transparency
                                 } else {
@@ -735,6 +776,19 @@ Item {
 
                                     Item { 
                                         anchors.fill: parent
+                                        
+                                        // Navigation highlight for albums
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            anchors.margins: -4
+                                            color: "transparent"
+                                            border.width: 2
+                                            border.color: Qt.rgba(0.35, 0.42, 0.81, 0.7)
+                                            radius: 6
+                                            visible: root.navigationMode === "album" && 
+                                                    root.selectedArtistName === artistData.name && 
+                                                    root.selectedAlbumIndex === index
+                                        }
 
                                         Rectangle { // Album Art container
                                             id: albumArtContainer
@@ -970,7 +1024,15 @@ Item {
                             width: ListView.view.width - 8
                             anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
                             height: 45
-                            color: trackListView.currentIndex === index ? Qt.rgba(0.25, 0.32, 0.71, 0.25) : Qt.rgba(1, 1, 1, 0.02)
+                            color: {
+                                if (trackListView.currentIndex === index) {
+                                    return Qt.rgba(0.25, 0.32, 0.71, 0.25)  // Selected track
+                                } else if (root.navigationMode === "track" && root.selectedTrackIndex === index) {
+                                    return Qt.rgba(0.35, 0.42, 0.81, 0.2)  // Keyboard navigation focus
+                                } else {
+                                    return Qt.rgba(1, 1, 1, 0.02)  // Default background
+                                }
+                            }
                             radius: 4
                             
                             // 3D effect
@@ -1118,9 +1180,14 @@ Item {
     
     function handleSearchResult(bestMatch, matchType) {
         if (matchType === "artist") {
-            // Scroll to and highlight the artist
+            // Scroll to and highlight the artist, then expand it
             highlightedArtist = bestMatch.name
             scrollToArtist(bestMatch.name)
+            
+            // Expand the artist to show albums
+            var updatedExpanded = Object.assign({}, expandedArtists)
+            updatedExpanded[bestMatch.name] = true
+            expandedArtists = updatedExpanded
         } else if (matchType === "album") {
             // Expand the artist to show the album and scroll to it
             var artistName = bestMatch.albumArtist
@@ -1170,6 +1237,141 @@ Item {
             if (artists[i].name === artistName) {
                 artistsListView.positionViewAtIndex(i, ListView.Contain)
                 break
+            }
+        }
+    }
+    
+    // Navigation functions
+    function resetNavigation() {
+        navigationMode = "none"
+        selectedArtistIndex = -1
+        selectedAlbumIndex = -1
+        selectedTrackIndex = -1
+        selectedArtistName = ""
+        selectedAlbumData = null
+    }
+    
+    function startArtistNavigation() {
+        resetNavigation()
+        if (LibraryManager.artistModel.length > 0) {
+            navigationMode = "artist"
+            selectedArtistIndex = 0
+            selectedArtistName = LibraryManager.artistModel[0].name
+            artistsListView.positionViewAtIndex(0, ListView.Contain)
+        }
+    }
+    
+    function setupNavigationFromSearch() {
+        resetNavigation()
+        if (searchResults.bestMatch && searchResults.bestMatchType === "artist") {
+            navigationMode = "artist"
+            var artists = LibraryManager.artistModel
+            for (var i = 0; i < artists.length; i++) {
+                if (artists[i].name === searchResults.bestMatch.name) {
+                    selectedArtistIndex = i
+                    selectedArtistName = artists[i].name
+                    artistsListView.positionViewAtIndex(i, ListView.Contain)
+                    break
+                }
+            }
+        } else if (searchResults.bestMatch && searchResults.bestMatchType === "album") {
+            // Start with the album's artist expanded and album selected
+            var artistName = searchResults.bestMatch.albumArtist
+            var artists = LibraryManager.artistModel
+            for (var i = 0; i < artists.length; i++) {
+                if (artists[i].name === artistName) {
+                    selectedArtistIndex = i
+                    selectedArtistName = artistName
+                    artistsListView.positionViewAtIndex(i, ListView.Contain)
+                    
+                    // Ensure artist is expanded
+                    var updatedExpanded = Object.assign({}, expandedArtists)
+                    updatedExpanded[artistName] = true
+                    expandedArtists = updatedExpanded
+                    
+                    // Switch to album navigation
+                    navigationMode = "album"
+                    var albums = LibraryManager.getAlbumsForArtist(artistName)
+                    for (var j = 0; j < albums.length; j++) {
+                        if (albums[j].title === searchResults.bestMatch.title) {
+                            selectedAlbumIndex = j
+                            selectedAlbumData = albums[j]
+                            break
+                        }
+                    }
+                    break
+                }
+            }
+        }
+    }
+    
+    function handleNavigationDown() {
+        if (navigationMode === "artist") {
+            if (selectedArtistIndex < LibraryManager.artistModel.length - 1) {
+                selectedArtistIndex++
+                selectedArtistName = LibraryManager.artistModel[selectedArtistIndex].name
+                artistsListView.positionViewAtIndex(selectedArtistIndex, ListView.Contain)
+            }
+        } else if (navigationMode === "album") {
+            var albums = LibraryManager.getAlbumsForArtist(selectedArtistName)
+            if (selectedAlbumIndex < albums.length - 1) {
+                selectedAlbumIndex++
+                selectedAlbumData = albums[selectedAlbumIndex]
+            }
+        } else if (navigationMode === "track") {
+            if (selectedTrackIndex < rightPane.currentAlbumTracks.length - 1) {
+                selectedTrackIndex++
+            }
+        }
+    }
+    
+    function handleNavigationUp() {
+        if (navigationMode === "artist") {
+            if (selectedArtistIndex > 0) {
+                selectedArtistIndex--
+                selectedArtistName = LibraryManager.artistModel[selectedArtistIndex].name
+                artistsListView.positionViewAtIndex(selectedArtistIndex, ListView.Contain)
+            }
+        } else if (navigationMode === "album") {
+            if (selectedAlbumIndex > 0) {
+                selectedAlbumIndex--
+                var albums = LibraryManager.getAlbumsForArtist(selectedArtistName)
+                selectedAlbumData = albums[selectedAlbumIndex]
+            }
+        } else if (navigationMode === "track") {
+            if (selectedTrackIndex > 0) {
+                selectedTrackIndex--
+            }
+        }
+    }
+    
+    function handleNavigationActivate() {
+        if (navigationMode === "artist") {
+            // Expand the artist to show albums
+            var updatedExpanded = Object.assign({}, expandedArtists)
+            updatedExpanded[selectedArtistName] = true
+            expandedArtists = updatedExpanded
+            
+            // Switch to album navigation
+            var albums = LibraryManager.getAlbumsForArtist(selectedArtistName)
+            if (albums.length > 0) {
+                navigationMode = "album"
+                selectedAlbumIndex = 0
+                selectedAlbumData = albums[0]
+            }
+        } else if (navigationMode === "album") {
+            // Select the album and switch to track navigation
+            selectedAlbum = selectedAlbumData
+            
+            // Switch to track navigation
+            if (rightPane.currentAlbumTracks.length > 0) {
+                navigationMode = "track"
+                selectedTrackIndex = 0
+            }
+        } else if (navigationMode === "track") {
+            // Play the selected track
+            if (selectedAlbumData && selectedTrackIndex >= 0) {
+                MediaPlayer.playAlbumByName(selectedAlbumData.albumArtist, selectedAlbumData.title, selectedTrackIndex)
             }
         }
     }
