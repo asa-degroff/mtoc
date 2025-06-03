@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import Qt5Compat.GraphicalEffects
 import Mtoc.Backend 1.0
 
 Item {
@@ -162,7 +163,7 @@ Item {
             delegate: Item {
                 id: delegateItem
                 width: 220
-                height: 340  // Height for album plus reflection
+                height: 370  // Height for album plus reflection
                 
                 property real horizontalOffset: {
                     var centerX = listView.width / 2
@@ -331,7 +332,7 @@ Item {
                     anchors.top: parent.top
                     anchors.topMargin: 10  // Small margin to shift the album view up
                     width: 220
-                    height: 310  // Height for album + reflection
+                    height: 340  // Height for album + reflection
                     
                     // Enable layer rendering for better antialiasing during rotation
                     layer.enabled: true
@@ -394,7 +395,7 @@ Item {
                         anchors.topMargin: 2
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: albumContainer.width
-                        height: 90
+                        height: 120
                         
                         // The reflection itself
                         ShaderEffectSource {
@@ -402,7 +403,7 @@ Item {
                             anchors.fill: parent
                             sourceItem: albumContainer
                             // Capture the bottom portion of the album for reflection
-                            sourceRect: Qt.rect(0, albumContainer.height - 90, albumContainer.width, 90)
+                            sourceRect: Qt.rect(0, albumContainer.height - 120, albumContainer.width, 120)
                             transform: [
                                 Scale {
                                     yScale: -1
@@ -424,7 +425,8 @@ Item {
                         anchors.fill: reflectionContainer
                         gradient: Gradient {
                             GradientStop { position: 0.0; color: "transparent" }
-                            GradientStop { position: 0.5; color: Qt.rgba(0.1, 0.1, 0.1, 0.6) }
+                            GradientStop { position: 0.3; color: Qt.rgba(0.1, 0.1, 0.1, 0.4) }
+                            GradientStop { position: 0.7; color: Qt.rgba(0, 0, 0, 0.85) }
                             GradientStop { position: 1.0; color: "#000000" }
                         }
                     }
@@ -432,25 +434,32 @@ Item {
             }
         }
         
-        Rectangle {
+        // Artist/album text overlaid on the reflections
+        Item {
             anchors.bottom: parent.bottom
             anchors.left: parent.left
             anchors.right: parent.right
-            height: 40
-            color: "#0a0a0a"
+            height: 50
+            z: 1  // Ensure text appears above the ListView
             
-            RowLayout {
-                anchors.fill: parent
-                anchors.margins: 8
+            Label {
+                anchors.centerIn: parent
+                anchors.bottomMargin: 12
+                text: selectedAlbum ? selectedAlbum.albumArtist + " - " + selectedAlbum.title : ""
+                color: "white"
+                font.pixelSize: 16
+                font.bold: true
+                elide: Text.ElideRight
+                horizontalAlignment: Text.AlignHCenter
                 
-                Label {
-                    text: selectedAlbum ? selectedAlbum.albumArtist + " - " + selectedAlbum.title : ""
-                    color: "white"
-                    font.pixelSize: 14
-                    font.bold: true
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignHCenter
+                // Add a subtle shadow for better readability
+                layer.enabled: true
+                layer.effect: DropShadow {
+                    horizontalOffset: 0
+                    verticalOffset: 1
+                    radius: 4
+                    samples: 9
+                    color: "#80000000"
                 }
             }
         }

@@ -177,7 +177,7 @@ Item {
                         width: progressSlider.visualPosition * parent.width
                         height: parent.height
                         color: "white"
-                        opacity: 0.6
+                        opacity: 0.8
                         radius: 4
                     }
                 }
