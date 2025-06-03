@@ -859,6 +859,17 @@ Item {
                                                     }
                                                 }
                                             }
+                                            
+                                            // Selection indicator - white outline
+                                            Rectangle {
+                                                anchors.fill: parent
+                                                color: "transparent"
+                                                border.width: 2
+                                                border.color: "#ffffff"
+                                                radius: 3
+                                                visible: root.selectedAlbum && root.selectedAlbum.id === modelData.id
+                                                opacity: 0.8
+                                            }
                                         }
 
                                         Text { // Album Title
