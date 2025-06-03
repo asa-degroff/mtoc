@@ -506,23 +506,31 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true // This will take the remaining space
             orientation: Qt.Horizontal
-            handle: Rectangle { // Thin, subtle handle
-                implicitWidth: 3
-                implicitHeight: 3
-                color: Qt.rgba(1, 1, 1, 0.03)
+            handle: Item {
+                implicitWidth: 8
+                implicitHeight: 8
                 
-                // Very subtle vertical indicator on hover
+                // Subtle divider line
                 Rectangle {
                     anchors.centerIn: parent
                     width: 1
-                    height: parent.height * 0.2
-                    color: Qt.rgba(1, 1, 1, 0.08)
-                    radius: 0.5
-                    opacity: parent.parent.hovered ? 1.0 : 0.3
+                    height: parent.height
+                    color: Qt.rgba(1, 1, 1, 0.1)  // Very subtle white line
                     
-                    Behavior on opacity {
-                        NumberAnimation { duration: 150 }
+                    // Gradient for fade effect at top and bottom
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: "transparent" }
+                        GradientStop { position: 0.1; color: Qt.rgba(1, 1, 1, 0.1) }
+                        GradientStop { position: 0.9; color: Qt.rgba(1, 1, 1, 0.1) }
+                        GradientStop { position: 1.0; color: "transparent" }
                     }
+                }
+                
+                // Interactive hover area (invisible)
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.SplitHCursor
+                    hoverEnabled: true
                 }
             }
 
