@@ -77,6 +77,7 @@ public:
     Q_INVOKABLE TrackModel* searchTracks(const QString &query) const;
     Q_INVOKABLE AlbumModel* searchAlbums(const QString &query) const;
     Q_INVOKABLE QStringList searchArtists(const QString &query) const;
+    Q_INVOKABLE QVariantMap searchAll(const QString &query) const;
     
     // Direct data access (for advanced usage)
     Q_INVOKABLE Track* trackByPath(const QString &path) const;

@@ -26,6 +26,12 @@ Item {
     property url albumArtUrl: ""
     property url thumbnailUrl: ""
     
+    // Search state
+    property string currentSearchTerm: ""
+    property var searchResults: ({})
+    property bool isSearching: false
+    property string previousExpandedState: ""  // Store expanded state before search
+    
     Component.onCompleted: {
         // Set initial thumbnail from MediaPlayer if available
         if (MediaPlayer.currentTrack && MediaPlayer.currentTrack.album && MediaPlayer.currentTrack.albumArtist) {
@@ -522,14 +528,42 @@ Item {
                     border.color: Qt.rgba(0, 0, 0, 0.25)
                 }
 
-                // Container for ListView and ScrollBar
+                // Container for SearchBar, ListView and ScrollBar
                 Item {
                     anchors.fill: parent
                     anchors.margins: 4
                     
+                    // Search bar at the top
+                    SearchBar {
+                        id: searchBar
+                        anchors.top: parent.top
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.rightMargin: 12 // Space for scrollbar
+                        placeholderText: "Search artists, albums, tracks..."
+                        z: 1
+                        
+                        onSearchRequested: function(searchTerm) {
+                            root.performSearch(searchTerm)
+                        }
+                        
+                        onClearRequested: {
+                            root.clearSearch()
+                        }
+                        
+                        onFocusRequested: {
+                            // Optionally scroll to top when search is focused
+                            artistsListView.positionViewAtBeginning()
+                        }
+                    }
+                    
                     ListView {
                         id: artistsListView
-                        anchors.fill: parent
+                        anchors.top: searchBar.bottom
+                        anchors.topMargin: 8
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
                         anchors.rightMargin: 12 // Space for scrollbar
                         clip: true
                         model: LibraryManager.artistModel
@@ -1041,5 +1075,102 @@ Item {
         var min = Math.floor(seconds / 60);
         var sec = Math.floor(seconds % 60);
         return min + ":" + (sec < 10 ? "0" : "") + sec;
+    }
+    
+    function performSearch(searchTerm) {
+        if (searchTerm.trim().length === 0) {
+            clearSearch()
+            return
+        }
+        
+        currentSearchTerm = searchTerm
+        isSearching = true
+        
+        // Store current expanded state before search (only if not already searching)
+        if (previousExpandedState === "") {
+            previousExpandedState = JSON.stringify(expandedArtists)
+        }
+        
+        // Get search results from LibraryManager
+        searchResults = LibraryManager.searchAll(searchTerm)
+        
+        if (searchResults.bestMatch && searchResults.bestMatchType) {
+            handleSearchResult(searchResults.bestMatch, searchResults.bestMatchType)
+        }
+    }
+    
+    function clearSearch() {
+        currentSearchTerm = ""
+        isSearching = false
+        searchResults = {}
+        highlightedArtist = ""
+        
+        // Restore previous expanded state
+        if (previousExpandedState) {
+            try {
+                expandedArtists = JSON.parse(previousExpandedState)
+            } catch (e) {
+                expandedArtists = {}
+            }
+            previousExpandedState = ""
+        }
+    }
+    
+    function handleSearchResult(bestMatch, matchType) {
+        if (matchType === "artist") {
+            // Scroll to and highlight the artist
+            highlightedArtist = bestMatch.name
+            scrollToArtist(bestMatch.name)
+        } else if (matchType === "album") {
+            // Expand the artist to show the album and scroll to it
+            var artistName = bestMatch.albumArtist
+            if (artistName) {
+                highlightedArtist = artistName
+                
+                // Expand the artist
+                var updatedExpanded = Object.assign({}, expandedArtists)
+                updatedExpanded[artistName] = true
+                expandedArtists = updatedExpanded
+                
+                // Scroll to the artist
+                scrollToArtist(artistName)
+                
+                // Select the album
+                selectedAlbum = bestMatch
+            }
+        } else if (matchType === "track") {
+            // Find the album and artist for this track and expand
+            if (bestMatch.album && bestMatch.artist) {
+                highlightedArtist = bestMatch.artist
+                
+                // Expand the artist
+                var updatedExpanded = Object.assign({}, expandedArtists)
+                updatedExpanded[bestMatch.artist] = true
+                expandedArtists = updatedExpanded
+                
+                // Scroll to the artist
+                scrollToArtist(bestMatch.artist)
+                
+                // Try to find and select the album
+                var albums = LibraryManager.getAlbumsForArtist(bestMatch.artist)
+                for (var i = 0; i < albums.length; i++) {
+                    if (albums[i].title === bestMatch.album) {
+                        selectedAlbum = albums[i]
+                        break
+                    }
+                }
+            }
+        }
+    }
+    
+    function scrollToArtist(artistName) {
+        // Find the artist in the list and scroll to it
+        var artists = LibraryManager.artistModel
+        for (var i = 0; i < artists.length; i++) {
+            if (artists[i].name === artistName) {
+                artistsListView.positionViewAtIndex(i, ListView.Contain)
+                break
+            }
+        }
     }
 }

@@ -51,6 +51,9 @@ public:
     QVariantList searchAlbums(const QString& searchTerm);
     QVariantList searchArtists(const QString& searchTerm);
     
+    // Combined search with priority results
+    QVariantMap searchAll(const QString& searchTerm);
+    
     // Library management
     bool clearDatabase();
     int getTotalTracks();

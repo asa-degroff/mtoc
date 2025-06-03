@@ -733,14 +733,23 @@ QVariantList LibraryManager::getTracksForAlbumAsVariantList(const QString &artis
 
 AlbumModel* LibraryManager::searchAlbums(const QString &query) const
 {
-    // TODO: Implement
+    // TODO: Implement proper AlbumModel search
     return new AlbumModel();
 }
 
 QStringList LibraryManager::searchArtists(const QString &query) const
 {
-    // TODO: Implement
+    // TODO: Implement proper artist search
     return QStringList();
+}
+
+QVariantMap LibraryManager::searchAll(const QString &query) const
+{
+    if (!m_databaseManager) {
+        return QVariantMap();
+    }
+    
+    return m_databaseManager->searchAll(query);
 }
 
 Track* LibraryManager::trackByPath(const QString &path) const

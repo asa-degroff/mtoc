@@ -629,6 +629,133 @@ QVariantList DatabaseManager::searchTracks(const QString& searchTerm)
     return results;
 }
 
+QVariantList DatabaseManager::searchAlbums(const QString& searchTerm)
+{
+    QVariantList results;
+    if (!m_db.isOpen() || searchTerm.isEmpty()) return results;
+    
+    QSqlQuery query(m_db);
+    query.prepare(
+        "SELECT al.*, aa.name as album_artist_name, "
+        "       (SELECT COUNT(*) FROM tracks t WHERE t.album_id = al.id) as track_count, "
+        "       (SELECT COUNT(*) FROM album_art art WHERE art.album_id = al.id) > 0 as has_art "
+        "FROM albums al "
+        "LEFT JOIN album_artists aa ON al.album_artist_id = aa.id "
+        "WHERE al.title LIKE :search "
+        "OR aa.name LIKE :search "
+        "ORDER BY CASE "
+        "    WHEN al.title LIKE :exactSearch THEN 1 "
+        "    WHEN al.title LIKE :prefixSearch THEN 2 "
+        "    WHEN aa.name LIKE :exactSearch THEN 3 "
+        "    WHEN aa.name LIKE :prefixSearch THEN 4 "
+        "    ELSE 5 "
+        "END, al.title"
+    );
+    
+    QString wildcardSearch = "%" + searchTerm + "%";
+    QString exactSearch = searchTerm;
+    QString prefixSearch = searchTerm + "%";
+    query.bindValue(":search", wildcardSearch);
+    query.bindValue(":exactSearch", exactSearch);
+    query.bindValue(":prefixSearch", prefixSearch);
+    
+    if (query.exec()) {
+        while (query.next()) {
+            QVariantMap album;
+            album["id"] = query.value("id");
+            album["title"] = query.value("title");
+            album["albumArtist"] = query.value("album_artist_name");
+            album["year"] = query.value("year");
+            album["trackCount"] = query.value("track_count");
+            album["hasArt"] = query.value("has_art").toBool();
+            results.append(album);
+        }
+    } else {
+        logError("Search albums", query);
+    }
+    
+    return results;
+}
+
+QVariantList DatabaseManager::searchArtists(const QString& searchTerm)
+{
+    QVariantList results;
+    if (!m_db.isOpen() || searchTerm.isEmpty()) return results;
+    
+    QSqlQuery query(m_db);
+    query.prepare(
+        "SELECT a.*, "
+        "       (SELECT COUNT(*) FROM albums al WHERE al.album_artist_id = aa.id) as album_count "
+        "FROM artists a "
+        "LEFT JOIN album_artists aa ON a.name = aa.name "
+        "WHERE a.name LIKE :search "
+        "ORDER BY CASE "
+        "    WHEN a.name LIKE :exactSearch THEN 1 "
+        "    WHEN a.name LIKE :prefixSearch THEN 2 "
+        "    ELSE 3 "
+        "END, a.name"
+    );
+    
+    QString wildcardSearch = "%" + searchTerm + "%";
+    QString exactSearch = searchTerm;
+    QString prefixSearch = searchTerm + "%";
+    query.bindValue(":search", wildcardSearch);
+    query.bindValue(":exactSearch", exactSearch);
+    query.bindValue(":prefixSearch", prefixSearch);
+    
+    if (query.exec()) {
+        while (query.next()) {
+            QVariantMap artist;
+            artist["id"] = query.value("id");
+            artist["name"] = query.value("name");
+            artist["albumCount"] = query.value("album_count");
+            results.append(artist);
+        }
+    } else {
+        logError("Search artists", query);
+    }
+    
+    return results;
+}
+
+QVariantMap DatabaseManager::searchAll(const QString& searchTerm)
+{
+    QVariantMap results;
+    if (!m_db.isOpen() || searchTerm.isEmpty()) return results;
+    
+    // Search artists first (highest priority)
+    QVariantList artists = searchArtists(searchTerm);
+    results["artists"] = artists;
+    
+    // Search albums second
+    QVariantList albums = searchAlbums(searchTerm);
+    results["albums"] = albums;
+    
+    // Search tracks third
+    QVariantList tracks = searchTracks(searchTerm);
+    results["tracks"] = tracks;
+    
+    // Determine best match based on priority: artists -> albums -> tracks
+    QVariantMap bestMatch;
+    QString bestMatchType;
+    
+    if (!artists.isEmpty()) {
+        bestMatch = artists.first().toMap();
+        bestMatchType = "artist";
+    } else if (!albums.isEmpty()) {
+        bestMatch = albums.first().toMap();
+        bestMatchType = "album";
+    } else if (!tracks.isEmpty()) {
+        bestMatch = tracks.first().toMap();
+        bestMatchType = "track";
+    }
+    
+    results["bestMatch"] = bestMatch;
+    results["bestMatchType"] = bestMatchType;
+    
+    return results;
+}
+
 bool DatabaseManager::beginTransaction()
 {
     return m_db.transaction();
