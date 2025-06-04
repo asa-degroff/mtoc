@@ -27,6 +27,7 @@ public:
     bool insertTrack(const QVariantMap& trackData);
     bool updateTrack(int trackId, const QVariantMap& trackData);
     bool deleteTrack(int trackId);
+    bool deleteTracksByFolderPath(const QString& folderPath);
     QVariantMap getTrack(int trackId);
     QVariantList getTracksByAlbum(int albumId);
     QVariantList getTracksByArtist(int artistId);

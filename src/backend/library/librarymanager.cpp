@@ -8,6 +8,7 @@
 #include <QMutexLocker>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QSettings>
 #include <exception>
 
 namespace Mtoc {
@@ -32,10 +33,18 @@ LibraryManager::LibraryManager(QObject *parent)
     
     qDebug() << "LibraryManager: Database initialized";
     
-    // Default to the user's Music folder if available
-    QStringList musicDirs = QStandardPaths::standardLocations(QStandardPaths::MusicLocation);
-    if (!musicDirs.isEmpty()) {
-        m_musicFolders << musicDirs.first();
+    // Load saved music folders from settings
+    QSettings settings;
+    m_musicFolders = settings.value("musicFolders", QStringList()).toStringList();
+    
+    // Default to the user's Music folder if no folders saved
+    if (m_musicFolders.isEmpty()) {
+        QStringList musicDirs = QStandardPaths::standardLocations(QStandardPaths::MusicLocation);
+        if (!musicDirs.isEmpty()) {
+            m_musicFolders << musicDirs.first();
+            // Save the default folder
+            settings.setValue("musicFolders", m_musicFolders);
+        }
     }
     
     // Connect database signals
@@ -211,6 +220,11 @@ bool LibraryManager::addMusicFolder(const QString &path)
     QString canonicalPath = dir.canonicalPath();
     if (!m_musicFolders.contains(canonicalPath)) {
         m_musicFolders.append(canonicalPath);
+        
+        // Save to settings
+        QSettings settings;
+        settings.setValue("musicFolders", m_musicFolders);
+        
         qDebug() << "LibraryManager::addMusicFolder() - folder added, emitting signal";
         emit musicFoldersChanged();
         return true;
@@ -226,8 +240,19 @@ bool LibraryManager::removeMusicFolder(const QString &path)
     QString canonicalPath = dir.canonicalPath();
     
     if (m_musicFolders.removeAll(canonicalPath) > 0) {
+        // Save to settings
+        QSettings settings;
+        settings.setValue("musicFolders", m_musicFolders);
+        
+        // Remove all tracks from this folder from the database
+        if (m_databaseManager->deleteTracksByFolderPath(canonicalPath)) {
+            qDebug() << "LibraryManager::removeMusicFolder() - tracks removed from database";
+            // Invalidate cache since we've changed the library
+            m_albumModelCacheValid = false;
+            emit libraryChanged();
+        }
+        
         emit musicFoldersChanged();
-        // TODO: Remove tracks from this folder from the library
         return true;
     }
     

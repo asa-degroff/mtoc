@@ -72,16 +72,8 @@ ApplicationWindow {
             // Initialize LibraryManager
             console.log("Initializing LibraryManager...");
             
-            // Check if we have any music folders configured
-            console.log("Checking musicFolders property...");
-            if (LibraryManager.musicFolders.length === 0) {
-                // Add a default music folder for testing
-                var musicDir = "/home/asa/Music";
-                console.log("Adding default music folder for testing:", musicDir);
-                LibraryManager.addMusicFolder(musicDir);
-            } else {
-                console.log("Music folders already configured:", JSON.stringify(LibraryManager.musicFolders));
-            }
+            // Music folders are now automatically loaded from settings in LibraryManager constructor
+            console.log("Music folders configured:", JSON.stringify(LibraryManager.musicFolders));
             
             // Skip MetadataExtractor test for now
             // This was causing issues during startup

@@ -401,6 +401,24 @@ bool DatabaseManager::deleteTrack(int trackId)
     return true;
 }
 
+bool DatabaseManager::deleteTracksByFolderPath(const QString& folderPath)
+{
+    QMutexLocker locker(&m_databaseMutex);
+    if (!m_db.isOpen()) return false;
+    
+    QSqlQuery query(m_db);
+    query.prepare("DELETE FROM tracks WHERE file_path LIKE :path");
+    query.bindValue(":path", folderPath + "%");
+    
+    if (!query.exec()) {
+        logError("deleteTracksByFolderPath", query);
+        return false;
+    }
+    
+    qDebug() << "DatabaseManager: Deleted" << query.numRowsAffected() << "tracks from folder:" << folderPath;
+    return true;
+}
+
 QVariantMap DatabaseManager::getTrack(int trackId)
 {
     QVariantMap track;
