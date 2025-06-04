@@ -183,6 +183,25 @@ Item {
         z: -1  // This should be above the blurred background but below content
     }
     
+    // Subtle right edge line for cohesive background blending
+    Rectangle {
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: 1
+        color: Qt.rgba(1, 1, 1, 0.1)  // Transparent white that takes on background color
+        opacity: 0.6
+        z: 10  // Ensure it's above other content
+        
+        // Gradient for fade effect at top and bottom
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: "transparent" }
+            GradientStop { position: 0.05; color: Qt.rgba(1, 1, 1, 0.1) }
+            GradientStop { position: 0.95; color: Qt.rgba(1, 1, 1, 0.1) }
+            GradientStop { position: 1.0; color: "transparent" }
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 16
@@ -223,6 +242,59 @@ Item {
                 
                 Button {
                     text: "Edit Library"
+                    implicitHeight: 40
+                    implicitWidth: 120  // Proportional width for good spacing
+                    
+                    background: Rectangle {
+                        id: buttonRect
+                        color: Qt.rgba(1, 1, 1, 0.03)  // Subtle background like artist items
+                        radius: 6
+                        
+                        // 3D border effect like artist items
+                        border.width: 1
+                        border.color: Qt.rgba(1, 1, 1, 0.06)  // Subtle top highlight
+                        
+                        // Bottom shadow for 3D depth
+                        Rectangle {
+                            anchors.bottom: parent.bottom
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            height: 1
+                            color: Qt.rgba(0, 0, 0, 0.19)
+                        }
+                    }
+                    
+                    contentItem: Text {
+                        text: parent.text
+                        color: "white"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        font.pixelSize: 14
+                    }
+                    
+                    // Add mouse area for hover effects
+                    MouseArea {
+                        id: buttonMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        
+                        onClicked: parent.clicked()
+                    }
+                    
+                    // Hover effect matching artist items
+                    states: State {
+                        when: buttonMouseArea.containsMouse
+                        PropertyChanges {
+                            target: buttonRect
+                            color: Qt.rgba(1, 1, 1, 0.06)
+                            border.color: Qt.rgba(1, 1, 1, 0.09)
+                        }
+                    }
+                    
+                    transitions: Transition {
+                        ColorAnimation { duration: 150 }
+                    }
                     onClicked: {
                         // Create floating window if it doesn't exist or was closed
                         if (!libraryEditorWindow || !libraryEditorWindow.visible) {

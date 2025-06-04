@@ -29,20 +29,6 @@ ApplicationWindow {
             Layout.fillHeight: true
         }
 
-        // Subtle divider
-        Rectangle {
-            Layout.preferredWidth: 1
-            Layout.fillHeight: true
-            color: Qt.rgba(66, 66, 66, 0.1)  // Very subtle grey line
-            
-            // Gradient for fade effect at top and bottom
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: "transparent" }
-                GradientStop { position: 0.05; color: Qt.rgba(66, 66, 66, 0.1) }
-                GradientStop { position: 0.95; color: Qt.rgba(66, 66, 66, 0.1) }
-                GradientStop { position: 1.0; color: "transparent" }
-            }
-        }
 
         // Now Playing Pane
         NowPlayingPane {
