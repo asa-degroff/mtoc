@@ -6,6 +6,7 @@
 #include <QSqlQuery>
 #include <QString>
 #include <QVariantMap>
+#include <QMutex>
 #include <memory>
 
 namespace Mtoc {
@@ -96,6 +97,7 @@ private:
     void logError(const QString& operation, const QSqlQuery& query);
     
     QSqlDatabase m_db;
+    QMutex m_databaseMutex;
     static const QString DB_CONNECTION_NAME;
 };
 

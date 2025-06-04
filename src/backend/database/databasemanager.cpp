@@ -5,6 +5,7 @@
 #include <QDir>
 #include <QDebug>
 #include <QVariant>
+#include <QMutexLocker>
 
 namespace Mtoc {
 
@@ -986,6 +987,7 @@ QVariantList DatabaseManager::getAlbumsByAlbumArtistName(const QString& albumArt
 
 int DatabaseManager::getAlbumIdByArtistAndTitle(const QString& albumArtist, const QString& albumTitle)
 {
+    QMutexLocker locker(&m_databaseMutex);
     if (!m_db.isOpen() || albumArtist.isEmpty() || albumTitle.isEmpty()) return 0;
     
     QSqlQuery query(m_db);
@@ -1119,6 +1121,7 @@ QVariantMap DatabaseManager::getAlbumArt(int albumId)
 
 bool DatabaseManager::albumArtExists(int albumId)
 {
+    QMutexLocker locker(&m_databaseMutex);
     if (!m_db.isOpen()) return false;
     
     QSqlQuery query(m_db);
@@ -1130,6 +1133,7 @@ bool DatabaseManager::albumArtExists(int albumId)
 
 QString DatabaseManager::getAlbumArtPath(int albumId)
 {
+    QMutexLocker locker(&m_databaseMutex);
     if (!m_db.isOpen()) return QString();
     
     QSqlQuery query(m_db);
@@ -1145,6 +1149,7 @@ QString DatabaseManager::getAlbumArtPath(int albumId)
 
 QByteArray DatabaseManager::getAlbumArtThumbnail(int albumId)
 {
+    QMutexLocker locker(&m_databaseMutex);
     if (!m_db.isOpen()) return QByteArray();
     
     QSqlQuery query(m_db);

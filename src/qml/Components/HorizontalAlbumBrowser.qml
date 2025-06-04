@@ -396,7 +396,7 @@ Item {
                             id: reflection
                             anchors.fill: parent
                             sourceItem: albumContainer
-                            visible: Math.abs(distanceFromCenter) < 300
+                            visible: Math.abs(distanceFromCenter) < 1200
                             // Capture the bottom portion of the album for reflection
                             sourceRect: Qt.rect(0, albumContainer.height - 120, albumContainer.width, 120)
                             transform: [
