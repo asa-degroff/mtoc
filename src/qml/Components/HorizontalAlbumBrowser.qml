@@ -21,12 +21,14 @@ Item {
     Connections {
         target: LibraryManager
         function onLibraryChanged() {
+            console.log("HorizontalAlbumBrowser: libraryChanged signal received, reloading albums");
             loadAllAlbums()
         }
     }
     
     function loadAllAlbums() {
         var sourceAlbums = LibraryManager.albumModel
+        console.log("HorizontalAlbumBrowser: loadAllAlbums called, got", sourceAlbums.length, "albums from LibraryManager");
         
         // Create a copy of the array so we can sort it
         var albums = []

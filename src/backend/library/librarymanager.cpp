@@ -59,6 +59,13 @@ LibraryManager::LibraryManager(QObject *parent)
         QTimer::singleShot(0, this, &LibraryManager::libraryChanged);
     });
     
+    connect(m_databaseManager, &DatabaseManager::trackDeleted,
+            this, [this](int trackId) {
+        // Refresh models when tracks are deleted
+        m_albumModelCacheValid = false;
+        QTimer::singleShot(0, this, &LibraryManager::libraryChanged);
+    });
+    
     qDebug() << "LibraryManager: About to load library from database";
     
     // Don't load library data immediately - wait for first access
@@ -249,6 +256,7 @@ bool LibraryManager::removeMusicFolder(const QString &path)
             qDebug() << "LibraryManager::removeMusicFolder() - tracks removed from database";
             // Invalidate cache since we've changed the library
             m_albumModelCacheValid = false;
+            qDebug() << "LibraryManager::removeMusicFolder() - cache invalidated, emitting libraryChanged";
             emit libraryChanged();
         }
         
@@ -672,18 +680,22 @@ QVariantList LibraryManager::artistModel() const
 QVariantList LibraryManager::albumModel() const
 {
     if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        qDebug() << "LibraryManager::albumModel() - database not ready, returning empty list";
         return QVariantList();
     }
     
     // Use cached data if valid
     if (m_albumModelCacheValid) {
+        qDebug() << "LibraryManager::albumModel() - returning cached data with" << m_cachedAlbumModel.size() << "albums";
         return m_cachedAlbumModel;
     }
     
     // Otherwise fetch from database and cache
     // Note: getAllAlbums() can be expensive with large libraries
+    qDebug() << "LibraryManager::albumModel() - cache invalid, fetching from database";
     m_cachedAlbumModel = m_databaseManager->getAllAlbums();
     m_albumModelCacheValid = true;
+    qDebug() << "LibraryManager::albumModel() - fetched and cached" << m_cachedAlbumModel.size() << "albums";
     return m_cachedAlbumModel;
 }
 

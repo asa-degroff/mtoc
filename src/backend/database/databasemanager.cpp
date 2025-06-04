@@ -406,16 +406,71 @@ bool DatabaseManager::deleteTracksByFolderPath(const QString& folderPath)
     QMutexLocker locker(&m_databaseMutex);
     if (!m_db.isOpen()) return false;
     
+    // Start a transaction to ensure consistency
+    if (!m_db.transaction()) {
+        qWarning() << "Failed to start transaction for deleteTracksByFolderPath";
+        return false;
+    }
+    
     QSqlQuery query(m_db);
+    
+    // Step 1: Delete tracks from the folder
     query.prepare("DELETE FROM tracks WHERE file_path LIKE :path");
     query.bindValue(":path", folderPath + "%");
     
     if (!query.exec()) {
-        logError("deleteTracksByFolderPath", query);
+        logError("deleteTracksByFolderPath - delete tracks", query);
+        m_db.rollback();
         return false;
     }
     
-    qDebug() << "DatabaseManager: Deleted" << query.numRowsAffected() << "tracks from folder:" << folderPath;
+    int deletedTracks = query.numRowsAffected();
+    qDebug() << "DatabaseManager: Deleted" << deletedTracks << "tracks from folder:" << folderPath;
+    
+    // Step 2: Delete albums that have no tracks (orphaned albums)
+    if (!query.exec("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks WHERE album_id IS NOT NULL)")) {
+        logError("deleteTracksByFolderPath - delete orphaned albums", query);
+        m_db.rollback();
+        return false;
+    }
+    
+    int deletedAlbums = query.numRowsAffected();
+    if (deletedAlbums > 0) {
+        qDebug() << "DatabaseManager: Deleted" << deletedAlbums << "orphaned albums";
+    }
+    
+    // Step 3: Delete album_artists that have no albums (orphaned album artists)
+    if (!query.exec("DELETE FROM album_artists WHERE id NOT IN (SELECT DISTINCT album_artist_id FROM albums WHERE album_artist_id IS NOT NULL)")) {
+        logError("deleteTracksByFolderPath - delete orphaned album artists", query);
+        m_db.rollback();
+        return false;
+    }
+    
+    int deletedAlbumArtists = query.numRowsAffected();
+    if (deletedAlbumArtists > 0) {
+        qDebug() << "DatabaseManager: Deleted" << deletedAlbumArtists << "orphaned album artists";
+    }
+    
+    // Step 4: Delete artists that have no tracks (orphaned artists)
+    if (!query.exec("DELETE FROM artists WHERE id NOT IN (SELECT DISTINCT artist_id FROM tracks WHERE artist_id IS NOT NULL)")) {
+        logError("deleteTracksByFolderPath - delete orphaned artists", query);
+        m_db.rollback();
+        return false;
+    }
+    
+    int deletedArtists = query.numRowsAffected();
+    if (deletedArtists > 0) {
+        qDebug() << "DatabaseManager: Deleted" << deletedArtists << "orphaned artists";
+    }
+    
+    // Commit the transaction
+    if (!m_db.commit()) {
+        qWarning() << "Failed to commit transaction for deleteTracksByFolderPath";
+        m_db.rollback();
+        return false;
+    }
+    
+    qDebug() << "DatabaseManager: Cleanup completed successfully";
     return true;
 }
 
@@ -893,9 +948,10 @@ QVariantList DatabaseManager::getAllAlbums()
         "CASE WHEN art.id IS NOT NULL THEN 1 ELSE 0 END as has_art "
         "FROM albums al "
         "LEFT JOIN album_artists aa ON al.album_artist_id = aa.id "
-        "LEFT JOIN tracks t ON al.id = t.album_id "
+        "INNER JOIN tracks t ON al.id = t.album_id "
         "LEFT JOIN album_art art ON al.id = art.album_id "
         "GROUP BY al.id, al.title, al.year, aa.name, art.id "
+        "HAVING COUNT(t.id) > 0 "
         "ORDER BY al.title"
     );
     
@@ -930,9 +986,10 @@ QVariantList DatabaseManager::getAllArtists()
         "SELECT aa.*, COUNT(DISTINCT al.id) as album_count, "
         "COUNT(DISTINCT t.id) as track_count "
         "FROM album_artists aa "
-        "LEFT JOIN albums al ON aa.id = al.album_artist_id "
-        "LEFT JOIN tracks t ON al.id = t.album_id "
+        "INNER JOIN albums al ON aa.id = al.album_artist_id "
+        "INNER JOIN tracks t ON al.id = t.album_id "
         "GROUP BY aa.id "
+        "HAVING COUNT(t.id) > 0 "
         "ORDER BY "
         "CASE "
         "  WHEN LOWER(SUBSTR(aa.name, 1, 1)) BETWEEN 'a' AND 'z' THEN 0 "
