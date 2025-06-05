@@ -23,6 +23,10 @@ Item {
         active: root.source != ""
         z: 1
         
+        onActiveChanged: {
+            console.log("BlurredBackground: Loader active changed to:", active, "source:", root.source);
+        }
+        
         sourceComponent: Item {
             anchors.fill: parent
             
@@ -34,6 +38,13 @@ Item {
                 cache: true
                 asynchronous: true
                 source: root.source
+                
+                onStatusChanged: {
+                    console.log("BlurredBackground: Image status changed to:", status, "for source:", source);
+                    if (status === Image.Error) {
+                        console.warn("BlurredBackground: Failed to load image:", source);
+                    }
+                }
             }
             
             FastBlur {

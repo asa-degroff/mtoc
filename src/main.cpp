@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
     
     // Register album art image provider
     qDebug() << "Main: Registering album art image provider...";
-    engine.addImageProvider("albumart", new Mtoc::AlbumArtImageProvider(libraryManager->databaseManager()));
+    engine.addImageProvider("albumart", new Mtoc::AlbumArtImageProvider(libraryManager));
     qDebug() << "Main: Album art image provider registered";
 
     qDebug() << "Main: About to load QML...";

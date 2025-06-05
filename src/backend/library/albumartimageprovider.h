@@ -3,19 +3,21 @@
 
 #include <QQuickImageProvider>
 #include <QPixmapCache>
-#include "../database/databasemanager.h"
+#include <QPointer>
 
 namespace Mtoc {
+
+class LibraryManager;
 
 class AlbumArtImageProvider : public QQuickImageProvider
 {
 public:
-    AlbumArtImageProvider(DatabaseManager* dbManager);
+    AlbumArtImageProvider(LibraryManager* libraryManager);
     
     QPixmap requestPixmap(const QString &id, QSize *size, const QSize &requestedSize) override;
     
 private:
-    DatabaseManager* m_databaseManager;
+    QPointer<LibraryManager> m_libraryManager;
 };
 
 } // namespace Mtoc

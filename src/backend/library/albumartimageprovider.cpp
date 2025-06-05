@@ -1,19 +1,49 @@
 #include "albumartimageprovider.h"
+#include "librarymanager.h"
 #include <QDebug>
 #include <QPixmap>
 #include <QImage>
 #include <QUrl>
+#include <QMutex>
+#include <QMutexLocker>
 
 namespace Mtoc {
 
-AlbumArtImageProvider::AlbumArtImageProvider(DatabaseManager* dbManager)
+AlbumArtImageProvider::AlbumArtImageProvider(LibraryManager* libraryManager)
     : QQuickImageProvider(QQuickImageProvider::Pixmap)
-    , m_databaseManager(dbManager)
+    , m_libraryManager(libraryManager)
 {
 }
 
 QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, const QSize &requestedSize)
 {
+    // Add protection against concurrent access and invalid requests
+    static QMutex requestMutex;
+    QMutexLocker locker(&requestMutex);
+    
+    qDebug() << "[AlbumArtImageProvider::requestPixmap] Request for id:" << id;
+    
+    // Check if LibraryManager is still valid
+    if (m_libraryManager.isNull()) {
+        qWarning() << "AlbumArtImageProvider: LibraryManager is null, cannot load album art for:" << id;
+        if (size) {
+            *size = QSize(1, 1);
+        }
+        QPixmap emptyPixmap(1, 1);
+        emptyPixmap.fill(Qt::transparent);
+        return emptyPixmap;
+    }
+    
+    // Get database manager through LibraryManager
+    DatabaseManager* databaseManager = m_libraryManager->databaseManager();
+    if (!databaseManager) {
+        qWarning() << "AlbumArtImageProvider: DatabaseManager is null, cannot load album art for:" << id;
+        if (size) {
+            *size = QSize(0, 0);
+        }
+        return QPixmap();
+    }
+    
     // The id format is "albumId/type" or "artist/album/type" where type is "thumbnail" or "full"
     QStringList parts = id.split('/');
     if (parts.isEmpty()) {
@@ -38,14 +68,25 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
             type = parts.size() > 2 ? parts[2] : "thumbnail";
             
             // Look up album ID from artist and album name
-            albumId = m_databaseManager->getAlbumIdByArtistAndTitle(artist, album);
+            albumId = databaseManager->getAlbumIdByArtistAndTitle(artist, album);
             if (albumId <= 0) {
                 qWarning() << "AlbumArtImageProvider: Album not found:" << artist << "-" << album;
-                return QPixmap();
+                // Return a valid empty pixmap instead of default constructed one
+                if (size) {
+                    *size = QSize(1, 1);
+                }
+                QPixmap emptyPixmap(1, 1);
+                emptyPixmap.fill(Qt::transparent);
+                return emptyPixmap;
             }
         } else {
             qWarning() << "AlbumArtImageProvider: Invalid album id:" << parts[0];
-            return QPixmap();
+            if (size) {
+                *size = QSize(1, 1);
+            }
+            QPixmap emptyPixmap(1, 1);
+            emptyPixmap.fill(Qt::transparent);
+            return emptyPixmap;
         }
     }
     
@@ -62,7 +103,7 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
     // Load from database or file
     if (type == "thumbnail") {
         // Load thumbnail from database
-        QByteArray thumbnailData = m_databaseManager->getAlbumArtThumbnail(albumId);
+        QByteArray thumbnailData = databaseManager->getAlbumArtThumbnail(albumId);
         if (!thumbnailData.isEmpty()) {
             QImage image;
             if (image.loadFromData(thumbnailData)) {
@@ -84,7 +125,7 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
         }
     } else if (type == "full") {
         // Load full image from file
-        QString imagePath = m_databaseManager->getAlbumArtPath(albumId);
+        QString imagePath = databaseManager->getAlbumArtPath(albumId);
         if (!imagePath.isEmpty()) {
             pixmap.load(imagePath);
             
@@ -107,10 +148,14 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
     }
     
     // Return empty pixmap if no art found
+    qDebug() << "[AlbumArtImageProvider::requestPixmap] No art found for id:" << id;
     if (size) {
-        *size = QSize(0, 0);
+        *size = QSize(1, 1);
     }
-    return QPixmap();
+    QPixmap emptyPixmap(1, 1);
+    emptyPixmap.fill(Qt::transparent);
+    qDebug() << "[AlbumArtImageProvider::requestPixmap] Returning empty pixmap for id:" << id;
+    return emptyPixmap;
 }
 
 } // namespace Mtoc

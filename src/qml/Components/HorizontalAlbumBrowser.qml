@@ -30,10 +30,21 @@ Item {
         var sourceAlbums = LibraryManager.albumModel
         console.log("HorizontalAlbumBrowser: loadAllAlbums called, got", sourceAlbums.length, "albums from LibraryManager");
         
-        // Create a copy of the array so we can sort it
+        // Create safe copies of album objects to avoid stale references
         var albums = []
         for (var i = 0; i < sourceAlbums.length; i++) {
-            albums.push(sourceAlbums[i])
+            var sourceAlbum = sourceAlbums[i]
+            // Create a deep copy to avoid stale QVariantMap references
+            var albumCopy = {
+                id: sourceAlbum.id,
+                title: sourceAlbum.title,
+                albumArtist: sourceAlbum.albumArtist,
+                year: sourceAlbum.year,
+                trackCount: sourceAlbum.trackCount,
+                duration: sourceAlbum.duration,
+                hasArt: sourceAlbum.hasArt
+            }
+            albums.push(albumCopy)
         }
         
         // Sort albums by artist first, then by year (descending) within each artist
@@ -55,13 +66,33 @@ Item {
     }
     
     function jumpToAlbum(album) {
-        for (var i = 0; i < allAlbums.length; i++) {
-            if (allAlbums[i].id === album.id) {
-                // Animate to the new index instead of jumping
-                listView.currentIndex = i
-                selectedAlbum = album
-                break
+        try {
+            // Validate album parameter
+            if (!album || typeof album !== "object" || typeof album.id === "undefined") {
+                console.warn("HorizontalAlbumBrowser.jumpToAlbum: Invalid album parameter:", JSON.stringify(album));
+                return;
             }
+            
+            // Validate allAlbums array
+            if (!allAlbums || !Array.isArray(allAlbums)) {
+                console.warn("HorizontalAlbumBrowser.jumpToAlbum: allAlbums is not a valid array");
+                return;
+            }
+            
+            for (var i = 0; i < allAlbums.length; i++) {
+                var currentAlbum = allAlbums[i];
+                if (currentAlbum && 
+                    typeof currentAlbum === "object" && 
+                    typeof currentAlbum.id !== "undefined" && 
+                    currentAlbum.id === album.id) {
+                    // Animate to the new index instead of jumping
+                    listView.currentIndex = i
+                    selectedAlbum = currentAlbum  // Use the fresh copy, not the potentially stale reference
+                    break
+                }
+            }
+        } catch (error) {
+            console.warn("HorizontalAlbumBrowser.jumpToAlbum error:", error);
         }
     }
     

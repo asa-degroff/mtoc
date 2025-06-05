@@ -69,28 +69,87 @@ Item {
     }
 
     onSelectedAlbumChanged: {
-        // console.log("Selected album changed to: " + (selectedAlbum ? selectedAlbum.title : "none"));
-        if (selectedAlbum) {
-            // Use albumArtist instead of artist
-            var tracks = LibraryManager.getTracksForAlbumAsVariantList(selectedAlbum.albumArtist, selectedAlbum.title);
-            rightPane.currentAlbumTracks = tracks;
-            rightPane.albumTitleText = selectedAlbum.albumArtist + " - " + selectedAlbum.title;
-            
-            // Update the thumbnail URL for the background when an album is selected
-            // Only update if not currently playing or if this is the playing album
-            if (selectedAlbum.hasArt && (!MediaPlayer.currentTrack || 
-                (MediaPlayer.currentTrack.albumArtist === selectedAlbum.albumArtist && 
-                 MediaPlayer.currentTrack.album === selectedAlbum.title))) {
-                // Use encoded format for consistency
-                var encodedArtist = encodeURIComponent(selectedAlbum.albumArtist);
-                var encodedAlbum = encodeURIComponent(selectedAlbum.title);
-                thumbnailUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/thumbnail";
+        console.log("onSelectedAlbumChanged: Entry with album:", selectedAlbum ? (selectedAlbum.albumArtist + " - " + selectedAlbum.title) : "null");
+        try {
+            // Validate selectedAlbum is a valid object with required string properties
+            if (selectedAlbum && 
+                typeof selectedAlbum === "object" &&
+                selectedAlbum.albumArtist && 
+                selectedAlbum.title &&
+                typeof selectedAlbum.albumArtist === "string" &&
+                typeof selectedAlbum.title === "string" &&
+                selectedAlbum.albumArtist.length > 0 &&
+                selectedAlbum.title.length > 0) {
+                
+                console.log("onSelectedAlbumChanged: Validated album, calling getTracksForAlbumAsVariantList");
+                
+                // Use albumArtist instead of artist
+                var tracks;
+                try {
+                    console.log("onSelectedAlbumChanged: About to call LibraryManager.getTracksForAlbumAsVariantList");
+                    tracks = LibraryManager.getTracksForAlbumAsVariantList(selectedAlbum.albumArtist, selectedAlbum.title);
+                    console.log("onSelectedAlbumChanged: Successfully got", tracks ? tracks.length : 0, "tracks");
+                } catch (tracksError) {
+                    console.warn("Error getting tracks for album:", tracksError);
+                    tracks = [];
+                }
+                
+                if (rightPane) {
+                    console.log("onSelectedAlbumChanged: Setting rightPane.currentAlbumTracks to", tracks ? tracks.length : 0, "tracks");
+                    rightPane.currentAlbumTracks = tracks || [];
+                    console.log("onSelectedAlbumChanged: currentAlbumTracks set successfully");
+                    console.log("onSelectedAlbumChanged: Setting rightPane.albumTitleText");
+                    rightPane.albumTitleText = selectedAlbum.albumArtist + " - " + selectedAlbum.title;
+                    console.log("onSelectedAlbumChanged: albumTitleText set successfully");
+                }
+                
+                // Update the thumbnail URL for the background when an album is selected
+                // Only update if not currently playing or if this is the playing album
+                console.log("onSelectedAlbumChanged: About to check thumbnail URL update");
+                if (selectedAlbum.hasArt === true && (!MediaPlayer.currentTrack || 
+                    (MediaPlayer.currentTrack && MediaPlayer.currentTrack.albumArtist === selectedAlbum.albumArtist && 
+                     MediaPlayer.currentTrack.album === selectedAlbum.title))) {
+                    try {
+                        console.log("onSelectedAlbumChanged: Encoding album art URL");
+                        // Use encoded format for consistency
+                        var encodedArtist = encodeURIComponent(selectedAlbum.albumArtist);
+                        var encodedAlbum = encodeURIComponent(selectedAlbum.title);
+                        var newThumbnailUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/thumbnail";
+                        
+                        // Only update if the URL actually changed to avoid unnecessary reloads
+                        if (thumbnailUrl !== newThumbnailUrl) {
+                            console.log("onSelectedAlbumChanged: Setting thumbnailUrl to", newThumbnailUrl);
+                            // Use Qt.callLater to defer the URL change to avoid concurrent access issues
+                            Qt.callLater(function() {
+                                console.log("onSelectedAlbumChanged: Deferred thumbnailUrl assignment");
+                                thumbnailUrl = newThumbnailUrl;
+                                console.log("onSelectedAlbumChanged: thumbnailUrl set successfully to", thumbnailUrl);
+                            });
+                        } else {
+                            console.log("onSelectedAlbumChanged: thumbnailUrl unchanged, skipping update");
+                        }
+                    } catch (encodeError) {
+                        console.warn("Error encoding album art URL:", encodeError);
+                    }
+                } else {
+                    console.log("onSelectedAlbumChanged: Skipping thumbnail URL update (no art or different from current track)");
+                }
+            } else {
+                console.warn("Invalid selectedAlbum:", JSON.stringify(selectedAlbum));
+                if (rightPane) {
+                    rightPane.currentAlbumTracks = [];
+                    rightPane.albumTitleText = "No album selected";
+                }
+                // Don't clear thumbnailUrl here - let MediaPlayer control it when playing
             }
-        } else {
-            rightPane.currentAlbumTracks = [];
-            rightPane.albumTitleText = "No album selected";
-            // Don't clear thumbnailUrl here - let MediaPlayer control it when playing
+        } catch (error) {
+            console.warn("Error in onSelectedAlbumChanged:", error);
+            if (rightPane) {
+                rightPane.currentAlbumTracks = [];
+                rightPane.albumTitleText = "Error loading album";
+            }
         }
+        console.log("onSelectedAlbumChanged: Function completed successfully");
     }
     
     // Update album art URLs when track changes
@@ -912,6 +971,11 @@ Item {
                         visible: rightPane.currentAlbumTracks.length > 0
                         spacing: 1
                         
+                        // Add logging for model changes
+                        onModelChanged: {
+                            console.log("trackListView: Model changed, new count:", rightPane.currentAlbumTracks ? rightPane.currentAlbumTracks.length : 0);
+                        }
+                        
                         // Add layer to properly mask content with rounded corners
                         layer.enabled: true
                         layer.effect: OpacityMask {
@@ -1070,28 +1134,38 @@ Item {
     }
     
     function formatAlbumDuration() {
-        if (!rightPane.currentAlbumTracks || rightPane.currentAlbumTracks.length === 0) {
-            return "";
-        }
-        
-        var totalSeconds = 0;
-        for (var i = 0; i < rightPane.currentAlbumTracks.length; i++) {
-            var track = rightPane.currentAlbumTracks[i];
-            if (track.duration && !isNaN(track.duration)) {
-                totalSeconds += track.duration;
+        try {
+            if (!rightPane || !rightPane.currentAlbumTracks || rightPane.currentAlbumTracks.length === 0) {
+                return "";
             }
-        }
-        
-        if (totalSeconds === 0) return "";
-        
-        var hours = Math.floor(totalSeconds / 3600);
-        var minutes = Math.floor((totalSeconds % 3600) / 60);
-        var seconds = Math.floor(totalSeconds % 60);
-        
-        if (hours > 0) {
-            return hours + ":" + (minutes < 10 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
-        } else {
-            return minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+            
+            var totalSeconds = 0;
+            for (var i = 0; i < rightPane.currentAlbumTracks.length; i++) {
+                var track = rightPane.currentAlbumTracks[i];
+                if (track && 
+                    typeof track === "object" &&
+                    typeof track.duration !== "undefined" && 
+                    typeof track.duration === "number" &&
+                    !isNaN(track.duration) && 
+                    track.duration > 0) {
+                    totalSeconds += track.duration;
+                }
+            }
+            
+            if (totalSeconds === 0) return "";
+            
+            var hours = Math.floor(totalSeconds / 3600);
+            var minutes = Math.floor((totalSeconds % 3600) / 60);
+            var seconds = Math.floor(totalSeconds % 60);
+            
+            if (hours > 0) {
+                return hours + ":" + (minutes < 10 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+            } else {
+                return minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+            }
+        } catch (error) {
+            console.warn("Error in formatAlbumDuration:", error);
+            return "";
         }
     }
     
@@ -1334,42 +1408,58 @@ Item {
     
     // Functions for Now Playing Panel integration
     function jumpToArtist(artistName) {
-        if (!artistName) return
-        
-        // Clear search state and highlight the artist
-        clearSearch()
-        highlightedArtist = artistName
-        
-        // Find and scroll to the artist
-        var artists = LibraryManager.artistModel
-        for (var i = 0; i < artists.length; i++) {
-            if (artists[i].name === artistName) {
-                artistsListView.positionViewAtIndex(i, ListView.Contain)
-                break
+        try {
+            if (!artistName || typeof artistName !== "string") return
+            
+            // Clear search state and highlight the artist
+            clearSearch()
+            highlightedArtist = artistName
+            
+            // Find and scroll to the artist
+            var artists = LibraryManager.artistModel
+            if (!artists) return
+            
+            for (var i = 0; i < artists.length; i++) {
+                if (artists[i] && artists[i].name === artistName) {
+                    if (artistsListView) {
+                        artistsListView.positionViewAtIndex(i, ListView.Contain)
+                    }
+                    break
+                }
             }
+            
+            // Expand the artist to show albums
+            var updatedExpanded = Object.assign({}, expandedArtists)
+            updatedExpanded[artistName] = true
+            expandedArtists = updatedExpanded
+        } catch (error) {
+            console.warn("Error in jumpToArtist:", error)
         }
-        
-        // Expand the artist to show albums
-        var updatedExpanded = Object.assign({}, expandedArtists)
-        updatedExpanded[artistName] = true
-        expandedArtists = updatedExpanded
     }
     
     function jumpToAlbum(artistName, albumTitle) {
-        if (!artistName || !albumTitle) return
-        
-        // First jump to the artist
-        jumpToArtist(artistName)
-        
-        // Find and select the album
-        var albums = LibraryManager.getAlbumsForArtist(artistName)
-        for (var i = 0; i < albums.length; i++) {
-            if (albums[i].title === albumTitle) {
-                selectedAlbum = albums[i]
-                // Also jump to it in the album browser
-                albumBrowser.jumpToAlbum(albums[i])
-                break
+        try {
+            if (!artistName || !albumTitle || typeof artistName !== "string" || typeof albumTitle !== "string") return
+            
+            // First jump to the artist
+            jumpToArtist(artistName)
+            
+            // Find and select the album
+            var albums = LibraryManager.getAlbumsForArtist(artistName)
+            if (!albums) return
+            
+            for (var i = 0; i < albums.length; i++) {
+                if (albums[i] && albums[i].title === albumTitle) {
+                    selectedAlbum = albums[i]
+                    // Also jump to it in the album browser
+                    if (albumBrowser && typeof albumBrowser.jumpToAlbum === "function") {
+                        albumBrowser.jumpToAlbum(albums[i])
+                    }
+                    break
+                }
             }
+        } catch (error) {
+            console.warn("Error in jumpToAlbum:", error)
         }
     }
 }

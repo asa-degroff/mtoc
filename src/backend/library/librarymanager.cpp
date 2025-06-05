@@ -843,10 +843,23 @@ TrackModel* LibraryManager::tracksForAlbum(const QString &albumTitle, const QStr
 
 QVariantList LibraryManager::getTracksForAlbumAsVariantList(const QString &artistName, const QString &albumTitle) const
 {
-    if (!m_databaseManager || !m_databaseManager->isOpen()) {
+    qDebug() << "[LibraryManager::getTracksForAlbumAsVariantList] Called with artist:" << artistName << "album:" << albumTitle;
+    
+    if (!m_databaseManager) {
+        qWarning() << "[LibraryManager::getTracksForAlbumAsVariantList] DatabaseManager is null!";
         return QVariantList();
     }
-    return m_databaseManager->getTracksByAlbumAndArtist(albumTitle, artistName);
+    
+    if (!m_databaseManager->isOpen()) {
+        qWarning() << "[LibraryManager::getTracksForAlbumAsVariantList] Database is not open!";
+        return QVariantList();
+    }
+    
+    qDebug() << "[LibraryManager::getTracksForAlbumAsVariantList] Calling database function...";
+    QVariantList result = m_databaseManager->getTracksByAlbumAndArtist(albumTitle, artistName);
+    qDebug() << "[LibraryManager::getTracksForAlbumAsVariantList] Got" << result.size() << "tracks from database";
+    
+    return result;
 }
 
 AlbumModel* LibraryManager::searchAlbums(const QString &query) const
