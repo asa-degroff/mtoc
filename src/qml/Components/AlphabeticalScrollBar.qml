@@ -31,16 +31,10 @@ Item {
         property real dragY: 0
         property real minY: 2
         property real maxY: parent.height - height - 2
+        property bool isDragging: false
+        property real targetY: minY
         
-        y: {
-            if (mouseArea.pressed) {
-                // When dragging, constrain to bounds
-                return Math.max(minY, Math.min(dragY, maxY))
-            } else {
-                // When not dragging, compute position from scroll
-                return computeHandlePosition()
-            }
-        }
+        y: targetY
         
         color: mouseArea.pressed ? Qt.rgba(1, 1, 1, 0.25) : mouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.19) : Qt.rgba(1, 1, 1, 0.13)
         radius: 4
@@ -51,9 +45,9 @@ Item {
             ColorAnimation { duration: 150 }
         }
         
-        Behavior on y {
-            enabled: !mouseArea.pressed
-            NumberAnimation { duration: 150 }
+        Behavior on targetY {
+            enabled: !isDragging
+            NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
         }
     }
     
@@ -82,13 +76,22 @@ Item {
     }
     
     property string currentLetter: "A"
-    property var letterPositions: ({})
+    property var letterPositions: ({})  // letter -> contentY position
+    property var availableLetters: []   // sorted array of available letters
+    property real lastKnownContentHeight: 0
     
-    // Calculate letter positions based on artist model
+    // Calculate letter positions based on actual content positions
     function updateLetterPositions() {
-        var positions = {}
-        var firstLetters = []
+        if (!targetListView || !artistModel || artistModel.length === 0) {
+            letterPositions = {}
+            availableLetters = []
+            return
+        }
         
+        var positions = {}
+        var letters = []
+        
+        // Use the ListView's contentItem to get actual item positions
         for (var i = 0; i < artistModel.length; i++) {
             var artist = artistModel[i]
             var firstChar = artist.name.charAt(0).toUpperCase()
@@ -98,78 +101,142 @@ Item {
                 firstChar = "#"
             }
             
+            // Only record the first occurrence of each letter
             if (!positions[firstChar]) {
-                positions[firstChar] = i
-                firstLetters.push(firstChar)
-            }
-        }
-        
-        letterPositions = positions
-        return firstLetters
-    }
-    
-    // Compute handle position based on current scroll
-    function computeHandlePosition() {
-        if (!targetListView || targetListView.contentHeight <= targetListView.height) {
-            return handle.minY
-        }
-        
-        var scrollRatio = Math.max(0, Math.min(1, targetListView.contentY / (targetListView.contentHeight - targetListView.height)))
-        return handle.minY + scrollRatio * (handle.maxY - handle.minY)
-    }
-    
-    // Get letter for a given y position
-    function getLetterForPosition(y) {
-        var ratio = Math.max(0, Math.min(1, (y - handle.minY) / (handle.maxY - handle.minY)))
-        var letters = Object.keys(letterPositions).sort()
-        
-        if (letters.length === 0) return "A"
-        
-        // Map ratio to letter index
-        var letterIndex = Math.floor(ratio * letters.length)
-        letterIndex = Math.min(letterIndex, letters.length - 1)
-        
-        return letters[letterIndex]
-    }
-    
-    // Find the actual list position for an artist index, accounting for expanded artists
-    function getListPositionForArtistIndex(artistIndex) {
-        var position = 0
-        
-        for (var i = 0; i < artistIndex && i < artistModel.length; i++) {
-            position++ // Count the artist item itself
-            
-            // If this artist is expanded, count its albums
-            if (expandedArtists[artistModel[i].name]) {
-                // We need to get the album count for this artist
-                var albums = targetListView.model.getAlbumsForArtist ? 
-                    targetListView.model.getAlbumsForArtist(artistModel[i].name) : []
-                
-                if (albums && albums.length > 0) {
-                    // Calculate the height of the albums grid
-                    var gridCols = Math.floor((targetListView.width - 8) / 130) // 120 + 10 for cell width
-                    var gridRows = Math.ceil(albums.length / gridCols)
-                    var albumsHeight = gridRows * 150 + 16 // 140 + 10 for cell height + padding
-                    
-                    // Convert height to approximate item count
-                    position += albumsHeight / 40 // Assuming average item height of 40
+                // Get the actual Y position of this item in the content
+                var itemY = getItemContentY(i)
+                if (itemY >= 0) {
+                    positions[firstChar] = itemY
+                    letters.push(firstChar)
                 }
             }
         }
         
-        return position
+        // Sort letters alphabetically, with # at the end
+        letters.sort(function(a, b) {
+            if (a === "#") return 1
+            if (b === "#") return -1
+            return a.localeCompare(b)
+        })
+        
+        letterPositions = positions
+        availableLetters = letters
+    }
+    
+    // Get the contentY position for a given artist index
+    function getItemContentY(artistIndex) {
+        if (!targetListView || artistIndex < 0 || artistIndex >= artistModel.length) {
+            return -1
+        }
+        
+        // Calculate the accumulated height up to this artist
+        var contentY = 0
+        var spacing = targetListView.spacing || 0
+        
+        for (var i = 0; i < artistIndex; i++) {
+            // Add artist item height (40px + spacing)
+            contentY += 40
+            if (i < artistIndex - 1) contentY += spacing
+            
+            // Add expanded albums height if this artist is expanded
+            var artistName = artistModel[i].name
+            if (expandedArtists[artistName]) {
+                var albumsHeight = getExpandedAlbumsHeight(artistName)
+                contentY += albumsHeight
+                if (i < artistIndex - 1) contentY += spacing
+            }
+        }
+        
+        return contentY
+    }
+    
+    // Calculate the height of expanded albums for an artist
+    function getExpandedAlbumsHeight(artistName) {
+        if (!targetListView || !targetListView.model || !targetListView.model.getAlbumsForArtist) {
+            return 0
+        }
+        
+        var albums = targetListView.model.getAlbumsForArtist(artistName)
+        if (!albums || albums.length === 0) {
+            return 0
+        }
+        
+        // Calculate grid dimensions
+        var availableWidth = targetListView.width - 16 // Accounting for margins
+        var cellWidth = 130 // 120 + 10 for padding
+        var cellHeight = 150 // 140 + 10 for padding
+        var cols = Math.max(1, Math.floor(availableWidth / cellWidth))
+        var rows = Math.ceil(albums.length / cols)
+        
+        // Total height: grid height + container padding
+        return rows * cellHeight + 16
+    }
+    
+    // Get letter for a given handle position
+    function getLetterForPosition(y) {
+        if (availableLetters.length === 0) return "A"
+        
+        var ratio = Math.max(0, Math.min(1, (y - handle.minY) / (handle.maxY - handle.minY)))
+        var letterIndex = Math.floor(ratio * availableLetters.length)
+        letterIndex = Math.min(letterIndex, availableLetters.length - 1)
+        
+        return availableLetters[letterIndex]
+    }
+    
+    // Get handle position for current letter
+    function getPositionForLetter(letter) {
+        if (availableLetters.length === 0) return handle.minY
+        
+        var letterIndex = availableLetters.indexOf(letter)
+        if (letterIndex === -1) return handle.minY
+        
+        var ratio = letterIndex / Math.max(1, availableLetters.length - 1)
+        return handle.minY + ratio * (handle.maxY - handle.minY)
     }
     
     // Scroll to a specific letter
     function scrollToLetter(letter) {
         if (!targetListView || !letterPositions[letter]) return
         
-        var artistIndex = letterPositions[letter]
-        var listPosition = getListPositionForArtistIndex(artistIndex)
+        var targetContentY = letterPositions[letter]
         
-        // Position at the top of the view
-        targetListView.positionViewAtIndex(artistIndex, ListView.Beginning)
+        // Ensure we don't scroll past the content bounds
+        var maxContentY = Math.max(0, targetListView.contentHeight - targetListView.height)
+        targetContentY = Math.min(targetContentY, maxContentY)
+        
+        // Animate to the position
+        targetListView.contentY = targetContentY
         currentLetter = letter
+        
+        // Update handle position immediately
+        if (!handle.isDragging) {
+            handle.targetY = getPositionForLetter(letter)
+        }
+    }
+    
+    // Update handle position based on current scroll position
+    function updateHandleFromScroll() {
+        if (handle.isDragging || availableLetters.length === 0) return
+        
+        var currentContentY = targetListView.contentY
+        
+        // Find which letter section we're currently viewing
+        var closestLetter = availableLetters[0]
+        var minDistance = Math.abs(currentContentY - (letterPositions[closestLetter] || 0))
+        
+        for (var i = 1; i < availableLetters.length; i++) {
+            var letter = availableLetters[i]
+            var letterY = letterPositions[letter] || 0
+            var distance = Math.abs(currentContentY - letterY)
+            
+            if (distance < minDistance) {
+                minDistance = distance
+                closestLetter = letter
+            }
+        }
+        
+        currentLetter = closestLetter
+        handle.targetY = getPositionForLetter(closestLetter)
     }
     
     MouseArea {
@@ -180,15 +247,20 @@ Item {
         drag.target: null  // We'll handle dragging manually
         
         onPressed: function(mouse) {
+            handle.isDragging = true
             handle.dragY = mouse.y - handle.height/2
+            handle.targetY = Math.max(handle.minY, Math.min(handle.dragY, handle.maxY))
+            
             var letter = getLetterForPosition(mouse.y)
             currentLetter = letter
             scrollToLetter(letter)
         }
         
         onPositionChanged: function(mouse) {
-            if (pressed) {
+            if (pressed && handle.isDragging) {
                 handle.dragY = mouse.y - handle.height/2
+                handle.targetY = Math.max(handle.minY, Math.min(handle.dragY, handle.maxY))
+                
                 var letter = getLetterForPosition(mouse.y)
                 if (letter !== currentLetter) {
                     currentLetter = letter
@@ -198,8 +270,8 @@ Item {
         }
         
         onReleased: {
-            // Ensure handle position is synced after drag
-            handle.dragY = handle.y
+            handle.isDragging = false
+            // Handle will stay at its current position due to scrollToLetter
         }
     }
     
@@ -207,34 +279,30 @@ Item {
     Connections {
         target: root
         function onArtistModelChanged() {
-            updateLetterPositions()
+            Qt.callLater(updateLetterPositions)
+        }
+        function onExpandedArtistsChanged() {
+            Qt.callLater(updateLetterPositions)
         }
     }
     
-    // Update handle position when ListView scrolls
+    // Update handle position when ListView scrolls (user-initiated scrolling)
     Connections {
         target: targetListView
         function onContentYChanged() {
-            if (!mouseArea.pressed) {
-                handle.y = computeHandlePosition()
-                
-                // Update current letter based on what's visible
-                if (targetListView.count > 0) {
-                    var topIndex = targetListView.indexAt(0, targetListView.contentY)
-                    if (topIndex >= 0 && topIndex < artistModel.length) {
-                        var artist = artistModel[topIndex]
-                        var firstChar = artist.name.charAt(0).toUpperCase()
-                        if (!/[A-Z]/.test(firstChar)) {
-                            firstChar = "#"
-                        }
-                        currentLetter = firstChar
-                    }
-                }
+            if (!handle.isDragging) {
+                Qt.callLater(updateHandleFromScroll)
+            }
+        }
+        function onContentHeightChanged() {
+            if (targetListView.contentHeight !== lastKnownContentHeight) {
+                lastKnownContentHeight = targetListView.contentHeight
+                Qt.callLater(updateLetterPositions)
             }
         }
     }
     
     Component.onCompleted: {
-        updateLetterPositions()
+        Qt.callLater(updateLetterPositions)
     }
 }
