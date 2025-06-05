@@ -441,7 +441,7 @@ Item {
                             anchors.fill: parent
                             sourceItem: albumContainer
                             visible: Math.abs(distanceFromCenter) < 400
-                            live: false
+                            live: true
                             recursive: false
                             // Capture the bottom portion of the album for reflection
                             sourceRect: Qt.rect(0, albumContainer.height - 120, albumContainer.width, 120)
@@ -451,6 +451,20 @@ Item {
                                     origin.y: reflection.height / 2
                                 }
                             ]
+                            
+                            // Force update when album image changes
+                            Connections {
+                                target: albumImage
+                                function onStatusChanged() {
+                                    if (albumImage.status === Image.Ready) {
+                                        reflection.scheduleUpdate()
+                                    }
+                                }
+                                function onSourceChanged() {
+                                    // Force update when the album image source changes (delegate recycling)
+                                    reflection.scheduleUpdate()
+                                }
+                            }
                             
                             Component.onDestruction: {
                                 sourceItem = null
