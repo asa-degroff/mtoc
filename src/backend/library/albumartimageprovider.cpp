@@ -107,7 +107,29 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
         if (!thumbnailData.isEmpty()) {
             QImage image;
             if (image.loadFromData(thumbnailData)) {
+                // Validate image before creating pixmap
+                if (image.isNull() || image.width() <= 0 || image.height() <= 0) {
+                    qWarning() << "AlbumArtImageProvider: Invalid image data for album:" << albumId;
+                    if (size) {
+                        *size = QSize(1, 1);
+                    }
+                    QPixmap emptyPixmap(1, 1);
+                    emptyPixmap.fill(Qt::transparent);
+                    return emptyPixmap;
+                }
+                
                 pixmap = QPixmap::fromImage(image);
+                
+                // Validate pixmap
+                if (pixmap.isNull()) {
+                    qWarning() << "AlbumArtImageProvider: Failed to create pixmap for album:" << albumId;
+                    if (size) {
+                        *size = QSize(1, 1);
+                    }
+                    QPixmap emptyPixmap(1, 1);
+                    emptyPixmap.fill(Qt::transparent);
+                    return emptyPixmap;
+                }
                 
                 // Scale if requested size is different - use faster transformation
                 if (requestedSize.isValid() && requestedSize != pixmap.size()) {
@@ -121,6 +143,8 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
                     *size = pixmap.size();
                 }
                 return pixmap;
+            } else {
+                qWarning() << "AlbumArtImageProvider: Failed to load image data for album:" << albumId;
             }
         }
     } else if (type == "full") {

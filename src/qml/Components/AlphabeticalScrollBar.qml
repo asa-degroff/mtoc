@@ -130,7 +130,18 @@ Item {
             return -1
         }
         
-        // Calculate the accumulated height up to this artist
+        // Use the actual ListView's itemAtIndex function if available
+        // This will get us the real position from the ListView
+        try {
+            var item = targetListView.itemAtIndex ? targetListView.itemAtIndex(artistIndex) : null
+            if (item && typeof item.y !== 'undefined') {
+                return item.y
+            }
+        } catch (error) {
+            // Fallback to calculation if itemAtIndex fails
+        }
+        
+        // Fallback: Calculate the accumulated height up to this artist
         var contentY = 0
         var spacing = targetListView.spacing || 0
         
@@ -153,24 +164,50 @@ Item {
     
     // Calculate the height of expanded albums for an artist
     function getExpandedAlbumsHeight(artistName) {
-        if (!targetListView || typeof LibraryManager === 'undefined' || !LibraryManager.getAlbumsForArtist) {
+        try {
+            if (!targetListView || typeof LibraryManager === 'undefined' || !LibraryManager.getAlbumsForArtist) {
+                return 0
+            }
+            
+            if (!artistName || typeof artistName !== 'string') {
+                return 0
+            }
+            
+            // Add safety check to prevent segfault - avoid calling during initialization
+            if (typeof LibraryManager.albumModel === 'undefined' || !LibraryManager.albumModel) {
+                return 0
+            }
+            
+            var albums
+            try {
+                albums = LibraryManager.getAlbumsForArtist(artistName)
+            } catch (cppError) {
+                console.warn("C++ error in getAlbumsForArtist for artist:", artistName, "error:", cppError)
+                return 0
+            }
+            
+            if (!albums || !Array.isArray(albums) || albums.length === 0) {
+                return 0
+            }
+            
+            // Validate targetListView width
+            if (!targetListView.width || targetListView.width <= 0) {
+                return 0
+            }
+            
+            // Calculate grid dimensions - same as in LibraryPane.qml
+            var availableWidth = targetListView.width - 16 // Accounting for margins
+            var cellWidth = 130 // 120 + 10 for padding (matches LibraryPane cellWidth + 10)
+            var cellHeight = 150 // 140 + 10 for padding (matches LibraryPane cellHeight + 10)
+            var cols = Math.max(1, Math.floor(availableWidth / cellWidth))
+            var rows = Math.ceil(albums.length / cols)
+            
+            // Total height: grid height + container padding (matches LibraryPane calculation)
+            return rows * cellHeight + 16
+        } catch (error) {
+            console.warn("Error in getExpandedAlbumsHeight:", error, "for artist:", artistName)
             return 0
         }
-        
-        var albums = LibraryManager.getAlbumsForArtist(artistName)
-        if (!albums || albums.length === 0) {
-            return 0
-        }
-        
-        // Calculate grid dimensions
-        var availableWidth = targetListView.width - 16 // Accounting for margins
-        var cellWidth = 130 // 120 + 10 for padding
-        var cellHeight = 150 // 140 + 10 for padding
-        var cols = Math.max(1, Math.floor(availableWidth / cellWidth))
-        var rows = Math.ceil(albums.length / cols)
-        
-        // Total height: grid height + container padding
-        return rows * cellHeight + 16
     }
     
     // Get letter for a given handle position
@@ -220,6 +257,19 @@ Item {
         if (!targetListView || handle.isDragging || availableLetters.length === 0) return
         
         var currentContentY = targetListView.contentY
+        var contentHeight = targetListView.contentHeight
+        var viewHeight = targetListView.height
+        
+        // Prevent invalid scroll positions from breaking the handle
+        if (contentHeight <= viewHeight) {
+            // No scrolling needed
+            handle.targetY = handle.minY
+            currentLetter = availableLetters[0] || "A"
+            return
+        }
+        
+        // Clamp contentY to valid range
+        currentContentY = Math.max(0, Math.min(currentContentY, contentHeight - viewHeight))
         
         // Find which letter section we're currently viewing
         var closestLetter = availableLetters[0] || "A"
@@ -237,7 +287,11 @@ Item {
         }
         
         currentLetter = closestLetter
-        handle.targetY = getPositionForLetter(closestLetter)
+        var newTargetY = getPositionForLetter(closestLetter)
+        
+        // Ensure handle position is within valid bounds
+        newTargetY = Math.max(handle.minY, Math.min(newTargetY, handle.maxY))
+        handle.targetY = newTargetY
     }
     
     MouseArea {
@@ -287,18 +341,34 @@ Item {
         }
     }
     
+    // Timer for debouncing scroll updates
+    Timer {
+        id: updateTimer
+        interval: 50  // 50ms debounce
+        repeat: false
+        onTriggered: updateHandleFromScroll()
+    }
+    
+    // Timer for debouncing position updates
+    Timer {
+        id: positionUpdateTimer
+        interval: 100  // 100ms debounce for position updates
+        repeat: false
+        onTriggered: updateLetterPositions()
+    }
+    
     // Update handle position when ListView scrolls (user-initiated scrolling)
     Connections {
         target: targetListView
         function onContentYChanged() {
             if (!handle.isDragging) {
-                Qt.callLater(updateHandleFromScroll)
+                updateTimer.restart()
             }
         }
         function onContentHeightChanged() {
             if (targetListView.contentHeight !== lastKnownContentHeight) {
                 lastKnownContentHeight = targetListView.contentHeight
-                Qt.callLater(updateLetterPositions)
+                positionUpdateTimer.restart()
             }
         }
     }

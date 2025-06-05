@@ -1051,6 +1051,7 @@ QVariantList DatabaseManager::getAllArtists()
 
 QVariantList DatabaseManager::getAlbumsByAlbumArtist(int albumArtistId)
 {
+    QMutexLocker locker(&m_databaseMutex);
     QVariantList albums;
     if (!m_db.isOpen()) return albums;
     
@@ -1122,14 +1123,19 @@ int DatabaseManager::getAlbumIdByArtistAndTitle(const QString& albumArtist, cons
 
 int DatabaseManager::getAlbumArtistIdByName(const QString& albumArtistName)
 {
+    QMutexLocker locker(&m_databaseMutex);
     if (!m_db.isOpen() || albumArtistName.isEmpty()) return 0;
     
     QSqlQuery query(m_db);
     query.prepare("SELECT id FROM album_artists WHERE name = :name");
     query.bindValue(":name", albumArtistName);
     
-    if (query.exec() && query.next()) {
-        return query.value(0).toInt();
+    if (query.exec()) {
+        if (query.next()) {
+            return query.value(0).toInt();
+        }
+    } else {
+        logError("Get album artist ID by name", query);
     }
     
     return 0;

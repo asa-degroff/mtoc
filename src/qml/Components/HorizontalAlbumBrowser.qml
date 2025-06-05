@@ -379,10 +379,17 @@ Item {
                         Image {
                             id: albumImage
                             anchors.fill: parent
-                            source: modelData.hasArt ? "image://albumart/" + modelData.id + "/thumbnail" : ""
+                            source: (modelData && modelData.hasArt && modelData.id) ? "image://albumart/" + modelData.id + "/thumbnail" : ""
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
                             antialiasing: true
+                            cache: false
+                            
+                            onStatusChanged: {
+                                if (status === Image.Error) {
+                                    console.warn("Failed to load album art for:", modelData ? modelData.id : "unknown")
+                                }
+                            }
                         
                                 Rectangle {
                                     anchors.fill: parent
@@ -433,7 +440,9 @@ Item {
                             id: reflection
                             anchors.fill: parent
                             sourceItem: albumContainer
-                            visible: Math.abs(distanceFromCenter) < 1200
+                            visible: Math.abs(distanceFromCenter) < 400
+                            live: false
+                            recursive: false
                             // Capture the bottom portion of the album for reflection
                             sourceRect: Qt.rect(0, albumContainer.height - 120, albumContainer.width, 120)
                             transform: [
@@ -442,6 +451,10 @@ Item {
                                     origin.y: reflection.height / 2
                                 }
                             ]
+                            
+                            Component.onDestruction: {
+                                sourceItem = null
+                            }
                         }
                         
                         // Dark overlay to dim the reflection
