@@ -652,6 +652,16 @@ Item {
                                                 clip: false
                                                 asynchronous: true
                                                 
+                                                // Add rounded corners using layer effect
+                                                layer.enabled: true
+                                                layer.effect: OpacityMask {
+                                                    maskSource: Rectangle {
+                                                        width: albumImage.width
+                                                        height: albumImage.height
+                                                        radius: 3
+                                                    }
+                                                }
+                                                
                                                 // Custom positioning based on aspect ratio
                                                 onStatusChanged: {
                                                     if (status === Image.Ready && sourceSize.width > 0 && sourceSize.height > 0) {
