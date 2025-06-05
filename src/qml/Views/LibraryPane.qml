@@ -69,7 +69,6 @@ Item {
     }
 
     onSelectedAlbumChanged: {
-        console.log("onSelectedAlbumChanged: Entry with album:", selectedAlbum ? (selectedAlbum.albumArtist + " - " + selectedAlbum.title) : "null");
         try {
             // Validate selectedAlbum is a valid object with required string properties
             if (selectedAlbum && 
@@ -81,36 +80,26 @@ Item {
                 selectedAlbum.albumArtist.length > 0 &&
                 selectedAlbum.title.length > 0) {
                 
-                console.log("onSelectedAlbumChanged: Validated album, calling getTracksForAlbumAsVariantList");
-                
                 // Use albumArtist instead of artist
                 var tracks;
                 try {
-                    console.log("onSelectedAlbumChanged: About to call LibraryManager.getTracksForAlbumAsVariantList");
                     tracks = LibraryManager.getTracksForAlbumAsVariantList(selectedAlbum.albumArtist, selectedAlbum.title);
-                    console.log("onSelectedAlbumChanged: Successfully got", tracks ? tracks.length : 0, "tracks");
                 } catch (tracksError) {
                     console.warn("Error getting tracks for album:", tracksError);
                     tracks = [];
                 }
                 
                 if (rightPane) {
-                    console.log("onSelectedAlbumChanged: Setting rightPane.currentAlbumTracks to", tracks ? tracks.length : 0, "tracks");
                     rightPane.currentAlbumTracks = tracks || [];
-                    console.log("onSelectedAlbumChanged: currentAlbumTracks set successfully");
-                    console.log("onSelectedAlbumChanged: Setting rightPane.albumTitleText");
                     rightPane.albumTitleText = selectedAlbum.albumArtist + " - " + selectedAlbum.title;
-                    console.log("onSelectedAlbumChanged: albumTitleText set successfully");
                 }
                 
                 // Update the thumbnail URL for the background when an album is selected
                 // Only update if not currently playing or if this is the playing album
-                console.log("onSelectedAlbumChanged: About to check thumbnail URL update");
                 if (selectedAlbum.hasArt === true && (!MediaPlayer.currentTrack || 
                     (MediaPlayer.currentTrack && MediaPlayer.currentTrack.albumArtist === selectedAlbum.albumArtist && 
                      MediaPlayer.currentTrack.album === selectedAlbum.title))) {
                     try {
-                        console.log("onSelectedAlbumChanged: Encoding album art URL");
                         // Use encoded format for consistency
                         var encodedArtist = encodeURIComponent(selectedAlbum.albumArtist);
                         var encodedAlbum = encodeURIComponent(selectedAlbum.title);
@@ -118,21 +107,14 @@ Item {
                         
                         // Only update if the URL actually changed to avoid unnecessary reloads
                         if (thumbnailUrl !== newThumbnailUrl) {
-                            console.log("onSelectedAlbumChanged: Setting thumbnailUrl to", newThumbnailUrl);
                             // Use Qt.callLater to defer the URL change to avoid concurrent access issues
                             Qt.callLater(function() {
-                                console.log("onSelectedAlbumChanged: Deferred thumbnailUrl assignment");
                                 thumbnailUrl = newThumbnailUrl;
-                                console.log("onSelectedAlbumChanged: thumbnailUrl set successfully to", thumbnailUrl);
                             });
-                        } else {
-                            console.log("onSelectedAlbumChanged: thumbnailUrl unchanged, skipping update");
                         }
                     } catch (encodeError) {
                         console.warn("Error encoding album art URL:", encodeError);
                     }
-                } else {
-                    console.log("onSelectedAlbumChanged: Skipping thumbnail URL update (no art or different from current track)");
                 }
             } else {
                 console.warn("Invalid selectedAlbum:", JSON.stringify(selectedAlbum));
@@ -149,7 +131,6 @@ Item {
                 rightPane.albumTitleText = "Error loading album";
             }
         }
-        console.log("onSelectedAlbumChanged: Function completed successfully");
     }
     
     // Update album art URLs when track changes
@@ -971,10 +952,7 @@ Item {
                         visible: rightPane.currentAlbumTracks.length > 0
                         spacing: 1
                         
-                        // Add logging for model changes
-                        onModelChanged: {
-                            console.log("trackListView: Model changed, new count:", rightPane.currentAlbumTracks ? rightPane.currentAlbumTracks.length : 0);
-                        }
+                        // Track list model updates automatically
                         
                         // Add layer to properly mask content with rounded corners
                         layer.enabled: true

@@ -513,7 +513,7 @@ QVariantMap DatabaseManager::getTrack(int trackId)
 
 QVariantList DatabaseManager::getTracksByAlbumAndArtist(const QString& albumTitle, const QString& albumArtistName)
 {
-    qDebug() << "[DatabaseManager::getTracksByAlbumAndArtist] Called with album:" << albumTitle << "artist:" << albumArtistName;
+    // qDebug() << "[DatabaseManager::getTracksByAlbumAndArtist] Called with album:" << albumTitle << "artist:" << albumArtistName;
     
     QVariantList tracks;
     if (!m_db.isOpen()) {
@@ -521,10 +521,7 @@ QVariantList DatabaseManager::getTracksByAlbumAndArtist(const QString& albumTitl
         return tracks;
     }
     
-    qDebug() << "[DatabaseManager::getTracksByAlbumAndArtist] Creating query...";
     QSqlQuery query(m_db);
-    
-    qDebug() << "[DatabaseManager::getTracksByAlbumAndArtist] Preparing query...";
     query.prepare(
         "SELECT t.*, a.name as artist_name, al.title as album_title, "
         "aa.name as album_artist_name "
@@ -536,17 +533,11 @@ QVariantList DatabaseManager::getTracksByAlbumAndArtist(const QString& albumTitl
         "ORDER BY t.disc_number, t.track_number, t.title"
     );
     
-    qDebug() << "[DatabaseManager::getTracksByAlbumAndArtist] Binding values...";
     query.bindValue(":album_title", albumTitle);
     query.bindValue(":album_artist", albumArtistName);
     
-    qDebug() << "[DatabaseManager::getTracksByAlbumAndArtist] Executing query...";
     if (query.exec()) {
-        qDebug() << "[DatabaseManager::getTracksByAlbumAndArtist] Query executed successfully, processing results...";
-        int rowCount = 0;
         while (query.next()) {
-            rowCount++;
-            qDebug() << "[DatabaseManager::getTracksByAlbumAndArtist] Processing row" << rowCount;
             QVariantMap track;
             track["id"] = query.value("id");
             track["filePath"] = query.value("file_path");
@@ -561,13 +552,10 @@ QVariantList DatabaseManager::getTracksByAlbumAndArtist(const QString& albumTitl
             track["duration"] = query.value("duration");
             tracks.append(track);
         }
-        qDebug() << "[DatabaseManager::getTracksByAlbumAndArtist] Processed" << rowCount << "rows successfully";
     } else {
         qWarning() << "[DatabaseManager::getTracksByAlbumAndArtist] Query execution failed!";
         logError("Get tracks by album and artist", query);
     }
-    
-    qDebug() << "[DatabaseManager::getTracksByAlbumAndArtist] Returning" << tracks.size() << "tracks";
     return tracks;
 }
 

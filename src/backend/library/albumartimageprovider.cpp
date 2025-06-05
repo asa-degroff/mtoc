@@ -21,7 +21,7 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
     static QMutex requestMutex;
     QMutexLocker locker(&requestMutex);
     
-    qDebug() << "[AlbumArtImageProvider::requestPixmap] Request for id:" << id;
+    // qDebug() << "[AlbumArtImageProvider::requestPixmap] Request for id:" << id;
     
     // Check if LibraryManager is still valid
     if (m_libraryManager.isNull()) {
@@ -148,13 +148,13 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
     }
     
     // Return empty pixmap if no art found
-    qDebug() << "[AlbumArtImageProvider::requestPixmap] No art found for id:" << id;
+    // qDebug() << "[AlbumArtImageProvider::requestPixmap] No art found for id:" << id;
     if (size) {
         *size = QSize(1, 1);
     }
     QPixmap emptyPixmap(1, 1);
     emptyPixmap.fill(Qt::transparent);
-    qDebug() << "[AlbumArtImageProvider::requestPixmap] Returning empty pixmap for id:" << id;
+    // qDebug() << "[AlbumArtImageProvider::requestPixmap] Returning empty pixmap for id:" << id;
     return emptyPixmap;
 }
 
