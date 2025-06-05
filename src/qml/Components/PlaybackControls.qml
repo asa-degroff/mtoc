@@ -229,31 +229,59 @@ Item {
                     x: progressSlider.leftPadding
                     y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
                     implicitWidth: 200
-                    implicitHeight: 4
+                    implicitHeight: 8
                     width: progressSlider.availableWidth
                     height: implicitHeight
-                    radius: 2
+                    radius: 4
                     color: "white"
-                    opacity: 0.15
+                    opacity: 0.1
                     
                     Rectangle {
                         width: progressSlider.visualPosition * parent.width
                         height: parent.height
-                        color: "white"
-                        opacity: 0.9
-                        radius: 2
+                        radius: 4
+                        
+                        gradient: Gradient {
+                            orientation: Gradient.Vertical
+                            GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.95) }
+                            GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.85) }
+                            GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0.75) }
+                        }
                     }
                 }
                 
                 handle: Rectangle {
-                    x: progressSlider.leftPadding + progressSlider.visualPosition * (progressSlider.availableWidth - width)
+                    id: sliderHandle
+                    x: progressSlider.leftPadding + progressSlider.visualPosition * progressSlider.availableWidth - width / 2
                     y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
-                    implicitWidth: 12
-                    implicitHeight: 12
-                    radius: 6
+                    implicitWidth: 16
+                    implicitHeight: 16
+                    radius: 8
                     color: "white"
-                    opacity: progressSlider.pressed ? 1.0 : 0.9
-                    visible: progressSlider.hovered || progressSlider.pressed
+                    
+                    property bool shouldShow: progressSlider.hovered || progressSlider.pressed || handleFadeTimer.running
+                    opacity: shouldShow ? (progressSlider.pressed ? 1.0 : 0.9) : 0.0
+                    
+                    Behavior on opacity {
+                        NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                    }
+                    
+                    Timer {
+                        id: handleFadeTimer
+                        interval: 1000
+                        running: false
+                    }
+                    
+                    Connections {
+                        target: progressSlider
+                        function onHoveredChanged() {
+                            if (!progressSlider.hovered && !progressSlider.pressed) {
+                                handleFadeTimer.restart()
+                            } else if (progressSlider.hovered) {
+                                handleFadeTimer.stop()
+                            }
+                        }
+                    }
                 }
             }
             
