@@ -148,6 +148,7 @@ int main(int argc, char *argv[])
     // Create and initialize MPRIS manager for system media control integration
     qDebug() << "Main: Creating MPRIS manager...";
     MprisManager *mprisManager = new MprisManager(mediaPlayer, &engine);
+    mprisManager->setLibraryManager(libraryManager);
     if (mprisManager->initialize()) {
         qDebug() << "Main: MPRIS manager initialized successfully";
     } else {

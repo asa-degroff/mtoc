@@ -1,6 +1,7 @@
 #include "mprismanager.h"
 #include "../playback/mediaplayer.h"
 #include "../library/track.h"
+#include "../library/librarymanager.h"
 #include <QDBusConnection>
 #include <QDBusMessage>
 #include <QDBusInterface>
@@ -8,6 +9,11 @@
 #include <QDebug>
 #include <QFileInfo>
 #include <QUrl>
+#include <QPixmap>
+#include <QStandardPaths>
+#include <QDir>
+#include <QTemporaryDir>
+#include <QDateTime>
 #include <QWidget>
 
 // MediaPlayer2Adaptor implementation
@@ -34,8 +40,13 @@ void MediaPlayer2Adaptor::Raise()
 
 // MediaPlayer2PlayerAdaptor implementation
 MediaPlayer2PlayerAdaptor::MediaPlayer2PlayerAdaptor(MediaPlayer *parent)
-    : QDBusAbstractAdaptor(parent), m_mediaPlayer(parent)
+    : QDBusAbstractAdaptor(parent), m_mediaPlayer(parent), m_mprisManager(nullptr)
 {
+}
+
+void MediaPlayer2PlayerAdaptor::setMprisManager(MprisManager *manager)
+{
+    m_mprisManager = manager;
 }
 
 QString MediaPlayer2PlayerAdaptor::playbackStatus() const
@@ -104,6 +115,14 @@ QVariantMap MediaPlayer2PlayerAdaptor::metadata() const
     // File URL
     if (!track->filePath().isEmpty()) {
         metadata["xesam:url"] = QUrl::fromLocalFile(track->filePath()).toString();
+    }
+    
+    // Album art URL
+    if (m_mprisManager) {
+        QString albumArtUrl = m_mprisManager->exportAlbumArt(track);
+        if (!albumArtUrl.isEmpty()) {
+            metadata["mpris:artUrl"] = albumArtUrl;
+        }
     }
 
     return metadata;
@@ -204,6 +223,7 @@ void MediaPlayer2PlayerAdaptor::SetPosition(const QDBusObjectPath &trackId, qint
 MprisManager::MprisManager(MediaPlayer *mediaPlayer, QObject *parent)
     : QObject(parent)
     , m_mediaPlayer(mediaPlayer)
+    , m_libraryManager(nullptr)
     , m_mprisAdaptor(nullptr)
     , m_playerAdaptor(nullptr)
     , m_dbusConnection(QDBusConnection::sessionBus())
@@ -215,6 +235,11 @@ MprisManager::MprisManager(MediaPlayer *mediaPlayer, QObject *parent)
 MprisManager::~MprisManager()
 {
     cleanup();
+}
+
+void MprisManager::setLibraryManager(Mtoc::LibraryManager *libraryManager)
+{
+    m_libraryManager = libraryManager;
 }
 
 bool MprisManager::initialize()
@@ -241,6 +266,9 @@ bool MprisManager::initialize()
     // IMPORTANT: Set the parent of the player adaptor to be the same as the main adaptor
     // This ensures both interfaces are exposed on the same D-Bus object
     m_playerAdaptor->setParent(this);
+    
+    // Set the MPRIS manager reference for album art access
+    m_playerAdaptor->setMprisManager(this);
 
     // Register object path with both adaptors
     if (!m_dbusConnection.registerObject("/org/mpris/MediaPlayer2", this)) {
@@ -366,4 +394,86 @@ void MprisManager::emitPropertiesChanged(const QString &interface, const QVarian
 QVariantMap MprisManager::createMetadata(Mtoc::Track *track) const
 {
     return m_playerAdaptor->metadata();
+}
+
+QString MprisManager::exportAlbumArt(Mtoc::Track *track) const
+{
+    if (!track || !m_libraryManager) {
+        return QString();
+    }
+    
+    // Get database manager from library manager
+    auto databaseManager = m_libraryManager->databaseManager();
+    if (!databaseManager) {
+        return QString();
+    }
+    
+    // Look up album ID from track info
+    int albumId = databaseManager->getAlbumIdByArtistAndTitle(track->albumArtist(), track->album());
+    if (albumId <= 0) {
+        return QString();
+    }
+    
+    // Check if we have album art for this album
+    if (!databaseManager->albumArtExists(albumId)) {
+        return QString();
+    }
+    
+    // Create temp directory if it doesn't exist
+    if (m_tempDir.isEmpty()) {
+        QDir tempDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation));
+        QString mtocTempDir = tempDir.absoluteFilePath("mtoc-albumart");
+        if (!tempDir.exists("mtoc-albumart")) {
+            tempDir.mkpath("mtoc-albumart");
+        }
+        m_tempDir = mtocTempDir;
+    }
+    
+    // Create filename for this album's art
+    QString filename = QString("album_%1.jpg").arg(albumId);
+    QString fullPath = QDir(m_tempDir).absoluteFilePath(filename);
+    
+    // Check if file already exists and is recent
+    QFileInfo fileInfo(fullPath);
+    if (fileInfo.exists() && fileInfo.lastModified().secsTo(QDateTime::currentDateTime()) < 3600) {
+        // File exists and is less than 1 hour old, use it
+        return QUrl::fromLocalFile(fullPath).toString();
+    }
+    
+    // Get album art thumbnail from database
+    QByteArray thumbnailData = databaseManager->getAlbumArtThumbnail(albumId);
+    if (thumbnailData.isEmpty()) {
+        // Try to get full image path
+        QString imagePath = databaseManager->getAlbumArtPath(albumId);
+        if (!imagePath.isEmpty()) {
+            QPixmap pixmap(imagePath);
+            if (!pixmap.isNull()) {
+                // Scale down for MPRIS (max 300x300 is usually enough)
+                if (pixmap.width() > 300 || pixmap.height() > 300) {
+                    pixmap = pixmap.scaled(300, 300, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                }
+                if (pixmap.save(fullPath, "JPEG", 85)) {
+                    qDebug() << "MPRIS: Exported album art to" << fullPath;
+                    return QUrl::fromLocalFile(fullPath).toString();
+                }
+            }
+        }
+        return QString();
+    }
+    
+    // Save thumbnail data to temp file
+    QImage image;
+    if (image.loadFromData(thumbnailData)) {
+        // Scale up thumbnail if it's too small for good quality
+        if (image.width() < 200 || image.height() < 200) {
+            image = image.scaled(200, 200, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        }
+        
+        if (image.save(fullPath, "JPEG", 85)) {
+            qDebug() << "MPRIS: Exported album art thumbnail to" << fullPath;
+            return QUrl::fromLocalFile(fullPath).toString();
+        }
+    }
+    
+    return QString();
 }

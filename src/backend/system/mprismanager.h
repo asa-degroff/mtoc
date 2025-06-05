@@ -13,6 +13,7 @@ class MediaPlayer;
 
 namespace Mtoc {
 class Track;
+class LibraryManager;
 }
 
 // MPRIS MediaPlayer2 interface
@@ -46,6 +47,9 @@ signals:
     void raiseRequested();
 };
 
+// Forward declaration
+class MprisManager;
+
 // MPRIS MediaPlayer2.Player interface
 class MediaPlayer2PlayerAdaptor : public QDBusAbstractAdaptor
 {
@@ -67,6 +71,7 @@ class MediaPlayer2PlayerAdaptor : public QDBusAbstractAdaptor
 
 public:
     explicit MediaPlayer2PlayerAdaptor(MediaPlayer *parent);
+    void setMprisManager(MprisManager *manager);
 
     QString playbackStatus() const;
     double rate() const { return 1.0; }
@@ -99,6 +104,7 @@ signals:
 
 private:
     MediaPlayer *m_mediaPlayer;
+    MprisManager *m_mprisManager;
 };
 
 // Main MPRIS Manager class
@@ -112,6 +118,7 @@ public:
 
     bool initialize();
     void cleanup();
+    void setLibraryManager(Mtoc::LibraryManager *libraryManager);
 
 private slots:
     void onStateChanged();
@@ -123,13 +130,19 @@ private:
     void updateMetadata();
     void emitPropertiesChanged(const QString &interface, const QVariantMap &changedProperties);
     QVariantMap createMetadata(Mtoc::Track *track) const;
+public:
+    QString exportAlbumArt(Mtoc::Track *track) const;
+    
+private:
 
     MediaPlayer *m_mediaPlayer;
+    Mtoc::LibraryManager *m_libraryManager;
     MediaPlayer2Adaptor *m_mprisAdaptor;
     MediaPlayer2PlayerAdaptor *m_playerAdaptor;
     QDBusConnection m_dbusConnection;
     QString m_serviceName;
     bool m_initialized;
+    mutable QString m_tempDir;
 };
 
 #endif // MPRISMANAGER_H
