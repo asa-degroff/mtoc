@@ -14,6 +14,7 @@
 #include "backend/library/track.h"
 #include "backend/library/album.h"
 #include "backend/playback/mediaplayer.h"
+#include "backend/system/mprismanager.h"
 
 // Message handler to redirect qDebug output to file and console
 void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
@@ -38,6 +39,7 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context, const QSt
             !msg.contains("DatabaseManager") &&
             !msg.contains("LibraryManager") &&
             !msg.contains("MediaPlayer") &&
+            !msg.contains("MPRIS") &&
             !msg.contains("Main:") &&
             !msg.contains("DEBUG TEST") && 
             !msg.contains("STDOUT TEST") && 
@@ -142,6 +144,15 @@ int main(int argc, char *argv[])
     mediaPlayer->setLibraryManager(libraryManager);
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MediaPlayer", mediaPlayer);
     qDebug() << "Main: MediaPlayer registered";
+    
+    // Create and initialize MPRIS manager for system media control integration
+    qDebug() << "Main: Creating MPRIS manager...";
+    MprisManager *mprisManager = new MprisManager(mediaPlayer, &engine);
+    if (mprisManager->initialize()) {
+        qDebug() << "Main: MPRIS manager initialized successfully";
+    } else {
+        qWarning() << "Main: Failed to initialize MPRIS manager";
+    }
     
     // Register album art image provider
     qDebug() << "Main: Registering album art image provider...";
