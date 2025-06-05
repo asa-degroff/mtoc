@@ -55,7 +55,7 @@ AlbumArtManager::ProcessedAlbumArt AlbumArtManager::processAlbumArt(
     }
     
     result.originalSize = fullImage.size();
-    result.format = "avif"; // Thumbnails are now stored in AVIF format
+    result.format = formatName;
     result.fileSize = rawData.size();
     
     // Scale down if too large
@@ -68,26 +68,14 @@ AlbumArtManager::ProcessedAlbumArt AlbumArtManager::processAlbumArt(
     // Create thumbnail
     QImage thumbnail = createThumbnail(fullImage);
     
-    // Convert thumbnail to AVIF byte array for database storage (with JPEG fallback)
+    // Convert thumbnail to byte array
     QBuffer buffer;
     buffer.open(QIODevice::WriteOnly);
-    
-    // Try AVIF first
-    if (thumbnail.save(&buffer, "AVIF", 85)) {
-        result.thumbnailData = buffer.buffer();
-        qDebug() << "Album art thumbnail encoded as AVIF, size:" << result.thumbnailData.size() << "bytes";
-    } else {
-        // Fallback to JPEG if AVIF is not supported
-        buffer.buffer().clear();
-        buffer.seek(0);
-        if (!thumbnail.save(&buffer, "JPEG", 85)) {
-            result.error = "Failed to create thumbnail (AVIF/JPEG)";
-            return result;
-        }
-        result.thumbnailData = buffer.buffer();
-        result.format = "jpeg"; // Update format since we fell back to JPEG
-        qDebug() << "Album art thumbnail encoded as JPEG (AVIF fallback), size:" << result.thumbnailData.size() << "bytes";
+    if (!thumbnail.save(&buffer, formatName.toUtf8().constData(), 85)) {
+        result.error = "Failed to create thumbnail";
+        return result;
     }
+    result.thumbnailData = buffer.buffer();
     
     // Generate filename and save full image
     QString filename = generateAlbumArtFilename(albumName, artistName, result.hash);
