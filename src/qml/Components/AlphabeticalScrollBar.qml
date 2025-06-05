@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import Mtoc.Backend 1.0
 
 Item {
     id: root
@@ -46,7 +47,7 @@ Item {
         }
         
         Behavior on targetY {
-            enabled: !isDragging
+            enabled: !handle.isDragging
             NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
         }
     }
@@ -152,11 +153,11 @@ Item {
     
     // Calculate the height of expanded albums for an artist
     function getExpandedAlbumsHeight(artistName) {
-        if (!targetListView || !targetListView.model || !targetListView.model.getAlbumsForArtist) {
+        if (!targetListView || typeof LibraryManager === 'undefined' || !LibraryManager.getAlbumsForArtist) {
             return 0
         }
         
-        var albums = targetListView.model.getAlbumsForArtist(artistName)
+        var albums = LibraryManager.getAlbumsForArtist(artistName)
         if (!albums || albums.length === 0) {
             return 0
         }
@@ -216,12 +217,12 @@ Item {
     
     // Update handle position based on current scroll position
     function updateHandleFromScroll() {
-        if (handle.isDragging || availableLetters.length === 0) return
+        if (!targetListView || handle.isDragging || availableLetters.length === 0) return
         
         var currentContentY = targetListView.contentY
         
         // Find which letter section we're currently viewing
-        var closestLetter = availableLetters[0]
+        var closestLetter = availableLetters[0] || "A"
         var minDistance = Math.abs(currentContentY - (letterPositions[closestLetter] || 0))
         
         for (var i = 1; i < availableLetters.length; i++) {
