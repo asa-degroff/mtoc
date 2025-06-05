@@ -1331,4 +1331,45 @@ Item {
             }
         }
     }
+    
+    // Functions for Now Playing Panel integration
+    function jumpToArtist(artistName) {
+        if (!artistName) return
+        
+        // Clear search state and highlight the artist
+        clearSearch()
+        highlightedArtist = artistName
+        
+        // Find and scroll to the artist
+        var artists = LibraryManager.artistModel
+        for (var i = 0; i < artists.length; i++) {
+            if (artists[i].name === artistName) {
+                artistsListView.positionViewAtIndex(i, ListView.Contain)
+                break
+            }
+        }
+        
+        // Expand the artist to show albums
+        var updatedExpanded = Object.assign({}, expandedArtists)
+        updatedExpanded[artistName] = true
+        expandedArtists = updatedExpanded
+    }
+    
+    function jumpToAlbum(artistName, albumTitle) {
+        if (!artistName || !albumTitle) return
+        
+        // First jump to the artist
+        jumpToArtist(artistName)
+        
+        // Find and select the album
+        var albums = LibraryManager.getAlbumsForArtist(artistName)
+        for (var i = 0; i < albums.length; i++) {
+            if (albums[i].title === albumTitle) {
+                selectedAlbum = albums[i]
+                // Also jump to it in the album browser
+                albumBrowser.jumpToAlbum(albums[i])
+                break
+            }
+        }
+    }
 }

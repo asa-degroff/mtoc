@@ -11,6 +11,7 @@ Item {
     property string currentAlbumId: ""
     property url albumArtUrl: ""
     property url thumbnailUrl: ""
+    property var libraryPane: null
     
     
     // Temporary debug rectangle
@@ -109,35 +110,115 @@ Item {
             Layout.preferredHeight: 80
             spacing: 4
             
-            Label {
-                id: titleLabel
+            // Track title (clickable - jumps to album)
+            Item {
                 Layout.fillWidth: true
-                text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.title : ""
-                font.pixelSize: 24
-                font.weight: Font.DemiBold
-                color: "white"
-                elide: Text.ElideRight
-                horizontalAlignment: Text.AlignHCenter
+                Layout.preferredHeight: titleLabel.implicitHeight
+                
+                Label {
+                    id: titleLabel
+                    anchors.fill: parent
+                    text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.title : ""
+                    font.pixelSize: 24
+                    font.weight: Font.DemiBold
+                    color: titleMouseArea.containsMouse ? "#ffffff" : "#e0e0e0"
+                    elide: Text.ElideRight
+                    horizontalAlignment: Text.AlignHCenter
+                    
+                    Behavior on color {
+                        ColorAnimation { duration: 150 }
+                    }
+                }
+                
+                MouseArea {
+                    id: titleMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (libraryPane && MediaPlayer.currentTrack) {
+                            // Use albumArtist for consistency with library organization
+                            var artistName = MediaPlayer.currentTrack.albumArtist || MediaPlayer.currentTrack.artist
+                            var albumTitle = MediaPlayer.currentTrack.album
+                            if (artistName && albumTitle) {
+                                libraryPane.jumpToAlbum(artistName, albumTitle)
+                            }
+                        }
+                    }
+                }
             }
             
-            Label {
-                id: artistLabel
+            // Artist name (clickable - jumps to artist)
+            Item {
                 Layout.fillWidth: true
-                text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.artist : ""
-                font.pixelSize: 18
-                color: "#b0b0b0"
-                elide: Text.ElideRight
-                horizontalAlignment: Text.AlignHCenter
+                Layout.preferredHeight: artistLabel.implicitHeight
+                
+                Label {
+                    id: artistLabel
+                    anchors.fill: parent
+                    text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.artist : ""
+                    font.pixelSize: 18
+                    color: artistMouseArea.containsMouse ? "#d0d0d0" : "#b0b0b0"
+                    elide: Text.ElideRight
+                    horizontalAlignment: Text.AlignHCenter
+                    
+                    Behavior on color {
+                        ColorAnimation { duration: 150 }
+                    }
+                }
+                
+                MouseArea {
+                    id: artistMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (libraryPane && MediaPlayer.currentTrack) {
+                            // Use the track artist (not albumArtist) for artist navigation
+                            var artistName = MediaPlayer.currentTrack.artist
+                            if (artistName) {
+                                libraryPane.jumpToArtist(artistName)
+                            }
+                        }
+                    }
+                }
             }
             
-            Label {
-                id: albumLabel
+            // Album name (clickable - jumps to album)
+            Item {
                 Layout.fillWidth: true
-                text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.album : ""
-                font.pixelSize: 16
-                color: "#808080"
-                elide: Text.ElideRight
-                horizontalAlignment: Text.AlignHCenter
+                Layout.preferredHeight: albumLabel.implicitHeight
+                
+                Label {
+                    id: albumLabel
+                    anchors.fill: parent
+                    text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.album : ""
+                    font.pixelSize: 16
+                    color: albumMouseArea.containsMouse ? "#a0a0a0" : "#808080"
+                    elide: Text.ElideRight
+                    horizontalAlignment: Text.AlignHCenter
+                    
+                    Behavior on color {
+                        ColorAnimation { duration: 150 }
+                    }
+                }
+                
+                MouseArea {
+                    id: albumMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (libraryPane && MediaPlayer.currentTrack) {
+                            // Use albumArtist for consistency with library organization
+                            var artistName = MediaPlayer.currentTrack.albumArtist || MediaPlayer.currentTrack.artist
+                            var albumTitle = MediaPlayer.currentTrack.album
+                            if (artistName && albumTitle) {
+                                libraryPane.jumpToAlbum(artistName, albumTitle)
+                            }
+                        }
+                    }
+                }
             }
         }
         

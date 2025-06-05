@@ -37,6 +37,9 @@ ApplicationWindow {
             Layout.preferredWidth: window.width * 0.55 // 55% of window width
             Layout.fillHeight: true
             
+            // Pass reference to library pane for navigation
+            libraryPane: libraryPane
+            
             Component.onCompleted: {
                 console.log("NowPlayingPane added to Main.qml");
             }
