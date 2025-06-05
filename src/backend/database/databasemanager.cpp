@@ -664,6 +664,25 @@ int DatabaseManager::getTrackIdByPath(const QString& filePath)
     return 0;
 }
 
+QStringList DatabaseManager::getAllTracksFilePaths()
+{
+    QStringList filePaths;
+    if (!m_db.isOpen()) return filePaths;
+    
+    QSqlQuery query(m_db);
+    query.prepare("SELECT file_path FROM tracks");
+    
+    if (query.exec()) {
+        while (query.next()) {
+            filePaths.append(query.value(0).toString());
+        }
+    } else {
+        logError("Get all tracks file paths", query);
+    }
+    
+    return filePaths;
+}
+
 QVariantList DatabaseManager::searchTracks(const QString& searchTerm)
 {
     QVariantList results;

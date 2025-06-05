@@ -9,6 +9,7 @@
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QSettings>
+#include <QSet>
 #include <exception>
 
 namespace Mtoc {
@@ -367,6 +368,86 @@ void LibraryManager::scanInBackground()
         qDebug() << "Found" << m_totalFilesToScan << "music files to scan";
         if (m_totalFilesToScan > 0) {
             qDebug() << "First few files found:" << allFiles.mid(0, 5);
+        }
+        
+        // Check for deleted files and remove them from database
+        qDebug() << "Checking for deleted files...";
+        QStringList existingTracksInDB;
+        {
+            // Get all tracks from database using thread-local connection
+            QSqlQuery pathQuery(db);
+            pathQuery.prepare("SELECT file_path FROM tracks");
+            if (pathQuery.exec()) {
+                while (pathQuery.next()) {
+                    existingTracksInDB.append(pathQuery.value(0).toString());
+                }
+            }
+        }
+        qDebug() << "Found" << existingTracksInDB.size() << "tracks in database";
+        
+        // Convert allFiles to QSet for faster lookup
+        QSet<QString> currentFilesSet = QSet<QString>(allFiles.begin(), allFiles.end());
+        QStringList filesToDelete;
+        
+        for (const QString &dbFilePath : existingTracksInDB) {
+            if (!currentFilesSet.contains(dbFilePath)) {
+                // File exists in database but not on filesystem
+                QFileInfo fileInfo(dbFilePath);
+                if (!fileInfo.exists()) {
+                    filesToDelete.append(dbFilePath);
+                }
+            }
+        }
+        
+        if (!filesToDelete.isEmpty()) {
+            qDebug() << "Found" << filesToDelete.size() << "deleted files to remove from database";
+            for (const QString &deletedFile : filesToDelete) {
+                if (m_cancelRequested) break;
+                
+                QSqlQuery deleteQuery(db);
+                deleteQuery.prepare("DELETE FROM tracks WHERE file_path = :path");
+                deleteQuery.bindValue(":path", deletedFile);
+                if (!deleteQuery.exec()) {
+                    qWarning() << "Failed to delete track from database:" << deletedFile 
+                              << "-" << deleteQuery.lastError().text();
+                } else {
+                    qDebug() << "Removed deleted file from database:" << deletedFile;
+                }
+            }
+            
+            // Clean up orphaned albums, album artists, and artists after deleting tracks
+            qDebug() << "Cleaning up orphaned entries...";
+            
+            // Delete albums that have no tracks
+            QSqlQuery cleanupQuery(db);
+            if (!cleanupQuery.exec("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks WHERE album_id IS NOT NULL)")) {
+                qWarning() << "Failed to delete orphaned albums:" << cleanupQuery.lastError().text();
+            } else {
+                int deletedAlbums = cleanupQuery.numRowsAffected();
+                if (deletedAlbums > 0) {
+                    qDebug() << "Deleted" << deletedAlbums << "orphaned albums";
+                }
+            }
+            
+            // Delete album artists that have no albums
+            if (!cleanupQuery.exec("DELETE FROM album_artists WHERE id NOT IN (SELECT DISTINCT album_artist_id FROM albums WHERE album_artist_id IS NOT NULL)")) {
+                qWarning() << "Failed to delete orphaned album artists:" << cleanupQuery.lastError().text();
+            } else {
+                int deletedAlbumArtists = cleanupQuery.numRowsAffected();
+                if (deletedAlbumArtists > 0) {
+                    qDebug() << "Deleted" << deletedAlbumArtists << "orphaned album artists";
+                }
+            }
+            
+            // Delete artists that have no tracks
+            if (!cleanupQuery.exec("DELETE FROM artists WHERE id NOT IN (SELECT DISTINCT artist_id FROM tracks WHERE artist_id IS NOT NULL)")) {
+                qWarning() << "Failed to delete orphaned artists:" << cleanupQuery.lastError().text();
+            } else {
+                int deletedArtists = cleanupQuery.numRowsAffected();
+                if (deletedArtists > 0) {
+                    qDebug() << "Deleted" << deletedArtists << "orphaned artists";
+                }
+            }
         }
         
         // Create a single metadata extractor for this thread

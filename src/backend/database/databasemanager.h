@@ -66,6 +66,7 @@ public:
     // Check if file already exists in database
     bool trackExists(const QString& filePath);
     int getTrackIdByPath(const QString& filePath);
+    QStringList getAllTracksFilePaths();
     
     // Batch operations
     bool beginTransaction();
