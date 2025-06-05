@@ -693,15 +693,54 @@ Item {
                                                 }
                                             }
                                             
-                                            // Selection indicator - white outline
+                                            // Selection indicator - white outline that matches image dimensions
                                             Rectangle {
-                                                anchors.fill: parent
+                                                id: selectionIndicator
                                                 color: "transparent"
                                                 border.width: 2
                                                 border.color: "#ffffff"
                                                 radius: 3
                                                 visible: root.selectedAlbum && root.selectedAlbum.id === modelData.id
                                                 opacity: 0.8
+                                                
+                                                // Match the image dimensions based on its aspect ratio
+                                                Component.onCompleted: updateSelectionBounds()
+                                                
+                                                Connections {
+                                                    target: albumImage
+                                                    function onStatusChanged() {
+                                                        if (albumImage.status === Image.Ready) {
+                                                            selectionIndicator.updateSelectionBounds()
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                function updateSelectionBounds() {
+                                                    if (albumImage.status === Image.Ready && albumImage.sourceSize.width > 0 && albumImage.sourceSize.height > 0) {
+                                                        var aspectRatio = albumImage.sourceSize.width / albumImage.sourceSize.height;
+                                                        if (aspectRatio > 1.0) {
+                                                            // Wider than square - match image positioning
+                                                            anchors.fill = undefined;
+                                                            anchors.bottom = parent.bottom;
+                                                            anchors.left = parent.left;
+                                                            anchors.right = parent.right;
+                                                            height = parent.width / aspectRatio;
+                                                        } else if (aspectRatio < 1.0) {
+                                                            // Taller than square - match image positioning
+                                                            anchors.fill = undefined;
+                                                            anchors.verticalCenter = parent.verticalCenter;
+                                                            anchors.horizontalCenter = parent.horizontalCenter;
+                                                            width = parent.height * aspectRatio;
+                                                            height = parent.height;
+                                                        } else {
+                                                            // Square - fill parent
+                                                            anchors.fill = parent;
+                                                        }
+                                                    } else {
+                                                        // Fallback to fill parent when no image or not ready
+                                                        anchors.fill = parent;
+                                                    }
+                                                }
                                             }
                                         }
 
