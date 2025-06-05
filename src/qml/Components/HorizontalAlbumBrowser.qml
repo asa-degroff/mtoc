@@ -119,6 +119,10 @@ Item {
             flickDeceleration: 3000     // Faster deceleration
             boundsBehavior: Flickable.StopAtBounds  // Ensure we can reach the bounds
             
+            // Enable delegate recycling and limit cache to prevent memory leaks
+            reuseItems: true
+            cacheBuffer: 600  // Only cache items within reasonable range
+            
             property int predictedIndex: -1
             property bool isPredicting: false
             

@@ -10,6 +10,7 @@
 #include <QSqlQuery>
 #include <QSettings>
 #include <QSet>
+#include <QPixmapCache>
 #include <exception>
 
 namespace Mtoc {
@@ -603,9 +604,14 @@ void LibraryManager::onScanFinished()
     
     // Transaction is now handled in the background thread
     
-    // Invalidate cache after scan
+    // Invalidate cache after scan and clear it to free memory
     m_albumModelCacheValid = false;
-    qDebug() << "Album model cache invalidated after scan";
+    m_cachedAlbumModel.clear(); // Clear cached data to free memory
+    qDebug() << "Album model cache invalidated and cleared after scan";
+    
+    // Force garbage collection in QPixmapCache after scan
+    QPixmapCache::clear();
+    qDebug() << "QPixmapCache cleared after scan to prevent memory accumulation";
     
     // Use queued connections to ensure signals are emitted from main thread
     QMetaObject::invokeMethod(this, "scanningChanged", Qt::QueuedConnection);
@@ -774,7 +780,19 @@ QVariantList LibraryManager::albumModel() const
     // Otherwise fetch from database and cache
     // Note: getAllAlbums() can be expensive with large libraries
     qDebug() << "LibraryManager::albumModel() - cache invalid, fetching from database";
-    m_cachedAlbumModel = m_databaseManager->getAllAlbums();
+    
+    // Clear previous cache to free memory before allocating new data
+    m_cachedAlbumModel.clear();
+    
+    QVariantList newAlbumModel = m_databaseManager->getAllAlbums();
+    
+    // Monitor memory usage of album model
+    qint64 estimatedMemory = newAlbumModel.size() * 200; // Rough estimate: 200 bytes per album entry
+    if (estimatedMemory > 10 * 1024 * 1024) { // If > 10MB
+        qWarning() << "Large album model detected - estimated memory usage:" << (estimatedMemory / (1024*1024)) << "MB for" << newAlbumModel.size() << "albums";
+    }
+    
+    m_cachedAlbumModel = std::move(newAlbumModel); // Use move semantics to avoid copy
     m_albumModelCacheValid = true;
     qDebug() << "LibraryManager::albumModel() - fetched and cached" << m_cachedAlbumModel.size() << "albums";
     return m_cachedAlbumModel;

@@ -485,6 +485,10 @@ Item {
                         model: LibraryManager.artistModel
                         spacing: 2
                         
+                        // Enable delegate recycling to prevent memory leaks
+                        reuseItems: true
+                        cacheBuffer: 200  // Limit cache to prevent excessive memory usage
+                        
                         // Add layer to properly mask content with rounded corners
                         layer.enabled: true
                         layer.effect: OpacityMask {
@@ -652,6 +656,10 @@ Item {
                                 cellWidth: 120 + 10 // Thumbnail size + padding
                                 cellHeight: 140 + 10 // Thumbnail + title + padding
                                 interactive: false // Parent ListView handles scrolling primarily
+                                
+                                // Enable delegate recycling for albums too
+                                reuseItems: true
+                                cacheBuffer: 200  // Limit cache for album grid
 
                                 model: albumsVisible ? LibraryManager.getAlbumsForArtist(artistData.name) : []
 
@@ -951,6 +959,10 @@ Item {
                         model: rightPane.currentAlbumTracks
                         visible: rightPane.currentAlbumTracks.length > 0
                         spacing: 1
+                        
+                        // Enable delegate recycling for tracks
+                        reuseItems: true
+                        cacheBuffer: 400  // Limit cache for track list
                         
                         // Track list model updates automatically
                         
