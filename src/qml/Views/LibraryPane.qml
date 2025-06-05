@@ -841,7 +841,7 @@ Item {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.margins: 4
-                        height: 40
+                        height: 60
                         color: Qt.rgba(1, 1, 1, 0.07)
                         radius: 6
                         border.width: 1
@@ -856,16 +856,50 @@ Item {
                             color: Qt.rgba(0, 0, 0, 0.25)
                         }
                         
-                        Label {
-                            id: trackListHeader
+                        ColumnLayout {
                             anchors.fill: parent
-                            text: rightPane.albumTitleText
-                            color: "white"
-                            font.pixelSize: 16
-                            font.bold: true
-                            padding: 8
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
+                            anchors.margins: 8
+                            spacing: 2
+                            
+                            Label {
+                                id: trackListHeader
+                                Layout.fillWidth: true
+                                text: rightPane.albumTitleText
+                                color: "white"
+                                font.pixelSize: 16
+                                font.bold: true
+                                elide: Text.ElideRight
+                                wrapMode: Text.NoWrap
+                            }
+                            
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 12
+                                
+                                Label {
+                                    text: root.selectedAlbum && root.selectedAlbum.year ? root.selectedAlbum.year : ""
+                                    color: "#b0b0b0"
+                                    font.pixelSize: 12
+                                    visible: text !== ""
+                                }
+                                
+                                Label {
+                                    text: rightPane.currentAlbumTracks.length > 0 ? 
+                                          (rightPane.currentAlbumTracks.length === 1 ? "1 track" : rightPane.currentAlbumTracks.length + " tracks") : ""
+                                    color: "#b0b0b0"
+                                    font.pixelSize: 12
+                                    visible: text !== ""
+                                }
+                                
+                                Label {
+                                    text: rightPane.currentAlbumTracks.length > 0 ? formatAlbumDuration() : ""
+                                    color: "#b0b0b0"
+                                    font.pixelSize: 12
+                                    visible: text !== ""
+                                }
+                                
+                                Item { Layout.fillWidth: true } // Spacer
+                            }
                         }
                     }
 
@@ -1033,6 +1067,32 @@ Item {
         var min = Math.floor(seconds / 60);
         var sec = Math.floor(seconds % 60);
         return min + ":" + (sec < 10 ? "0" : "") + sec;
+    }
+    
+    function formatAlbumDuration() {
+        if (!rightPane.currentAlbumTracks || rightPane.currentAlbumTracks.length === 0) {
+            return "";
+        }
+        
+        var totalSeconds = 0;
+        for (var i = 0; i < rightPane.currentAlbumTracks.length; i++) {
+            var track = rightPane.currentAlbumTracks[i];
+            if (track.duration && !isNaN(track.duration)) {
+                totalSeconds += track.duration;
+            }
+        }
+        
+        if (totalSeconds === 0) return "";
+        
+        var hours = Math.floor(totalSeconds / 3600);
+        var minutes = Math.floor((totalSeconds % 3600) / 60);
+        var seconds = Math.floor(totalSeconds % 60);
+        
+        if (hours > 0) {
+            return hours + ":" + (minutes < 10 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+        } else {
+            return minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+        }
     }
     
     function performSearch(searchTerm) {
