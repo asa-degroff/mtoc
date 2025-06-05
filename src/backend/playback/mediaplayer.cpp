@@ -77,7 +77,9 @@ bool MediaPlayer::hasNext() const
 
 bool MediaPlayer::hasPrevious() const
 {
-    return m_currentQueueIndex > 0 && m_playbackQueue.size() > 0;
+    // Allow previous action if we have any tracks in the queue
+    // This enables restarting the current track or going to previous track
+    return m_currentQueueIndex >= 0 && m_playbackQueue.size() > 0;
 }
 
 void MediaPlayer::play()

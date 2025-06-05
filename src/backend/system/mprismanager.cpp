@@ -8,6 +8,7 @@
 #include <QDebug>
 #include <QFileInfo>
 #include <QUrl>
+#include <QWidget>
 
 // MediaPlayer2Adaptor implementation
 MediaPlayer2Adaptor::MediaPlayer2Adaptor(QObject *parent)
@@ -137,6 +138,7 @@ bool MediaPlayer2PlayerAdaptor::canGoPrevious() const
 
 void MediaPlayer2PlayerAdaptor::Next()
 {
+    qDebug() << "MPRIS: Next() called via D-Bus";
     if (m_mediaPlayer) {
         m_mediaPlayer->next();
     }
@@ -144,6 +146,7 @@ void MediaPlayer2PlayerAdaptor::Next()
 
 void MediaPlayer2PlayerAdaptor::Previous()
 {
+    qDebug() << "MPRIS: Previous() called via D-Bus";
     if (m_mediaPlayer) {
         m_mediaPlayer->previous();
     }
@@ -151,6 +154,7 @@ void MediaPlayer2PlayerAdaptor::Previous()
 
 void MediaPlayer2PlayerAdaptor::Pause()
 {
+    qDebug() << "MPRIS: Pause() called via D-Bus";
     if (m_mediaPlayer) {
         m_mediaPlayer->pause();
     }
@@ -158,6 +162,7 @@ void MediaPlayer2PlayerAdaptor::Pause()
 
 void MediaPlayer2PlayerAdaptor::PlayPause()
 {
+    qDebug() << "MPRIS: PlayPause() called via D-Bus";
     if (m_mediaPlayer) {
         m_mediaPlayer->togglePlayPause();
     }
@@ -165,6 +170,7 @@ void MediaPlayer2PlayerAdaptor::PlayPause()
 
 void MediaPlayer2PlayerAdaptor::Stop()
 {
+    qDebug() << "MPRIS: Stop() called via D-Bus";
     if (m_mediaPlayer) {
         m_mediaPlayer->stop();
     }
@@ -172,6 +178,7 @@ void MediaPlayer2PlayerAdaptor::Stop()
 
 void MediaPlayer2PlayerAdaptor::Play()
 {
+    qDebug() << "MPRIS: Play() called via D-Bus";
     if (m_mediaPlayer) {
         m_mediaPlayer->play();
     }
@@ -261,8 +268,16 @@ bool MprisManager::initialize()
                 qApp, &QApplication::quit);
         connect(m_mprisAdaptor, &MediaPlayer2Adaptor::raiseRequested, 
                 this, [this]() {
-            // Try to raise the main window (implementation depends on your window management)
             qDebug() << "MPRIS: Raise requested";
+            // Find and raise the main window
+            for (QWidget *widget : qApp->topLevelWidgets()) {
+                if (widget->isWindow() && !widget->isHidden()) {
+                    widget->raise();
+                    widget->activateWindow();
+                    widget->show();
+                    break;
+                }
+            }
         });
     }
 
