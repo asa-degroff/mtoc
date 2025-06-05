@@ -988,7 +988,7 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
     };
     
     // Helper function to insert or get album
-    auto insertOrGetAlbum = [&db](const QString& albumName, int albumArtistId) -> int {
+    auto insertOrGetAlbum = [&db](const QString& albumName, int albumArtistId, int albumYear) -> int {
         if (albumName.isEmpty()) return 0;
         
         QSqlQuery query(db);
@@ -1004,13 +1004,25 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
         }
         
         if (query.exec() && query.next()) {
-            return query.value(0).toInt();
+            int existingAlbumId = query.value(0).toInt();
+            
+            // Update year if provided and not already set
+            if (albumYear > 0) {
+                QSqlQuery updateQuery(db);
+                updateQuery.prepare("UPDATE albums SET year = :year WHERE id = :id AND (year IS NULL OR year = 0)");
+                updateQuery.bindValue(":year", albumYear);
+                updateQuery.bindValue(":id", existingAlbumId);
+                updateQuery.exec();
+            }
+            
+            return existingAlbumId;
         }
         
-        // Insert new album
-        query.prepare("INSERT INTO albums (title, album_artist_id) VALUES (:title, :artist_id)");
+        // Insert new album with year
+        query.prepare("INSERT INTO albums (title, album_artist_id, year) VALUES (:title, :artist_id, :year)");
         query.bindValue(":title", albumName);
         query.bindValue(":artist_id", albumArtistId > 0 ? albumArtistId : QVariant());
+        query.bindValue(":year", albumYear > 0 ? albumYear : QVariant());
         
         if (query.exec()) {
             return query.lastInsertId().toInt();
@@ -1037,7 +1049,7 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
     // Get or create album
     int albumId = 0;
     if (!album.isEmpty()) {
-        albumId = insertOrGetAlbum(album, albumArtistId);
+        albumId = insertOrGetAlbum(album, albumArtistId, year);
         
         // Process album art if we have it and it's not already stored
         if (albumId > 0 && metadata.contains("hasAlbumArt") && metadata.value("hasAlbumArt").toBool()) {

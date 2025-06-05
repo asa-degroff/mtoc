@@ -265,7 +265,7 @@ bool DatabaseManager::insertTrack(const QVariantMap& trackData)
     // Get or create album
     int albumId = 0;
     if (!album.isEmpty()) {
-        albumId = insertOrGetAlbum(album, albumArtistId);
+        albumId = insertOrGetAlbum(album, albumArtistId, year);
     }
     
     // Insert track
@@ -331,6 +331,8 @@ bool DatabaseManager::updateTrack(int trackId, const QVariantMap& trackData)
         
         int albumId = 0;
         if (!album.isEmpty()) {
+            // For updates, we don't have access to year from trackData here
+            // We could enhance this later if needed
             albumId = insertOrGetAlbum(album, albumArtistId);
         }
         
@@ -611,7 +613,7 @@ int DatabaseManager::insertOrGetAlbumArtist(const QString& albumArtistName)
     return 0;
 }
 
-int DatabaseManager::insertOrGetAlbum(const QString& albumName, int albumArtistId)
+int DatabaseManager::insertOrGetAlbum(const QString& albumName, int albumArtistId, int albumYear)
 {
     if (!m_db.isOpen() || albumName.isEmpty()) return 0;
     
@@ -628,13 +630,25 @@ int DatabaseManager::insertOrGetAlbum(const QString& albumName, int albumArtistI
     }
     
     if (query.exec() && query.next()) {
-        return query.value(0).toInt();
+        int existingAlbumId = query.value(0).toInt();
+        
+        // Update year if provided and not already set
+        if (albumYear > 0) {
+            QSqlQuery updateQuery(m_db);
+            updateQuery.prepare("UPDATE albums SET year = :year WHERE id = :id AND (year IS NULL OR year = 0)");
+            updateQuery.bindValue(":year", albumYear);
+            updateQuery.bindValue(":id", existingAlbumId);
+            updateQuery.exec();
+        }
+        
+        return existingAlbumId;
     }
     
-    // Insert new album
-    query.prepare("INSERT INTO albums (title, album_artist_id) VALUES (:title, :artist_id)");
+    // Insert new album with year
+    query.prepare("INSERT INTO albums (title, album_artist_id, year) VALUES (:title, :artist_id, :year)");
     query.bindValue(":title", albumName);
     query.bindValue(":artist_id", albumArtistId > 0 ? albumArtistId : QVariant());
+    query.bindValue(":year", albumYear > 0 ? albumYear : QVariant());
     
     if (query.exec()) {
         return query.lastInsertId().toInt();

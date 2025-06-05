@@ -34,7 +34,7 @@ public:
     QVariantList getTracksByAlbumAndArtist(const QString& albumTitle, const QString& albumArtistName);
     
     // Album operations
-    int insertOrGetAlbum(const QString& albumName, int albumArtistId);
+    int insertOrGetAlbum(const QString& albumName, int albumArtistId, int albumYear = 0);
     QVariantMap getAlbum(int albumId);
     QVariantList getAllAlbums();
     QVariantList getAlbumsByAlbumArtist(int albumArtistId);
