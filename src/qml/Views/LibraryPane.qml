@@ -993,107 +993,153 @@ Item {
                             }
                         }
 
-                        delegate: Rectangle {
-                            id: trackDelegate
+                        delegate: Column {
                             width: ListView.view.width
-                            height: 45
-                            color: {
-                                if (trackListView.currentIndex === index) {
-                                    return Qt.rgba(0.25, 0.32, 0.71, 0.25)  // Selected track
-                                } else if (root.navigationMode === "track" && root.selectedTrackIndex === index) {
-                                    return Qt.rgba(0.35, 0.42, 0.81, 0.2)  // Keyboard navigation focus
-                                } else {
-                                    return Qt.rgba(1, 1, 1, 0.02)  // Default background
-                                }
-                            }
-                            radius: 4
                             
-                            // 3D effect
-                            border.width: 1
-                            border.color: trackListView.currentIndex === index ? Qt.rgba(0.37, 0.44, 0.84, 0.38) : "transparent"
-                            
-                            // Bottom shadow for selected items
-                            Rectangle {
-                                anchors.bottom: parent.bottom
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                height: 1
-                                color: trackListView.currentIndex === index ? Qt.rgba(0.1, 0.1, 0.29, 0.38) : "transparent"
-                                visible: trackListView.currentIndex === index
-                            }
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: 8
-                                spacing: 10
-
-                                Label { // Track Number
-                                    text: modelData.trackNumber ? String(modelData.trackNumber).padStart(2, '0') : "--"
-                                    color: "#aaaaaa"
-                                    font.pixelSize: 12
-                                    Layout.preferredWidth: 25
-                                    horizontalAlignment: Text.AlignRight
-                                }
-
-                                Label { // Track Title
-                                    text: modelData.title || "Unknown Track"
-                                    color: "white"
-                                    font.pixelSize: 13
-                                    elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                }
-
-                                // Now Playing Indicator
-                                Image {
-                                    source: "qrc:/resources/icons/speaker.svg"
-                                    Layout.preferredWidth: 16
-                                    Layout.preferredHeight: 16
-                                    visible: MediaPlayer.currentTrack && 
-                                            MediaPlayer.currentTrack.filePath === modelData.filePath &&
-                                            MediaPlayer.state === MediaPlayer.PlayingState
-                                    opacity: 0.9
-                                }
-
-                                Label { // Track Duration
-                                    text: modelData.duration ? formatDuration(modelData.duration) : "0:00"
-                                    color: "#aaaaaa"
-                                    font.pixelSize: 12
-                                    Layout.preferredWidth: 40
-                                }
-                            }
-                            MouseArea {
-                                id: trackMouseArea
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
+                            // Helper properties to determine if we should show disc number
+                            property bool showDiscNumber: {
+                                if (!modelData.discNumber || modelData.discNumber < 1) return false
                                 
-                                onClicked: {
-                                    trackListView.currentIndex = index;
-                                }
-                                onDoubleClicked: {
-                                    // If we have a selected album, play the album starting from this track
-                                    if (root.selectedAlbum) {
-                                        MediaPlayer.playAlbumByName(root.selectedAlbum.albumArtist, root.selectedAlbum.title, index);
-                                    } else {
-                                        // Otherwise create a single-track playlist
-                                        // We'll need to add a method to play a single track from variant data
-                                        MediaPlayer.playTrackFromData(modelData);
+                                // Check if this is the first track of a new disc
+                                if (index === 0) return true
+                                
+                                // Check if previous track has different disc number
+                                var prevTrack = rightPane.currentAlbumTracks[index - 1]
+                                return prevTrack && prevTrack.discNumber !== modelData.discNumber
+                            }
+                            
+                            property bool isMultiDisc: {
+                                if (!rightPane.currentAlbumTracks || rightPane.currentAlbumTracks.length <= 1) return false
+                                
+                                var maxDisc = 1
+                                for (var i = 0; i < rightPane.currentAlbumTracks.length; i++) {
+                                    var track = rightPane.currentAlbumTracks[i]
+                                    if (track && track.discNumber && track.discNumber > maxDisc) {
+                                        maxDisc = track.discNumber
                                     }
                                 }
+                                return maxDisc > 1
                             }
                             
-                            // Hover effect
-                            states: State {
-                                when: trackMouseArea.containsMouse && trackListView.currentIndex !== index
-                                PropertyChanges {
-                                    target: trackDelegate
-                                    color: Qt.rgba(1, 1, 1, 0.04)
-                                    border.color: Qt.rgba(1, 1, 1, 0.06)
+                            // Disc number indicator
+                            Item {
+                                width: parent.width
+                                height: 22
+                                visible: showDiscNumber && isMultiDisc
+                                
+                                Label {
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "Disc " + (modelData.discNumber || 1)
+                                    color: "#cccccc"
+                                    font.pixelSize: 11
+                                    font.weight: Font.Medium
                                 }
                             }
                             
-                            transitions: Transition {
-                                ColorAnimation { duration: 150 }
+                            Rectangle {
+                                id: trackDelegate
+                                width: parent.width
+                                height: 45
+                                color: {
+                                    if (trackListView.currentIndex === index) {
+                                        return Qt.rgba(0.25, 0.32, 0.71, 0.25)  // Selected track
+                                    } else if (root.navigationMode === "track" && root.selectedTrackIndex === index) {
+                                        return Qt.rgba(0.35, 0.42, 0.81, 0.2)  // Keyboard navigation focus
+                                    } else {
+                                        return Qt.rgba(1, 1, 1, 0.02)  // Default background
+                                    }
+                                }
+                                radius: 4
+                                
+                                // 3D effect
+                                border.width: 1
+                                border.color: trackListView.currentIndex === index ? Qt.rgba(0.37, 0.44, 0.84, 0.38) : "transparent"
+                                
+                                // Bottom shadow for selected items
+                                Rectangle {
+                                    anchors.bottom: parent.bottom
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    height: 1
+                                    color: trackListView.currentIndex === index ? Qt.rgba(0.1, 0.1, 0.29, 0.38) : "transparent"
+                                    visible: trackListView.currentIndex === index
+                                }
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 8
+                                    spacing: 10
+
+                                    Label { // Track Number
+                                        text: modelData.trackNumber ? String(modelData.trackNumber).padStart(2, '0') : "--"
+                                        color: "#aaaaaa"
+                                        font.pixelSize: 12
+                                        Layout.preferredWidth: 25
+                                        horizontalAlignment: Text.AlignRight
+                                    }
+
+                                    Label { // Track Title
+                                        text: modelData.title || "Unknown Track"
+                                        color: "white"
+                                        font.pixelSize: 13
+                                        elide: Text.ElideRight
+                                        Layout.fillWidth: true
+                                    }
+
+                                    // Now Playing Indicator
+                                    Image {
+                                        source: "qrc:/resources/icons/speaker.svg"
+                                        Layout.preferredWidth: 16
+                                        Layout.preferredHeight: 16
+                                        visible: MediaPlayer.currentTrack && 
+                                                MediaPlayer.currentTrack.filePath === modelData.filePath &&
+                                                MediaPlayer.state === MediaPlayer.PlayingState
+                                        opacity: 0.9
+                                    }
+
+                                    Label { // Track Duration
+                                        text: modelData.duration ? formatDuration(modelData.duration) : "0:00"
+                                        color: "#aaaaaa"
+                                        font.pixelSize: 12
+                                        Layout.preferredWidth: 40
+                                    }
+                                }
+                                MouseArea {
+                                    id: trackMouseArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    
+                                    onClicked: {
+                                        trackListView.currentIndex = index;
+                                    }
+                                    onDoubleClicked: {
+                                        // If we have a selected album, play the album starting from this track
+                                        if (root.selectedAlbum) {
+                                            MediaPlayer.playAlbumByName(root.selectedAlbum.albumArtist, root.selectedAlbum.title, index);
+                                        } else {
+                                            // Otherwise create a single-track playlist
+                                            // We'll need to add a method to play a single track from variant data
+                                            MediaPlayer.playTrackFromData(modelData);
+                                        }
+                                    }
+                                }
+                                
+                                // Hover effect
+                                states: State {
+                                    when: trackMouseArea.containsMouse && trackListView.currentIndex !== index
+                                    PropertyChanges {
+                                        target: trackDelegate
+                                        color: Qt.rgba(1, 1, 1, 0.04)
+                                        border.color: Qt.rgba(1, 1, 1, 0.06)
+                                    }
+                                }
+                                
+                                transitions: Transition {
+                                    ColorAnimation { duration: 150 }
+                                }
                             }
                         }
                         ScrollIndicator.vertical: ScrollIndicator { }
