@@ -227,11 +227,15 @@ bool MprisManager::initialize()
         return false;
     }
 
-    // Create adaptors
+    // Create adaptors - both need to be on the same parent object
     m_mprisAdaptor = new MediaPlayer2Adaptor(this);
     m_playerAdaptor = new MediaPlayer2PlayerAdaptor(m_mediaPlayer);
+    
+    // IMPORTANT: Set the parent of the player adaptor to be the same as the main adaptor
+    // This ensures both interfaces are exposed on the same D-Bus object
+    m_playerAdaptor->setParent(this);
 
-    // Register object path
+    // Register object path with both adaptors
     if (!m_dbusConnection.registerObject("/org/mpris/MediaPlayer2", this)) {
         qWarning() << "MPRIS: Could not register object path";
         cleanup();
