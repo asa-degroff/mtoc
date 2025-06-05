@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Shapes
 import Mtoc.Backend 1.0
 
 Item {
@@ -28,6 +29,50 @@ Item {
         return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
     }
     
+    // Custom glassmorphic button component
+    component GlassmorphicButton: Item {
+        id: buttonRoot
+        property alias radius: bgCircle.radius
+        property alias iconItem: iconLoader.sourceComponent
+        property bool isPressed: false
+        property bool isHovered: false
+        signal clicked()
+        
+        scale: isPressed ? 0.95 : (isHovered ? 1.05 : 1.0)
+        
+        Behavior on scale {
+            NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+        }
+        
+        Rectangle {
+            id: bgCircle
+            anchors.fill: parent
+            radius: width / 2
+            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, 0.2)
+            
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, buttonRoot.isPressed ? 0.15 : 0.25) }
+                GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, buttonRoot.isPressed ? 0.05 : 0.1) }
+            }
+        }
+        
+        Loader {
+            id: iconLoader
+            anchors.centerIn: parent
+        }
+        
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            onEntered: buttonRoot.isHovered = true
+            onExited: buttonRoot.isHovered = false
+            onPressed: buttonRoot.isPressed = true
+            onReleased: buttonRoot.isPressed = false
+            onClicked: buttonRoot.clicked()
+        }
+    }
+    
     ColumnLayout {
         anchors.fill: parent
         spacing: 12
@@ -40,235 +85,89 @@ Item {
             
             Item { Layout.fillWidth: true }
             
-            Button {
+            GlassmorphicButton {
                 id: previousButton
-                Layout.preferredWidth: 64
-                Layout.preferredHeight: 64
+                Layout.preferredWidth: 70
+                Layout.preferredHeight: 70
                 onClicked: root.previousClicked()
                 
-                contentItem: Text {
-                    text: "⏮"
-                    font.pixelSize: 24
-                    color: "white"
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-                
-                background: Item {
-                    // Outer glow effect
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: parent.width + 6
-                        height: parent.height + 6
-                        radius: width / 2
-                        color: "transparent"
-                        border.color: "#30ffffff"
-                        border.width: 1
-                        opacity: previousButton.hovered ? 0.4 : 0.2
-                    }
+                iconItem: Shape {
+                    width: 24
+                    height: 16
+                    anchors.centerIn: parent
                     
-                    // Main glassmorphic surface
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: width / 2
-                        
-                        gradient: Gradient {
-                            GradientStop { 
-                                position: 0.0
-                                color: previousButton.down ? "#20ffffff" : (previousButton.hovered ? "#35ffffff" : "#25ffffff")
-                            }
-                            GradientStop { 
-                                position: 0.6
-                                color: previousButton.down ? "#10ffffff" : (previousButton.hovered ? "#20ffffff" : "#15ffffff")
-                            }
-                            GradientStop { 
-                                position: 1.0
-                                color: previousButton.down ? "#05ffffff" : (previousButton.hovered ? "#10ffffff" : "#08ffffff")
-                            }
-                        }
-                        
-                        border.color: "#25ffffff"
-                        border.width: 1
-                    }
-                    
-                    // Top highlight for 3D effect
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: 1
-                        radius: width / 2
-                        
-                        gradient: Gradient {
-                            GradientStop { 
-                                position: 0.0
-                                color: previousButton.down ? "#08ffffff" : "#20ffffff"
-                            }
-                            GradientStop { 
-                                position: 0.5
-                                color: "transparent"
-                            }
-                        }
+                    ShapePath {
+                        fillColor: Qt.rgba(1, 1, 1, 0.9)
+                        strokeColor: "transparent"
+                        PathSvg { path: "M 12 0 L 12 16 L 2 8 Z M 22 0 L 22 16 L 12 8 Z" }
                     }
                 }
             }
             
-            Button {
+            GlassmorphicButton {
                 id: playPauseButton
-                Layout.preferredWidth: 80
-                Layout.preferredHeight: 80
+                Layout.preferredWidth: 90
+                Layout.preferredHeight: 90
                 onClicked: root.playPauseClicked()
                 
-                contentItem: Item {
-                    Text {
-                        text: MediaPlayer.state === MediaPlayer.PlayingState ? "⏸" : "▶"
-                        font.pixelSize: MediaPlayer.state === MediaPlayer.PlayingState ? 32 : 28
-                        color: "white"
-                        anchors.centerIn: parent
-                        anchors.horizontalCenterOffset: MediaPlayer.state === MediaPlayer.PlayingState ? 0 : 3
-                    }
-                }
-                
-                background: Item {
-                    // Outer glow effect
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: parent.width + 8
-                        height: parent.height + 8
-                        radius: width / 2
-                        color: "transparent"
-                        border.color: "#40ffffff"
-                        border.width: 1.5
-                        opacity: playPauseButton.hovered ? 0.5 : 0.3
-                    }
+                iconItem: Item {
+                    width: 40
+                    height: 30
+                    anchors.centerIn: parent
                     
-                    // Main glassmorphic surface
-                    Rectangle {
+                    // Play icon
+                    Shape {
                         anchors.fill: parent
-                        radius: width / 2
+                        visible: MediaPlayer.state !== MediaPlayer.PlayingState
+                        opacity: visible ? 1.0 : 0.0
                         
-                        gradient: Gradient {
-                            GradientStop { 
-                                position: 0.0
-                                color: playPauseButton.down ? "#25ffffff" : (playPauseButton.hovered ? "#40ffffff" : "#30ffffff")
-                            }
-                            GradientStop { 
-                                position: 0.6
-                                color: playPauseButton.down ? "#15ffffff" : (playPauseButton.hovered ? "#25ffffff" : "#18ffffff")
-                            }
-                            GradientStop { 
-                                position: 1.0
-                                color: playPauseButton.down ? "#08ffffff" : (playPauseButton.hovered ? "#15ffffff" : "#10ffffff")
-                            }
+                        Behavior on opacity {
+                            NumberAnimation { duration: 300; easing.type: Easing.InOutQuad }
                         }
                         
-                        border.color: "#35ffffff"
-                        border.width: 1.5
-                    }
-                    
-                    // Enhanced top highlight for 3D effect
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: 2
-                        radius: width / 2
-                        
-                        gradient: Gradient {
-                            GradientStop { 
-                                position: 0.0
-                                color: playPauseButton.down ? "#10ffffff" : "#30ffffff"
-                            }
-                            GradientStop { 
-                                position: 0.4
-                                color: playPauseButton.down ? "#05ffffff" : "#10ffffff"
-                            }
-                            GradientStop { 
-                                position: 1.0
-                                color: "transparent"
-                            }
+                        ShapePath {
+                            fillColor: Qt.rgba(1, 1, 1, 0.95)
+                            strokeColor: "transparent"
+                            PathSvg { path: "M 12 4 L 12 26 L 32 15 Z" }
                         }
                     }
                     
-                    // Inner shadow for depth
-                    Rectangle {
+                    // Pause icon
+                    Shape {
                         anchors.fill: parent
-                        anchors.margins: 1
-                        radius: width / 2
-                        color: "transparent"
-                        border.color: playPauseButton.down ? "#15000000" : "#08000000"
-                        border.width: 1
+                        visible: MediaPlayer.state === MediaPlayer.PlayingState
+                        opacity: visible ? 1.0 : 0.0
+                        
+                        Behavior on opacity {
+                            NumberAnimation { duration: 300; easing.type: Easing.InOutQuad }
+                        }
+                        
+                        ShapePath {
+                            fillColor: Qt.rgba(1, 1, 1, 0.95)
+                            strokeColor: "transparent"
+                            PathSvg { path: "M 12 4 L 12 26 L 16 26 L 16 4 Z M 24 4 L 24 26 L 28 26 L 28 4 Z" }
+                        }
                     }
                 }
             }
             
-            Button {
+            GlassmorphicButton {
                 id: nextButton
-                Layout.preferredWidth: 64
-                Layout.preferredHeight: 64
+                Layout.preferredWidth: 70
+                Layout.preferredHeight: 70
                 enabled: MediaPlayer.hasNext
+                opacity: enabled ? 1.0 : 0.3
                 onClicked: root.nextClicked()
                 
-                contentItem: Text {
-                    text: "⏭"
-                    font.pixelSize: 24
-                    color: "white"
-                    opacity: nextButton.enabled ? 1.0 : 0.4
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-                
-                background: Item {
-                    opacity: nextButton.enabled ? 1.0 : 0.4
+                iconItem: Shape {
+                    width: 24
+                    height: 16
+                    anchors.centerIn: parent
                     
-                    // Outer glow effect
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: parent.width + 6
-                        height: parent.height + 6
-                        radius: width / 2
-                        color: "transparent"
-                        border.color: "#30ffffff"
-                        border.width: 1
-                        opacity: nextButton.hovered ? 0.4 : 0.2
-                    }
-                    
-                    // Main glassmorphic surface
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: width / 2
-                        
-                        gradient: Gradient {
-                            GradientStop { 
-                                position: 0.0
-                                color: nextButton.down ? "#20ffffff" : (nextButton.hovered ? "#35ffffff" : "#25ffffff")
-                            }
-                            GradientStop { 
-                                position: 0.6
-                                color: nextButton.down ? "#10ffffff" : (nextButton.hovered ? "#20ffffff" : "#15ffffff")
-                            }
-                            GradientStop { 
-                                position: 1.0
-                                color: nextButton.down ? "#05ffffff" : (nextButton.hovered ? "#10ffffff" : "#08ffffff")
-                            }
-                        }
-                        
-                        border.color: "#25ffffff"
-                        border.width: 1
-                    }
-                    
-                    // Top highlight for 3D effect
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: 1
-                        radius: width / 2
-                        
-                        gradient: Gradient {
-                            GradientStop { 
-                                position: 0.0
-                                color: nextButton.down ? "#08ffffff" : "#20ffffff"
-                            }
-                            GradientStop { 
-                                position: 0.5
-                                color: "transparent"
-                            }
-                        }
+                    ShapePath {
+                        fillColor: Qt.rgba(1, 1, 1, 0.9)
+                        strokeColor: "transparent"
+                        PathSvg { path: "M 2 0 L 12 8 L 2 16 Z M 12 0 L 22 8 L 12 16 Z" }
                     }
                 }
             }
@@ -330,41 +229,31 @@ Item {
                     x: progressSlider.leftPadding
                     y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
                     implicitWidth: 200
-                    implicitHeight: 8
+                    implicitHeight: 4
                     width: progressSlider.availableWidth
                     height: implicitHeight
-                    radius: 4
+                    radius: 2
                     color: "white"
-                    opacity: 0.2
+                    opacity: 0.15
                     
                     Rectangle {
                         width: progressSlider.visualPosition * parent.width
                         height: parent.height
                         color: "white"
-                        opacity: 0.8
-                        radius: 4
+                        opacity: 0.9
+                        radius: 2
                     }
                 }
                 
                 handle: Rectangle {
                     x: progressSlider.leftPadding + progressSlider.visualPosition * (progressSlider.availableWidth - width)
                     y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
-                    implicitWidth: 16
-                    implicitHeight: 16
-                    radius: 8
+                    implicitWidth: 12
+                    implicitHeight: 12
+                    radius: 6
                     color: "white"
-                    opacity: progressSlider.pressed ? 1.0 : 0.8
+                    opacity: progressSlider.pressed ? 1.0 : 0.9
                     visible: progressSlider.hovered || progressSlider.pressed
-                    
-                    // Inner glow effect
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: parent.width - 4
-                        height: parent.height - 4
-                        radius: (width / 2)
-                        color: "white"
-                        opacity: 0.3
-                    }
                 }
             }
             

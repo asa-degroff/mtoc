@@ -686,7 +686,7 @@ QVariantList LibraryManager::albumModel() const
     
     // Use cached data if valid
     if (m_albumModelCacheValid) {
-        qDebug() << "LibraryManager::albumModel() - returning cached data with" << m_cachedAlbumModel.size() << "albums";
+        //qDebug() << "LibraryManager::albumModel() - returning cached data with" << m_cachedAlbumModel.size() << "albums";
         return m_cachedAlbumModel;
     }
     
