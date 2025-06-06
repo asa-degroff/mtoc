@@ -29,37 +29,30 @@ Item {
         return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
     }
     
-    // Custom glassmorphic button component
-    component GlassmorphicButton: Item {
+    // Custom icon button component
+    component IconButton: Item {
         id: buttonRoot
-        property alias radius: bgCircle.radius
-        property alias iconItem: iconLoader.sourceComponent
+        property string iconSource: ""
+        property string iconPressedSource: ""
         property bool isPressed: false
         property bool isHovered: false
         signal clicked()
         
-        scale: isPressed ? 0.95 : (isHovered ? 1.05 : 1.0)
+        scale: isPressed ? 0.9 : (isHovered ? 1.1 : 1.0)
         
         Behavior on scale {
             NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
         }
         
-        Rectangle {
-            id: bgCircle
+        Image {
+            id: iconImage
             anchors.fill: parent
-            radius: width / 2
-            border.width: 1
-            border.color: Qt.rgba(1, 1, 1, 0.2)
-            
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, buttonRoot.isPressed ? 0.15 : 0.25) }
-                GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, buttonRoot.isPressed ? 0.05 : 0.1) }
-            }
-        }
-        
-        Loader {
-            id: iconLoader
-            anchors.centerIn: parent
+            source: buttonRoot.isPressed && buttonRoot.iconPressedSource ? buttonRoot.iconPressedSource : buttonRoot.iconSource
+            sourceSize.width: width * 2
+            sourceSize.height: height * 2
+            smooth: true
+            antialiasing: true
+            fillMode: Image.PreserveAspectFit
         }
         
         MouseArea {
@@ -85,91 +78,37 @@ Item {
             
             Item { Layout.fillWidth: true }
             
-            GlassmorphicButton {
+            IconButton {
                 id: previousButton
-                Layout.preferredWidth: 70
-                Layout.preferredHeight: 70
+                Layout.preferredWidth: 60
+                Layout.preferredHeight: 60
+                iconSource: "qrc:/resources/icons/previous-button-normal.svg"
+                iconPressedSource: "qrc:/resources/icons/previous-button-pressed.svg"
                 onClicked: root.previousClicked()
-                
-                iconItem: Shape {
-                    width: 24
-                    height: 16
-                    anchors.centerIn: parent
-                    
-                    ShapePath {
-                        fillColor: Qt.rgba(1, 1, 1, 0.9)
-                        strokeColor: "transparent"
-                        PathSvg { path: "M 12 0 L 12 16 L 2 8 Z M 22 0 L 22 16 L 12 8 Z" }
-                    }
-                }
             }
             
-            GlassmorphicButton {
+            IconButton {
                 id: playPauseButton
-                Layout.preferredWidth: 90
-                Layout.preferredHeight: 90
+                Layout.preferredWidth: 80
+                Layout.preferredHeight: 80
+                iconSource: MediaPlayer.state === MediaPlayer.PlayingState ? 
+                    "qrc:/resources/icons/pause-button-normal.svg" : 
+                    "qrc:/resources/icons/play-button-normal.svg"
+                iconPressedSource: MediaPlayer.state === MediaPlayer.PlayingState ? 
+                    "qrc:/resources/icons/pause-button-pressed.svg" : 
+                    "qrc:/resources/icons/play-button-pressed.svg"
                 onClicked: root.playPauseClicked()
-                
-                iconItem: Item {
-                    width: 40
-                    height: 30
-                    anchors.centerIn: parent
-                    
-                    // Play icon
-                    Shape {
-                        anchors.fill: parent
-                        visible: MediaPlayer.state !== MediaPlayer.PlayingState
-                        opacity: visible ? 1.0 : 0.0
-                        
-                        Behavior on opacity {
-                            NumberAnimation { duration: 300; easing.type: Easing.InOutQuad }
-                        }
-                        
-                        ShapePath {
-                            fillColor: Qt.rgba(1, 1, 1, 0.95)
-                            strokeColor: "transparent"
-                            PathSvg { path: "M 12 4 L 12 26 L 32 15 Z" }
-                        }
-                    }
-                    
-                    // Pause icon
-                    Shape {
-                        anchors.fill: parent
-                        visible: MediaPlayer.state === MediaPlayer.PlayingState
-                        opacity: visible ? 1.0 : 0.0
-                        
-                        Behavior on opacity {
-                            NumberAnimation { duration: 300; easing.type: Easing.InOutQuad }
-                        }
-                        
-                        ShapePath {
-                            fillColor: Qt.rgba(1, 1, 1, 0.95)
-                            strokeColor: "transparent"
-                            PathSvg { path: "M 12 4 L 12 26 L 16 26 L 16 4 Z M 24 4 L 24 26 L 28 26 L 28 4 Z" }
-                        }
-                    }
-                }
             }
             
-            GlassmorphicButton {
+            IconButton {
                 id: nextButton
-                Layout.preferredWidth: 70
-                Layout.preferredHeight: 70
+                Layout.preferredWidth: 60
+                Layout.preferredHeight: 60
                 enabled: MediaPlayer.hasNext
                 opacity: enabled ? 1.0 : 0.3
+                iconSource: "qrc:/resources/icons/skip-button-normal.svg"
+                iconPressedSource: "qrc:/resources/icons/skip-button-pressed.svg"
                 onClicked: root.nextClicked()
-                
-                iconItem: Shape {
-                    width: 24
-                    height: 16
-                    anchors.centerIn: parent
-                    
-                    ShapePath {
-                        fillColor: Qt.rgba(1, 1, 1, 0.9)
-                        strokeColor: "transparent"
-                        PathSvg { path: "M 2 0 L 12 8 L 2 16 Z M 12 0 L 22 8 L 12 16 Z" }
-                    }
-                }
             }
             
             Item { Layout.fillWidth: true }

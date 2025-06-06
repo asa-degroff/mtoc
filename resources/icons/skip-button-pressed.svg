@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">
+  <defs>
+    <linearGradient id="glassGradientPressed" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#d0d0d0;stop-opacity:0.9" />
+      <stop offset="30%" style="stop-color:#c0c0c0;stop-opacity:0.8" />
+      <stop offset="50%" style="stop-color:#b0b0b0;stop-opacity:0.7" />
+      <stop offset="70%" style="stop-color:#a0a0a0;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#909090;stop-opacity:0.9" />
+    </linearGradient>
+    
+    <!-- Inner shadow for pressed state -->
+    <radialGradient id="innerShadow">
+      <stop offset="0%" style="stop-color:#000000;stop-opacity:0" />
+      <stop offset="70%" style="stop-color:#000000;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#000000;stop-opacity:0.3" />
+    </radialGradient>
+    
+    <filter id="dropShadowPressed" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1"/>
+      <feOffset dx="0" dy="1" result="offsetblur"/>
+      <feFlood flood-color="#000000" flood-opacity="0.2"/>
+      <feComposite in2="offsetblur" operator="in"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Next/Skip Button - Pressed -->
+  <path d="M 5 5 L 5 35 L 30 20 Z M 32 5 L 35 5 L 35 35 L 32 35 Z" 
+        fill="url(#glassGradientPressed)" 
+        stroke="#909090" 
+        stroke-width="1"
+        filter="url(#dropShadowPressed)"/>
+  <path d="M 5 5 L 5 35 L 30 20 Z M 32 5 L 35 5 L 35 35 L 32 35 Z" 
+        fill="url(#innerShadow)" 
+        opacity="0.3"/>
+</svg>

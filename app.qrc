@@ -17,5 +17,13 @@
         <!-- Icons -->
         <file>resources/icons/app_icon.svg</file>
         <file>resources/icons/speaker.svg</file>
+        <file>resources/icons/play-button-normal.svg</file>
+        <file>resources/icons/play-button-pressed.svg</file>
+        <file>resources/icons/pause-button-normal.svg</file>
+        <file>resources/icons/pause-button-pressed.svg</file>
+        <file>resources/icons/previous-button-normal.svg</file>
+        <file>resources/icons/previous-button-pressed.svg</file>
+        <file>resources/icons/skip-button-normal.svg</file>
+        <file>resources/icons/skip-button-pressed.svg</file>
     </qresource>
 </RCC>

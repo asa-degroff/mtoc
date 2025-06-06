@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">
+  <defs>
+    <!-- Gradients for glossy effect -->
+    <linearGradient id="glassGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.9" />
+      <stop offset="30%" style="stop-color:#f0f0f0;stop-opacity:0.8" />
+      <stop offset="50%" style="stop-color:#e0e0e0;stop-opacity:0.7" />
+      <stop offset="70%" style="stop-color:#d0d0d0;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#c0c0c0;stop-opacity:0.9" />
+    </linearGradient>
+    
+    <!-- Highlight gradient for top shine -->
+    <linearGradient id="highlight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.8" />
+      <stop offset="40%" style="stop-color:#ffffff;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0" />
+    </linearGradient>
+    
+    <!-- Filters for drop shadows -->
+    <filter id="dropShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+      <feOffset dx="0" dy="2" result="offsetblur"/>
+      <feFlood flood-color="#000000" flood-opacity="0.3"/>
+      <feComposite in2="offsetblur" operator="in"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Play Button -->
+  <path d="M 10 5 L 35 20 L 10 35 Z" 
+        fill="url(#glassGradient)" 
+        stroke="#b0b0b0" 
+        stroke-width="1"
+        filter="url(#dropShadow)"/>
+  <path d="M 12 8 L 31 20 L 12 32 Z" 
+        fill="url(#highlight)" 
+        opacity="0.5"/>
+</svg>
