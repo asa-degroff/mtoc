@@ -25,5 +25,7 @@
         <file>resources/icons/previous-button-pressed.svg</file>
         <file>resources/icons/skip-button-normal.svg</file>
         <file>resources/icons/skip-button-pressed.svg</file>
+        <file>resources/icons/drag-handle-normal.svg</file>
+        <file>resources/icons/drag-handle-pressed.svg</file>
     </qresource>
 </RCC>

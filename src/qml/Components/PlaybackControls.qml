@@ -124,7 +124,7 @@ Item {
             Label {
                 text: formatTime(progressSlider.value)
                 color: "#b0b0b0"
-                font.pixelSize: 12
+                font.pixelSize: 14
             }
             
             Slider {
@@ -168,17 +168,17 @@ Item {
                     x: progressSlider.leftPadding
                     y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
                     implicitWidth: 200
-                    implicitHeight: 8
+                    implicitHeight: 10
                     width: progressSlider.availableWidth
                     height: implicitHeight
-                    radius: 4
+                    radius: 5
                     color: "white"
                     opacity: 0.1
                     
                     Rectangle {
                         width: progressSlider.visualPosition * parent.width
                         height: parent.height
-                        radius: 4
+                        radius: 6
                         
                         gradient: Gradient {
                             orientation: Gradient.Vertical
@@ -189,20 +189,34 @@ Item {
                     }
                 }
                 
-                handle: Rectangle {
+                handle: Item {
                     id: sliderHandle
                     x: progressSlider.leftPadding + progressSlider.visualPosition * progressSlider.availableWidth - width / 2
                     y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
-                    implicitWidth: 16
-                    implicitHeight: 16
-                    radius: 8
-                    color: "white"
+                    implicitWidth: 36
+                    implicitHeight: 36
                     
                     property bool shouldShow: progressSlider.hovered || progressSlider.pressed || handleFadeTimer.running
-                    opacity: shouldShow ? (progressSlider.pressed ? 1.0 : 0.9) : 0.0
+                    opacity: shouldShow ? 1.0 : 0.0
+                    scale: progressSlider.pressed ? 0.9 : 1.0
                     
                     Behavior on opacity {
                         NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                    }
+                    
+                    Behavior on scale {
+                        NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+                    }
+                    
+                    Image {
+                        anchors.fill: parent
+                        source: progressSlider.pressed ? 
+                            "qrc:/resources/icons/drag-handle-pressed.svg" : 
+                            "qrc:/resources/icons/drag-handle-normal.svg"
+                        sourceSize.width: width * 2
+                        sourceSize.height: height * 2
+                        smooth: true
+                        antialiasing: true
                     }
                     
                     Timer {
@@ -227,7 +241,7 @@ Item {
             Label {
                 text: formatTime(MediaPlayer.duration)
                 color: "#b0b0b0"
-                font.pixelSize: 12
+                font.pixelSize: 14
             }
         }
     }
