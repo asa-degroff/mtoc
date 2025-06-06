@@ -80,44 +80,72 @@ Item {
     property var letterPositions: ({})  // letter -> contentY position
     property var availableLetters: []   // sorted array of available letters
     property real lastKnownContentHeight: 0
+    property bool isUpdatingPositions: false
+    property int positionUpdateDelay: 150
     
-    // Calculate letter positions based on actual content positions
+    Timer {
+        id: positionUpdateTimer
+        interval: positionUpdateDelay
+        running: false
+        repeat: false
+        onTriggered: doUpdateLetterPositions()
+    }
+    
+    // Schedule a delayed update to allow ListView to finish layout
     function updateLetterPositions() {
+        if (isUpdatingPositions) return
+        positionUpdateTimer.restart()
+    }
+    
+    // Actually perform the letter position calculation
+    function doUpdateLetterPositions() {
         if (!targetListView || !artistModel || artistModel.length === 0) {
             letterPositions = {}
             availableLetters = []
+            isUpdatingPositions = false
             return
         }
         
-        console.log("=== UpdateLetterPositions Debug ===")
-        console.log("ListView contentHeight:", targetListView.contentHeight)
-        console.log("ListView width:", targetListView.width)
-        console.log("Expanded artists:", expandedArtists)
-        console.log("Artist count:", artistModel.length)
+        isUpdatingPositions = true
         
         var positions = {}
         var letters = []
+        var actualItemPositions = 0
+        var calculatedPositions = 0
         
-        // Use the ListView's contentItem to get actual item positions
-        for (var i = 0; i < artistModel.length; i++) {
-            var artist = artistModel[i]
-            var firstChar = artist.name.charAt(0).toUpperCase()
-            
-            // Handle non-alphabetic characters
-            if (!/[A-Z]/.test(firstChar)) {
-                firstChar = "#"
-            }
-            
-            // Only record the first occurrence of each letter
-            if (!positions[firstChar]) {
-                // Get the actual Y position of this item in the content
-                var itemY = getItemContentY(i)
-                if (itemY >= 0) {
-                    positions[firstChar] = itemY
-                    letters.push(firstChar)
-                    console.log("Letter", firstChar, "at index", i, "- position:", itemY, "artist:", artist.name)
+        // Multiple passes to get better accuracy
+        for (var pass = 0; pass < 2; pass++) {
+            for (var i = 0; i < artistModel.length; i++) {
+                var artist = artistModel[i]
+                var firstChar = artist.name.charAt(0).toUpperCase()
+                
+                // Handle non-alphabetic characters
+                if (!/[A-Z]/.test(firstChar)) {
+                    firstChar = "#"
+                }
+                
+                // Only record the first occurrence of each letter
+                if (!positions[firstChar]) {
+                    // Try to get actual item position first
+                    var actualY = getActualItemPosition(i)
+                    if (actualY >= 0) {
+                        positions[firstChar] = actualY
+                        letters.push(firstChar)
+                        actualItemPositions++
+                    } else if (pass === 1) {
+                        // Fallback to calculated position on second pass
+                        var calculatedY = getCalculatedItemPosition(i)
+                        if (calculatedY >= 0) {
+                            positions[firstChar] = calculatedY
+                            letters.push(firstChar)
+                            calculatedPositions++
+                        }
+                    }
                 }
             }
+            
+            // If we got all positions from actual items, no need for second pass
+            if (actualItemPositions === letters.length) break
         }
         
         // Sort letters alphabetically, with # at the end
@@ -129,10 +157,10 @@ Item {
         
         letterPositions = positions
         availableLetters = letters
+        isUpdatingPositions = false
         
-        console.log("Final letter positions:", JSON.stringify(letterPositions))
-        console.log("Available letters:", availableLetters)
-        console.log("=================================")
+        // Update scroll handle position
+        handleY = getHandlePositionForCurrentScroll()
     }
     
     // Get the contentY position for a given artist index
