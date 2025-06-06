@@ -89,6 +89,12 @@ Item {
             return
         }
         
+        console.log("=== UpdateLetterPositions Debug ===")
+        console.log("ListView contentHeight:", targetListView.contentHeight)
+        console.log("ListView width:", targetListView.width)
+        console.log("Expanded artists:", expandedArtists)
+        console.log("Artist count:", artistModel.length)
+        
         var positions = {}
         var letters = []
         
@@ -109,6 +115,7 @@ Item {
                 if (itemY >= 0) {
                     positions[firstChar] = itemY
                     letters.push(firstChar)
+                    console.log("Letter", firstChar, "at index", i, "- position:", itemY, "artist:", artist.name)
                 }
             }
         }
@@ -122,6 +129,10 @@ Item {
         
         letterPositions = positions
         availableLetters = letters
+        
+        console.log("Final letter positions:", JSON.stringify(letterPositions))
+        console.log("Available letters:", availableLetters)
+        console.log("=================================")
     }
     
     // Get the contentY position for a given artist index
@@ -130,11 +141,14 @@ Item {
             return -1
         }
         
+        var artistName = artistModel[artistIndex].name
+        
         // Use the actual ListView's itemAtIndex function if available
         // This will get us the real position from the ListView
         try {
             var item = targetListView.itemAtIndex ? targetListView.itemAtIndex(artistIndex) : null
             if (item && typeof item.y !== 'undefined') {
+                console.log("getItemContentY: Using actual item position for", artistName, "at index", artistIndex, "- y:", item.y)
                 return item.y
             }
         } catch (error) {
@@ -142,6 +156,7 @@ Item {
         }
         
         // Fallback: Calculate the accumulated height up to this artist
+        console.log("getItemContentY: Calculating position for", artistName, "at index", artistIndex)
         var contentY = 0
         var spacing = targetListView.spacing || 0
         
@@ -151,14 +166,16 @@ Item {
             if (i < artistIndex - 1) contentY += spacing
             
             // Add expanded albums height if this artist is expanded
-            var artistName = artistModel[i].name
-            if (expandedArtists[artistName]) {
-                var albumsHeight = getExpandedAlbumsHeight(artistName)
+            var curArtistName = artistModel[i].name
+            if (expandedArtists[curArtistName]) {
+                var albumsHeight = getExpandedAlbumsHeight(curArtistName)
+                console.log("  Adding expanded height for", curArtistName, ":", albumsHeight)
                 contentY += albumsHeight
                 if (i < artistIndex - 1) contentY += spacing
             }
         }
         
+        console.log("  Final calculated position:", contentY)
         return contentY
     }
     
@@ -202,8 +219,16 @@ Item {
             var cols = Math.max(1, Math.floor(availableWidth / cellWidth))
             var rows = Math.ceil(albums.length / cols)
             
+            console.log("getExpandedAlbumsHeight for", artistName, ":")
+            console.log("  Albums count:", albums.length)
+            console.log("  ListView width:", targetListView.width)
+            console.log("  Available width:", availableWidth)
+            console.log("  Cols:", cols, "Rows:", rows)
+            
             // Total height: grid height + container padding (matches LibraryPane calculation)
-            return rows * cellHeight + 16
+            var totalHeight = rows * cellHeight + 16
+            console.log("  Total height:", totalHeight)
+            return totalHeight
         } catch (error) {
             console.warn("Error in getExpandedAlbumsHeight:", error, "for artist:", artistName)
             return 0
