@@ -519,6 +519,7 @@ Item {
 
                     delegate: Column {
                         width: ListView.view.width
+                        spacing: 2  // Match the ListView spacing for consistency
                         // Height will be dynamic based on albumsVisible
                         
                         // Store modelData for easier access in nested views/functions
@@ -569,6 +570,8 @@ Item {
                                 anchors.bottom: parent.bottom
                                 anchors.left: parent.left
                                 anchors.right: parent.right
+                                anchors.leftMargin: 6  // Match parent radius to avoid corner overflow
+                                anchors.rightMargin: 6  // Match parent radius to avoid corner overflow
                                 height: 1
                                 color: artistsListView.currentIndex === index ? Qt.rgba(0.1, 0.1, 0.29, 0.5) : Qt.rgba(0, 0, 0, 0.19)
                             }
@@ -912,6 +915,8 @@ Item {
                             anchors.bottom: parent.bottom
                             anchors.left: parent.left
                             anchors.right: parent.right
+                            anchors.leftMargin: 6  // Match parent radius to avoid corner overflow
+                            anchors.rightMargin: 6  // Match parent radius to avoid corner overflow
                             height: 1
                             color: Qt.rgba(0, 0, 0, 0.25)
                         }
@@ -1074,6 +1079,8 @@ Item {
                                     anchors.bottom: parent.bottom
                                     anchors.left: parent.left
                                     anchors.right: parent.right
+                                    anchors.leftMargin: 4  // Match parent radius to avoid corner overflow
+                                    anchors.rightMargin: 4  // Match parent radius to avoid corner overflow
                                     height: 1
                                     color: trackListView.currentIndex === index ? Qt.rgba(0.1, 0.1, 0.29, 0.38) : "transparent"
                                     visible: trackListView.currentIndex === index
