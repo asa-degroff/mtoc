@@ -537,12 +537,12 @@ Item {
                             }
                         } 
 
-                        Rectangle {
+                        SmoothBorderItem {
                             id: artistItemRect
                             width: parent.width
                             x: 0
                             height: 40
-                            color: {
+                            backgroundColor: {
                                 if (artistsListView.currentIndex === index) {
                                     return Qt.rgba(0.25, 0.32, 0.71, 0.38)  // Selected color with transparency
                                 } else if (root.selectedArtistIndex === index && root.navigationMode === "artist") {
@@ -553,30 +553,24 @@ Item {
                                     return Qt.rgba(1, 1, 1, 0.03)  // Subtle background
                                 }
                             }
-                            radius: 6
-                            
-                            // 3D border effect
-                            border.width: 1
-                            border.color: {
+                            highlightColor: {
                                 if (artistsListView.currentIndex === index) {
-                                    return Qt.rgba(0.37, 0.44, 0.84, 0.5)  // Brighter for selected
+                                    return Qt.rgba(0.45, 0.52, 0.94, 0.3)  // Brighter highlight for selected
                                 } else {
-                                    return Qt.rgba(1, 1, 1, 0.06)  // Subtle top highlight
+                                    return Qt.rgba(1, 1, 1, 0.08)  // Subtle highlight
                                 }
                             }
-                            
-                            // Bottom shadow for 3D depth
-                            Rectangle {
-                                anchors.bottom: parent.bottom
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.leftMargin: 6  // Match parent radius to avoid corner overflow
-                                anchors.rightMargin: 6  // Match parent radius to avoid corner overflow
-                                height: 1
-                                color: artistsListView.currentIndex === index ? Qt.rgba(0.1, 0.1, 0.29, 0.5) : Qt.rgba(0, 0, 0, 0.19)
+                            shadowColor: {
+                                if (artistsListView.currentIndex === index) {
+                                    return Qt.rgba(0.1, 0.1, 0.29, 0.4)  // Darker shadow for selected
+                                } else {
+                                    return Qt.rgba(0, 0, 0, 0.15)  // Subtle shadow
+                                }
                             }
+                            radius: 6
+                            borderWidth: 1.2
 
-                            RowLayout {
+                            contentItem: RowLayout {
                                 anchors.fill: parent
                                 anchors.margins: 8
                                 
@@ -635,8 +629,8 @@ Item {
                                 when: artistMouseArea.containsMouse && artistsListView.currentIndex !== index
                                 PropertyChanges {
                                     target: artistItemRect
-                                    color: Qt.rgba(1, 1, 1, 0.06)
-                                    border.color: Qt.rgba(1, 1, 1, 0.09)
+                                    backgroundColor: Qt.rgba(1, 1, 1, 0.06)
+                                    highlightColor: Qt.rgba(1, 1, 1, 0.12)
                                 }
                             }
                             
@@ -1055,11 +1049,11 @@ Item {
                                 }
                             }
                             
-                            Rectangle {
+                            SmoothBorderItem {
                                 id: trackDelegate
                                 width: parent.width
                                 height: 45
-                                color: {
+                                backgroundColor: {
                                     if (trackListView.currentIndex === index) {
                                         return Qt.rgba(0.25, 0.32, 0.71, 0.25)  // Selected track
                                     } else if (root.navigationMode === "track" && root.selectedTrackIndex === index) {
@@ -1068,25 +1062,24 @@ Item {
                                         return Qt.rgba(1, 1, 1, 0.02)  // Default background
                                     }
                                 }
-                                radius: 4
-                                
-                                // 3D effect
-                                border.width: 1
-                                border.color: trackListView.currentIndex === index ? Qt.rgba(0.37, 0.44, 0.84, 0.38) : "transparent"
-                                
-                                // Bottom shadow for selected items
-                                Rectangle {
-                                    anchors.bottom: parent.bottom
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    anchors.leftMargin: 4  // Match parent radius to avoid corner overflow
-                                    anchors.rightMargin: 4  // Match parent radius to avoid corner overflow
-                                    height: 1
-                                    color: trackListView.currentIndex === index ? Qt.rgba(0.1, 0.1, 0.29, 0.38) : "transparent"
-                                    visible: trackListView.currentIndex === index
+                                highlightColor: {
+                                    if (trackListView.currentIndex === index) {
+                                        return Qt.rgba(0.37, 0.44, 0.84, 0.25)
+                                    } else {
+                                        return Qt.rgba(1, 1, 1, 0.06)
+                                    }
                                 }
+                                shadowColor: {
+                                    if (trackListView.currentIndex === index) {
+                                        return Qt.rgba(0.1, 0.1, 0.29, 0.3)
+                                    } else {
+                                        return Qt.rgba(0, 0, 0, 0.12)
+                                    }
+                                }
+                                radius: 4
+                                borderWidth: 1
 
-                                RowLayout {
+                                contentItem: RowLayout {
                                     anchors.fill: parent
                                     anchors.margins: 8
                                     spacing: 10
@@ -1151,8 +1144,8 @@ Item {
                                     when: trackMouseArea.containsMouse && trackListView.currentIndex !== index
                                     PropertyChanges {
                                         target: trackDelegate
-                                        color: Qt.rgba(1, 1, 1, 0.04)
-                                        border.color: Qt.rgba(1, 1, 1, 0.06)
+                                        backgroundColor: Qt.rgba(1, 1, 1, 0.04)
+                                        highlightColor: Qt.rgba(1, 1, 1, 0.09)
                                     }
                                 }
                                 
