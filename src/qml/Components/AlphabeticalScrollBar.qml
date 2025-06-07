@@ -324,11 +324,14 @@ Item {
         }
         
         if (targetIndex >= 0) {
-            // Use ListView's built-in positioning which respects delegate boundaries
-            targetListView.positionViewAtIndex(targetIndex, ListView.Beginning)
-        } else {
-            // Fallback to direct contentY setting
-            targetListView.contentY = targetContentY
+            // Special handling for last letter - ensure we can see all items
+            if (letter === availableLetters[availableLetters.length - 1]) {
+                // For the last letter, position at the end to show all items
+                targetListView.positionViewAtEnd()
+            } else {
+                // For other letters, position at the beginning as before
+                targetListView.positionViewAtIndex(targetIndex, ListView.Beginning)
+            }
         }
         
         currentLetter = letter
