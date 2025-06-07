@@ -486,7 +486,7 @@ Item {
                         spacing: 2
                         
                         // Enable delegate recycling to prevent memory leaks
-                        reuseItems: true
+                        reuseItems: false
                         cacheBuffer: 200  // Limit cache to prevent excessive memory usage
                         
                         // Add layer to properly mask content with rounded corners
@@ -669,7 +669,7 @@ Item {
                                 interactive: false // Parent ListView handles scrolling primarily
                                 
                                 // Enable delegate recycling for albums too
-                                reuseItems: true
+                                reuseItems: false
                                 cacheBuffer: 200  // Limit cache for album grid
 
                                 model: albumsVisible && artistData && artistData.name ? 

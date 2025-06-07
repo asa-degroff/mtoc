@@ -437,7 +437,7 @@ Item {
     // Timer for debouncing scroll updates
     Timer {
         id: updateTimer
-        interval: 200  // Increased to 200ms to reduce frequency
+        interval: 100 
         repeat: false
         onTriggered: {
             if (!isUpdatingPositions) {
@@ -449,7 +449,7 @@ Item {
     // Timer for debouncing position updates
     Timer {
         id: positionUpdateTimer
-        interval: 300  // Increased to 300ms to prevent rapid updates
+        interval: 100
         repeat: false
         onTriggered: {
             if (!handle.isDragging) {
