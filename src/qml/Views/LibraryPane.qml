@@ -539,7 +539,7 @@ Item {
                         Rectangle {
                             id: artistItemRect
                             width: parent.width
-                            anchors.left: parent.left
+                            x: 0
                             height: 40
                             color: {
                                 if (artistsListView.currentIndex === index) {
@@ -645,8 +645,8 @@ Item {
                         // Albums GridView - visible based on albumsVisible
                         Rectangle {
                             id: artistAlbumsContainer
-                            width: parent.width
-                            anchors.left: parent.left
+                            width: artistItemRect.width
+                            x: 0
                             // Dynamic height based on content
                             height: albumsVisible ? (albumsGrid.contentHeight + (albumsGrid.count > 0 ? 16 : 0)) : 0 // Add padding if albums exist
                             color: Qt.rgba(1, 1, 1, 0.04) // Very subtle frosted background
