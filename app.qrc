@@ -8,7 +8,6 @@
         <file>src/qml/Components/PlaybackControls.qml</file>
         <file>src/qml/Components/SearchBar.qml</file>
         <file>src/qml/Components/ThumbnailGridDelegate.qml</file>
-        <file>src/qml/Components/GradientBorderItem.qml</file>
         <file>src/qml/Components/SmoothBorderItem.qml</file>
         <file>src/qml/Views/LibraryPane.qml</file>
         <file>src/qml/Views/LibraryEditorWindow.qml</file>
