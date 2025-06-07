@@ -80,14 +80,17 @@ Item {
     property var letterPositions: ({})  // letter -> contentY position
     property var availableLetters: []   // sorted array of available letters
     property real lastKnownContentHeight: 0
+    property bool isUpdatingPositions: false  // Prevent updates during calculations
     
     // Calculate letter positions based on actual content positions
     function updateLetterPositions() {
-        if (!targetListView || !artistModel || artistModel.length === 0) {
+        if (!targetListView || !artistModel || artistModel.length === 0 || isUpdatingPositions) {
             letterPositions = {}
             availableLetters = []
             return
         }
+        
+        isUpdatingPositions = true
         
         console.log("=== UpdateLetterPositions Debug ===")
         console.log("ListView contentHeight:", targetListView.contentHeight)
@@ -133,6 +136,8 @@ Item {
         console.log("Final letter positions:", JSON.stringify(letterPositions))
         console.log("Available letters:", availableLetters)
         console.log("=================================")
+        
+        isUpdatingPositions = false
     }
     
     // Get the contentY position for a given artist index
@@ -143,40 +148,77 @@ Item {
         
         var artistName = artistModel[artistIndex].name
         
-        // Use the actual ListView's itemAtIndex function if available
-        // This will get us the real position from the ListView
+        // NEVER call positionViewAtIndex here - it causes infinite loops!
+        // Just try to get the item if it exists without forcing positioning
         try {
-            var item = targetListView.itemAtIndex ? targetListView.itemAtIndex(artistIndex) : null
+            var item = targetListView.itemAtIndex(artistIndex)
             if (item && typeof item.y !== 'undefined') {
                 console.log("getItemContentY: Using actual item position for", artistName, "at index", artistIndex, "- y:", item.y)
                 return item.y
             }
         } catch (error) {
-            // Fallback to calculation if itemAtIndex fails
+            // Silently fall back to calculation
         }
         
-        // Fallback: Calculate the accumulated height up to this artist
+        // Calculate position based on accumulated heights
         console.log("getItemContentY: Calculating position for", artistName, "at index", artistIndex)
         var contentY = 0
-        var spacing = targetListView.spacing || 0
+        var spacing = targetListView.spacing || 2 // Match LibraryPane spacing
         
         for (var i = 0; i < artistIndex; i++) {
-            // Add artist item height (40px + spacing)
-            contentY += 40
-            if (i < artistIndex - 1) contentY += spacing
-            
-            // Add expanded albums height if this artist is expanded
             var curArtistName = artistModel[i].name
+            
+            // Add artist item height (40px base height)
+            contentY += 40
+            
+            // Add expanded albums height if this artist is expanded  
             if (expandedArtists[curArtistName]) {
-                var albumsHeight = getExpandedAlbumsHeight(curArtistName)
+                var albumsHeight = getActualExpandedHeight(curArtistName)
                 console.log("  Adding expanded height for", curArtistName, ":", albumsHeight)
                 contentY += albumsHeight
-                if (i < artistIndex - 1) contentY += spacing
+            }
+            
+            // Add spacing after each item (except the last one before our target)
+            if (i < artistIndex - 1) {
+                contentY += spacing
             }
         }
         
         console.log("  Final calculated position:", contentY)
         return contentY
+    }
+    
+    // Get the actual expanded height that matches LibraryPane calculations exactly
+    function getActualExpandedHeight(artistName) {
+        try {
+            if (!LibraryManager || !LibraryManager.getAlbumsForArtist) {
+                return 0
+            }
+            
+            var albums = LibraryManager.getAlbumsForArtist(artistName)
+            if (!albums || albums.length === 0) {
+                return 0
+            }
+            
+            // Match LibraryPane.qml exactly:
+            // GridView with cellWidth: 120 + 10, cellHeight: 140 + 10
+            // Container margins: 8 on each side (16 total)
+            // Available width = ListView width - rightMargin (24) - container margins (16)
+            var availableWidth = (targetListView.width || 400) - 24 - 16
+            var cellWidth = 130  // 120 + 10 padding
+            var cellHeight = 150 // 140 + 10 padding
+            var cols = Math.max(1, Math.floor(availableWidth / cellWidth))
+            var rows = Math.ceil(albums.length / cols)
+            
+            // Total height = grid content + container margins (16)
+            var totalHeight = rows * cellHeight + 16
+            
+            console.log("getActualExpandedHeight for", artistName, "albums:", albums.length, "cols:", cols, "rows:", rows, "height:", totalHeight)
+            return totalHeight
+        } catch (error) {
+            console.warn("Error in getActualExpandedHeight:", error)
+            return 0
+        }
     }
     
     // Calculate the height of expanded albums for an artist
@@ -267,19 +309,41 @@ Item {
         var maxContentY = Math.max(0, targetListView.contentHeight - targetListView.height)
         targetContentY = Math.min(targetContentY, maxContentY)
         
-        // Animate to the position
-        targetListView.contentY = targetContentY
+        // Use positionViewAtIndex for more reliable scrolling
+        // Find the artist index for this letter
+        var targetIndex = -1
+        for (var i = 0; i < artistModel.length; i++) {
+            var firstChar = artistModel[i].name.charAt(0).toUpperCase()
+            if (!/[A-Z]/.test(firstChar)) {
+                firstChar = "#"
+            }
+            if (firstChar === letter) {
+                targetIndex = i
+                break
+            }
+        }
+        
+        if (targetIndex >= 0) {
+            // Use ListView's built-in positioning which respects delegate boundaries
+            targetListView.positionViewAtIndex(targetIndex, ListView.Beginning)
+        } else {
+            // Fallback to direct contentY setting
+            targetListView.contentY = targetContentY
+        }
+        
         currentLetter = letter
         
-        // Update handle position immediately
-        if (!handle.isDragging) {
-            handle.targetY = getPositionForLetter(letter)
-        }
+        // Update handle position after a brief delay to ensure ListView has updated
+        Qt.callLater(function() {
+            if (!handle.isDragging) {
+                handle.targetY = getPositionForLetter(letter)
+            }
+        })
     }
     
     // Update handle position based on current scroll position
     function updateHandleFromScroll() {
-        if (!targetListView || handle.isDragging || availableLetters.length === 0) return
+        if (!targetListView || handle.isDragging || availableLetters.length === 0 || isUpdatingPositions) return
         
         var currentContentY = targetListView.contentY
         var contentHeight = targetListView.contentHeight
@@ -359,39 +423,53 @@ Item {
     Connections {
         target: root
         function onArtistModelChanged() {
-            Qt.callLater(updateLetterPositions)
+            // Only update if we actually have a model
+            if (artistModel && artistModel.length > 0) {
+                positionUpdateTimer.restart()
+            }
         }
         function onExpandedArtistsChanged() {
-            Qt.callLater(updateLetterPositions)
+            // Use timer to batch expansion changes and prevent rapid updates
+            positionUpdateTimer.restart()
         }
     }
     
     // Timer for debouncing scroll updates
     Timer {
         id: updateTimer
-        interval: 50  // 50ms debounce
+        interval: 200  // Increased to 200ms to reduce frequency
         repeat: false
-        onTriggered: updateHandleFromScroll()
+        onTriggered: {
+            if (!isUpdatingPositions) {
+                updateHandleFromScroll()
+            }
+        }
     }
     
     // Timer for debouncing position updates
     Timer {
         id: positionUpdateTimer
-        interval: 100  // 100ms debounce for position updates
+        interval: 300  // Increased to 300ms to prevent rapid updates
         repeat: false
-        onTriggered: updateLetterPositions()
+        onTriggered: {
+            if (!handle.isDragging) {
+                updateLetterPositions()
+            }
+        }
     }
     
     // Update handle position when ListView scrolls (user-initiated scrolling)
     Connections {
         target: targetListView
         function onContentYChanged() {
-            if (!handle.isDragging) {
+            // Only update if user is not dragging the handle and we're not updating positions
+            if (!handle.isDragging && !isUpdatingPositions) {
                 updateTimer.restart()
             }
         }
         function onContentHeightChanged() {
-            if (targetListView.contentHeight !== lastKnownContentHeight) {
+            // Only update positions if content height actually changed significantly
+            if (Math.abs(targetListView.contentHeight - lastKnownContentHeight) > 10) {
                 lastKnownContentHeight = targetListView.contentHeight
                 positionUpdateTimer.restart()
             }

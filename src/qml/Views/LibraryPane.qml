@@ -521,9 +521,20 @@ Item {
                         width: ListView.view.width
                         // Height will be dynamic based on albumsVisible
                         
-                        property bool albumsVisible: root.expandedArtists[modelData.name] || false
                         // Store modelData for easier access in nested views/functions
-                        property var artistData: modelData 
+                        property var artistData: modelData
+                        property bool albumsVisible: root.expandedArtists[artistData.name] === true
+                        
+                        // Listen for changes to the expanded artists
+                        Connections {
+                            target: root
+                            function onExpandedArtistsChanged() {
+                                // Force re-evaluation by updating the binding
+                                albumsVisible = Qt.binding(function() { 
+                                    return root.expandedArtists[artistData.name] === true 
+                                })
+                            }
+                        } 
 
                         Rectangle {
                             id: artistItemRect
@@ -661,7 +672,8 @@ Item {
                                 reuseItems: true
                                 cacheBuffer: 200  // Limit cache for album grid
 
-                                model: albumsVisible ? LibraryManager.getAlbumsForArtist(artistData.name) : []
+                                model: albumsVisible && artistData && artistData.name ? 
+                                       LibraryManager.getAlbumsForArtist(artistData.name) : []
 
                                 delegate: Item { 
                                     width: albumsGrid.cellWidth - 10
