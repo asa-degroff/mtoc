@@ -1,3 +1,7 @@
 build
 debug_log.txt
 perf.*
+massif.out.*
+valgrind.out.*
+callgrind.out.*
+vgcore.*
