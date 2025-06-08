@@ -211,6 +211,9 @@ int main(int argc, char *argv[])
         delete systemInfo;
         systemInfo = nullptr;
         
+        // Process any pending deletions before returning
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+        
         qDebug() << "Main: Cleanup completed";
     });
     
