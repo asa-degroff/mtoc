@@ -350,24 +350,30 @@ Item {
             }
         }
         
-        // Horizontal Album Browser
-        HorizontalAlbumBrowser {
-            id: albumBrowser
+        // Horizontal Album Browser with width constraint
+        Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 360  // Height for albums with reflections
             
-            onAlbumClicked: function(album) {
-                root.selectedAlbum = album
+            HorizontalAlbumBrowser {
+                id: albumBrowser
+                anchors.centerIn: parent
+                width: Math.min(parent.width, 832)  // Max width: 45% of 1920px minus 32px margins
+                height: parent.height
                 
-                // Highlight the album's artist
-                root.highlightedArtist = album.albumArtist
-                
-                // Find the artist in the list and ensure it's visible
-                var artists = LibraryManager.artistModel
-                for (var i = 0; i < artists.length; i++) {
-                    if (artists[i].name === album.albumArtist) {
-                        artistsListView.positionViewAtIndex(i, ListView.Contain)
-                        break
+                onAlbumClicked: function(album) {
+                    root.selectedAlbum = album
+                    
+                    // Highlight the album's artist
+                    root.highlightedArtist = album.albumArtist
+                    
+                    // Find the artist in the list and ensure it's visible
+                    var artists = LibraryManager.artistModel
+                    for (var i = 0; i < artists.length; i++) {
+                        if (artists[i].name === album.albumArtist) {
+                            artistsListView.positionViewAtIndex(i, ListView.Contain)
+                            break
+                        }
                     }
                 }
             }

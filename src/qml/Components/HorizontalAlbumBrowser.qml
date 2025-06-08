@@ -464,12 +464,12 @@ Item {
                         width: albumContainer.width
                         height: 120
                         
-                        // Conditional reflection - only for center items to reduce GPU load
+                        // Conditional reflection - only for visible items to reduce GPU load
                         ShaderEffectSource {
                             id: reflection
                             anchors.fill: parent
                             sourceItem: albumContainer  // Always keep the source
-                            visible: Math.abs(distanceFromCenter) < 200  // Reduced range
+                            visible: Math.abs(distanceFromCenter) < 420  // Increased to cover all visible albums in max width (832/2 + margin)
                             live: visible  // Only update when visible
                             recursive: false
                             // Capture the bottom portion of the album for reflection
