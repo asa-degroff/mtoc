@@ -21,7 +21,7 @@ AudioEngine::AudioEngine(QObject *parent)
     initializePipeline();
     
     m_positionTimer = new QTimer(this);
-    m_positionTimer->setInterval(100);
+    m_positionTimer->setInterval(250);
     connect(m_positionTimer, &QTimer::timeout, this, &AudioEngine::updatePosition);
 }
 

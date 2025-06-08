@@ -440,7 +440,7 @@ Item {
                             id: reflection
                             anchors.fill: parent
                             sourceItem: albumContainer
-                            visible: Math.abs(distanceFromCenter) < 400
+                            visible: Math.abs(distanceFromCenter) < 200
                             live: true
                             recursive: false
                             // Capture the bottom portion of the album for reflection

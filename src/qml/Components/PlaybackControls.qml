@@ -41,6 +41,7 @@ Item {
         scale: isPressed ? 0.9 : (isHovered ? 1.1 : 1.0)
         
         Behavior on scale {
+            enabled: buttonRoot.isHovered || buttonRoot.isPressed
             NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
         }
         
