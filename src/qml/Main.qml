@@ -23,56 +23,42 @@ ApplicationWindow {
         resizeDelay: 250  // Wait 250ms after resize stops
         
         onResizeStarted: {
-            // Show placeholder during resize
-            mainContent.visible = false
-            resizePlaceholder.visible = true
+            // During resize, we just clip/letterbox the content
+            // No need to hide anything
         }
         
         onResizeCompleted: {
-            // Apply new dimensions and show content
+            // Apply new dimensions to content
             mainContent.width = newWidth
             mainContent.height = newHeight
-            mainContent.visible = true
-            resizePlaceholder.visible = false
             
             // Force garbage collection after resize
             gc()
         }
     }
     
-    // Placeholder shown during resize
+    // Black background for letterboxing effect
     Rectangle {
-        id: resizePlaceholder
         anchors.fill: parent
-        color: "#1a1a1a"
-        visible: false
-        
-        // Simple resize indicator
-        Column {
-            anchors.centerIn: parent
-            spacing: 20
-            
-            Label {
-                text: "Resizing..."
-                color: "white"
-                font.pixelSize: 24
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
-            
-            Label {
-                text: resizeHandler.actualWidth + " × " + resizeHandler.actualHeight
-                color: "#808080"
-                font.pixelSize: 16
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
-        }
+        color: "#000000"
+        z: -1
     }
-
-    // Main content container
+    
+    // Viewport container that clips or letterboxes content
     Item {
-        id: mainContent
-        width: resizeHandler.deferredWidth
-        height: resizeHandler.deferredHeight
+        id: viewportContainer
+        anchors.fill: parent
+        clip: true  // Clip content when window is smaller
+        
+        // Main content container - stays at deferred size
+        Item {
+            id: mainContent
+            width: resizeHandler.deferredWidth
+            height: resizeHandler.deferredHeight
+            
+            // Center content when window is larger (letterbox)
+            x: parent.width > width ? (parent.width - width) / 2 : 0
+            y: parent.height > height ? (parent.height - height) / 2 : 0
         
         // Basic two-pane layout
         RowLayout {
@@ -103,7 +89,8 @@ ApplicationWindow {
                 }
             }
         }
-    }
+        }  // mainContent
+    }  // viewportContainer
 
     // Function to format duration in seconds to MM:SS format
     function formatDuration(seconds) {
