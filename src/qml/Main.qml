@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Window 2.15
 import Mtoc.Backend 1.0
 import "Views/"
 import "Components/"
@@ -99,22 +100,53 @@ ApplicationWindow {
         return minutes + ":" + (remainingSeconds < 10 ? "0" : "") + remainingSeconds;
     }
     
+    // Timer to check rendering info after window is ready
+    Timer {
+        id: renderInfoTimer
+        interval: 100
+        running: true
+        repeat: false
+        onTriggered: {
+            console.log("=== RENDERING DEBUG INFO ===");
+            var renderInfo = window.rendererInterface;
+            if (renderInfo) {
+                console.log("Graphics API Type:", renderInfo.graphicsApi);
+                console.log("Major Version:", renderInfo.majorVersion);
+                console.log("Minor Version:", renderInfo.minorVersion);
+                
+                // Map GraphicsApi enum values
+                var apiName = "";
+                switch(renderInfo.graphicsApi) {
+                    case 0: apiName = "Unknown"; break;
+                    case 1: apiName = "Software"; break;
+                    case 2: apiName = "OpenGL"; break;
+                    case 3: apiName = "Direct3D12"; break;
+                    case 4: apiName = "OpenVG"; break;
+                    case 5: apiName = "OpenGL ES"; break;
+                    case 6: apiName = "Vulkan"; break;
+                    case 7: apiName = "Metal"; break;
+                    case 8: apiName = "Null"; break;
+                    default: apiName = "Other"; break;
+                }
+                console.log("Graphics API Name:", apiName);
+                
+                if (renderInfo.graphicsApi === 1) {
+                    console.warn("WARNING: Using software rendering! This will cause high CPU usage.");
+                    console.warn("Try running with: QSG_RHI_BACKEND=opengl ./build/mtoc_app");
+                    console.warn("Or use the provided run_mtoc.sh script");
+                } else if (renderInfo.graphicsApi === 2) {
+                    console.log("SUCCESS: Using hardware-accelerated OpenGL rendering");
+                }
+            } else {
+                console.log("rendererInterface not available");
+            }
+            console.log("===========================");
+        }
+    }
+    
     // Initialize the application
     Component.onCompleted: {
         console.log("Main.qml loaded - Initializing application");
-        
-        // Debug rendering information
-        console.log("=== RENDERING DEBUG INFO ===");
-        if (typeof GraphicsInfo !== "undefined") {
-            console.log("Graphics API:", GraphicsInfo.api);
-            console.log("Render type:", GraphicsInfo.renderType);
-            console.log("Graphics API version:", GraphicsInfo.majorVersion + "." + GraphicsInfo.minorVersion);
-            console.log("Shading language:", GraphicsInfo.shaderType);
-        } else {
-            console.log("GraphicsInfo not available - checking environment variables");
-            console.log("QSG_RENDER_LOOP:", Qt.application.arguments);
-        }
-        console.log("===========================");
         
         try {
             // Initialize LibraryManager
