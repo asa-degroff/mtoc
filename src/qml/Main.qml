@@ -3,6 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import Mtoc.Backend 1.0
 import "Views/"
+import "Components/"
 
 ApplicationWindow {
     id: window
@@ -15,33 +16,91 @@ ApplicationWindow {
 
     // Property to hold the current track metadata
     property var currentTrack: ({})
-
-    // Basic two-pane layout (placeholders)
-    RowLayout {
-        anchors.fill: parent
-        spacing: 0  // Remove default spacing
-
-        // Library Pane
-        LibraryPane {
-            id: libraryPane
-            Layout.fillWidth: true
-            Layout.preferredWidth: window.width * 0.45 // 45% of window width
-            Layout.fillHeight: true
+    
+    // Resize handler for deferred resizing
+    ResizeHandler {
+        id: resizeHandler
+        resizeDelay: 250  // Wait 250ms after resize stops
+        
+        onResizeStarted: {
+            // Show placeholder during resize
+            mainContent.visible = false
+            resizePlaceholder.visible = true
         }
+        
+        onResizeCompleted: {
+            // Apply new dimensions and show content
+            mainContent.width = newWidth
+            mainContent.height = newHeight
+            mainContent.visible = true
+            resizePlaceholder.visible = false
+            
+            // Force garbage collection after resize
+            gc()
+        }
+    }
+    
+    // Placeholder shown during resize
+    Rectangle {
+        id: resizePlaceholder
+        anchors.fill: parent
+        color: "#1a1a1a"
+        visible: false
+        
+        // Simple resize indicator
+        Column {
+            anchors.centerIn: parent
+            spacing: 20
+            
+            Label {
+                text: "Resizing..."
+                color: "white"
+                font.pixelSize: 24
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+            
+            Label {
+                text: resizeHandler.actualWidth + " × " + resizeHandler.actualHeight
+                color: "#808080"
+                font.pixelSize: 16
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+        }
+    }
+
+    // Main content container
+    Item {
+        id: mainContent
+        width: resizeHandler.deferredWidth
+        height: resizeHandler.deferredHeight
+        
+        // Basic two-pane layout
+        RowLayout {
+            anchors.fill: parent
+            spacing: 0  // Remove default spacing
+
+            // Library Pane
+            LibraryPane {
+                id: libraryPane
+                Layout.fillWidth: true
+                Layout.preferredWidth: mainContent.width * 0.45 // 45% of content width
+                Layout.fillHeight: true
+            }
 
 
-        // Now Playing Pane
-        NowPlayingPane {
-            id: nowPlayingPane
-            Layout.fillWidth: true
-            Layout.preferredWidth: window.width * 0.55 // 55% of window width
-            Layout.fillHeight: true
-            
-            // Pass reference to library pane for navigation
-            libraryPane: libraryPane
-            
-            Component.onCompleted: {
-                console.log("NowPlayingPane added to Main.qml");
+            // Now Playing Pane
+            NowPlayingPane {
+                id: nowPlayingPane
+                Layout.fillWidth: true
+                Layout.preferredWidth: mainContent.width * 0.55 // 55% of content width
+                Layout.fillHeight: true
+                
+                // Pass reference to library pane for navigation
+                libraryPane: libraryPane
+                
+                Component.onCompleted: {
+                    console.log("NowPlayingPane added to Main.qml");
+                }
             }
         }
     }
