@@ -504,6 +504,24 @@ Item {
                     boundsMovement: Flickable.StopAtBounds
                     boundsBehavior: Flickable.StopAtBounds
                     
+                    // Track scroll bar dragging state
+                    property bool scrollBarDragging: false
+                    
+                    // Store the index and offset of the top visible item for scroll preservation
+                    property int savedTopIndex: -1
+                    property real savedTopOffset: 0
+                    property bool preserveScrollPosition: false
+                    
+                    // Better scroll position preservation using index-based approach
+                    onContentHeightChanged: {
+                        if (preserveScrollPosition && savedTopIndex >= 0 && !scrollBarDragging) {
+                            // Restore position based on saved index and offset
+                            positionViewAtIndex(savedTopIndex, ListView.Beginning)
+                            contentY += savedTopOffset
+                            preserveScrollPosition = false
+                        }
+                    }
+                    
                     // Smooth wheel scrolling with moderate speed
                     WheelHandler {
                         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
@@ -614,6 +632,14 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 
                                 onClicked: {
+                                    // Save current top visible item before expanding/collapsing
+                                    var topItem = artistsListView.itemAt(0, artistsListView.contentY);
+                                    if (topItem) {
+                                        artistsListView.savedTopIndex = artistsListView.indexAt(0, artistsListView.contentY);
+                                        artistsListView.savedTopOffset = artistsListView.contentY - topItem.y;
+                                        artistsListView.preserveScrollPosition = true;
+                                    }
+                                    
                                     // Toggle expansion state more efficiently
                                     var newExpandedState = !(root.expandedArtists[artistData.name] || false);
                                     
@@ -849,9 +875,15 @@ Item {
                         rightMargin: 12
                         
                         ScrollBar.vertical: ScrollBar { 
+                            id: artistScrollBar
                             policy: ScrollBar.AsNeeded
                             minimumSize: 0.1
                             width: 8
+                            
+                            // Track when scroll bar is being dragged
+                            onPressedChanged: {
+                                artistsListView.scrollBarDragging = pressed
+                            }
                             
                             background: Rectangle {
                                 color: Qt.rgba(0, 0, 0, 0.2)
