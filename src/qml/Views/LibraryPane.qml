@@ -478,13 +478,27 @@ Item {
                         }
                     }
                     
-                    ListView {
-                        id: artistsListView
+                    // Mask item for consistent rounded corners
+                    Item {
                         anchors.top: searchBar.bottom
                         anchors.topMargin: 8
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
+                        
+                        // Apply rounded corner mask to ListView
+                        layer.enabled: true
+                        layer.effect: OpacityMask {
+                            maskSource: Rectangle {
+                                width: artistsListView.width
+                                height: artistsListView.height
+                                radius: 6  // Match the container radius minus margins
+                            }
+                        }
+                    
+                    ListView {
+                        id: artistsListView
+                        anchors.fill: parent
                         clip: true
                         model: LibraryManager.artistModel
                         spacing: 2
@@ -889,10 +903,11 @@ Item {
                             }
                         }
                     }
-                        // Add right padding to content to make room for scrollbar
-                        rightMargin: 12
-                        
-                        ScrollBar.vertical: ScrollBar { 
+                    
+                    // Add right padding to content to make room for scrollbar
+                    rightMargin: 12
+                    
+                    ScrollBar.vertical: ScrollBar { 
                             id: artistScrollBar
                             policy: ScrollBar.AsNeeded
                             minimumSize: 0.1
@@ -926,7 +941,8 @@ Item {
                                 }
                             }
                         }
-                    }
+                    }  // ListView end
+                    }  // Mask item end
                 }
             }
 
