@@ -504,9 +504,6 @@ Item {
                     boundsMovement: Flickable.StopAtBounds
                     boundsBehavior: Flickable.StopAtBounds
                     
-                    // Track scroll bar dragging state
-                    property bool scrollBarDragging: false
-                    
                     // Store the index and offset of the top visible item for scroll preservation
                     property int savedTopIndex: -1
                     property real savedTopOffset: 0
@@ -514,11 +511,16 @@ Item {
                     
                     // Better scroll position preservation using index-based approach
                     onContentHeightChanged: {
-                        if (preserveScrollPosition && savedTopIndex >= 0 && !scrollBarDragging) {
-                            // Restore position based on saved index and offset
-                            positionViewAtIndex(savedTopIndex, ListView.Beginning)
-                            contentY += savedTopOffset
-                            preserveScrollPosition = false
+                        if (preserveScrollPosition && savedTopIndex >= 0) {
+                            // Use Qt.callLater to avoid immediate position changes that cause snapping
+                            Qt.callLater(function() {
+                                if (savedTopIndex >= 0 && savedTopIndex < count) {
+                                    positionViewAtIndex(savedTopIndex, ListView.Beginning)
+                                    contentY = Math.max(0, contentY + savedTopOffset)
+                                    preserveScrollPosition = false
+                                    savedTopIndex = -1
+                                }
+                            })
                         }
                     }
                     
@@ -878,12 +880,12 @@ Item {
                             id: artistScrollBar
                             policy: ScrollBar.AsNeeded
                             minimumSize: 0.1
-                            width: 8
+                            width: 10  // Slightly wider for easier grabbing
+                            snapMode: ScrollBar.NoSnap
+                            interactive: true
                             
-                            // Track when scroll bar is being dragged
-                            onPressedChanged: {
-                                artistsListView.scrollBarDragging = pressed
-                            }
+                            // Increase step size for smoother scrolling
+                            stepSize: 0.02
                             
                             background: Rectangle {
                                 color: Qt.rgba(0, 0, 0, 0.2)
