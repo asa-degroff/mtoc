@@ -121,7 +121,26 @@ Item {
             
             // Enable delegate recycling and limit cache to prevent memory leaks
             reuseItems: true
-            cacheBuffer: 600  // Only cache items within reasonable range
+            cacheBuffer: 440  // Reduced to 2 items on each side (220px * 2)
+            
+            // Garbage collection timer for long scrolling sessions
+            Timer {
+                id: gcTimer
+                interval: 5000  // Run every 5 seconds
+                running: false
+                repeat: true
+                onTriggered: {
+                    // Force garbage collection by clearing unused image cache
+                    gc()
+                }
+            }
+            
+            onMovementStarted: gcTimer.running = true
+            onMovementEnded: {
+                gcTimer.running = false
+                // Final cleanup after scrolling stops
+                gcTimer.triggered()
+            }
             
             property int predictedIndex: -1
             property bool isPredicting: false
@@ -201,6 +220,12 @@ Item {
                 id: delegateItem
                 width: 220
                 height: 370  // Height for album plus reflection
+                
+                // Handle delegate recycling
+                ListView.onReused: {
+                    // Reset visibility calculations when reused
+                    // The bindings will automatically update based on new position
+                }
                 
                 // Cache expensive calculations - only update when contentX changes
                 property real centerX: listView.width / 2
@@ -378,7 +403,7 @@ Item {
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
                             antialiasing: true
-                            cache: false
+                            cache: true  // Enable caching to prevent reloading
                             
                             onStatusChanged: {
                                 if (status === Image.Error) {
@@ -434,9 +459,9 @@ Item {
                         ShaderEffectSource {
                             id: reflection
                             anchors.fill: parent
-                            sourceItem: albumContainer
-                            visible: Math.abs(distanceFromCenter) < 600
-                            live: true
+                            sourceItem: albumContainer  // Always keep the source
+                            visible: Math.abs(distanceFromCenter) < 200  // Reduced range
+                            live: visible  // Only update when visible
                             recursive: false
                             // Capture the bottom portion of the album for reflection
                             sourceRect: Qt.rect(0, albumContainer.height - 120, albumContainer.width, 120)
@@ -447,7 +472,7 @@ Item {
                                 }
                             ]
                             
-                            // Force update when album image changes
+                            // Update reflection when album image changes
                             Connections {
                                 target: albumImage
                                 function onStatusChanged() {
@@ -455,14 +480,6 @@ Item {
                                         reflection.scheduleUpdate()
                                     }
                                 }
-                                function onSourceChanged() {
-                                    // Force update when the album image source changes (delegate recycling)
-                                    reflection.scheduleUpdate()
-                                }
-                            }
-                            
-                            Component.onDestruction: {
-                                sourceItem = null
                             }
                         }
                         
