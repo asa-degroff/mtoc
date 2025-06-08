@@ -210,7 +210,7 @@ Item {
         id: blurredBg
         anchors.fill: parent
         source: thumbnailUrl
-        blurRadius: 80
+        blurRadius: 60  // Reduced from 80 for better performance
         backgroundOpacity: 0.3
         z: -2  // Put this behind the dark overlay
     }
@@ -486,18 +486,11 @@ Item {
                         spacing: 2
                         
                         // Enable delegate recycling to prevent memory leaks
-                        reuseItems: false
-                        cacheBuffer: 200  // Limit cache to prevent excessive memory usage
+                        reuseItems: true  // Enable recycling for better performance
+                        cacheBuffer: 600  // Increase cache for smoother scrolling
                         
-                        // Add layer to properly mask content with rounded corners
-                        layer.enabled: true
-                        layer.effect: OpacityMask {
-                            maskSource: Rectangle {
-                                width: artistsListView.width
-                                height: artistsListView.height
-                                radius: 6
-                            }
-                        }
+                        // Disable layer effect for better performance
+                        // Content clipping is handled by parent container's clip property
                     
                     // Increase scroll speed
                     flickDeceleration: 8000  // Default is 1500, can increase for faster stopping
@@ -617,15 +610,20 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 
                                 onClicked: {
-                                    // Toggle expansion state in persistent storage
+                                    // Toggle expansion state more efficiently
                                     var newExpandedState = !(root.expandedArtists[artistData.name] || false);
-                                    var updatedExpanded = Object.assign({}, root.expandedArtists);
-                                    if (newExpandedState) {
-                                        updatedExpanded[artistData.name] = true;
-                                    } else {
-                                        delete updatedExpanded[artistData.name];
+                                    
+                                    // Only update if state actually changes
+                                    if ((newExpandedState && !root.expandedArtists[artistData.name]) ||
+                                        (!newExpandedState && root.expandedArtists[artistData.name])) {
+                                        var updatedExpanded = Object.assign({}, root.expandedArtists);
+                                        if (newExpandedState) {
+                                            updatedExpanded[artistData.name] = true;
+                                        } else {
+                                            delete updatedExpanded[artistData.name];
+                                        }
+                                        root.expandedArtists = updatedExpanded;
                                     }
-                                    root.expandedArtists = updatedExpanded;
                                     artistsListView.currentIndex = index; // Optional: select on expand
                                 }
                             }
@@ -672,8 +670,8 @@ Item {
                                 interactive: false // Parent ListView handles scrolling primarily
                                 
                                 // Enable delegate recycling for albums too
-                                reuseItems: false
-                                cacheBuffer: 200  // Limit cache for album grid
+                                reuseItems: true  // Enable recycling for better performance
+                                cacheBuffer: 300  // Reasonable cache for album grid
 
                                 model: albumsVisible && artistData && artistData.name ? 
                                        LibraryManager.getAlbumsForArtist(artistData.name) : []
@@ -715,15 +713,8 @@ Item {
                                                 clip: false
                                                 asynchronous: true
                                                 
-                                                // Add rounded corners using layer effect
-                                                layer.enabled: true
-                                                layer.effect: OpacityMask {
-                                                    maskSource: Rectangle {
-                                                        width: albumImage.width
-                                                        height: albumImage.height
-                                                        radius: 3
-                                                    }
-                                                }
+                                                // Disable layer effect for better performance
+                                                // Rounded corners handled by container clipping
                                                 
                                                 // Custom positioning based on aspect ratio
                                                 onStatusChanged: {

@@ -81,6 +81,8 @@ Item {
     property var availableLetters: []   // sorted array of available letters
     property real lastKnownContentHeight: 0
     property bool isUpdatingPositions: false  // Prevent updates during calculations
+    property var cachedAlbumCounts: ({})  // Cache album counts for artists
+    property var cachedExpandedHeights: ({})  // Cache calculated heights
     
     // Calculate letter positions based on actual content positions
     function updateLetterPositions() {
@@ -191,12 +193,26 @@ Item {
     // Get the actual expanded height that matches LibraryPane calculations exactly
     function getActualExpandedHeight(artistName) {
         try {
+            // Check cache first
+            var cacheKey = artistName + "_" + (targetListView.width || 400)
+            if (cachedExpandedHeights[cacheKey] !== undefined) {
+                return cachedExpandedHeights[cacheKey]
+            }
+            
             if (!LibraryManager || !LibraryManager.getAlbumsForArtist) {
                 return 0
             }
             
-            var albums = LibraryManager.getAlbumsForArtist(artistName)
-            if (!albums || albums.length === 0) {
+            // Check album count cache
+            var albumCount = cachedAlbumCounts[artistName]
+            if (albumCount === undefined) {
+                var albums = LibraryManager.getAlbumsForArtist(artistName)
+                albumCount = albums ? albums.length : 0
+                cachedAlbumCounts[artistName] = albumCount
+            }
+            
+            if (albumCount === 0) {
+                cachedExpandedHeights[cacheKey] = 0
                 return 0
             }
             
@@ -208,12 +224,14 @@ Item {
             var cellWidth = 130  // 120 + 10 padding
             var cellHeight = 150 // 140 + 10 padding
             var cols = Math.max(1, Math.floor(availableWidth / cellWidth))
-            var rows = Math.ceil(albums.length / cols)
+            var rows = Math.ceil(albumCount / cols)
             
             // Total height = grid content + container margins (16)
             var totalHeight = rows * cellHeight + 16
             
-            console.log("getActualExpandedHeight for", artistName, "albums:", albums.length, "cols:", cols, "rows:", rows, "height:", totalHeight)
+            // Cache the result
+            cachedExpandedHeights[cacheKey] = totalHeight
+            
             return totalHeight
         } catch (error) {
             console.warn("Error in getActualExpandedHeight:", error)
@@ -426,6 +444,10 @@ Item {
     Connections {
         target: root
         function onArtistModelChanged() {
+            // Clear caches when model changes
+            cachedAlbumCounts = {}
+            cachedExpandedHeights = {}
+            
             // Only update if we actually have a model
             if (artistModel && artistModel.length > 0) {
                 positionUpdateTimer.restart()
@@ -440,7 +462,7 @@ Item {
     // Timer for debouncing scroll updates
     Timer {
         id: updateTimer
-        interval: 100 
+        interval: 150  // Increased from 100ms
         repeat: false
         onTriggered: {
             if (!isUpdatingPositions) {
@@ -452,7 +474,7 @@ Item {
     // Timer for debouncing position updates
     Timer {
         id: positionUpdateTimer
-        interval: 100
+        interval: 200  // Increased from 100ms
         repeat: false
         onTriggered: {
             if (!handle.isDragging) {
