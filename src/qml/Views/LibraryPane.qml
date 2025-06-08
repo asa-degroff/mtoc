@@ -572,14 +572,19 @@ Item {
                             }
                             radius: 6
                             
-                            // 3D border effect
+                            // 3D border effect with all-round shading
                             border.width: 1
-                            border.color: {
-                                if (artistsListView.currentIndex === index) {
-                                    return Qt.rgba(0.37, 0.44, 0.84, 0.5)  // Brighter for selected
-                                } else {
-                                    return Qt.rgba(1, 1, 1, 0.06)  // Subtle top highlight
-                                }
+                            border.color: Qt.rgba(1, 1, 1, 0.06)  // Subtle top/left highlight
+                            
+                            // Left highlight for 3D depth
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.top: parent.top
+                                anchors.bottom: parent.bottom
+                                anchors.topMargin: 6
+                                anchors.bottomMargin: 6
+                                width: 1
+                                color: Qt.rgba(1, 1, 1, 0.05)
                             }
                             
                             // Bottom shadow for 3D depth
@@ -587,10 +592,21 @@ Item {
                                 anchors.bottom: parent.bottom
                                 anchors.left: parent.left
                                 anchors.right: parent.right
-                                anchors.leftMargin: 6  // Match parent radius to avoid corner overflow
-                                anchors.rightMargin: 6  // Match parent radius to avoid corner overflow
+                                anchors.leftMargin: 6
+                                anchors.rightMargin: 6
                                 height: 1
-                                color: artistsListView.currentIndex === index ? Qt.rgba(0.1, 0.1, 0.29, 0.5) : Qt.rgba(0, 0, 0, 0.19)
+                                color: Qt.rgba(0, 0, 0, 0.19)
+                            }
+                            
+                            // Right shadow for 3D depth
+                            Rectangle {
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                anchors.bottom: parent.bottom
+                                anchors.topMargin: 6
+                                anchors.bottomMargin: 6
+                                width: 1
+                                color: Qt.rgba(0, 0, 0, 0.15)
                             }
 
                             RowLayout {
@@ -1113,20 +1129,41 @@ Item {
                                 }
                                 radius: 4
                                 
-                                // 3D effect
+                                // 3D border effect with all-round shading
                                 border.width: 1
-                                border.color: trackListView.currentIndex === index ? Qt.rgba(0.37, 0.44, 0.84, 0.38) : "transparent"
+                                border.color: Qt.rgba(1, 1, 1, 0.04)  // Subtle top/left highlight
                                 
-                                // Bottom shadow for selected items
+                                // Left highlight for 3D depth
+                                Rectangle {
+                                    anchors.left: parent.left
+                                    anchors.top: parent.top
+                                    anchors.bottom: parent.bottom
+                                    anchors.topMargin: 4
+                                    anchors.bottomMargin: 4
+                                    width: 1
+                                    color: Qt.rgba(1, 1, 1, 0.03)
+                                }
+                                
+                                // Bottom shadow for 3D depth
                                 Rectangle {
                                     anchors.bottom: parent.bottom
                                     anchors.left: parent.left
                                     anchors.right: parent.right
-                                    anchors.leftMargin: 4  // Match parent radius to avoid corner overflow
-                                    anchors.rightMargin: 4  // Match parent radius to avoid corner overflow
+                                    anchors.leftMargin: 4
+                                    anchors.rightMargin: 4
                                     height: 1
-                                    color: trackListView.currentIndex === index ? Qt.rgba(0.1, 0.1, 0.29, 0.38) : "transparent"
-                                    visible: trackListView.currentIndex === index
+                                    color: Qt.rgba(0, 0, 0, 0.15)
+                                }
+                                
+                                // Right shadow for 3D depth
+                                Rectangle {
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.bottom: parent.bottom
+                                    anchors.topMargin: 4
+                                    anchors.bottomMargin: 4
+                                    width: 1
+                                    color: Qt.rgba(0, 0, 0, 0.12)
                                 }
 
                                 RowLayout {
@@ -1195,7 +1232,7 @@ Item {
                                     PropertyChanges {
                                         target: trackDelegate
                                         color: Qt.rgba(1, 1, 1, 0.04)
-                                        border.color: Qt.rgba(1, 1, 1, 0.06)
+                                        border.color: Qt.rgba(1, 1, 1, 0.07)
                                     }
                                 }
                                 
