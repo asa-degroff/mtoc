@@ -202,13 +202,19 @@ Item {
                 width: 220
                 height: 370  // Height for album plus reflection
                 
-                // Cache expensive calculations
+                // Cache expensive calculations - only update when contentX changes
                 property real centerX: listView.width / 2
                 property real itemCenterX: x + width / 2 - listView.contentX
                 property real distance: itemCenterX - centerX
                 property real absDistance: Math.abs(distance)
                 
+                // Optimization: Skip expensive calculations for far-away items
+                property bool isNearCenter: absDistance < 600
+                property bool isVisible: isNearCenter
+                
                 property real horizontalOffset: {
+                    if (!isVisible) return 0
+                    
                     // Phase 1: Small slide in dead zone (0-20px)
                     var slideDeadZone = 20
                     var phase1Spacing = 50  // Significantly increased initial slide amount
@@ -237,6 +243,8 @@ Item {
                 }
                 
                 property real itemAngle: {
+                    if (!isVisible) return distance > 0 ? -65 : 65
+                    
                     var slideDeadZone = 10  // Dead zone for sliding only
                     var rotationEnd = 60    // Where rotation completes
                     
@@ -282,33 +290,20 @@ Item {
                 }
                 
                 property real scaleAmount: {
+                    if (!isVisible) return 0.85
+                    
                     // If this is the predicted destination, start scaling up early
                     if (listView.isPredicting && index === listView.predictedIndex) {
                         return 1.0  // Full size for predicted destination
                     }
                     
-                    // Scale to enhance perspective illusion with rotation
-                    var absDistance = Math.abs(distanceFromCenter)
-                    var slideDeadZone = 20
-                    var scaleEnd = 60
-                    
-                    // Calculate perspective-corrected scale based on rotation angle
-                    var rotationFactor = Math.abs(itemAngle) / 65  // 0 to 1 based on rotation
-                    
-                    if (absDistance < slideDeadZone) {
-                        // Slight scale down even in dead zone for smooth transition
-                        var deadZoneProgress = absDistance / slideDeadZone
-                        return 1.0 - (0.02 * deadZoneProgress)  // Up to 2% smaller
-                    } else if (absDistance < scaleEnd) {
-                        // Scale down during rotation
-                        var normalizedDistance = (absDistance - slideDeadZone) / (scaleEnd - slideDeadZone)
-                        // Combine distance-based and rotation-based scaling
-                        var distanceScale = 0.08 * normalizedDistance  // Up to 8% from distance
-                        var rotationScale = 0.05 * rotationFactor      // Up to 5% from rotation
-                        return 1.0 - distanceScale - rotationScale
+                    // Simplified scaling calculation
+                    if (absDistance < 20) {
+                        return 1.0 - (0.02 * absDistance / 20)
+                    } else if (absDistance < 60) {
+                        return 0.98 - (0.13 * (absDistance - 20) / 40)
                     } else {
-                        // Fixed scale for fully rotated albums - more subtle depth
-                        return 0.85  // 15% smaller for rotated albums (changed from 25%)
+                        return 0.85
                     }
                 }
                 
@@ -323,15 +318,15 @@ Item {
                         yScale: scaleAmount
                         
                         Behavior on xScale {
+                            enabled: Math.abs(distanceFromCenter) < 200 // Only animate near center
                             NumberAnimation {
-                                //duration: listView.isPredicting && index === listView.predictedIndex ? 150 : 300
                                 duration: 300
                                 easing.type: Easing.OutCubic 
                             }
                         }
                         Behavior on yScale {
+                            enabled: Math.abs(distanceFromCenter) < 200 // Only animate near center
                             NumberAnimation { 
-                                //duration: listView.isPredicting && index === listView.predictedIndex ? 150 : 300
                                 duration: 300
                                 easing.type: Easing.OutCubic 
                             }
@@ -366,8 +361,8 @@ Item {
                     height: 340  // Height for album + reflection
                     
                     // Conditional layer rendering - only for visible items near center
-                    layer.enabled: Math.abs(distanceFromCenter) < 400
-                    layer.smooth: true
+                    layer.enabled: false // Disabled to improve performance
+                    layer.smooth: false
                     
                     Item {
                         id: albumContainer
@@ -440,7 +435,7 @@ Item {
                             id: reflection
                             anchors.fill: parent
                             sourceItem: albumContainer
-                            visible: Math.abs(distanceFromCenter) < 200
+                            visible: Math.abs(distanceFromCenter) < 600
                             live: true
                             recursive: false
                             // Capture the bottom portion of the album for reflection
@@ -511,14 +506,17 @@ Item {
                 elide: Text.ElideRight
                 horizontalAlignment: Text.AlignHCenter
                 
-                // Add a subtle shadow for better readability
-                layer.enabled: true
-                layer.effect: DropShadow {
-                    horizontalOffset: 0
-                    verticalOffset: 1
-                    radius: 4
-                    samples: 9
+                // Simple text shadow using duplicate text instead of DropShadow
+                Text {
+                    anchors.centerIn: parent
+                    anchors.horizontalCenterOffset: 1
+                    anchors.verticalCenterOffset: 1
+                    text: parent.text
                     color: "#80000000"
+                    font: parent.font
+                    elide: parent.elide
+                    horizontalAlignment: parent.horizontalAlignment
+                    z: -1
                 }
             }
         }
