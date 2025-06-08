@@ -73,9 +73,9 @@ Item {
                 return;
             }
             
-            // Validate allAlbums array
-            if (!allAlbums || !Array.isArray(allAlbums)) {
-                console.warn("HorizontalAlbumBrowser.jumpToAlbum: allAlbums is not a valid array");
+            // Validate sortedAlbumIndices array
+            if (!sortedAlbumIndices || !Array.isArray(sortedAlbumIndices)) {
+                console.warn("HorizontalAlbumBrowser.jumpToAlbum: sortedAlbumIndices is not a valid array");
                 return;
             }
             
