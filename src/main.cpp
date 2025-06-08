@@ -6,6 +6,7 @@
 #include <QDateTime>
 #include <iostream>
 #include <QLoggingCategory>
+#include <QIcon>
 
 #include "backend/systeminfo.h"
 #include "backend/utility/metadataextractor.h"
@@ -102,6 +103,14 @@ int main(int argc, char *argv[])
     
     QApplication app(argc, argv);
     
+    // Set application metadata
+    app.setOrganizationName("mtoc");
+    app.setApplicationName("mtoc");
+    app.setApplicationDisplayName("mtoc Music Player");
+    
+    // Set application icon
+    app.setWindowIcon(QIcon(":/resources/icons/mtoc-icon-512.png"));
+    
     // Increase pixmap cache size for album art (128MB)
     QPixmapCache::setCacheLimit(128 * 1024);
 
@@ -121,13 +130,13 @@ int main(int argc, char *argv[])
     qmlRegisterType<Mtoc::Track>("Mtoc.Backend", 1, 0, "Track");
     qmlRegisterType<Mtoc::Album>("Mtoc.Backend", 1, 0, "Album");
     
-    // Create objects on heap and parent them to the engine for proper lifetime management
-    SystemInfo *systemInfo = new SystemInfo(&engine);
+    // Create objects on heap without parenting to engine since we manage lifetime manually
+    SystemInfo *systemInfo = new SystemInfo();
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "SystemInfo", systemInfo);
 
     // Create LibraryManager first to see if it's the issue
     qDebug() << "Main: Creating LibraryManager...";
-    Mtoc::LibraryManager *libraryManager = new Mtoc::LibraryManager(&engine);
+    Mtoc::LibraryManager *libraryManager = new Mtoc::LibraryManager();
     qDebug() << "Main: LibraryManager created successfully";
     
     qDebug() << "Main: Registering LibraryManager with QML...";
@@ -135,19 +144,19 @@ int main(int argc, char *argv[])
     qDebug() << "Main: LibraryManager registered";
     
     // MetadataExtractor might not need to be a singleton since it's used by LibraryManager
-    Mtoc::MetadataExtractor *metadataExtractor = new Mtoc::MetadataExtractor(&engine);
+    Mtoc::MetadataExtractor *metadataExtractor = new Mtoc::MetadataExtractor();
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MetadataExtractor", metadataExtractor);
     
     // Create and register MediaPlayer
     qDebug() << "Main: Creating MediaPlayer...";
-    MediaPlayer *mediaPlayer = new MediaPlayer(&engine);
+    MediaPlayer *mediaPlayer = new MediaPlayer();
     mediaPlayer->setLibraryManager(libraryManager);
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MediaPlayer", mediaPlayer);
     qDebug() << "Main: MediaPlayer registered";
     
     // Create and initialize MPRIS manager for system media control integration
     qDebug() << "Main: Creating MPRIS manager...";
-    MprisManager *mprisManager = new MprisManager(mediaPlayer, &engine);
+    MprisManager *mprisManager = new MprisManager(mediaPlayer);
     mprisManager->setLibraryManager(libraryManager);
     if (mprisManager->initialize()) {
         qDebug() << "Main: MPRIS manager initialized successfully";
@@ -181,6 +190,29 @@ int main(int argc, char *argv[])
         if (libraryManager->isScanning()) {
             libraryManager->cancelScan();
         }
+        
+        // Explicitly delete objects in the correct order before Qt's automatic cleanup
+        // This ensures database is not closed while other objects might still need it
+        delete mprisManager;
+        mprisManager = nullptr;
+        
+        delete mediaPlayer;
+        mediaPlayer = nullptr;
+        
+        // Remove the album art provider before deleting library manager
+        engine.removeImageProvider("albumart");
+        
+        delete libraryManager;
+        libraryManager = nullptr;
+        
+        delete metadataExtractor;
+        metadataExtractor = nullptr;
+        
+        delete systemInfo;
+        systemInfo = nullptr;
+        
+        // Process any pending deletions before returning
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
         
         qDebug() << "Main: Cleanup completed";
     });

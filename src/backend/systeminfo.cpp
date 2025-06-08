@@ -2,8 +2,8 @@
 
 SystemInfo::SystemInfo(QObject *parent)
     : QObject(parent),
-      m_appName("Mtoc Music Player"),
-      m_appVersion("0.1.0") // Corresponds to project version in CMakeLists.txt
+      m_appName("mtoc"),
+      m_appVersion("1.0") // Corresponds to project version in CMakeLists.txt
 {
 }
 

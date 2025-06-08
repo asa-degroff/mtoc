@@ -5,6 +5,7 @@
         <file>src/qml/Components/BlurredBackground.qml</file>
         <file>src/qml/Components/HorizontalAlbumBrowser.qml</file>
         <file>src/qml/Components/PlaybackControls.qml</file>
+        <file>src/qml/Components/ResizeHandler.qml</file>
         <file>src/qml/Components/SearchBar.qml</file>
         <file>src/qml/Components/ThumbnailGridDelegate.qml</file>
         <file>src/qml/Components/SmoothBorderItem.qml</file>
@@ -16,6 +17,10 @@
         <file>src/qml/Styles.qml</file>
         <!-- Icons -->
         <file>resources/icons/app_icon.svg</file>
+        <file>resources/icons/mtoc-icon-48.png</file>
+        <file>resources/icons/mtoc-icon-128.png</file>
+        <file>resources/icons/mtoc-icon-256.png</file>
+        <file>resources/icons/mtoc-icon-512.png</file>
         <file>resources/icons/speaker.svg</file>
         <file>resources/icons/play-button-normal.svg</file>
         <file>resources/icons/play-button-pressed.svg</file>

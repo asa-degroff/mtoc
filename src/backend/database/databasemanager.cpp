@@ -86,7 +86,10 @@ void DatabaseManager::close()
         m_db.close();
     }
     
-    // Remove the connection after a small delay to ensure all operations are complete
+    // Clear the database object to ensure all queries are destroyed
+    m_db = QSqlDatabase();
+    
+    // Now it's safe to remove the connection
     if (QSqlDatabase::contains(DB_CONNECTION_NAME)) {
         QSqlDatabase::removeDatabase(DB_CONNECTION_NAME);
         qDebug() << "DatabaseManager: Database connection removed";

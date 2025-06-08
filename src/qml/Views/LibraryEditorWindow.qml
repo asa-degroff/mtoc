@@ -176,32 +176,81 @@ ApplicationWindow {
                         }
                     }
                     
-                    ListView {
+                    // Container with rounded corners for the ListView
+                    Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        clip: true
-                        model: LibraryManager.musicFolders
                         
-                        delegate: Rectangle {
-                            width: ListView.view.width
-                            height: 40
-                            color: index % 2 === 0 ? "#3a3a3a" : "#353535"
+                        Rectangle {
+                            id: listBackground
+                            anchors.fill: parent
+                            color: "#2a2a2a"
+                            radius: 4
+                        }
+                        
+                        ListView {
+                            anchors.fill: parent
+                            anchors.margins: 1  // Small margin to show the rounded corners
+                            clip: true
+                            model: LibraryManager.musicFolders
+                            
+                            delegate: Rectangle {
+                                width: ListView.view.width
+                                height: 48  // Increased height for better spacing
+                                color: index % 2 === 0 ? "#3a3a3a" : "#353535"
+                                radius: index === 0 ? 3 : 0  // Round top corners for first item
+                                
+                                // Special handling for first and last items
+                                Rectangle {
+                                    anchors.bottom: parent.bottom
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    height: parent.radius
+                                    color: parent.color
+                                    visible: index === 0  // Only for first item to fill the corner gap
+                                }
                             
                             RowLayout {
                                 anchors.fill: parent
-                                anchors.margins: 8
-                                spacing: 8
+                                anchors.leftMargin: 12
+                                anchors.rightMargin: 12
+                                anchors.topMargin: 0
+                                anchors.bottomMargin: 0
+                                spacing: 12
                                 
                                 Label {
                                     text: modelData
                                     color: "white"
                                     elide: Text.ElideLeft
                                     Layout.fillWidth: true
+                                    Layout.alignment: Qt.AlignVCenter  // Ensure vertical centering
                                 }
                                 
                                 Button {
                                     text: "Remove"
-                                    flat: true
+                                    Layout.alignment: Qt.AlignVCenter  // Ensure vertical centering
+                                    implicitHeight: 32
+                                    implicitWidth: 80
+                                    
+                                    background: Rectangle {
+                                        color: parent.down ? "#ff3333" : parent.hovered ? "#cc0000" : "#333333"
+                                        border.color: parent.hovered ? "#ff3333" : "#555555"
+                                        border.width: 1
+                                        radius: 4
+                                        
+                                        Behavior on color {
+                                            ColorAnimation { duration: 150 }
+                                        }
+                                    }
+                                    
+                                    contentItem: Text {
+                                        text: parent.text
+                                        color: parent.hovered ? "white" : "#cccccc"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                        font.pixelSize: 13
+                                    }
+                                    
                                     onClicked: {
                                         LibraryManager.removeMusicFolder(modelData);
                                     }
@@ -212,12 +261,13 @@ ApplicationWindow {
                         ScrollIndicator.vertical: ScrollIndicator { }
                     }
                 }
+                }
             }
             
             // Info text and action buttons
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 80
+                Layout.preferredHeight: 100
                 color: "#404040"
                 radius: 4
                 
@@ -227,7 +277,7 @@ ApplicationWindow {
                     spacing: 8
                     
                     Label {
-                        text: "Scan your library to add files from the chosen folders to the music collection."
+                        text: "Scan your library to add files from the chosen folders to the music collection. Restart the application to apply changes if replacing the library."
                         color: "#cccccc"
                         font.pixelSize: 12
                         wrapMode: Text.WordWrap

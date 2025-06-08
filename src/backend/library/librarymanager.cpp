@@ -96,6 +96,14 @@ LibraryManager::~LibraryManager()
         m_scanFuture.waitForFinished();
     }
     
+    // Ensure all models are cleared before database cleanup
+    m_allTracksModel->clear();
+    m_allAlbumsModel->clear();
+    
+    // Clear the album model cache
+    m_albumModelCacheValid = false;
+    m_cachedAlbumModel.clear();
+    
     // Database is automatically closed by DatabaseManager destructor
     qDebug() << "LibraryManager: Clearing in-memory data...";
     

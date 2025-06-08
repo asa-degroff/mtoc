@@ -106,3 +106,43 @@ install(TARGETS mtoc_app
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+# Install desktop file for Linux desktop integration
+if(UNIX AND NOT APPLE)
+    install(FILES mtoc.desktop
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications
+    )
+    
+    # Install PNG icons in multiple sizes
+    install(FILES resources/icons/mtoc-icon-48.png
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/48x48/apps
+        RENAME mtoc.png
+    )
+    
+    install(FILES resources/icons/mtoc-icon-128.png
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/128x128/apps
+        RENAME mtoc.png
+    )
+    
+    install(FILES resources/icons/mtoc-icon-256.png
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/256x256/apps
+        RENAME mtoc.png
+    )
+    
+    install(FILES resources/icons/mtoc-icon-512.png
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/512x512/apps
+        RENAME mtoc.png
+    )
+    
+    # Keep SVG for scalable support
+    install(FILES resources/icons/app_icon.svg
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/scalable/apps
+        RENAME mtoc.svg
+    )
+    
+    # Install 128x128 PNG in pixmaps for legacy support
+    install(FILES resources/icons/mtoc-icon-128.png
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/pixmaps
+        RENAME mtoc.png
+    )
+endif()
