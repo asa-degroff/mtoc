@@ -442,7 +442,6 @@ Item {
                         anchors.top: parent.top
                         anchors.left: parent.left
                         anchors.right: parent.right
-                        anchors.rightMargin: 24 // Space for alphabetical scrollbar
                         placeholderText: "Search library..."
                         z: 1
                         
@@ -480,7 +479,6 @@ Item {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
-                        anchors.rightMargin: 24 // Space for alphabetical scrollbar
                         clip: true
                         model: LibraryManager.artistModel
                         spacing: 2
@@ -511,7 +509,7 @@ Item {
                     }
 
                     delegate: Column {
-                        width: ListView.view.width
+                        width: ListView.view.width - 12  // Account for scrollbar space
                         spacing: 2  // Match the ListView spacing for consistency
                         // Height will be dynamic based on albumsVisible
                         
@@ -841,23 +839,37 @@ Item {
                             }
                         }
                     }
-                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOff }
-                    }
-                    
-                    // Alphabetical scrollbar positioned to the right
-                    AlphabeticalScrollBar {
-                        id: artistScrollBar
-                        anchors.right: parent.right
-                        anchors.top: parent.top
-                        anchors.bottom: parent.bottom
-                        anchors.topMargin: 2
-                        anchors.bottomMargin: 2
+                        // Add right padding to content to make room for scrollbar
+                        rightMargin: 12
                         
-                        targetListView: artistsListView
-                        artistModel: LibraryManager.artistModel
-                        expandedArtists: root.expandedArtists
-                        
-                        visible: artistsListView.contentHeight > artistsListView.height
+                        ScrollBar.vertical: ScrollBar { 
+                            policy: ScrollBar.AsNeeded
+                            minimumSize: 0.1
+                            width: 8
+                            
+                            background: Rectangle {
+                                color: Qt.rgba(0, 0, 0, 0.2)
+                                radius: width / 2
+                            }
+                            
+                            contentItem: Rectangle {
+                                color: Qt.rgba(1, 1, 1, 0.3)
+                                radius: width / 2
+                                
+                                // Hover effect
+                                states: State {
+                                    when: parent.parent.hovered || parent.parent.pressed
+                                    PropertyChanges {
+                                        target: parent
+                                        color: Qt.rgba(1, 1, 1, 0.5)
+                                    }
+                                }
+                                
+                                transitions: Transition {
+                                    ColorAnimation { duration: 150 }
+                                }
+                            }
+                        }
                     }
                 }
             }
