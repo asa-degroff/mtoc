@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=mtoc
+GenericName=music player
+Comment=Visual music library
+Exec=mtoc_app
+Icon=mtoc
+Terminal=false
+Categories=AudioVideo;Audio;Player;Qt;
+Keywords=Music;Player;Audio;Library;
+StartupNotify=true
+MimeType=audio/mpeg;audio/x-mp3;audio/mp4;audio/x-m4a;audio/flac;audio/ogg;audio/x-vorbis+ogg;

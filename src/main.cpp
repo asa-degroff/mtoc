@@ -6,6 +6,7 @@
 #include <QDateTime>
 #include <iostream>
 #include <QLoggingCategory>
+#include <QIcon>
 
 #include "backend/systeminfo.h"
 #include "backend/utility/metadataextractor.h"
@@ -101,6 +102,14 @@ int main(int argc, char *argv[])
     qDebug() << "Application starting...";
     
     QApplication app(argc, argv);
+    
+    // Set application metadata
+    app.setOrganizationName("mtoc");
+    app.setApplicationName("mtoc");
+    app.setApplicationDisplayName("mtoc Music Player");
+    
+    // Set application icon
+    app.setWindowIcon(QIcon(":/resources/icons/mtoc-icon-512.png"));
     
     // Increase pixmap cache size for album art (128MB)
     QPixmapCache::setCacheLimit(128 * 1024);

@@ -267,7 +267,7 @@ ApplicationWindow {
             // Info text and action buttons
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 80
+                Layout.preferredHeight: 100
                 color: "#404040"
                 radius: 4
                 
@@ -277,7 +277,7 @@ ApplicationWindow {
                     spacing: 8
                     
                     Label {
-                        text: "Scan your library to add files from the chosen folders to the music collection."
+                        text: "Scan your library to add files from the chosen folders to the music collection. Restart the application to apply changes if replacing the library."
                         color: "#cccccc"
                         font.pixelSize: 12
                         wrapMode: Text.WordWrap
