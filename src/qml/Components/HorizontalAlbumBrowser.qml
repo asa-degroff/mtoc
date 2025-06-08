@@ -411,7 +411,7 @@ Item {
                             source: (albumData && albumData.hasArt && albumData.id) ? "image://albumart/" + albumData.id + "/thumbnail" : ""
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
-                            antialiasing: true
+                            antialiasing: false
                             cache: true  // Enable caching to prevent reloading
                             
                             onStatusChanged: {
@@ -470,7 +470,7 @@ Item {
                             anchors.fill: parent
                             sourceItem: albumContainer  // Always keep the source
                             visible: Math.abs(distanceFromCenter) < 420  // Increased to cover all visible albums in max width (832/2 + margin)
-                            live: visible  // Only update when visible
+                            live: false  // Static reflection for better performance
                             recursive: false
                             // Capture the bottom portion of the album for reflection
                             sourceRect: Qt.rect(0, albumContainer.height - 120, albumContainer.width, 120)

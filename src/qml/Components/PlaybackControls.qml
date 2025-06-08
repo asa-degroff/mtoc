@@ -52,7 +52,7 @@ Item {
             sourceSize.width: width * 2
             sourceSize.height: height * 2
             smooth: true
-            antialiasing: true
+            antialiasing: false
             fillMode: Image.PreserveAspectFit
         }
         
@@ -217,7 +217,7 @@ Item {
                         sourceSize.width: width * 2
                         sourceSize.height: height * 2
                         smooth: true
-                        antialiasing: true
+                        antialiasing: false
                     }
                     
                     Timer {

@@ -103,6 +103,19 @@ ApplicationWindow {
     Component.onCompleted: {
         console.log("Main.qml loaded - Initializing application");
         
+        // Debug rendering information
+        console.log("=== RENDERING DEBUG INFO ===");
+        if (typeof GraphicsInfo !== "undefined") {
+            console.log("Graphics API:", GraphicsInfo.api);
+            console.log("Render type:", GraphicsInfo.renderType);
+            console.log("Graphics API version:", GraphicsInfo.majorVersion + "." + GraphicsInfo.minorVersion);
+            console.log("Shading language:", GraphicsInfo.shaderType);
+        } else {
+            console.log("GraphicsInfo not available - checking environment variables");
+            console.log("QSG_RENDER_LOOP:", Qt.application.arguments);
+        }
+        console.log("===========================");
+        
         try {
             // Initialize LibraryManager
             console.log("Initializing LibraryManager...");

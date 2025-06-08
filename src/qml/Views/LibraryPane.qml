@@ -478,27 +478,13 @@ Item {
                         }
                     }
                     
-                    // Mask item for consistent rounded corners
-                    Item {
+                    ListView {
+                        id: artistsListView
                         anchors.top: searchBar.bottom
                         anchors.topMargin: 8
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
-                        
-                        // Apply rounded corner mask to ListView
-                        layer.enabled: true
-                        layer.effect: OpacityMask {
-                            maskSource: Rectangle {
-                                width: artistsListView.width
-                                height: artistsListView.height
-                                radius: 6  // Match the container radius minus margins
-                            }
-                        }
-                    
-                    ListView {
-                        id: artistsListView
-                        anchors.fill: parent
                         clip: true
                         model: LibraryManager.artistModel
                         spacing: 2
@@ -941,8 +927,7 @@ Item {
                                 }
                             }
                         }
-                    }  // ListView end
-                    }  // Mask item end
+                    }
                 }
             }
 
@@ -1057,16 +1042,6 @@ Item {
                         cacheBuffer: 400  // Limit cache for track list
                         
                         // Track list model updates automatically
-                        
-                        // Add layer to properly mask content with rounded corners
-                        layer.enabled: true
-                        layer.effect: OpacityMask {
-                            maskSource: Rectangle {
-                                width: trackListView.width
-                                height: trackListView.height
-                                radius: 4
-                            }
-                        }
                         
                         // Increase scroll speed to match artist list
                         flickDeceleration: 8000
