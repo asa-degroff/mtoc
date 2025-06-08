@@ -10,58 +10,58 @@ Item {
     
     property var selectedAlbum: null
     property int currentIndex: -1
-    property var allAlbums: []
+    property var sortedAlbumIndices: []  // Array of indices into LibraryManager.albumModel
     
     signal albumClicked(var album)
     
     Component.onCompleted: {
-        loadAllAlbums()
+        updateSortedIndices()
     }
     
     Connections {
         target: LibraryManager
         function onLibraryChanged() {
-            console.log("HorizontalAlbumBrowser: libraryChanged signal received, reloading albums");
-            loadAllAlbums()
+            console.log("HorizontalAlbumBrowser: libraryChanged signal received, updating sorted indices");
+            updateSortedIndices()
         }
     }
     
-    function loadAllAlbums() {
+    function updateSortedIndices() {
         var sourceAlbums = LibraryManager.albumModel
-        console.log("HorizontalAlbumBrowser: loadAllAlbums called, got", sourceAlbums.length, "albums from LibraryManager");
+        console.log("HorizontalAlbumBrowser: updateSortedIndices called, got", sourceAlbums.length, "albums from LibraryManager");
         
-        // Create safe copies of album objects to avoid stale references
-        var albums = []
+        // Create array of indices with album data for sorting
+        var indexedAlbums = []
         for (var i = 0; i < sourceAlbums.length; i++) {
-            var sourceAlbum = sourceAlbums[i]
-            // Create a deep copy to avoid stale QVariantMap references
-            var albumCopy = {
-                id: sourceAlbum.id,
-                title: sourceAlbum.title,
-                albumArtist: sourceAlbum.albumArtist,
-                year: sourceAlbum.year,
-                trackCount: sourceAlbum.trackCount,
-                duration: sourceAlbum.duration,
-                hasArt: sourceAlbum.hasArt
-            }
-            albums.push(albumCopy)
+            indexedAlbums.push({
+                index: i,
+                albumArtist: sourceAlbums[i].albumArtist || "",
+                year: sourceAlbums[i].year || 0
+            })
         }
         
-        // Sort albums by artist first, then by year (descending) within each artist
-        albums.sort(function(a, b) {
+        // Sort by artist first, then by year (descending) within each artist
+        indexedAlbums.sort(function(a, b) {
             // First compare by album artist
             var artistCompare = a.albumArtist.localeCompare(b.albumArtist)
             if (artistCompare !== 0) {
                 return artistCompare
             }
             // If same artist, sort by year descending (newest first)
-            return (b.year || 0) - (a.year || 0)
+            return b.year - a.year
         })
         
-        allAlbums = albums
-        if (albums.length > 0 && currentIndex === -1) {
+        // Extract just the sorted indices
+        sortedAlbumIndices = indexedAlbums.map(function(item) { return item.index })
+        
+        // Memory usage estimate: only storing integers instead of full album objects
+        var memoryEstimate = sortedAlbumIndices.length * 4 // 4 bytes per integer
+        console.log("HorizontalAlbumBrowser: Using approximately", memoryEstimate, "bytes for sorted indices vs", 
+                    (sourceAlbums.length * 200), "bytes estimated for full album copies")
+        
+        if (sortedAlbumIndices.length > 0 && currentIndex === -1) {
             currentIndex = 0
-            selectedAlbum = albums[0]
+            selectedAlbum = sourceAlbums[sortedAlbumIndices[0]]
         }
     }
     
@@ -73,21 +73,23 @@ Item {
                 return;
             }
             
-            // Validate allAlbums array
-            if (!allAlbums || !Array.isArray(allAlbums)) {
-                console.warn("HorizontalAlbumBrowser.jumpToAlbum: allAlbums is not a valid array");
+            // Validate sortedAlbumIndices array
+            if (!sortedAlbumIndices || !Array.isArray(sortedAlbumIndices)) {
+                console.warn("HorizontalAlbumBrowser.jumpToAlbum: sortedAlbumIndices is not a valid array");
                 return;
             }
             
-            for (var i = 0; i < allAlbums.length; i++) {
-                var currentAlbum = allAlbums[i];
+            var sourceAlbums = LibraryManager.albumModel
+            for (var i = 0; i < sortedAlbumIndices.length; i++) {
+                var albumIndex = sortedAlbumIndices[i]
+                var currentAlbum = sourceAlbums[albumIndex]
                 if (currentAlbum && 
                     typeof currentAlbum === "object" && 
                     typeof currentAlbum.id !== "undefined" && 
                     currentAlbum.id === album.id) {
                     // Animate to the new index instead of jumping
                     listView.currentIndex = i
-                    selectedAlbum = currentAlbum  // Use the fresh copy, not the potentially stale reference
+                    selectedAlbum = currentAlbum
                     break
                 }
             }
@@ -106,7 +108,7 @@ Item {
             anchors.fill: parent
             anchors.topMargin: 30      // Increased margin to accommodate rotation
             anchors.bottomMargin: 30    // Bottom margin for reflection and info bar
-            model: allAlbums
+            model: sortedAlbumIndices.length  // Use length for delegate count
             orientation: ListView.Horizontal
             spacing: -165
             preferredHighlightBegin: width / 2 - 110
@@ -121,7 +123,26 @@ Item {
             
             // Enable delegate recycling and limit cache to prevent memory leaks
             reuseItems: true
-            cacheBuffer: 600  // Only cache items within reasonable range
+            cacheBuffer: 440  // Reduced to 2 items on each side (220px * 2)
+            
+            // Garbage collection timer for long scrolling sessions
+            Timer {
+                id: gcTimer
+                interval: 5000  // Run every 5 seconds
+                running: false
+                repeat: true
+                onTriggered: {
+                    // Force garbage collection by clearing unused image cache
+                    gc()
+                }
+            }
+            
+            onMovementStarted: gcTimer.running = true
+            onMovementEnded: {
+                gcTimer.running = false
+                // Final cleanup after scrolling stops
+                gcTimer.triggered()
+            }
             
             property int predictedIndex: -1
             property bool isPredicting: false
@@ -155,9 +176,10 @@ Item {
             }
             */            
             onCurrentIndexChanged: {
-                if (currentIndex >= 0 && currentIndex < allAlbums.length) {
+                if (currentIndex >= 0 && currentIndex < sortedAlbumIndices.length) {
                     root.currentIndex = currentIndex
-                    root.selectedAlbum = allAlbums[currentIndex]
+                    var albumIndex = sortedAlbumIndices[currentIndex]
+                    root.selectedAlbum = LibraryManager.albumModel[albumIndex]
                 }
             }
             
@@ -202,13 +224,31 @@ Item {
                 width: 220
                 height: 370  // Height for album plus reflection
                 
-                // Cache expensive calculations
+                // Get the actual album data from the model using sorted index
+                property int sortedIndex: index
+                property int albumIndex: sortedIndex < sortedAlbumIndices.length ? sortedAlbumIndices[sortedIndex] : -1
+                property var albumData: albumIndex >= 0 && albumIndex < LibraryManager.albumModel.length ? 
+                                       LibraryManager.albumModel[albumIndex] : null
+                
+                // Handle delegate recycling
+                ListView.onReused: {
+                    // Reset visibility calculations when reused
+                    // The bindings will automatically update based on new position
+                }
+                
+                // Cache expensive calculations - only update when contentX changes
                 property real centerX: listView.width / 2
                 property real itemCenterX: x + width / 2 - listView.contentX
                 property real distance: itemCenterX - centerX
                 property real absDistance: Math.abs(distance)
                 
+                // Optimization: Skip expensive calculations for far-away items
+                property bool isNearCenter: absDistance < 600
+                property bool isVisible: isNearCenter
+                
                 property real horizontalOffset: {
+                    if (!isVisible) return 0
+                    
                     // Phase 1: Small slide in dead zone (0-20px)
                     var slideDeadZone = 20
                     var phase1Spacing = 50  // Significantly increased initial slide amount
@@ -237,6 +277,8 @@ Item {
                 }
                 
                 property real itemAngle: {
+                    if (!isVisible) return distance > 0 ? -65 : 65
+                    
                     var slideDeadZone = 10  // Dead zone for sliding only
                     var rotationEnd = 60    // Where rotation completes
                     
@@ -282,33 +324,20 @@ Item {
                 }
                 
                 property real scaleAmount: {
+                    if (!isVisible) return 0.85
+                    
                     // If this is the predicted destination, start scaling up early
                     if (listView.isPredicting && index === listView.predictedIndex) {
                         return 1.0  // Full size for predicted destination
                     }
                     
-                    // Scale to enhance perspective illusion with rotation
-                    var absDistance = Math.abs(distanceFromCenter)
-                    var slideDeadZone = 20
-                    var scaleEnd = 60
-                    
-                    // Calculate perspective-corrected scale based on rotation angle
-                    var rotationFactor = Math.abs(itemAngle) / 65  // 0 to 1 based on rotation
-                    
-                    if (absDistance < slideDeadZone) {
-                        // Slight scale down even in dead zone for smooth transition
-                        var deadZoneProgress = absDistance / slideDeadZone
-                        return 1.0 - (0.02 * deadZoneProgress)  // Up to 2% smaller
-                    } else if (absDistance < scaleEnd) {
-                        // Scale down during rotation
-                        var normalizedDistance = (absDistance - slideDeadZone) / (scaleEnd - slideDeadZone)
-                        // Combine distance-based and rotation-based scaling
-                        var distanceScale = 0.08 * normalizedDistance  // Up to 8% from distance
-                        var rotationScale = 0.05 * rotationFactor      // Up to 5% from rotation
-                        return 1.0 - distanceScale - rotationScale
+                    // Simplified scaling calculation
+                    if (absDistance < 20) {
+                        return 1.0 - (0.02 * absDistance / 20)
+                    } else if (absDistance < 60) {
+                        return 0.98 - (0.13 * (absDistance - 20) / 40)
                     } else {
-                        // Fixed scale for fully rotated albums - more subtle depth
-                        return 0.85  // 15% smaller for rotated albums (changed from 25%)
+                        return 0.85
                     }
                 }
                 
@@ -323,15 +352,15 @@ Item {
                         yScale: scaleAmount
                         
                         Behavior on xScale {
+                            enabled: Math.abs(distanceFromCenter) < 200 // Only animate near center
                             NumberAnimation {
-                                //duration: listView.isPredicting && index === listView.predictedIndex ? 150 : 300
                                 duration: 300
                                 easing.type: Easing.OutCubic 
                             }
                         }
                         Behavior on yScale {
+                            enabled: Math.abs(distanceFromCenter) < 200 // Only animate near center
                             NumberAnimation { 
-                                //duration: listView.isPredicting && index === listView.predictedIndex ? 150 : 300
                                 duration: 300
                                 easing.type: Easing.OutCubic 
                             }
@@ -366,8 +395,8 @@ Item {
                     height: 340  // Height for album + reflection
                     
                     // Conditional layer rendering - only for visible items near center
-                    layer.enabled: Math.abs(distanceFromCenter) < 400
-                    layer.smooth: true
+                    layer.enabled: false // Disabled to improve performance
+                    layer.smooth: false
                     
                     Item {
                         id: albumContainer
@@ -379,15 +408,15 @@ Item {
                         Image {
                             id: albumImage
                             anchors.fill: parent
-                            source: (modelData && modelData.hasArt && modelData.id) ? "image://albumart/" + modelData.id + "/thumbnail" : ""
+                            source: (albumData && albumData.hasArt && albumData.id) ? "image://albumart/" + albumData.id + "/thumbnail" : ""
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
                             antialiasing: true
-                            cache: false
+                            cache: true  // Enable caching to prevent reloading
                             
                             onStatusChanged: {
                                 if (status === Image.Error) {
-                                    console.warn("Failed to load album art for:", modelData ? modelData.id : "unknown")
+                                    console.warn("Failed to load album art for:", albumData ? albumData.id : "unknown")
                                 }
                             }
                         
@@ -417,11 +446,11 @@ Item {
                             anchors.fill: parent
                             onClicked: {
                                 listView.currentIndex = index
-                                root.albumClicked(modelData)
+                                root.albumClicked(albumData)
                             }
                             onDoubleClicked: {
                                 // Play the album on double-click
-                                MediaPlayer.playAlbumByName(modelData.albumArtist, modelData.title, 0)
+                                MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, 0)
                             }
                         }
                     }
@@ -435,13 +464,13 @@ Item {
                         width: albumContainer.width
                         height: 120
                         
-                        // Conditional reflection - only for center items to reduce GPU load
+                        // Conditional reflection - only for visible items to reduce GPU load
                         ShaderEffectSource {
                             id: reflection
                             anchors.fill: parent
-                            sourceItem: albumContainer
-                            visible: Math.abs(distanceFromCenter) < 400
-                            live: true
+                            sourceItem: albumContainer  // Always keep the source
+                            visible: Math.abs(distanceFromCenter) < 420  // Increased to cover all visible albums in max width (832/2 + margin)
+                            live: visible  // Only update when visible
                             recursive: false
                             // Capture the bottom portion of the album for reflection
                             sourceRect: Qt.rect(0, albumContainer.height - 120, albumContainer.width, 120)
@@ -452,7 +481,7 @@ Item {
                                 }
                             ]
                             
-                            // Force update when album image changes
+                            // Update reflection when album image changes
                             Connections {
                                 target: albumImage
                                 function onStatusChanged() {
@@ -460,14 +489,6 @@ Item {
                                         reflection.scheduleUpdate()
                                     }
                                 }
-                                function onSourceChanged() {
-                                    // Force update when the album image source changes (delegate recycling)
-                                    reflection.scheduleUpdate()
-                                }
-                            }
-                            
-                            Component.onDestruction: {
-                                sourceItem = null
                             }
                         }
                         
@@ -504,21 +525,25 @@ Item {
             Label {
                 anchors.centerIn: parent
                 anchors.bottomMargin: 12
-                text: selectedAlbum ? selectedAlbum.albumArtist + " - " + selectedAlbum.title : ""
+                text: selectedAlbum && selectedAlbum.albumArtist && selectedAlbum.title ? 
+                      selectedAlbum.albumArtist + " - " + selectedAlbum.title : ""
                 color: "white"
                 font.pixelSize: 16
                 font.bold: true
                 elide: Text.ElideRight
                 horizontalAlignment: Text.AlignHCenter
                 
-                // Add a subtle shadow for better readability
-                layer.enabled: true
-                layer.effect: DropShadow {
-                    horizontalOffset: 0
-                    verticalOffset: 1
-                    radius: 4
-                    samples: 9
+                // Simple text shadow using duplicate text instead of DropShadow
+                Text {
+                    anchors.centerIn: parent
+                    anchors.horizontalCenterOffset: 1
+                    anchors.verticalCenterOffset: 1
+                    text: parent.text
                     color: "#80000000"
+                    font: parent.font
+                    elide: parent.elide
+                    horizontalAlignment: parent.horizontalAlignment
+                    z: -1
                 }
             }
         }

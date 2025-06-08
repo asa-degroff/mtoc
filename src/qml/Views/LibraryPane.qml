@@ -210,7 +210,7 @@ Item {
         id: blurredBg
         anchors.fill: parent
         source: thumbnailUrl
-        blurRadius: 80
+        blurRadius: 60  // Reduced from 80 for better performance
         backgroundOpacity: 0.3
         z: -2  // Put this behind the dark overlay
     }
@@ -350,24 +350,30 @@ Item {
             }
         }
         
-        // Horizontal Album Browser
-        HorizontalAlbumBrowser {
-            id: albumBrowser
+        // Horizontal Album Browser with width constraint
+        Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 360  // Height for albums with reflections
             
-            onAlbumClicked: function(album) {
-                root.selectedAlbum = album
+            HorizontalAlbumBrowser {
+                id: albumBrowser
+                anchors.centerIn: parent
+                width: Math.min(parent.width, 832)  // Max width: 45% of 1920px minus 32px margins
+                height: parent.height
                 
-                // Highlight the album's artist
-                root.highlightedArtist = album.albumArtist
-                
-                // Find the artist in the list and ensure it's visible
-                var artists = LibraryManager.artistModel
-                for (var i = 0; i < artists.length; i++) {
-                    if (artists[i].name === album.albumArtist) {
-                        artistsListView.positionViewAtIndex(i, ListView.Contain)
-                        break
+                onAlbumClicked: function(album) {
+                    root.selectedAlbum = album
+                    
+                    // Highlight the album's artist
+                    root.highlightedArtist = album.albumArtist
+                    
+                    // Find the artist in the list and ensure it's visible
+                    var artists = LibraryManager.artistModel
+                    for (var i = 0; i < artists.length; i++) {
+                        if (artists[i].name === album.albumArtist) {
+                            artistsListView.positionViewAtIndex(i, ListView.Contain)
+                            break
+                        }
                     }
                 }
             }
@@ -442,7 +448,6 @@ Item {
                         anchors.top: parent.top
                         anchors.left: parent.left
                         anchors.right: parent.right
-                        anchors.rightMargin: 24 // Space for alphabetical scrollbar
                         placeholderText: "Search library..."
                         z: 1
                         
@@ -480,24 +485,16 @@ Item {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
-                        anchors.rightMargin: 24 // Space for alphabetical scrollbar
                         clip: true
                         model: LibraryManager.artistModel
                         spacing: 2
                         
                         // Enable delegate recycling to prevent memory leaks
-                        reuseItems: false
-                        cacheBuffer: 200  // Limit cache to prevent excessive memory usage
+                        reuseItems: true  // Enable recycling for better performance
+                        cacheBuffer: 600  // Increase cache for smoother scrolling
                         
-                        // Add layer to properly mask content with rounded corners
-                        layer.enabled: true
-                        layer.effect: OpacityMask {
-                            maskSource: Rectangle {
-                                width: artistsListView.width
-                                height: artistsListView.height
-                                radius: 6
-                            }
-                        }
+                        // Disable layer effect for better performance
+                        // Content clipping is handled by parent container's clip property
                     
                     // Increase scroll speed
                     flickDeceleration: 8000  // Default is 1500, can increase for faster stopping
@@ -506,6 +503,26 @@ Item {
                     // Smooth scrolling with bounds
                     boundsMovement: Flickable.StopAtBounds
                     boundsBehavior: Flickable.StopAtBounds
+                    
+                    // Store the index and offset of the top visible item for scroll preservation
+                    property int savedTopIndex: -1
+                    property real savedTopOffset: 0
+                    property bool preserveScrollPosition: false
+                    
+                    // Better scroll position preservation using index-based approach
+                    onContentHeightChanged: {
+                        if (preserveScrollPosition && savedTopIndex >= 0) {
+                            // Use Qt.callLater to avoid immediate position changes that cause snapping
+                            Qt.callLater(function() {
+                                if (savedTopIndex >= 0 && savedTopIndex < count) {
+                                    positionViewAtIndex(savedTopIndex, ListView.Beginning)
+                                    contentY = Math.max(0, contentY + savedTopOffset)
+                                    preserveScrollPosition = false
+                                    savedTopIndex = -1
+                                }
+                            })
+                        }
+                    }
                     
                     // Smooth wheel scrolling with moderate speed
                     WheelHandler {
@@ -518,7 +535,7 @@ Item {
                     }
 
                     delegate: Column {
-                        width: ListView.view.width
+                        width: ListView.view.width - 12  // Account for scrollbar space
                         spacing: 2  // Match the ListView spacing for consistency
                         // Height will be dynamic based on albumsVisible
                         
@@ -633,15 +650,28 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 
                                 onClicked: {
-                                    // Toggle expansion state in persistent storage
-                                    var newExpandedState = !(root.expandedArtists[artistData.name] || false);
-                                    var updatedExpanded = Object.assign({}, root.expandedArtists);
-                                    if (newExpandedState) {
-                                        updatedExpanded[artistData.name] = true;
-                                    } else {
-                                        delete updatedExpanded[artistData.name];
+                                    // Save current top visible item before expanding/collapsing
+                                    var topItem = artistsListView.itemAt(0, artistsListView.contentY);
+                                    if (topItem) {
+                                        artistsListView.savedTopIndex = artistsListView.indexAt(0, artistsListView.contentY);
+                                        artistsListView.savedTopOffset = artistsListView.contentY - topItem.y;
+                                        artistsListView.preserveScrollPosition = true;
                                     }
-                                    root.expandedArtists = updatedExpanded;
+                                    
+                                    // Toggle expansion state more efficiently
+                                    var newExpandedState = !(root.expandedArtists[artistData.name] || false);
+                                    
+                                    // Only update if state actually changes
+                                    if ((newExpandedState && !root.expandedArtists[artistData.name]) ||
+                                        (!newExpandedState && root.expandedArtists[artistData.name])) {
+                                        var updatedExpanded = Object.assign({}, root.expandedArtists);
+                                        if (newExpandedState) {
+                                            updatedExpanded[artistData.name] = true;
+                                        } else {
+                                            delete updatedExpanded[artistData.name];
+                                        }
+                                        root.expandedArtists = updatedExpanded;
+                                    }
                                     artistsListView.currentIndex = index; // Optional: select on expand
                                 }
                             }
@@ -688,8 +718,8 @@ Item {
                                 interactive: false // Parent ListView handles scrolling primarily
                                 
                                 // Enable delegate recycling for albums too
-                                reuseItems: false
-                                cacheBuffer: 200  // Limit cache for album grid
+                                reuseItems: true  // Enable recycling for better performance
+                                cacheBuffer: 300  // Reasonable cache for album grid
 
                                 model: albumsVisible && artistData && artistData.name ? 
                                        LibraryManager.getAlbumsForArtist(artistData.name) : []
@@ -731,15 +761,8 @@ Item {
                                                 clip: false
                                                 asynchronous: true
                                                 
-                                                // Add rounded corners using layer effect
-                                                layer.enabled: true
-                                                layer.effect: OpacityMask {
-                                                    maskSource: Rectangle {
-                                                        width: albumImage.width
-                                                        height: albumImage.height
-                                                        radius: 3
-                                                    }
-                                                }
+                                                // Disable layer effect for better performance
+                                                // Rounded corners handled by container clipping
                                                 
                                                 // Custom positioning based on aspect ratio
                                                 onStatusChanged: {
@@ -866,23 +889,43 @@ Item {
                             }
                         }
                     }
-                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOff }
-                    }
-                    
-                    // Alphabetical scrollbar positioned to the right
-                    AlphabeticalScrollBar {
-                        id: artistScrollBar
-                        anchors.right: parent.right
-                        anchors.top: parent.top
-                        anchors.bottom: parent.bottom
-                        anchors.topMargin: 2
-                        anchors.bottomMargin: 2
+                        // Add right padding to content to make room for scrollbar
+                        rightMargin: 12
                         
-                        targetListView: artistsListView
-                        artistModel: LibraryManager.artistModel
-                        expandedArtists: root.expandedArtists
-                        
-                        visible: artistsListView.contentHeight > artistsListView.height
+                        ScrollBar.vertical: ScrollBar { 
+                            id: artistScrollBar
+                            policy: ScrollBar.AsNeeded
+                            minimumSize: 0.1
+                            width: 10  // Slightly wider for easier grabbing
+                            snapMode: ScrollBar.NoSnap
+                            interactive: true
+                            
+                            // Increase step size for smoother scrolling
+                            stepSize: 0.02
+                            
+                            background: Rectangle {
+                                color: Qt.rgba(0, 0, 0, 0.2)
+                                radius: width / 2
+                            }
+                            
+                            contentItem: Rectangle {
+                                color: Qt.rgba(1, 1, 1, 0.3)
+                                radius: width / 2
+                                
+                                // Hover effect
+                                states: State {
+                                    when: parent.parent.hovered || parent.parent.pressed
+                                    PropertyChanges {
+                                        target: parent
+                                        color: Qt.rgba(1, 1, 1, 0.5)
+                                    }
+                                }
+                                
+                                transitions: Transition {
+                                    ColorAnimation { duration: 150 }
+                                }
+                            }
+                        }
                     }
                 }
             }

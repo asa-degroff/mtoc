@@ -84,8 +84,9 @@ Item {
                     horizontalOffset: 0
                     verticalOffset: 4
                     radius: 16
-                    samples: 32
+                    samples: 16
                     color: "#80000000"
+                    cached: true
                 }
                 
                 // Placeholder when no album art

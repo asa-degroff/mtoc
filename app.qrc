@@ -2,7 +2,6 @@
     <qresource prefix="/">
         <file>src/qml/Main.qml</file>
         <file>src/qml/Components/AlbumArtView.qml</file>
-        <file>src/qml/Components/AlphabeticalScrollBar.qml</file>
         <file>src/qml/Components/BlurredBackground.qml</file>
         <file>src/qml/Components/HorizontalAlbumBrowser.qml</file>
         <file>src/qml/Components/PlaybackControls.qml</file>
