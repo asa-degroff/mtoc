@@ -51,8 +51,6 @@ set(PROJECT_SOURCES
         src/backend/playback/audioengine.cpp
         src/backend/playback/mediaplayer.h
         src/backend/playback/mediaplayer.cpp
-        src/backend/playback/playlist.h
-        src/backend/playback/playlist.cpp
         src/backend/system/mprismanager.h
         src/backend/system/mprismanager.cpp
         src/backend/utility/metadataextractor.h
