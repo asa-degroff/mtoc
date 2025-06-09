@@ -576,17 +576,6 @@ Item {
                             border.width: 1
                             border.color: Qt.rgba(1, 1, 1, 0.06)  // Subtle top/left highlight
                             
-                            // Left highlight for 3D depth
-                            Rectangle {
-                                anchors.left: parent.left
-                                anchors.top: parent.top
-                                anchors.bottom: parent.bottom
-                                anchors.topMargin: 6
-                                anchors.bottomMargin: 6
-                                width: 1
-                                color: Qt.rgba(1, 1, 1, 0.05)
-                            }
-                            
                             // Bottom shadow for 3D depth
                             Rectangle {
                                 anchors.bottom: parent.bottom

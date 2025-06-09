@@ -411,7 +411,7 @@ Item {
                             source: (albumData && albumData.hasArt && albumData.id) ? "image://albumart/" + albumData.id + "/thumbnail" : ""
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
-                            antialiasing: false
+                            antialiasing: true
                             cache: true  // Enable caching to prevent reloading
                             
                             onStatusChanged: {
