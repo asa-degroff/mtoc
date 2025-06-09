@@ -176,9 +176,13 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 // We'll try different conversions in sequence to determine the actual type
                 
                 // Try to convert to StringList first
-                TagLib::StringList stringList = it->second.toStringList();
-                if (!stringList.isEmpty()) {
-                    value = QString::fromStdString(stringList.front().to8Bit(true));
+                try {
+                    TagLib::StringList stringList = it->second.toStringList();
+                    if (!stringList.isEmpty()) {
+                        value = QString::fromStdString(stringList.front().to8Bit(true));
+                    }
+                } catch (...) {
+                    // StringList conversion failed, try other types
                 }
                 // Try as an IntPair
                 else {
@@ -226,10 +230,14 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             // Use a helper function to safely extract string values
             auto getStringValue = [&](const char* key) -> QString {
                 if (items.contains(key)) {
-                    const TagLib::MP4::Item& item = items[key];
-                    TagLib::StringList values = item.toStringList();
-                    if (!values.isEmpty()) {
-                        return QString::fromStdString(values.front().to8Bit(true));
+                    try {
+                        const TagLib::MP4::Item& item = items[key];
+                        TagLib::StringList values = item.toStringList();
+                        if (!values.isEmpty()) {
+                            return QString::fromStdString(values.front().to8Bit(true));
+                        }
+                    } catch (...) {
+                        qDebug() << "MetadataExtractor: Failed to extract string value for key:" << key;
                     }
                 }
                 return QString();
