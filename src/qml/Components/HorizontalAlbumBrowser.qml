@@ -56,8 +56,8 @@ Item {
         
         // Memory usage estimate: only storing integers instead of full album objects
         var memoryEstimate = sortedAlbumIndices.length * 4 // 4 bytes per integer
-        console.log("HorizontalAlbumBrowser: Using approximately", memoryEstimate, "bytes for sorted indices vs", 
-                    (sourceAlbums.length * 200), "bytes estimated for full album copies")
+        // console.log("HorizontalAlbumBrowser: Using approximately", memoryEstimate, "bytes for sorted indices vs", 
+        //             (sourceAlbums.length * 200), "bytes estimated for full album copies")
         
         if (sortedAlbumIndices.length > 0 && currentIndex === -1) {
             currentIndex = 0

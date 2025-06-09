@@ -94,8 +94,16 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context, const QSt
 
 int main(int argc, char *argv[])
 {
-    // First, ensure debug output is not disabled
-    QLoggingCategory::setFilterRules("*.debug=true");
+    // First, ensure debug output is not disabled for our code but disable verbose Qt internals
+    QLoggingCategory::setFilterRules("*.debug=true\n"
+                                    "qt.qml.typeresolution.debug=false\n"
+                                    "qt.qml.import.debug=false\n"
+                                    "qt.qml.binding.debug=false\n"
+                                    "qt.qml.compiler.debug=false\n"
+                                    "qt.quick.hover.debug=false\n"
+                                    "qt.quick.mouse.debug=false\n"
+                                    "qt.quick.pointer.debug=false\n"
+                                    "qt.quick.events.debug=false");
     
     // Install the custom message handler
     qInstallMessageHandler(messageHandler);
