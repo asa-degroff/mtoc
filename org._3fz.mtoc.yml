@@ -1,0 +1,65 @@
+app-id: org._3fz.mtoc
+runtime: org.kde.Platform
+runtime-version: '6.9'
+sdk: org.kde.Sdk
+command: mtoc_app
+finish-args:
+  # X11 + XShm access
+  - --share=ipc
+  - --socket=x11
+  # Wayland access
+  - --socket=wayland
+  # OpenGL access
+  - --device=dri
+  # Audio access
+  - --socket=pulseaudio
+  # D-Bus access for MPRIS
+  - --own-name=org.mpris.MediaPlayer2.mtoc
+  # Filesystem access for music library
+  - --filesystem=xdg-music:ro
+  - --filesystem=home:ro
+  # Disable document portal to use direct filesystem access
+  - --unset-env=GTK_USE_PORTAL
+  # Network access for potential future features
+  - --share=network
+
+modules:
+  - name: utfcpp
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DUTF8_TESTS=OFF
+      - -DUTF8_SAMPLES=OFF
+    sources:
+      - type: archive
+        url: https://github.com/nemtrif/utfcpp/archive/v4.0.5.tar.gz
+        sha256: ffc668a310e77607d393f3c18b32715f223da1eac4c4d6e0579a11df8e6b59cf
+
+  - name: taglib
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DBUILD_SHARED_LIBS=ON
+      - -DCMAKE_BUILD_TYPE=Release
+    sources:
+      - type: archive
+        url: https://github.com/taglib/taglib/releases/download/v2.0/taglib-2.0.tar.gz
+        sha256: e36ea877a6370810b97d84cf8f72b1e4ed205149ab3ac8232d44c850f38a2859
+
+  - name: mtoc
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+    sources:
+      - type: dir
+        path: .
+    post-install:
+      # Install desktop file
+      - install -Dm644 mtoc.desktop /app/share/applications/org._3fz.mtoc.desktop
+      - desktop-file-edit --set-key=Icon --set-value=org._3fz.mtoc /app/share/applications/org._3fz.mtoc.desktop
+      # Install icons
+      - install -Dm644 resources/icons/mtoc-icon-48.png /app/share/icons/hicolor/48x48/apps/org._3fz.mtoc.png
+      - install -Dm644 resources/icons/mtoc-icon-128.png /app/share/icons/hicolor/128x128/apps/org._3fz.mtoc.png
+      - install -Dm644 resources/icons/mtoc-icon-256.png /app/share/icons/hicolor/256x256/apps/org._3fz.mtoc.png
+      - install -Dm644 resources/icons/mtoc-icon-512.png /app/share/icons/hicolor/512x512/apps/org._3fz.mtoc.png
+      # Install appdata
+      - install -Dm644 org._3fz.mtoc.appdata.xml /app/share/metainfo/org._3fz.mtoc.appdata.xml

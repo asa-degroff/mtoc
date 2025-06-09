@@ -5,3 +5,5 @@ massif.out.*
 valgrind.out.*
 callgrind.out.*
 vgcore.*
+.flatpak-builder
+repo

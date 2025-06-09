@@ -576,17 +576,6 @@ Item {
                             border.width: 1
                             border.color: Qt.rgba(1, 1, 1, 0.06)  // Subtle top/left highlight
                             
-                            // Left highlight for 3D depth
-                            Rectangle {
-                                anchors.left: parent.left
-                                anchors.top: parent.top
-                                anchors.bottom: parent.bottom
-                                anchors.topMargin: 6
-                                anchors.bottomMargin: 6
-                                width: 1
-                                color: Qt.rgba(1, 1, 1, 0.05)
-                            }
-                            
                             // Bottom shadow for 3D depth
                             Rectangle {
                                 anchors.bottom: parent.bottom
@@ -889,10 +878,11 @@ Item {
                             }
                         }
                     }
-                        // Add right padding to content to make room for scrollbar
-                        rightMargin: 12
-                        
-                        ScrollBar.vertical: ScrollBar { 
+                    
+                    // Add right padding to content to make room for scrollbar
+                    rightMargin: 12
+                    
+                    ScrollBar.vertical: ScrollBar { 
                             id: artistScrollBar
                             policy: ScrollBar.AsNeeded
                             minimumSize: 0.1
@@ -1041,16 +1031,6 @@ Item {
                         cacheBuffer: 400  // Limit cache for track list
                         
                         // Track list model updates automatically
-                        
-                        // Add layer to properly mask content with rounded corners
-                        layer.enabled: true
-                        layer.effect: OpacityMask {
-                            maskSource: Rectangle {
-                                width: trackListView.width
-                                height: trackListView.height
-                                radius: 4
-                            }
-                        }
                         
                         // Increase scroll speed to match artist list
                         flickDeceleration: 8000

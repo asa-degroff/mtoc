@@ -7,6 +7,7 @@
 #include <iostream>
 #include <QLoggingCategory>
 #include <QIcon>
+#include <QSurfaceFormat>
 
 #include "backend/systeminfo.h"
 #include "backend/utility/metadataextractor.h"
@@ -101,7 +102,48 @@ int main(int argc, char *argv[])
     
     qDebug() << "Application starting...";
     
+    // Set OpenGL attributes before creating QApplication
+    // QCoreApplication::setAttribute(Qt::AA_UseDesktopOpenGL);
+    
+    // // Request a specific OpenGL context before app creation
+    // QSurfaceFormat format;
+    // format.setVersion(3, 3);
+    // format.setProfile(QSurfaceFormat::CoreProfile);
+    // format.setDepthBufferSize(24);
+    // format.setStencilBufferSize(8);
+    // format.setSamples(0); // Disable multisampling
+    // format.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
+    // QSurfaceFormat::setDefaultFormat(format);
+    
     QApplication app(argc, argv);
+    
+    // Debug rendering backend
+    qDebug() << "Main: === GRAPHICS BACKEND INFO ===";
+    qDebug() << "Main: Qt Platform:" << QGuiApplication::platformName();
+    const char* backend = qgetenv("QSG_RHI_BACKEND").constData();
+    qDebug() << "Main: QSG_RHI_BACKEND:" << (backend[0] ? backend : "not set");
+    const char* render_loop = qgetenv("QSG_RENDER_LOOP").constData();
+    qDebug() << "Main: QSG_RENDER_LOOP:" << (render_loop[0] ? render_loop : "not set");
+    
+    // Check for OpenGL information if available
+    QSurfaceFormat currentFormat = QSurfaceFormat::defaultFormat();
+    qDebug() << "Main: OpenGL Version:" << currentFormat.majorVersion() << "." << currentFormat.minorVersion();
+    qDebug() << "Main: OpenGL Profile:" << (currentFormat.profile() == QSurfaceFormat::CoreProfile ? "Core" : 
+                                            currentFormat.profile() == QSurfaceFormat::CompatibilityProfile ? "Compatibility" : "None");
+    
+    // Check environment variables that affect rendering
+    const char* glx_vendor = qgetenv("__GLX_VENDOR_LIBRARY_NAME").constData();
+    qDebug() << "Main: __GLX_VENDOR_LIBRARY_NAME:" << (glx_vendor[0] ? glx_vendor : "not set");
+    
+    // Note: We already set the format before app creation, so just log if it worked
+    if (currentFormat.majorVersion() >= 3) {
+        qDebug() << "Main: Successfully using OpenGL" << currentFormat.majorVersion() << "." << currentFormat.minorVersion();
+    } else {
+        qDebug() << "Main: WARNING: Still using OpenGL" << currentFormat.majorVersion() << "." << currentFormat.minorVersion();
+        qDebug() << "Main: This indicates software rendering is being used!";
+    }
+    
+    qDebug() << "Main: ============================";
     
     // Set application metadata
     app.setOrganizationName("mtoc");
