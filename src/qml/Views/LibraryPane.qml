@@ -393,6 +393,61 @@ Item {
                     }
                 }
             }
+            
+            // Gradient overlay to fade the bottom to black
+            Item {
+                anchors.fill: parent
+                anchors.margins: 2  // Keep gradient inside borders
+                z: 10  // Above album browser but below any text
+                clip: true
+                
+                Rectangle {
+                    anchors.fill: parent
+                    radius: parent.parent.radius - 2  // Match parent radius with margin adjustment
+                    
+                    gradient: Gradient {
+                        orientation: Gradient.Vertical
+                        GradientStop { position: 0.0; color: "transparent" }
+                        GradientStop { position: 0.6; color: "transparent" }
+                        GradientStop { position: 0.8; color: Qt.rgba(0, 0, 0, 0.5) }
+                        GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 1.0) }
+                    }
+                }
+            }
+            
+            // Artist/album text overlaid on the reflections
+            Item {
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: 50
+                z: 20  // Higher z-order than gradient overlay
+                
+                Label {
+                    anchors.centerIn: parent
+                    anchors.bottomMargin: 12
+                    text: albumBrowser.selectedAlbum && albumBrowser.selectedAlbum.albumArtist && albumBrowser.selectedAlbum.title ? 
+                          albumBrowser.selectedAlbum.albumArtist + " - " + albumBrowser.selectedAlbum.title : ""
+                    color: "white"
+                    font.pixelSize: 16
+                    font.bold: true
+                    elide: Text.ElideRight
+                    horizontalAlignment: Text.AlignHCenter
+                    
+                    // Simple text shadow using duplicate text instead of DropShadow
+                    Text {
+                        anchors.centerIn: parent
+                        anchors.horizontalCenterOffset: 1
+                        anchors.verticalCenterOffset: 1
+                        text: parent.text
+                        color: "#80000000"
+                        font: parent.font
+                        elide: parent.elide
+                        horizontalAlignment: parent.horizontalAlignment
+                        z: -1
+                    }
+                }
+            }
         }
         
         // Main content area: Two-column layout

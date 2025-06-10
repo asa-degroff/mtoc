@@ -498,53 +498,9 @@ Item {
                             opacity: 1.0
                         }
                     }
-                    
-                    // Gradient overlay for reflection
-                    Rectangle {
-                        anchors.fill: reflectionContainer
-                        gradient: Gradient {
-                            GradientStop { position: 0.0; color: "transparent" }
-                            GradientStop { position: 0.3; color: Qt.rgba(0.1, 0.1, 0.1, 0.4) }
-                            GradientStop { position: 0.7; color: Qt.rgba(0.1, 0.1, 0.1, 0.7) }
-                            GradientStop { position: 1.0; color: Qt.rgba(0.1, 0.1, 0.1, 0.9) }
-                        }
-                    }
                 }
             }
         }
         
-        // Artist/album text overlaid on the reflections
-        Item {
-            anchors.bottom: parent.bottom
-            anchors.left: parent.left
-            anchors.right: parent.right
-            height: 50
-            z: 1  // Ensure text appears above the ListView
-            
-            Label {
-                anchors.centerIn: parent
-                anchors.bottomMargin: 12
-                text: selectedAlbum && selectedAlbum.albumArtist && selectedAlbum.title ? 
-                      selectedAlbum.albumArtist + " - " + selectedAlbum.title : ""
-                color: "white"
-                font.pixelSize: 16
-                font.bold: true
-                elide: Text.ElideRight
-                horizontalAlignment: Text.AlignHCenter
-                
-                // Simple text shadow using duplicate text instead of DropShadow
-                Text {
-                    anchors.centerIn: parent
-                    anchors.horizontalCenterOffset: 1
-                    anchors.verticalCenterOffset: 1
-                    text: parent.text
-                    color: "#80000000"
-                    font: parent.font
-                    elide: parent.elide
-                    horizontalAlignment: parent.horizontalAlignment
-                    z: -1
-                }
-            }
-        }
     }
 }
