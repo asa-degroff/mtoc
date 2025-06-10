@@ -48,7 +48,7 @@ Item {
     BlurredBackground {
         anchors.fill: parent
         source: thumbnailUrl
-        blurRadius: 80
+        blurRadius: 512
         backgroundOpacity: 0.4
     }
     

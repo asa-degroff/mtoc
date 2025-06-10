@@ -209,8 +209,8 @@ Item {
         id: blurredBg
         anchors.fill: parent
         source: thumbnailUrl
-        blurRadius: 60  // Reduced from 80 for better performance
-        backgroundOpacity: 0.3
+        blurRadius: 512
+        backgroundOpacity: 0.7
         z: -2  // Put this behind the dark overlay
     }
     
@@ -353,7 +353,7 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 360  // Height for albums with reflections
-            color: Qt.rgba(0.1, 0.1, 0.1, 0.25)  // Semi-transparent dark to match other panes
+            color: Qt.rgba(0, 0, 0, 0.5)  // Semi-transparent dark to match other panes
             radius: 8
             clip: true  // Clip content to rounded corners
             
