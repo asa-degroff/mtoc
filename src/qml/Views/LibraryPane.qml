@@ -23,8 +23,6 @@ Item {
     property var selectedAlbum: null
     property var expandedArtists: ({})  // Object to store expansion state by artist name
     property string highlightedArtist: ""  // Track which artist to highlight
-    property string currentAlbumId: ""
-    property url albumArtUrl: ""
     property url thumbnailUrl: ""
     
     // Search state
@@ -94,10 +92,7 @@ Item {
                 }
                 
                 // Update the thumbnail URL for the background when an album is selected
-                // Only update if not currently playing or if this is the playing album
-                if (selectedAlbum.hasArt === true && (!MediaPlayer.currentTrack || 
-                    (MediaPlayer.currentTrack && MediaPlayer.currentTrack.albumArtist === selectedAlbum.albumArtist && 
-                     MediaPlayer.currentTrack.album === selectedAlbum.title))) {
+                if (selectedAlbum.hasArt === true) {
                     try {
                         // Use encoded format for consistency
                         var encodedArtist = encodeURIComponent(selectedAlbum.albumArtist);
@@ -132,28 +127,6 @@ Item {
         }
     }
     
-    // Update album art URLs when track changes
-    Connections {
-        target: MediaPlayer
-        
-        function onCurrentTrackChanged(track) {
-            if (track && track.album && track.albumArtist) {
-                var newAlbumId = track.albumArtist + "_" + track.album
-                if (newAlbumId !== currentAlbumId) {
-                    currentAlbumId = newAlbumId
-                    // Use encoded format for the URLs to avoid iteration issues
-                    var encodedArtist = encodeURIComponent(track.albumArtist)
-                    var encodedAlbum = encodeURIComponent(track.album)
-                    albumArtUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/full"
-                    thumbnailUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/thumbnail"
-                }
-            } else {
-                currentAlbumId = ""
-                albumArtUrl = ""
-                thumbnailUrl = ""
-            }
-        }
-    }
     
     // Reference to the file dialog for selecting music folders
     FolderDialog {
@@ -210,7 +183,7 @@ Item {
         anchors.fill: parent
         source: thumbnailUrl
         blurRadius: 512
-        backgroundOpacity: 0.7
+        backgroundOpacity: 0.8
         z: -2  // Put this behind the dark overlay
     }
     
