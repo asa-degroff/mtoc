@@ -1,7 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import Qt5Compat.GraphicalEffects
 import Mtoc.Backend 1.0
 
 Item {
@@ -100,7 +99,7 @@ Item {
     
     Rectangle {
         anchors.fill: parent
-        color: "#000000"
+        color: "transparent"  // Transparent to show parent's background
         clip: true  // Clip at the component boundary
         
         ListView {
@@ -495,8 +494,8 @@ Item {
                         // Dark overlay to dim the reflection
                         Rectangle {
                             anchors.fill: parent
-                            color: "#000000"
-                            opacity: 0.6
+                            color: Qt.rgba(0, 0, 0, 0.6)  // Semi-transparent black overlay
+                            opacity: 1.0
                         }
                     }
                     
@@ -506,8 +505,8 @@ Item {
                         gradient: Gradient {
                             GradientStop { position: 0.0; color: "transparent" }
                             GradientStop { position: 0.3; color: Qt.rgba(0.1, 0.1, 0.1, 0.4) }
-                            GradientStop { position: 0.7; color: Qt.rgba(0, 0, 0, 0.85) }
-                            GradientStop { position: 1.0; color: "#000000" }
+                            GradientStop { position: 0.7; color: Qt.rgba(0.1, 0.1, 0.1, 0.7) }
+                            GradientStop { position: 1.0; color: Qt.rgba(0.1, 0.1, 0.1, 0.9) }
                         }
                     }
                 }

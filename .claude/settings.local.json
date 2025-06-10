@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(perf report:*)",
+      "Bash(cmake:*)",
+      "Bash(rm:*)",
+      "Bash(./build/mtoc_app)",
+      "Bash(rg:*)",
+      "Bash(timeout:*)",
+      "Bash(magick:*)",
+      "Bash(find:*)",
+      "Bash(mv:*)",
+      "Bash(convert:*)"
+    ],
+    "deny": []
+  },
+  "enableAllProjectMcpServers": false
+}

@@ -3,7 +3,6 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import Qt.labs.platform 1.1
 import QtQuick.Effects
-import Qt5Compat.GraphicalEffects
 import Mtoc.Backend 1.0
 import "../Components"
 import "."
@@ -351,15 +350,32 @@ Item {
         }
         
         // Horizontal Album Browser with width constraint
-        Item {
+        Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 360  // Height for albums with reflections
+            color: Qt.rgba(0.1, 0.1, 0.1, 0.25)  // Semi-transparent dark to match other panes
+            radius: 8
+            clip: true  // Clip content to rounded corners
+            
+            // 3D border effect - lit from above
+            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, 0.08)
+            
+            // Inner shadow for depth
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: parent.radius - 1
+                color: "transparent"
+                border.width: 1
+                border.color: Qt.rgba(0, 0, 0, 0.25)
+            }
             
             HorizontalAlbumBrowser {
                 id: albumBrowser
                 anchors.centerIn: parent
-                width: Math.min(parent.width, 1500)  // Max width
-                height: parent.height
+                width: Math.min(parent.width - 16, 1500)  // Max width with margins
+                height: parent.height - 16  // Account for margins
                 
                 onAlbumClicked: function(album) {
                     root.selectedAlbum = album
