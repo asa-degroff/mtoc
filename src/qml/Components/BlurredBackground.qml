@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Effects
-import Qt5Compat.GraphicalEffects
 
 Item {
     id: root
@@ -32,10 +31,10 @@ Item {
                 id: sourceImage
                 anchors.fill: parent
                 fillMode: Image.PreserveAspectCrop
-                visible: false
                 cache: true
                 asynchronous: true
                 source: root.source
+                visible: false
                 
                 onStatusChanged: {
                     if (status === Image.Error) {
@@ -44,11 +43,12 @@ Item {
                 }
             }
             
-            FastBlur {
+            MultiEffect {
                 anchors.fill: parent
                 source: sourceImage
-                radius: root.blurRadius
-                cached: true
+                blurEnabled: true
+                blur: root.blurRadius / 256.0  // MultiEffect uses 0.0 to 1.0 range
+                blurMax: 32
                 visible: sourceImage.status === Image.Ready
                 opacity: root.backgroundOpacity
             }

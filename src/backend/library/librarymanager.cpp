@@ -787,7 +787,7 @@ QVariantList LibraryManager::albumModel() const
     
     // Otherwise fetch from database and cache
     // Note: getAllAlbums() can be expensive with large libraries
-    qDebug() << "LibraryManager::albumModel() - cache invalid, fetching from database";
+    // qDebug() << "LibraryManager::albumModel() - cache invalid, fetching from database";
     
     // Clear previous cache to free memory before allocating new data
     m_cachedAlbumModel.clear();
@@ -802,7 +802,7 @@ QVariantList LibraryManager::albumModel() const
     
     m_cachedAlbumModel = std::move(newAlbumModel); // Use move semantics to avoid copy
     m_albumModelCacheValid = true;
-    qDebug() << "LibraryManager::albumModel() - fetched and cached" << m_cachedAlbumModel.size() << "albums";
+    // qDebug() << "LibraryManager::albumModel() - fetched and cached" << m_cachedAlbumModel.size() << "albums";
     return m_cachedAlbumModel;
 }
 

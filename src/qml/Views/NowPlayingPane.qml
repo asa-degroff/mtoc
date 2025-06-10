@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
+import QtQuick.Effects
 import Mtoc.Backend 1.0
 import "../Components"
 
@@ -48,7 +48,7 @@ Item {
     BlurredBackground {
         anchors.fill: parent
         source: thumbnailUrl
-        blurRadius: 80
+        blurRadius: 512
         backgroundOpacity: 0.4
     }
     
@@ -78,15 +78,14 @@ Item {
                 fillMode: Image.PreserveAspectFit
                 cache: true
                 
-                // Drop shadow effect
+                // Drop shadow effect using MultiEffect
                 layer.enabled: true
-                layer.effect: DropShadow {
-                    horizontalOffset: 0
-                    verticalOffset: 4
-                    radius: 16
-                    samples: 16
-                    color: "#80000000"
-                    cached: true
+                layer.effect: MultiEffect {
+                    shadowEnabled: true
+                    shadowHorizontalOffset: 0
+                    shadowVerticalOffset: 4
+                    shadowBlur: 0.5
+                    shadowColor: "#80000000"
                 }
                 
                 // Placeholder when no album art

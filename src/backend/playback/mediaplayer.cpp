@@ -149,9 +149,10 @@ void MediaPlayer::playTrack(Mtoc::Track* track)
         return;
     }
     
-    qDebug() << "MediaPlayer::playTrack called with track:" << track->title() 
-             << "by" << track->artist() 
-             << "path:" << track->filePath();
+    // Log to file only to reduce overhead
+    // qDebug() << "MediaPlayer::playTrack called with track:" << track->title() 
+    //          << "by" << track->artist() 
+    //          << "path:" << track->filePath();
     
     QFile debugFile("debug_log.txt");
     if (debugFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
@@ -169,7 +170,7 @@ void MediaPlayer::playTrack(Mtoc::Track* track)
         return;
     }
     
-    qDebug() << "Loading track into audio engine:" << filePath;
+    // qDebug() << "Loading track into audio engine:" << filePath;
     m_audioEngine->loadTrack(filePath);
     m_audioEngine->play();
 }

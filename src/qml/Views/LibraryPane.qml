@@ -3,7 +3,6 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import Qt.labs.platform 1.1
 import QtQuick.Effects
-import Qt5Compat.GraphicalEffects
 import Mtoc.Backend 1.0
 import "../Components"
 import "."
@@ -24,8 +23,6 @@ Item {
     property var selectedAlbum: null
     property var expandedArtists: ({})  // Object to store expansion state by artist name
     property string highlightedArtist: ""  // Track which artist to highlight
-    property string currentAlbumId: ""
-    property url albumArtUrl: ""
     property url thumbnailUrl: ""
     
     // Search state
@@ -95,10 +92,7 @@ Item {
                 }
                 
                 // Update the thumbnail URL for the background when an album is selected
-                // Only update if not currently playing or if this is the playing album
-                if (selectedAlbum.hasArt === true && (!MediaPlayer.currentTrack || 
-                    (MediaPlayer.currentTrack && MediaPlayer.currentTrack.albumArtist === selectedAlbum.albumArtist && 
-                     MediaPlayer.currentTrack.album === selectedAlbum.title))) {
+                if (selectedAlbum.hasArt === true) {
                     try {
                         // Use encoded format for consistency
                         var encodedArtist = encodeURIComponent(selectedAlbum.albumArtist);
@@ -133,28 +127,6 @@ Item {
         }
     }
     
-    // Update album art URLs when track changes
-    Connections {
-        target: MediaPlayer
-        
-        function onCurrentTrackChanged(track) {
-            if (track && track.album && track.albumArtist) {
-                var newAlbumId = track.albumArtist + "_" + track.album
-                if (newAlbumId !== currentAlbumId) {
-                    currentAlbumId = newAlbumId
-                    // Use encoded format for the URLs to avoid iteration issues
-                    var encodedArtist = encodeURIComponent(track.albumArtist)
-                    var encodedAlbum = encodeURIComponent(track.album)
-                    albumArtUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/full"
-                    thumbnailUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/thumbnail"
-                }
-            } else {
-                currentAlbumId = ""
-                albumArtUrl = ""
-                thumbnailUrl = ""
-            }
-        }
-    }
     
     // Reference to the file dialog for selecting music folders
     FolderDialog {
@@ -210,8 +182,8 @@ Item {
         id: blurredBg
         anchors.fill: parent
         source: thumbnailUrl
-        blurRadius: 60  // Reduced from 80 for better performance
-        backgroundOpacity: 0.3
+        blurRadius: 512
+        backgroundOpacity: 0.8
         z: -2  // Put this behind the dark overlay
     }
     
@@ -351,15 +323,32 @@ Item {
         }
         
         // Horizontal Album Browser with width constraint
-        Item {
+        Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 360  // Height for albums with reflections
+            color: Qt.rgba(0, 0, 0, 0.5)  // Semi-transparent dark to match other panes
+            radius: 8
+            clip: true  // Clip content to rounded corners
+            
+            // 3D border effect - lit from above
+            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, 0.08)
+            
+            // Inner shadow for depth
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: parent.radius - 1
+                color: "transparent"
+                border.width: 1
+                border.color: Qt.rgba(0, 0, 0, 0.25)
+            }
             
             HorizontalAlbumBrowser {
                 id: albumBrowser
                 anchors.centerIn: parent
-                width: Math.min(parent.width, 832)  // Max width: 45% of 1920px minus 32px margins
-                height: parent.height
+                width: Math.min(parent.width - 16, 1500)  // Max width with margins
+                height: parent.height - 16  // Account for margins
                 
                 onAlbumClicked: function(album) {
                     root.selectedAlbum = album
@@ -374,6 +363,61 @@ Item {
                             artistsListView.positionViewAtIndex(i, ListView.Contain)
                             break
                         }
+                    }
+                }
+            }
+            
+            // Gradient overlay to fade the bottom to black
+            Item {
+                anchors.fill: parent
+                anchors.margins: 2  // Keep gradient inside borders
+                z: 10  // Above album browser but below any text
+                clip: true
+                
+                Rectangle {
+                    anchors.fill: parent
+                    radius: parent.parent.radius - 2  // Match parent radius with margin adjustment
+                    
+                    gradient: Gradient {
+                        orientation: Gradient.Vertical
+                        GradientStop { position: 0.0; color: "transparent" }
+                        GradientStop { position: 0.6; color: "transparent" }
+                        GradientStop { position: 0.8; color: Qt.rgba(0, 0, 0, 0.5) }
+                        GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 1.0) }
+                    }
+                }
+            }
+            
+            // Artist/album text overlaid on the reflections
+            Item {
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: 50
+                z: 20  // Higher z-order than gradient overlay
+                
+                Label {
+                    anchors.centerIn: parent
+                    anchors.bottomMargin: 12
+                    text: albumBrowser.selectedAlbum && albumBrowser.selectedAlbum.albumArtist && albumBrowser.selectedAlbum.title ? 
+                          albumBrowser.selectedAlbum.albumArtist + " - " + albumBrowser.selectedAlbum.title : ""
+                    color: "white"
+                    font.pixelSize: 16
+                    font.bold: true
+                    elide: Text.ElideRight
+                    horizontalAlignment: Text.AlignHCenter
+                    
+                    // Simple text shadow using duplicate text instead of DropShadow
+                    Text {
+                        anchors.centerIn: parent
+                        anchors.horizontalCenterOffset: 1
+                        anchors.verticalCenterOffset: 1
+                        text: parent.text
+                        color: "#80000000"
+                        font: parent.font
+                        elide: parent.elide
+                        horizontalAlignment: parent.horizontalAlignment
+                        z: -1
                     }
                 }
             }
