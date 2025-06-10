@@ -1,6 +1,6 @@
-# mtoc - Modern Touch-Optimized Music Collection Browser
+# mtoc - Modern Visually Rich Music Player
 
-mtoc is a visually-rich music player and library browser for Linux that emphasizes smooth, continuous browsing experiences with album artwork at the forefront. Built with modern C++, Qt6, and QML, it combines high performance with an engaging visual interface.
+mtoc is a music player and library browser for Linux that emphasizes smooth, continuous browsing experiences with album artwork at the forefront. Built with modern C++, Qt6, and QML, it combines high performance with an engaging visual interface.
 
 ![mtoc Music Player](resources/icons/mtoc-icon-256.png)
 
@@ -14,22 +14,23 @@ mtoc is a visually-rich music player and library browser for Linux that emphasiz
 
 ### 🚀 High Performance
 - Hardware-accelerated rendering using OpenGL/Qt RHI
-- Efficient memory management with QML delegate recycling
+- Efficient memory management with QML delegates
 - Asynchronous metadata extraction and image loading
 - Optimized for smooth scrolling even with thousands of albums
 
 ### 📚 Library Management
-- Automatic library scanning with incremental updates
+- Automatic library scanning
 - Support for MP3, MP4/M4A, FLAC, OGG/Vorbis formats
 - Metadata extraction using TagLib 2.0
+- Purpose-built metadata extraction for iTunes-encoded files
 - Smart organization by artist, album, and year
 - Embedded album artwork extraction
+- SQLite database for fast library access
 
 ### 🎵 Playback Features
 - GStreamer-based audio engine for reliable playback
 - Gapless audio support for seamless album listening
-- Standard controls: play/pause, previous/next, seek, volume
-- Queue management with Now Playing view
+- Standard controls: play/pause, previous/next, seek
 
 ### 🖥️ Desktop Integration
 - Full MPRIS support for media keys and system controls
@@ -121,8 +122,6 @@ mtoc uses a modern, modular architecture:
 For the best experience:
 
 1. **GPU Acceleration**: Ensure your GPU drivers are properly installed
-2. **For NVIDIA GPUs**: Use the provided `run_mtoc_nvidia.sh` script
-3. **Force Software Rendering**: If you experience issues, use `run_mtoc_force_gl.sh`
 
 ## License
 
@@ -141,3 +140,11 @@ Project Link: [https://github.com/asa-degroff/mtoc](https://github.com/asa-degro
 ---
 
 *mtoc - modern visual music library*
+
+## Roadmap
+
+### 1.x
+- Steamdeck optimization
+
+### 2.x
+- Metadata editor
