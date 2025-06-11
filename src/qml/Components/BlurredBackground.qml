@@ -51,6 +51,7 @@ Item {
                 blurMax: 32
                 visible: sourceImage.status === Image.Ready
                 opacity: root.backgroundOpacity
+                autoPaddingEnabled: false
             }
         }
     }
