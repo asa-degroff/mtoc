@@ -347,7 +347,7 @@ Item {
             HorizontalAlbumBrowser {
                 id: albumBrowser
                 anchors.centerIn: parent
-                width: Math.min(parent.width - 16, 1500)  // Max width with margins
+                width: Math.min(parent.width - 16, 1800)  // Max width with margins
                 height: parent.height - 16  // Account for margins
                 
                 onAlbumClicked: function(album) {
@@ -937,6 +937,17 @@ Item {
                             // Increase step size for smoother scrolling
                             stepSize: 0.02
                             
+                            // Default reduced opacity
+                            opacity: scrollBarMouseArea.containsMouse || artistScrollBar.hovered || artistScrollBar.pressed ? 1.0 : 0.3
+                            
+                            // Smooth opacity transition
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: 200
+                                    easing.type: Easing.InOutQuad
+                                }
+                            }
+                            
                             background: Rectangle {
                                 color: Qt.rgba(0, 0, 0, 0.2)
                                 radius: width / 2
@@ -959,6 +970,17 @@ Item {
                                     ColorAnimation { duration: 150 }
                                 }
                             }
+                        }
+                        
+                        // Mouse area for proximity detection
+                        MouseArea {
+                            id: scrollBarMouseArea
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            width: 50  // Wide detection area for proximity
+                            hoverEnabled: true
+                            acceptedButtons: Qt.NoButton  // Just for hover detection
                         }
                     }
                 }

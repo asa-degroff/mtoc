@@ -468,7 +468,7 @@ Item {
                             id: reflection
                             anchors.fill: parent
                             sourceItem: albumContainer  // Always keep the source
-                            visible: Math.abs(distanceFromCenter) < 420  // Increased to cover all visible albums in max width (832/2 + margin)
+                            visible: Math.abs(distanceFromCenter) < 900  // Increased to cover all visible albums in max width
                             live: false  // Static reflection for better performance
                             recursive: false
                             // Capture the bottom portion of the album for reflection

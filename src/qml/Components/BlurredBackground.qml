@@ -26,31 +26,64 @@ Item {
         
         sourceComponent: Item {
             anchors.fill: parent
+            clip: true  // Clip the overflowing content
             
-            Image {
-                id: sourceImage
-                anchors.fill: parent
-                fillMode: Image.PreserveAspectCrop
-                cache: true
-                asynchronous: true
-                source: root.source
+            // Composition layer with black padding
+            Item {
+                id: compositionLayer
+                // Make it larger than parent to push black border outside visible area
+                anchors.centerIn: parent
+                width: parent.width + 80  // Extend beyond parent bounds
+                height: parent.height + 80
                 visible: false
                 
-                onStatusChanged: {
-                    if (status === Image.Error) {
-                        console.warn("BlurredBackground: Failed to load image:", source);
+                // Full black background
+                Rectangle {
+                    anchors.fill: parent
+                    color: "black"
+                }
+                
+                // Image inset from edges to create black border
+                Image {
+                    id: sourceImage
+                    anchors.fill: parent
+                    anchors.margins: 40  // This creates the black border width
+                    fillMode: Image.PreserveAspectCrop
+                    cache: true
+                    asynchronous: true
+                    source: root.source
+                    
+                    onStatusChanged: {
+                        if (status === Image.Error) {
+                            console.warn("BlurredBackground: Failed to load image:", source);
+                        }
                     }
                 }
             }
             
+            // Capture the composition into a texture
+            ShaderEffectSource {
+                id: textureSource
+                anchors.centerIn: parent
+                width: compositionLayer.width
+                height: compositionLayer.height
+                sourceItem: compositionLayer
+                visible: false
+                live: true
+                hideSource: true
+            }
+            
             MultiEffect {
-                anchors.fill: parent
-                source: sourceImage
+                anchors.centerIn: parent
+                width: textureSource.width
+                height: textureSource.height
+                source: textureSource
                 blurEnabled: true
                 blur: root.blurRadius / 256.0  // MultiEffect uses 0.0 to 1.0 range
                 blurMax: 32
                 visible: sourceImage.status === Image.Ready
                 opacity: root.backgroundOpacity
+                autoPaddingEnabled: false
             }
         }
     }
