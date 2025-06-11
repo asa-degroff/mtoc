@@ -33,8 +33,8 @@ Item {
                 id: compositionLayer
                 // Make it larger than parent to push black border outside visible area
                 anchors.centerIn: parent
-                width: parent.width + 160  // Extend beyond parent bounds
-                height: parent.height + 160
+                width: parent.width + 80  // Extend beyond parent bounds
+                height: parent.height + 80
                 visible: false
                 
                 // Full black background
@@ -47,7 +47,7 @@ Item {
                 Image {
                     id: sourceImage
                     anchors.fill: parent
-                    anchors.margins: 80  // This creates the black border width
+                    anchors.margins: 40  // This creates the black border width
                     fillMode: Image.PreserveAspectCrop
                     cache: true
                     asynchronous: true
