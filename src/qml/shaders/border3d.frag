@@ -40,23 +40,23 @@ void main() {
     float aa = 1.5;
     float outerAlpha = 1.0 - smoothstep(-aa, 0.0, outerDist);
     
+    // Early exit if completely outside the rounded rectangle
+    if (outerDist > aa) {
+        discard;
+    }
+    
     // Check if we're in the border area
     bool inBorder = outerDist <= 0.0 && innerDist > 0.0;
     
     vec4 finalColor = backgroundColor;
     
     if (inBorder) {
-        // Calculate normalized position within the shape
-        vec2 normalizedPos = (pixelPos - center) / halfSize;
-        float absX = abs(normalizedPos.x);
-        float absY = abs(normalizedPos.y);
+        // Calculate position relative to the shape
+        vec2 absPos = abs(pixelPos - center);
         
-        // Calculate the angle from center for smooth transitions
-        float angle = atan(pixelPos.y - center.y, pixelPos.x - center.x);
-        
-        // Determine if we're in a corner region based on the rounded box shape
-        vec2 cornerCheckPos = abs(pixelPos - center) - (halfSize - vec2(borderRadius));
-        bool inCorner = cornerCheckPos.x > 0.0 && cornerCheckPos.y > 0.0;
+        // Check if we're in a corner region
+        vec2 cornerOffset = absPos - (halfSize - vec2(borderRadius));
+        bool inCorner = cornerOffset.x > 0.0 && cornerOffset.y > 0.0;
         
         // Calculate distance from outer edge for gradient
         float distFromOuter = -outerDist;
@@ -65,10 +65,37 @@ void main() {
         vec4 borderColor = backgroundColor;
         
         // Calculate influence of each edge based on distance
-        float leftInfluence = 1.0 - smoothstep(0.0, borderRadius * 2.0, pixelPos.x);
-        float rightInfluence = 1.0 - smoothstep(0.0, borderRadius * 2.0, itemSize.x - pixelPos.x);
-        float topInfluence = 1.0 - smoothstep(0.0, borderRadius * 2.0, pixelPos.y);
-        float bottomInfluence = 1.0 - smoothstep(0.0, borderRadius * 2.0, itemSize.y - pixelPos.y);
+        // Use smaller falloff distance for sharper transitions
+        float falloffDist = borderRadius * 1.5;
+        float leftInfluence = 1.0 - smoothstep(0.0, falloffDist, pixelPos.x);
+        float rightInfluence = 1.0 - smoothstep(0.0, falloffDist, itemSize.x - pixelPos.x);
+        float topInfluence = 1.0 - smoothstep(0.0, falloffDist, pixelPos.y);
+        float bottomInfluence = 1.0 - smoothstep(0.0, falloffDist, itemSize.y - pixelPos.y);
+        
+        // For corners, adjust influences based on actual position within the rounded shape
+        if (inCorner) {
+            float cornerDist = length(cornerOffset);
+            float cornerFactor = 1.0 - smoothstep(0.0, borderRadius, cornerDist);
+            
+            // Determine which corner we're in and adjust influences
+            if (pixelPos.x > center.x && pixelPos.y < center.y) {
+                // Top-right
+                rightInfluence *= cornerFactor;
+                topInfluence *= cornerFactor;
+            } else if (pixelPos.x < center.x && pixelPos.y < center.y) {
+                // Top-left
+                leftInfluence *= cornerFactor;
+                topInfluence *= cornerFactor;
+            } else if (pixelPos.x < center.x && pixelPos.y > center.y) {
+                // Bottom-left
+                leftInfluence *= cornerFactor;
+                bottomInfluence *= cornerFactor;
+            } else {
+                // Bottom-right
+                rightInfluence *= cornerFactor;
+                bottomInfluence *= cornerFactor;
+            }
+        }
         
         // Normalize influences
         float totalInfluence = leftInfluence + rightInfluence + topInfluence + bottomInfluence;
