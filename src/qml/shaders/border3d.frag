@@ -33,12 +33,16 @@ void main() {
     vec2 halfSize = itemSize * 0.5;
     
     // Calculate distances to edges
-    float outerDist = sdRoundedBox(pixelPos - center, halfSize, borderRadius);
-    float innerDist = sdRoundedBox(pixelPos - center, halfSize - vec2(borderWidth), max(0.0, borderRadius - borderWidth));
+    // Adjust halfSize to account for QML's border rendering
+    vec2 adjustedHalfSize = halfSize - vec2(0.5);
+    float adjustedRadius = borderRadius - 0.5;
     
-    // Anti-aliasing
-    float aa = 1.5;
-    float outerAlpha = 1.0 - smoothstep(-aa, 0.0, outerDist);
+    float outerDist = sdRoundedBox(pixelPos - center, adjustedHalfSize, adjustedRadius);
+    float innerDist = sdRoundedBox(pixelPos - center, adjustedHalfSize - vec2(borderWidth), max(0.0, adjustedRadius - borderWidth));
+    
+    // Anti-aliasing - use a much smaller value for crisp edges
+    float aa = 0.5;
+    float outerAlpha = 1.0 - smoothstep(-aa, aa, outerDist);
     
     // Early exit if completely outside the rounded rectangle
     if (outerDist > aa) {
@@ -55,7 +59,7 @@ void main() {
         vec2 absPos = abs(pixelPos - center);
         
         // Check if we're in a corner region
-        vec2 cornerOffset = absPos - (halfSize - vec2(borderRadius));
+        vec2 cornerOffset = absPos - (adjustedHalfSize - vec2(adjustedRadius));
         bool inCorner = cornerOffset.x > 0.0 && cornerOffset.y > 0.0;
         
         // Calculate distance from outer edge for gradient
@@ -66,7 +70,7 @@ void main() {
         
         // Calculate influence of each edge based on distance
         // Use smaller falloff distance for sharper transitions
-        float falloffDist = borderRadius * 1.5;
+        float falloffDist = adjustedRadius * 1.5;
         float leftInfluence = 1.0 - smoothstep(0.0, falloffDist, pixelPos.x);
         float rightInfluence = 1.0 - smoothstep(0.0, falloffDist, itemSize.x - pixelPos.x);
         float topInfluence = 1.0 - smoothstep(0.0, falloffDist, pixelPos.y);
@@ -75,7 +79,7 @@ void main() {
         // For corners, adjust influences based on actual position within the rounded shape
         if (inCorner) {
             float cornerDist = length(cornerOffset);
-            float cornerFactor = 1.0 - smoothstep(0.0, borderRadius, cornerDist);
+            float cornerFactor = 1.0 - smoothstep(0.0, adjustedRadius, cornerDist);
             
             // Determine which corner we're in and adjust influences
             if (pixelPos.x > center.x && pixelPos.y < center.y) {
