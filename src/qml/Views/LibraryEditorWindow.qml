@@ -172,6 +172,28 @@ ApplicationWindow {
                         
                         Button {
                             text: "Add Folder"
+                            implicitHeight: 32
+                            implicitWidth: 100
+                            
+                            background: Rectangle {
+                                color: parent.down ? "#0066cc" : parent.hovered ? "#0055aa" : "#333333"
+                                border.color: parent.hovered ? "#0066cc" : "#555555"
+                                border.width: 1
+                                radius: 4
+                                
+                                Behavior on color {
+                                    ColorAnimation { duration: 150 }
+                                }
+                            }
+                            
+                            contentItem: Text {
+                                text: parent.text
+                                color: parent.hovered ? "white" : "#cccccc"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                font.pixelSize: 13
+                            }
+                            
                             onClicked: folderDialog.open()
                         }
                     }
@@ -290,6 +312,28 @@ ApplicationWindow {
                         
                         Button {
                             text: "Clear Library"
+                            implicitHeight: 32
+                            implicitWidth: 100
+                            
+                            background: Rectangle {
+                                color: parent.down ? "#cc6600" : parent.hovered ? "#aa5500" : "#333333"
+                                border.color: parent.hovered ? "#cc6600" : "#555555"
+                                border.width: 1
+                                radius: 4
+                                
+                                Behavior on color {
+                                    ColorAnimation { duration: 150 }
+                                }
+                            }
+                            
+                            contentItem: Text {
+                                text: parent.text
+                                color: parent.hovered ? "white" : "#cccccc"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                font.pixelSize: 13
+                            }
+                            
                             onClicked: {
                                 LibraryManager.clearLibrary();
                             }
@@ -299,8 +343,29 @@ ApplicationWindow {
                         
                         Button {
                             text: LibraryManager.scanning ? "Cancel Scan" : "Scan Library"
-                            highlighted: true
-                            enabled: true
+                            implicitHeight: 32
+                            implicitWidth: 120
+                            
+                            background: Rectangle {
+                                color: parent.down ? "#00cc66" : parent.hovered ? "#00aa55" : "#00994d"
+                                border.color: parent.hovered ? "#00ff80" : "#00cc66"
+                                border.width: 1
+                                radius: 4
+                                
+                                Behavior on color {
+                                    ColorAnimation { duration: 150 }
+                                }
+                            }
+                            
+                            contentItem: Text {
+                                text: parent.text
+                                color: "white"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                font.pixelSize: 13
+                                font.bold: true
+                            }
+                            
                             onClicked: {
                                 if (LibraryManager.scanning) {
                                     LibraryManager.cancelScan();
