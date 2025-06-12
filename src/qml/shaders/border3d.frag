@@ -46,61 +46,55 @@ void main() {
     vec4 finalColor = backgroundColor;
     
     if (inBorder) {
-        // Calculate position relative to nearest edge
-        vec2 absPos = abs(pixelPos - center);
-        vec2 edgeDistances = halfSize - absPos;
+        // Calculate normalized position within the shape
+        vec2 normalizedPos = (pixelPos - center) / halfSize;
+        float absX = abs(normalizedPos.x);
+        float absY = abs(normalizedPos.y);
         
-        // Determine which edge we're on
-        float leftDist = pixelPos.x - borderWidth;
-        float rightDist = itemSize.x - pixelPos.x - borderWidth;
-        float topDist = pixelPos.y - borderWidth;
-        float bottomDist = itemSize.y - pixelPos.y - borderWidth;
+        // Calculate the angle from center for smooth transitions
+        float angle = atan(pixelPos.y - center.y, pixelPos.x - center.x);
         
-        // Calculate minimum distance to inner edge
-        float minInnerDist = min(min(leftDist, rightDist), min(topDist, bottomDist));
+        // Determine if we're in a corner region based on the rounded box shape
+        vec2 cornerCheckPos = abs(pixelPos - center) - (halfSize - vec2(borderRadius));
+        bool inCorner = cornerCheckPos.x > 0.0 && cornerCheckPos.y > 0.0;
         
-        // Calculate border gradient position (0 at outer edge, 1 at inner edge)
-        float borderPos = clamp(minInnerDist / borderWidth, 0.0, 1.0);
+        // Calculate distance from outer edge for gradient
+        float distFromOuter = -outerDist;
+        float gradientPos = clamp(distFromOuter / borderWidth, 0.0, 1.0);
         
-        // Determine primary edge for lighting
         vec4 borderColor = backgroundColor;
         
-        // Check which edge we're closest to
-        if (edgeDistances.y < borderRadius && edgeDistances.x < borderRadius) {
-            // Corner region - blend based on angle
-            vec2 cornerPos = pixelPos - center;
-            float angle = atan(cornerPos.y, cornerPos.x);
-            
-            // Light from top-left (-135 degrees)
-            float lightAngle = -135.0 * 3.14159 / 180.0;
-            float dotLight = cos(angle - lightAngle);
-            
-            // Smooth blend between light and shadow
-            float lightBlend = smoothstep(-0.7, 0.7, dotLight);
-            borderColor = mix(
-                mix(backgroundColor, shadowColor, shadowIntensity),
-                mix(backgroundColor, lightColor, lightIntensity),
-                lightBlend
-            );
-        } else {
-            // Straight edge regions
-            if (pixelPos.y < borderWidth) {
-                // Top edge - light
-                borderColor = mix(backgroundColor, lightColor, lightIntensity);
-            } else if (pixelPos.y > itemSize.y - borderWidth) {
-                // Bottom edge - shadow
-                borderColor = mix(backgroundColor, shadowColor, shadowIntensity);
-            } else if (pixelPos.x < borderWidth) {
-                // Left edge - light
-                borderColor = mix(backgroundColor, lightColor, lightIntensity);
-            } else if (pixelPos.x > itemSize.x - borderWidth) {
-                // Right edge - shadow
-                borderColor = mix(backgroundColor, shadowColor, shadowIntensity);
-            }
+        // Calculate influence of each edge based on distance
+        float leftInfluence = 1.0 - smoothstep(0.0, borderRadius * 2.0, pixelPos.x);
+        float rightInfluence = 1.0 - smoothstep(0.0, borderRadius * 2.0, itemSize.x - pixelPos.x);
+        float topInfluence = 1.0 - smoothstep(0.0, borderRadius * 2.0, pixelPos.y);
+        float bottomInfluence = 1.0 - smoothstep(0.0, borderRadius * 2.0, itemSize.y - pixelPos.y);
+        
+        // Normalize influences
+        float totalInfluence = leftInfluence + rightInfluence + topInfluence + bottomInfluence;
+        if (totalInfluence > 0.0) {
+            leftInfluence /= totalInfluence;
+            rightInfluence /= totalInfluence;
+            topInfluence /= totalInfluence;
+            bottomInfluence /= totalInfluence;
         }
         
-        // Apply gradient from outer to inner edge
-        finalColor = mix(borderColor, backgroundColor, borderPos * borderPos);
+        // Calculate color contributions from each edge
+        vec4 leftContribution = mix(backgroundColor, lightColor, lightIntensity * leftInfluence);
+        vec4 rightContribution = mix(backgroundColor, shadowColor, shadowIntensity * rightInfluence);
+        vec4 topContribution = mix(backgroundColor, lightColor, lightIntensity * topInfluence);
+        vec4 bottomContribution = mix(backgroundColor, shadowColor, shadowIntensity * bottomInfluence);
+        
+        // Blend all contributions
+        borderColor = backgroundColor;
+        borderColor = mix(borderColor, leftContribution, leftInfluence);
+        borderColor = mix(borderColor, rightContribution, rightInfluence);
+        borderColor = mix(borderColor, topContribution, topInfluence);
+        borderColor = mix(borderColor, bottomContribution, bottomInfluence);
+        
+        // Apply smooth gradient from outer to inner edge
+        float gradientCurve = 1.0 - pow(gradientPos, 2.2);
+        finalColor = mix(backgroundColor, borderColor, gradientCurve);
     }
     
     // Apply alpha
