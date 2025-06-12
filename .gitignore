@@ -7,3 +7,5 @@ callgrind.out.*
 vgcore.*
 .flatpak-builder
 repo
+mtoc.flatpak
+mtoc.flatpak.*

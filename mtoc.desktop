@@ -2,8 +2,8 @@
 Version=1.0
 Type=Application
 Name=mtoc
-GenericName=music player
-Comment=Visual music library
+GenericName=Music Player
+Comment=Visual Music Library
 Exec=mtoc_app
 Icon=mtoc
 Terminal=false

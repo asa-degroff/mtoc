@@ -55,7 +55,6 @@ set(PROJECT_SOURCES
         src/backend/system/mprismanager.cpp
         src/backend/utility/metadataextractor.h
         src/backend/utility/metadataextractor.cpp
-        src/qml/Components/SmoothBorderItem.qml
         app.qrc
 )
 
