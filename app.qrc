@@ -9,6 +9,7 @@
         <file>src/qml/Components/SearchBar.qml</file>
         <file>src/qml/Components/ThumbnailGridDelegate.qml</file>
         <file>src/qml/Components/SmoothBorderItem.qml</file>
+        <file>src/qml/Components/BorderShader3D.qml</file>
         <file>src/qml/Views/LibraryPane.qml</file>
         <file>src/qml/Views/LibraryEditorWindow.qml</file>
         <file>src/qml/Views/NowPlayingPane.qml</file>
@@ -32,5 +33,8 @@
         <file>resources/icons/skip-button-pressed.svg</file>
         <file>resources/icons/drag-handle-normal.svg</file>
         <file>resources/icons/drag-handle-pressed.svg</file>
+        <!-- Shaders -->
+        <file>src/qml/shaders/border3d.vert.qsb</file>
+        <file>src/qml/shaders/border3d.frag.qsb</file>
     </qresource>
 </RCC>

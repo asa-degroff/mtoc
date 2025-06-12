@@ -598,12 +598,14 @@ Item {
                             }
                         } 
 
-                        Rectangle {
+                        BorderShader3D {
                             id: artistItemRect
                             width: parent.width
                             x: 0
                             height: 40
-                            color: {
+                            borderRadius: 6
+                            borderWidth: 2.0
+                            backgroundColor: {
                                 if (artistsListView.currentIndex === index) {
                                     return Qt.rgba(0.25, 0.32, 0.71, 0.38)  // Selected color with transparency
                                 } else if (root.selectedArtistIndex === index && root.navigationMode === "artist") {
@@ -614,33 +616,10 @@ Item {
                                     return Qt.rgba(1, 1, 1, 0.03)  // Subtle background
                                 }
                             }
-                            radius: 6
-                            
-                            // 3D border effect with all-round shading
-                            border.width: 1
-                            border.color: Qt.rgba(1, 1, 1, 0.06)  // Subtle top/left highlight
-                            
-                            // Bottom shadow for 3D depth
-                            Rectangle {
-                                anchors.bottom: parent.bottom
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.leftMargin: 6
-                                anchors.rightMargin: 6
-                                height: 1
-                                color: Qt.rgba(0, 0, 0, 0.19)
-                            }
-                            
-                            // Right shadow for 3D depth
-                            Rectangle {
-                                anchors.right: parent.right
-                                anchors.top: parent.top
-                                anchors.bottom: parent.bottom
-                                anchors.topMargin: 6
-                                anchors.bottomMargin: 6
-                                width: 1
-                                color: Qt.rgba(0, 0, 0, 0.15)
-                            }
+                            lightColor: Qt.rgba(1, 1, 1, 0.12)
+                            shadowColor: Qt.rgba(0, 0, 0, 0.35)
+                            lightIntensity: 0.8
+                            shadowIntensity: 0.9
 
                             RowLayout {
                                 anchors.fill: parent
@@ -714,8 +693,9 @@ Item {
                                 when: artistMouseArea.containsMouse && artistsListView.currentIndex !== index
                                 PropertyChanges {
                                     target: artistItemRect
-                                    color: Qt.rgba(1, 1, 1, 0.06)
-                                    border.color: Qt.rgba(1, 1, 1, 0.09)
+                                    backgroundColor: Qt.rgba(1, 1, 1, 0.06)
+                                    lightColor: Qt.rgba(1, 1, 1, 0.12)
+                                    shadowColor: Qt.rgba(0, 0, 0, 0.3)
                                 }
                             }
                             
@@ -1160,11 +1140,13 @@ Item {
                                 }
                             }
                             
-                            Rectangle {
+                            BorderShader3D {
                                 id: trackDelegate
                                 width: parent.width
                                 height: 45
-                                color: {
+                                borderRadius: 4
+                                borderWidth: 1.2
+                                backgroundColor: {
                                     if (trackListView.currentIndex === index) {
                                         return Qt.rgba(0.25, 0.32, 0.71, 0.25)  // Selected track
                                     } else if (root.navigationMode === "track" && root.selectedTrackIndex === index) {
@@ -1173,44 +1155,10 @@ Item {
                                         return Qt.rgba(1, 1, 1, 0.02)  // Default background
                                     }
                                 }
-                                radius: 4
-                                
-                                // 3D border effect with all-round shading
-                                border.width: 1
-                                border.color: Qt.rgba(1, 1, 1, 0.04)  // Subtle top/left highlight
-                                
-                                // Left highlight for 3D depth
-                                Rectangle {
-                                    anchors.left: parent.left
-                                    anchors.top: parent.top
-                                    anchors.bottom: parent.bottom
-                                    anchors.topMargin: 4
-                                    anchors.bottomMargin: 4
-                                    width: 1
-                                    color: Qt.rgba(1, 1, 1, 0.03)
-                                }
-                                
-                                // Bottom shadow for 3D depth
-                                Rectangle {
-                                    anchors.bottom: parent.bottom
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    anchors.leftMargin: 4
-                                    anchors.rightMargin: 4
-                                    height: 1
-                                    color: Qt.rgba(0, 0, 0, 0.15)
-                                }
-                                
-                                // Right shadow for 3D depth
-                                Rectangle {
-                                    anchors.right: parent.right
-                                    anchors.top: parent.top
-                                    anchors.bottom: parent.bottom
-                                    anchors.topMargin: 4
-                                    anchors.bottomMargin: 4
-                                    width: 1
-                                    color: Qt.rgba(0, 0, 0, 0.12)
-                                }
+                                lightColor: Qt.rgba(1, 1, 1, 0.05)
+                                shadowColor: Qt.rgba(0, 0, 0, 0.18)
+                                lightIntensity: 0.8
+                                shadowIntensity: 0.9
 
                                 RowLayout {
                                     anchors.fill: parent
@@ -1277,8 +1225,9 @@ Item {
                                     when: trackMouseArea.containsMouse && trackListView.currentIndex !== index
                                     PropertyChanges {
                                         target: trackDelegate
-                                        color: Qt.rgba(1, 1, 1, 0.04)
-                                        border.color: Qt.rgba(1, 1, 1, 0.07)
+                                        backgroundColor: Qt.rgba(1, 1, 1, 0.04)
+                                        lightColor: Qt.rgba(1, 1, 1, 0.08)
+                                        shadowColor: Qt.rgba(0, 0, 0, 0.22)
                                     }
                                 }
                                 
