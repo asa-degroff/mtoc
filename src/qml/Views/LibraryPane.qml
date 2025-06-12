@@ -262,18 +262,10 @@ Item {
                         color: Qt.rgba(1, 1, 1, 0.03)  // Subtle background like artist items
                         radius: 6
                         
-                        // 3D border effect like artist items
+                        //light border
                         border.width: 1
                         border.color: Qt.rgba(1, 1, 1, 0.06)  // Subtle top highlight
-                        
-                        // Bottom shadow for 3D depth
-                        Rectangle {
-                            anchors.bottom: parent.bottom
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            height: 1
-                            color: Qt.rgba(0, 0, 0, 0.19)
-                        }
+
                     }
                     
                     contentItem: Text {
@@ -330,7 +322,7 @@ Item {
             radius: 8
             clip: true  // Clip content to rounded corners
             
-            // 3D border effect - lit from above
+            //border
             border.width: 1
             border.color: Qt.rgba(1, 1, 1, 0.08)
             
@@ -616,31 +608,10 @@ Item {
                             }
                             radius: 6
                             
-                            // 3D border effect with all-round shading
+                            // border
                             border.width: 1
-                            border.color: Qt.rgba(1, 1, 1, 0.06)  // Subtle top/left highlight
+                            border.color: Qt.rgba(1, 1, 1, 0.06)  // subtle border
                             
-                            // Bottom shadow for 3D depth
-                            Rectangle {
-                                anchors.bottom: parent.bottom
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.leftMargin: 6
-                                anchors.rightMargin: 6
-                                height: 1
-                                color: Qt.rgba(0, 0, 0, 0.19)
-                            }
-                            
-                            // Right shadow for 3D depth
-                            Rectangle {
-                                anchors.right: parent.right
-                                anchors.top: parent.top
-                                anchors.bottom: parent.bottom
-                                anchors.topMargin: 6
-                                anchors.bottomMargin: 6
-                                width: 1
-                                color: Qt.rgba(0, 0, 0, 0.15)
-                            }
 
                             RowLayout {
                                 anchors.fill: parent
@@ -995,19 +966,10 @@ Item {
                 radius: 8
                 clip: true
                 
-                // 3D border effect - lit from above
+                //border
                 border.width: 1
                 border.color: Qt.rgba(1, 1, 1, 0.08)
                 
-                // Inner shadow for depth
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.margins: 1
-                    radius: parent.radius - 1
-                    color: "transparent"
-                    border.width: 1
-                    border.color: Qt.rgba(0, 0, 0, 0.25)
-                }
 
                 property var currentAlbumTracks: []
                 property string albumTitleText: "No album selected"
@@ -1024,17 +986,6 @@ Item {
                         radius: 6
                         border.width: 1
                         border.color: Qt.rgba(1, 1, 1, 0.13)
-                        
-                        // Bottom shadow
-                        Rectangle {
-                            anchors.bottom: parent.bottom
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.leftMargin: 6  // Match parent radius to avoid corner overflow
-                            anchors.rightMargin: 6  // Match parent radius to avoid corner overflow
-                            height: 1
-                            color: Qt.rgba(0, 0, 0, 0.25)
-                        }
                         
                         ColumnLayout {
                             anchors.fill: parent
@@ -1175,42 +1126,11 @@ Item {
                                 }
                                 radius: 4
                                 
-                                // 3D border effect with all-round shading
+                                //border
                                 border.width: 1
-                                border.color: Qt.rgba(1, 1, 1, 0.04)  // Subtle top/left highlight
-                                
-                                // Left highlight for 3D depth
-                                Rectangle {
-                                    anchors.left: parent.left
-                                    anchors.top: parent.top
-                                    anchors.bottom: parent.bottom
-                                    anchors.topMargin: 4
-                                    anchors.bottomMargin: 4
-                                    width: 1
-                                    color: Qt.rgba(1, 1, 1, 0.03)
-                                }
-                                
-                                // Bottom shadow for 3D depth
-                                Rectangle {
-                                    anchors.bottom: parent.bottom
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    anchors.leftMargin: 4
-                                    anchors.rightMargin: 4
-                                    height: 1
-                                    color: Qt.rgba(0, 0, 0, 0.15)
-                                }
-                                
-                                // Right shadow for 3D depth
-                                Rectangle {
-                                    anchors.right: parent.right
-                                    anchors.top: parent.top
-                                    anchors.bottom: parent.bottom
-                                    anchors.topMargin: 4
-                                    anchors.bottomMargin: 4
-                                    width: 1
-                                    color: Qt.rgba(0, 0, 0, 0.12)
-                                }
+                                border.color: Qt.rgba(1, 1, 1, 0.04)
+
+
 
                                 RowLayout {
                                     anchors.fill: parent
