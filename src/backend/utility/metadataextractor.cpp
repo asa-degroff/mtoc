@@ -1,6 +1,7 @@
 #include "metadataextractor.h"
 #include <QDebug>
 #include <QFileInfo>
+#include <cstring>
 
 // TagLib format-specific includes
 #include <taglib/mp4file.h>
@@ -57,6 +58,10 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
     // Convert QString to char* for TagLib
     QByteArray filePathBA = filePath.toLocal8Bit();
     const char* filePathCStr = filePathBA.constData();
+    if (!filePathCStr || strlen(filePathCStr) == 0) {
+        qWarning() << "MetadataExtractor: Failed to convert file path to C string:" << filePath;
+        return meta;
+    }
     // qDebug() << "MetadataExtractor: Processing path:" << filePath;
     
     QString fileExt = fileInfo.suffix().toLower();
@@ -85,22 +90,32 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 // Debug logging removed - iterating frames can cause crashes with malformed files
                 
                 // Look for TPE2 frame (Album Artist in ID3v2)
-                TagLib::ID3v2::FrameList TPE2Frames = id3v2Tag->frameListMap()["TPE2"];
-                if (!TPE2Frames.isEmpty() && !TPE2Frames.front()->toString().isEmpty()) {
-                    meta.albumArtist = QString::fromStdString(TPE2Frames.front()->toString().to8Bit(true));
-                    // qDebug() << "MetadataExtractor: Found ID3v2 album artist (TPE2):" << meta.albumArtist;
+                if (id3v2Tag->frameListMap().contains("TPE2")) {
+                    TagLib::ID3v2::FrameList TPE2Frames = id3v2Tag->frameListMap()["TPE2"];
+                    if (!TPE2Frames.isEmpty() && TPE2Frames.front()) {
+                        TagLib::String albumArtistStr = TPE2Frames.front()->toString();
+                        if (!albumArtistStr.isEmpty()) {
+                            meta.albumArtist = QString::fromStdString(albumArtistStr.to8Bit(true));
+                        }
+                        // qDebug() << "MetadataExtractor: Found ID3v2 album artist (TPE2):" << meta.albumArtist;
+                    }
                 }
                 // else qDebug() << "MetadataExtractor: No ID3v2 album artist (TPE2) found";
                 
                 // Look for TPOS frame (Disc Number in ID3v2)
-                TagLib::ID3v2::FrameList TPOSFrames = id3v2Tag->frameListMap()["TPOS"];
-                if (!TPOSFrames.isEmpty() && !TPOSFrames.front()->toString().isEmpty()) {
-                    QString discStr = QString::fromStdString(TPOSFrames.front()->toString().to8Bit(true));
-                    // Disc number might be in format "1" or "1/2"
-                    bool ok;
-                    meta.discNumber = discStr.split('/').first().toInt(&ok);
-                    if (!ok) meta.discNumber = 0;
-                    // qDebug() << "MetadataExtractor: Found ID3v2 disc number (TPOS):" << meta.discNumber;
+                if (id3v2Tag->frameListMap().contains("TPOS")) {
+                    TagLib::ID3v2::FrameList TPOSFrames = id3v2Tag->frameListMap()["TPOS"];
+                    if (!TPOSFrames.isEmpty() && TPOSFrames.front()) {
+                        TagLib::String discNumStr = TPOSFrames.front()->toString();
+                        if (!discNumStr.isEmpty()) {
+                            QString discStr = QString::fromStdString(discNumStr.to8Bit(true));
+                            // Disc number might be in format "1" or "1/2"
+                            bool ok;
+                            meta.discNumber = discStr.split('/').first().toInt(&ok);
+                            if (!ok) meta.discNumber = 0;
+                            // qDebug() << "MetadataExtractor: Found ID3v2 disc number (TPOS):" << meta.discNumber;
+                        }
+                    }
                 }
             }
             
@@ -116,12 +131,26 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 // Debug logging removed - iterating properties can cause issues
                 
                 // Check standard album artist tags
-                if (properties.contains("ALBUMARTIST") && !properties["ALBUMARTIST"].isEmpty()) {
-                    meta.albumArtist = QString::fromStdString(properties["ALBUMARTIST"].front().to8Bit(true));
-                    qDebug() << "MetadataExtractor: Found ALBUMARTIST property:" << meta.albumArtist;
-                } else if (properties.contains("ALBUM ARTIST") && !properties["ALBUM ARTIST"].isEmpty()) {
-                    meta.albumArtist = QString::fromStdString(properties["ALBUM ARTIST"].front().to8Bit(true));
-                    qDebug() << "MetadataExtractor: Found 'ALBUM ARTIST' property:" << meta.albumArtist;
+                if (properties.contains("ALBUMARTIST")) {
+                    try {
+                        const TagLib::StringList& albumArtistList = properties["ALBUMARTIST"];
+                        if (!albumArtistList.isEmpty()) {
+                            meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                            qDebug() << "MetadataExtractor: Found ALBUMARTIST property:" << meta.albumArtist;
+                        }
+                    } catch (...) {
+                        qDebug() << "MetadataExtractor: Failed to access ALBUMARTIST property";
+                    }
+                } else if (properties.contains("ALBUM ARTIST")) {
+                    try {
+                        const TagLib::StringList& albumArtistList = properties["ALBUM ARTIST"];
+                        if (!albumArtistList.isEmpty()) {
+                            meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                            qDebug() << "MetadataExtractor: Found 'ALBUM ARTIST' property:" << meta.albumArtist;
+                        }
+                    } catch (...) {
+                        qDebug() << "MetadataExtractor: Failed to access 'ALBUM ARTIST' property";
+                    }
                 }
             }
             
@@ -130,7 +159,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 TagLib::ID3v2::Tag* id3v2Tag = mpegFile.ID3v2Tag();
                 TagLib::ID3v2::FrameList frameList = id3v2Tag->frameList("APIC");
                 
-                if (!frameList.isEmpty()) {
+                if (!frameList.isEmpty() && frameList.front()) {
                     // Get the first picture frame
                     TagLib::ID3v2::AttachedPictureFrame* pictureFrame = 
                         dynamic_cast<TagLib::ID3v2::AttachedPictureFrame*>(frameList.front());
@@ -248,37 +277,72 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             
             // TITLE - try iTunes tag first, then standard tag
             meta.title = getStringValue("©nam");
-            if (meta.title.isEmpty() && properties.contains("TITLE") && !properties["TITLE"].isEmpty()) {
-                meta.title = QString::fromStdString(properties["TITLE"].front().to8Bit(true));
-                // qDebug() << "MetadataExtractor: Using standard TITLE tag:" << meta.title;
+            if (meta.title.isEmpty() && properties.contains("TITLE")) {
+                try {
+                    const TagLib::StringList& titleList = properties["TITLE"];
+                    if (!titleList.isEmpty()) {
+                        meta.title = QString::fromStdString(titleList.front().to8Bit(true));
+                        // qDebug() << "MetadataExtractor: Using standard TITLE tag:" << meta.title;
+                    }
+                } catch (...) {
+                    qDebug() << "MetadataExtractor: Failed to access TITLE property";
+                }
             }
             
             // ARTIST - try iTunes tag first, then standard tag
             meta.artist = getStringValue("©ART");
-            if (meta.artist.isEmpty() && properties.contains("ARTIST") && !properties["ARTIST"].isEmpty()) {
-                meta.artist = QString::fromStdString(properties["ARTIST"].front().to8Bit(true));
-                // qDebug() << "MetadataExtractor: Using standard ARTIST tag:" << meta.artist;
+            if (meta.artist.isEmpty() && properties.contains("ARTIST")) {
+                try {
+                    const TagLib::StringList& artistList = properties["ARTIST"];
+                    if (!artistList.isEmpty()) {
+                        meta.artist = QString::fromStdString(artistList.front().to8Bit(true));
+                        // qDebug() << "MetadataExtractor: Using standard ARTIST tag:" << meta.artist;
+                    }
+                } catch (...) {
+                    qDebug() << "MetadataExtractor: Failed to access ARTIST property";
+                }
             }
             
             // ALBUM - try iTunes tag first, then standard tag
             meta.album = getStringValue("©alb");
-            if (meta.album.isEmpty() && properties.contains("ALBUM") && !properties["ALBUM"].isEmpty()) {
-                meta.album = QString::fromStdString(properties["ALBUM"].front().to8Bit(true));
-                // qDebug() << "MetadataExtractor: Using standard ALBUM tag:" << meta.album;
+            if (meta.album.isEmpty() && properties.contains("ALBUM")) {
+                try {
+                    const TagLib::StringList& albumList = properties["ALBUM"];
+                    if (!albumList.isEmpty()) {
+                        meta.album = QString::fromStdString(albumList.front().to8Bit(true));
+                        // qDebug() << "MetadataExtractor: Using standard ALBUM tag:" << meta.album;
+                    }
+                } catch (...) {
+                    qDebug() << "MetadataExtractor: Failed to access ALBUM property";
+                }
             }
             
             // GENRE - try iTunes tag first, then standard tag
             meta.genre = getStringValue("©gen");
-            if (meta.genre.isEmpty() && properties.contains("GENRE") && !properties["GENRE"].isEmpty()) {
-                meta.genre = QString::fromStdString(properties["GENRE"].front().to8Bit(true));
-                // qDebug() << "MetadataExtractor: Using standard GENRE tag:" << meta.genre;
+            if (meta.genre.isEmpty() && properties.contains("GENRE")) {
+                try {
+                    const TagLib::StringList& genreList = properties["GENRE"];
+                    if (!genreList.isEmpty()) {
+                        meta.genre = QString::fromStdString(genreList.front().to8Bit(true));
+                        // qDebug() << "MetadataExtractor: Using standard GENRE tag:" << meta.genre;
+                    }
+                } catch (...) {
+                    qDebug() << "MetadataExtractor: Failed to access GENRE property";
+                }
             }
             
             // YEAR - try iTunes tag first, then standard tag
             QString yearStr = getStringValue("©day");
-            if (yearStr.isEmpty() && properties.contains("DATE") && !properties["DATE"].isEmpty()) {
-                yearStr = QString::fromStdString(properties["DATE"].front().to8Bit(true));
-                // qDebug() << "MetadataExtractor: Using standard DATE tag for year:" << yearStr;
+            if (yearStr.isEmpty() && properties.contains("DATE")) {
+                try {
+                    const TagLib::StringList& dateList = properties["DATE"];
+                    if (!dateList.isEmpty()) {
+                        yearStr = QString::fromStdString(dateList.front().to8Bit(true));
+                        // qDebug() << "MetadataExtractor: Using standard DATE tag for year:" << yearStr;
+                    }
+                } catch (...) {
+                    qDebug() << "MetadataExtractor: Failed to access DATE property";
+                }
             }
             if (!yearStr.isEmpty()) {
                 // Often the year is in format YYYY or YYYY-MM-DD
@@ -374,37 +438,64 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
         meta.year = tag->year();
         meta.trackNumber = tag->track();
         // Check for disc number in standard properties
-        if (properties.contains("DISCNUMBER") && !properties["DISCNUMBER"].isEmpty()) {
-            QString discStr = QString::fromStdString(properties["DISCNUMBER"].front().to8Bit(true));
-            bool ok;
-            meta.discNumber = discStr.split('/').first().toInt(&ok);
-            if (!ok) meta.discNumber = 0;
+        if (properties.contains("DISCNUMBER")) {
+            try {
+                const TagLib::StringList& discList = properties["DISCNUMBER"];
+                if (!discList.isEmpty()) {
+                    QString discStr = QString::fromStdString(discList.front().to8Bit(true));
+                    bool ok;
+                    meta.discNumber = discStr.split('/').first().toInt(&ok);
+                    if (!ok) meta.discNumber = 0;
+                }
+            } catch (...) {
+                qDebug() << "MetadataExtractor: Failed to access DISCNUMBER property";
+            }
         }
 
         // Album Artist (often in TPE2 frame for ID3, or ALBUMARTIST for Vorbis/FLAC)
         // properties is already declared above
         if (properties.contains("ALBUMARTIST")) {
-            if (!properties["ALBUMARTIST"].isEmpty()) {
-                meta.albumArtist = QString::fromStdString(properties["ALBUMARTIST"].front().to8Bit(true));
+            try {
+                const TagLib::StringList& albumArtistList = properties["ALBUMARTIST"];
+                if (!albumArtistList.isEmpty()) {
+                    meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                }
+            } catch (...) {
+                qDebug() << "MetadataExtractor: Failed to access ALBUMARTIST property";
             }
         }
 
         if (meta.albumArtist.isEmpty() && properties.contains("ALBUM ARTIST")) { // Some taggers use a space
-            if (!properties["ALBUM ARTIST"].isEmpty()) {
-                meta.albumArtist = QString::fromStdString(properties["ALBUM ARTIST"].front().to8Bit(true));
+            try {
+                const TagLib::StringList& albumArtistList = properties["ALBUM ARTIST"];
+                if (!albumArtistList.isEmpty()) {
+                    meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                }
+            } catch (...) {
+                qDebug() << "MetadataExtractor: Failed to access 'ALBUM ARTIST' property";
             }
         }
 
         if (meta.albumArtist.isEmpty() && properties.contains("TPE2")) { // ID3v2 TPE2 frame
-            if (!properties["TPE2"].isEmpty()) {
-                 meta.albumArtist = QString::fromStdString(properties["TPE2"].front().to8Bit(true));
+            try {
+                const TagLib::StringList& tpe2List = properties["TPE2"];
+                if (!tpe2List.isEmpty()) {
+                     meta.albumArtist = QString::fromStdString(tpe2List.front().to8Bit(true));
+                }
+            } catch (...) {
+                qDebug() << "MetadataExtractor: Failed to access TPE2 property";
             }
         }
 
         // iTunes/M4A specific album artist tag
         if (meta.albumArtist.isEmpty() && properties.contains("aART")) {
-            if (!properties["aART"].isEmpty()) {
-                 meta.albumArtist = QString::fromStdString(properties["aART"].front().to8Bit(true));
+            try {
+                const TagLib::StringList& aartList = properties["aART"];
+                if (!aartList.isEmpty()) {
+                     meta.albumArtist = QString::fromStdString(aartList.front().to8Bit(true));
+                }
+            } catch (...) {
+                qDebug() << "MetadataExtractor: Failed to access aART property";
             }
         }
         
