@@ -11,7 +11,6 @@
 #include <taglib/tpropertymap.h>
 #include <taglib/audioproperties.h>
 #include <taglib/attachedpictureframe.h>
-#include <taglib/id3v2framefactory.h>
 #include <taglib/mp4coverart.h>
 #include <taglib/flacfile.h>
 #include <taglib/flacpicture.h>
@@ -51,9 +50,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
     // For UTF-8 paths, toWString() might not be needed if underlying system uses UTF-8 for char*
     // However, TagLib's FileRef constructor can take a wchar_t* or a char*.
     // Using .toStdString().c_str() is generally problematic with paths containing non-ASCII if not handled correctly.
-    // .toLocal8Bit().constData() is often safer for file paths on Linux/macOS.
-    // On Windows, toStdWString().c_str() would be preferred.
-    // Let's try with toLocal8Bit first, as it's common for Linux.
+    // .toLocal8Bit().constData() is often safer for file paths on Linux.
 
     // Convert QString to char* for TagLib
     QByteArray filePathBA = filePath.toLocal8Bit();
@@ -130,27 +127,24 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 
                 // Debug logging removed - iterating properties can cause issues
                 
-                // Check standard album artist tags
-                if (properties.contains("ALBUMARTIST")) {
-                    try {
-                        const TagLib::StringList& albumArtistList = properties["ALBUMARTIST"];
-                        if (!albumArtistList.isEmpty()) {
-                            meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
-                            qDebug() << "MetadataExtractor: Found ALBUMARTIST property:" << meta.albumArtist;
-                        }
-                    } catch (...) {
-                        qDebug() << "MetadataExtractor: Failed to access ALBUMARTIST property";
-                    }
-                } else if (properties.contains("ALBUM ARTIST")) {
-                    try {
-                        const TagLib::StringList& albumArtistList = properties["ALBUM ARTIST"];
-                        if (!albumArtistList.isEmpty()) {
+                // Check standard album artist tags using safer value() method
+                try {
+                    TagLib::StringList albumArtistList = properties.value("ALBUMARTIST");
+                    if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
+                        meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                        qDebug() << "MetadataExtractor: Found ALBUMARTIST property:" << meta.albumArtist;
+                    } else {
+                        // Try alternate spelling
+                        albumArtistList = properties.value("ALBUM ARTIST");
+                        if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
                             meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
                             qDebug() << "MetadataExtractor: Found 'ALBUM ARTIST' property:" << meta.albumArtist;
                         }
-                    } catch (...) {
-                        qDebug() << "MetadataExtractor: Failed to access 'ALBUM ARTIST' property";
                     }
+                } catch (const std::exception& e) {
+                    qDebug() << "MetadataExtractor: Exception accessing album artist property:" << e.what();
+                } catch (...) {
+                    qDebug() << "MetadataExtractor: Failed to access album artist property";
                 }
             }
             
@@ -192,79 +186,19 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             TagLib::MP4::Tag* mp4Tag = mp4File.tag();
             TagLib::MP4::ItemMap items = mp4Tag->itemMap();
             
-            // Dump all MP4 items (disabled for now due to crashes)
-            // TODO: Re-enable with proper error handling
-            /*
-            qDebug() << "MetadataExtractor: MP4 tags found in" << filePath;
-            for (TagLib::MP4::ItemMap::ConstIterator it = items.begin(); it != items.end(); ++it) {
-                QString key = QString::fromLatin1(it->first.toCString());
-                QString value = "[Complex value]";
-                
-                // For MP4::Item, we need to try different conversions to determine the type
-                // MP4 items don't have a direct type() method to check their content type
-                // We'll try different conversions in sequence to determine the actual type
-                
-                // Try to convert to StringList first
-                try {
-                    TagLib::StringList stringList = it->second.toStringList();
-                    if (!stringList.isEmpty()) {
-                        value = QString::fromStdString(stringList.front().to8Bit(true));
-                    }
-                } catch (...) {
-                    // StringList conversion failed, try other types
-                }
-                // Try as an IntPair
-                else {
-                    try {
-                        TagLib::MP4::Item::IntPair pair = it->second.toIntPair();
-                        value = QString("%1, %2").arg(pair.first).arg(pair.second);
-                    }
-                    catch (...) {
-                        // Try as a regular integer
-                        try {
-                            int intValue = it->second.toInt();
-                            value = QString::number(intValue);
-                        }
-                        catch (...) {
-                            // Try as a boolean
-                            try {
-                                bool boolValue = it->second.toBool();
-                                value = boolValue ? "true" : "false";
-                            }
-                            catch (...) {
-                                // Keep the default value if all conversions fail
-                                value = "[Complex value]";
-                            }
-                        }
-                    }
-                }
-                
-                qDebug() << "  MP4 Item:" << key << "=" << value;
-            }
-            */
-            
-            // Extract standard iTunes tags
-            // Standard iTunes tag mapping:
-            // = title
-            // = artist
-            // aART = album artist
-            // = album
-            // = genre
-            // = year/date
-            // ©alb = album
-            // ©gen = genre
-            // ©day = year/date
-            // trkn = track number
-            
             // Use a helper function to safely extract string values
             auto getStringValue = [&](const char* key) -> QString {
-                if (items.contains(key)) {
+                if (key && items.contains(key)) {
                     try {
                         const TagLib::MP4::Item& item = items[key];
-                        TagLib::StringList values = item.toStringList();
-                        if (!values.isEmpty()) {
-                            return QString::fromStdString(values.front().to8Bit(true));
+                        if (item.isValid()) {
+                            TagLib::StringList values = item.toStringList();
+                            if (!values.isEmpty() && values.size() > 0) {
+                                return QString::fromStdString(values.front().to8Bit(true));
+                            }
                         }
+                    } catch (const std::exception& e) {
+                        qDebug() << "MetadataExtractor: Exception extracting string value for key:" << key << "-" << e.what();
                     } catch (...) {
                         qDebug() << "MetadataExtractor: Failed to extract string value for key:" << key;
                     }
@@ -277,13 +211,15 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             
             // TITLE - try iTunes tag first, then standard tag
             meta.title = getStringValue("©nam");
-            if (meta.title.isEmpty() && properties.contains("TITLE")) {
+            if (meta.title.isEmpty()) {
                 try {
-                    const TagLib::StringList& titleList = properties["TITLE"];
-                    if (!titleList.isEmpty()) {
+                    TagLib::StringList titleList = properties.value("TITLE");
+                    if (!titleList.isEmpty() && titleList.size() > 0) {
                         meta.title = QString::fromStdString(titleList.front().to8Bit(true));
                         // qDebug() << "MetadataExtractor: Using standard TITLE tag:" << meta.title;
                     }
+                } catch (const std::exception& e) {
+                    qDebug() << "MetadataExtractor: Exception accessing TITLE property:" << e.what();
                 } catch (...) {
                     qDebug() << "MetadataExtractor: Failed to access TITLE property";
                 }
@@ -291,13 +227,15 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             
             // ARTIST - try iTunes tag first, then standard tag
             meta.artist = getStringValue("©ART");
-            if (meta.artist.isEmpty() && properties.contains("ARTIST")) {
+            if (meta.artist.isEmpty()) {
                 try {
-                    const TagLib::StringList& artistList = properties["ARTIST"];
-                    if (!artistList.isEmpty()) {
+                    TagLib::StringList artistList = properties.value("ARTIST");
+                    if (!artistList.isEmpty() && artistList.size() > 0) {
                         meta.artist = QString::fromStdString(artistList.front().to8Bit(true));
                         // qDebug() << "MetadataExtractor: Using standard ARTIST tag:" << meta.artist;
                     }
+                } catch (const std::exception& e) {
+                    qDebug() << "MetadataExtractor: Exception accessing ARTIST property:" << e.what();
                 } catch (...) {
                     qDebug() << "MetadataExtractor: Failed to access ARTIST property";
                 }
@@ -305,13 +243,15 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             
             // ALBUM - try iTunes tag first, then standard tag
             meta.album = getStringValue("©alb");
-            if (meta.album.isEmpty() && properties.contains("ALBUM")) {
+            if (meta.album.isEmpty()) {
                 try {
-                    const TagLib::StringList& albumList = properties["ALBUM"];
-                    if (!albumList.isEmpty()) {
+                    TagLib::StringList albumList = properties.value("ALBUM");
+                    if (!albumList.isEmpty() && albumList.size() > 0) {
                         meta.album = QString::fromStdString(albumList.front().to8Bit(true));
                         // qDebug() << "MetadataExtractor: Using standard ALBUM tag:" << meta.album;
                     }
+                } catch (const std::exception& e) {
+                    qDebug() << "MetadataExtractor: Exception accessing ALBUM property:" << e.what();
                 } catch (...) {
                     qDebug() << "MetadataExtractor: Failed to access ALBUM property";
                 }
@@ -319,13 +259,15 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             
             // GENRE - try iTunes tag first, then standard tag
             meta.genre = getStringValue("©gen");
-            if (meta.genre.isEmpty() && properties.contains("GENRE")) {
+            if (meta.genre.isEmpty()) {
                 try {
-                    const TagLib::StringList& genreList = properties["GENRE"];
-                    if (!genreList.isEmpty()) {
+                    TagLib::StringList genreList = properties.value("GENRE");
+                    if (!genreList.isEmpty() && genreList.size() > 0) {
                         meta.genre = QString::fromStdString(genreList.front().to8Bit(true));
                         // qDebug() << "MetadataExtractor: Using standard GENRE tag:" << meta.genre;
                     }
+                } catch (const std::exception& e) {
+                    qDebug() << "MetadataExtractor: Exception accessing GENRE property:" << e.what();
                 } catch (...) {
                     qDebug() << "MetadataExtractor: Failed to access GENRE property";
                 }
@@ -333,13 +275,15 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             
             // YEAR - try iTunes tag first, then standard tag
             QString yearStr = getStringValue("©day");
-            if (yearStr.isEmpty() && properties.contains("DATE")) {
+            if (yearStr.isEmpty()) {
                 try {
-                    const TagLib::StringList& dateList = properties["DATE"];
-                    if (!dateList.isEmpty()) {
+                    TagLib::StringList dateList = properties.value("DATE");
+                    if (!dateList.isEmpty() && dateList.size() > 0) {
                         yearStr = QString::fromStdString(dateList.front().to8Bit(true));
                         // qDebug() << "MetadataExtractor: Using standard DATE tag for year:" << yearStr;
                     }
+                } catch (const std::exception& e) {
+                    qDebug() << "MetadataExtractor: Exception accessing DATE property:" << e.what();
                 } catch (...) {
                     qDebug() << "MetadataExtractor: Failed to access DATE property";
                 }
@@ -438,65 +382,50 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
         meta.year = tag->year();
         meta.trackNumber = tag->track();
         // Check for disc number in standard properties
-        if (properties.contains("DISCNUMBER")) {
-            try {
-                const TagLib::StringList& discList = properties["DISCNUMBER"];
-                if (!discList.isEmpty()) {
-                    QString discStr = QString::fromStdString(discList.front().to8Bit(true));
-                    bool ok;
-                    meta.discNumber = discStr.split('/').first().toInt(&ok);
-                    if (!ok) meta.discNumber = 0;
-                }
-            } catch (...) {
-                qDebug() << "MetadataExtractor: Failed to access DISCNUMBER property";
+        try {
+            TagLib::StringList discList = properties.value("DISCNUMBER");
+            if (!discList.isEmpty() && discList.size() > 0) {
+                QString discStr = QString::fromStdString(discList.front().to8Bit(true));
+                bool ok;
+                meta.discNumber = discStr.split('/').first().toInt(&ok);
+                if (!ok) meta.discNumber = 0;
             }
+        } catch (const std::exception& e) {
+            qDebug() << "MetadataExtractor: Exception accessing DISCNUMBER property:" << e.what();
+        } catch (...) {
+            qDebug() << "MetadataExtractor: Failed to access DISCNUMBER property";
         }
 
         // Album Artist (often in TPE2 frame for ID3, or ALBUMARTIST for Vorbis/FLAC)
         // properties is already declared above
-        if (properties.contains("ALBUMARTIST")) {
-            try {
-                const TagLib::StringList& albumArtistList = properties["ALBUMARTIST"];
-                if (!albumArtistList.isEmpty()) {
+        try {
+            // Try different album artist tag variants
+            TagLib::StringList albumArtistList = properties.value("ALBUMARTIST");
+            if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
+                meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+            } else {
+                // Try with space
+                albumArtistList = properties.value("ALBUM ARTIST");
+                if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
                     meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                } else {
+                    // Try ID3v2 TPE2 frame
+                    albumArtistList = properties.value("TPE2");
+                    if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
+                        meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                    } else {
+                        // Try iTunes/M4A specific tag
+                        albumArtistList = properties.value("aART");
+                        if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
+                            meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                        }
+                    }
                 }
-            } catch (...) {
-                qDebug() << "MetadataExtractor: Failed to access ALBUMARTIST property";
             }
-        }
-
-        if (meta.albumArtist.isEmpty() && properties.contains("ALBUM ARTIST")) { // Some taggers use a space
-            try {
-                const TagLib::StringList& albumArtistList = properties["ALBUM ARTIST"];
-                if (!albumArtistList.isEmpty()) {
-                    meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
-                }
-            } catch (...) {
-                qDebug() << "MetadataExtractor: Failed to access 'ALBUM ARTIST' property";
-            }
-        }
-
-        if (meta.albumArtist.isEmpty() && properties.contains("TPE2")) { // ID3v2 TPE2 frame
-            try {
-                const TagLib::StringList& tpe2List = properties["TPE2"];
-                if (!tpe2List.isEmpty()) {
-                     meta.albumArtist = QString::fromStdString(tpe2List.front().to8Bit(true));
-                }
-            } catch (...) {
-                qDebug() << "MetadataExtractor: Failed to access TPE2 property";
-            }
-        }
-
-        // iTunes/M4A specific album artist tag
-        if (meta.albumArtist.isEmpty() && properties.contains("aART")) {
-            try {
-                const TagLib::StringList& aartList = properties["aART"];
-                if (!aartList.isEmpty()) {
-                     meta.albumArtist = QString::fromStdString(aartList.front().to8Bit(true));
-                }
-            } catch (...) {
-                qDebug() << "MetadataExtractor: Failed to access aART property";
-            }
+        } catch (const std::exception& e) {
+            qDebug() << "MetadataExtractor: Exception accessing album artist properties:" << e.what();
+        } catch (...) {
+            qDebug() << "MetadataExtractor: Failed to access album artist properties";
         }
         
         // qDebug() << "MetadataExtractor: Final meta.albumArtist before return:" << meta.albumArtist;
