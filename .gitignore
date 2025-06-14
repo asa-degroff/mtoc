@@ -1,14 +1,58 @@
-build
+# Build directories
+build/
+build-dir/
+compile_commands.json
+
+# Debug and profiling files
 debug_log.txt
+perf.data
+perf.data.old
 perf.*
 massif.out.*
 valgrind.out.*
 callgrind.out.*
 vgcore.*
-.flatpak-builder
-repo
-mtoc.flatpak
-mtoc.flatpak.*
-.vscode
-.claude
+
+# Qt Creator user files
+*.creator.user
+*.autosave
+*.cflags
+*.cxxflags
+*.config
+*.creator
+*.files
+*.includes
+*.pro.user
+*.pro.user.*
+
+# IDE directories
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local configuration
+.claude/
 .claude*
+settings.local.json
+
+# Flatpak
+.flatpak-builder/
+repo/
+*.flatpak
+*.flatpak.*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Backup files
+*.bak
+*.backup
+*.old

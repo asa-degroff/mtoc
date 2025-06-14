@@ -82,7 +82,7 @@ Access the library editor through the settings to:
 - Add or remove music directories
 - Trigger library rescans
 - Clear the library when needed
-Rescan the library after adding, removing, or editing the files in your chosen directory to have the current versions populate the library. 
+- Rescan the library after adding, removing, or editing the files in your chosen directory to have the current versions populate the library. 
 
 ### Usage Tips
 - mtoc works best with music that contains embedded artwork and is tagged by album artist. In this absence of the album artist tag, the artist tag will be used, potentially resulting in albums being broken up. 
