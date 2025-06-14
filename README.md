@@ -34,9 +34,20 @@ mtoc is a music player and library browser for Linux that emphasizes smooth, con
 ### 🖥️ Desktop Integration
 - Full MPRIS support for media keys and system controls
 
-## Installation
+### System Requirements
+- Linux with X11/Wayland
+- OpenGL/GPU acceleration recommended
+- 4GB RAM and solid state storage recommended
+
+## Getting Started
 
 #### Dependencies
+- Qt6 (Core, Quick, Qml, Multimedia, DBus, Concurrent, Widgets, Sql)
+- CMake >= 3.16
+- TagLib >= 2.0
+- GStreamer >= 1.0
+- pkg-config
+- C++17 compatible compiler
 
 #### Build Instructions
 
@@ -87,17 +98,39 @@ mtoc uses a modern, modular architecture:
   - `AudioEngine`: GStreamer integration
   - `MetadataExtractor`: TagLib wrapper for file analysis
   - `AlbumArtManager`: Intelligent album art caching
+  - `DatabaseManager`: SQLite persistence layer
+
 
 - **Frontend (QML)**
-  - Custom components for smooth animations
+  - Library and Now Playing panes
+  - Horizontal album browser
+  - Responsive search bar
+  - Responsive playback controls
+  - Custom UI animations
   - Hardware-accelerated rendering
   - Responsive two-pane layout
+  - Deferred window reloading for efficiency
 
 ## Performance Tips
 
 For the best experience:
 
 **GPU Acceleration**: Ensure your GPU drivers are properly installed
+
+## Roadmap
+
+### 1.x
+- Touchscreen, small screen, and Steam Deck controller support
+- Keybaord navigation
+- Additional list sort options
+- M3U playlist support including playback and editing
+- Settings window with additional options
+
+### >= 2.0
+- Metadata editor
+- Integrated CD ripper
+- Integrated library sync utility
+- Rich podcast library with RSS support, streaming, and downloading
 
 ## License
 
@@ -114,22 +147,3 @@ This project is licensed under the GPL v3 License - see the LICENSE file for det
 Project Link: [https://github.com/asa-degroff/mtoc](https://github.com/asa-degroff/mtoc)
 
 email: asa@3fz.org
-
----
-
-*mtoc - visual music library*
-
-## Roadmap
-
-### 1.x
-- Touchscreen, small screen, and Steam Deck controller optimization
-- Keybaord navigation optimization
-- Additional list sort options
-- M3U playlist support including playback and editing
-- Settings window with additional options
-
-### >= 2.0
-- Metadata editor
-- Integrated CD ripper
-- Integrated library sync utility
-- Rich podcast library with RSS support, streaming, and downloading
