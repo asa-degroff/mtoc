@@ -2,7 +2,7 @@
 
 mtoc is a music player and library browser for Linux that emphasizes smooth, continuous browsing experiences with album artwork at the forefront. Built with modern C++, Qt6, and QML, it combines high performance with an engaging visual interface. 
 
-![mtoc Music Player](resources/icons/mtoc-icon-256.png)
+![mtoc Music Player](resources/banner/mtoc-banner.png)
 
 ## Features
 
@@ -114,6 +114,7 @@ This project is licensed under the GPL v3 License - see the LICENSE file for det
 ## Contact
 
 Project Link: [https://github.com/asa-degroff/mtoc](https://github.com/asa-degroff/mtoc)
+email: asa@3fz.org
 
 ---
 
