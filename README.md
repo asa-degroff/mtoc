@@ -6,10 +6,11 @@ mtoc is a music player and library browser for Linux that emphasizes smooth, con
 
 ## Features
 
-### 🎨 Visual Album Browsing
+### 🎨 Album Browsing
 - **Carousel-style horizontal browser** with 3D perspective effects
 - Albums tilt and overlap smoothly as you browse
 - Uses efficient thumbnail artwork with intelligent caching
+- Responsive search finds artists, albums, and tracks
 
 ### 🚀 High Performance
 - Hardware-accelerated rendering using OpenGL/Qt RHI
@@ -64,13 +65,6 @@ cmake --build . --target install
 
 On first launch, mtoc will feature an empty library. Click "Edit Library" and add the folder containing your music. mtoc will then scan and index your music collection, extracting metadata and album artwork.
 
-### Navigation
-
-- **Mouse/Touch**: The carousel and all scrollable lists support both click + drag and mouse wheel scrolling
-- **Keyboard**: Arrow keys to navigate, Enter to play
-- **Media Keys**: Standard play/pause, previous/next keys work system-wide
-- **Search**: The search bar quickly brings up artists, albums, and tracks
-
 ### Library Management
 
 Access the library editor through the settings to:
@@ -78,6 +72,9 @@ Access the library editor through the settings to:
 - Trigger library rescans
 - Clear the library when needed
 Rescan the library after adding, removing, or editing the files in your chosen directory to have the current versions populate the library. 
+
+### Usage Tips
+- mtoc works best with music that contains embedded artwork and is tagged by album artist. In this absence of the album artist tag, the artist tag will be used, potentially resulting in albums being broken up. 
 
 ## Architecture
 
@@ -120,14 +117,16 @@ email: asa@3fz.org
 
 ---
 
-*mtoc - modern visual music library*
+*mtoc - visual music library*
 
 ## Roadmap
 
 ### 1.x
 - Touchscreen, small screen, and Steam Deck controller optimization
+- Keybaord navigation optimization
 - Additional list sort options
 - M3U playlist support including playback and editing
+- Settings window with additional options
 
 ### >= 2.0
 - Metadata editor

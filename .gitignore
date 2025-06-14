@@ -9,3 +9,5 @@ vgcore.*
 repo
 mtoc.flatpak
 mtoc.flatpak.*
+.vscode
+.claude

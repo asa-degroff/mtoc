@@ -31,6 +31,7 @@ Item {
     property bool isSearching: false
     property string previousExpandedState: ""  // Store expanded state before search
     
+    // TODO: fix keybaord navigation
     // Navigation state for keyboard controls
     property string navigationMode: "none"  // "none", "artist", "album", "track"
     property int selectedArtistIndex: -1
