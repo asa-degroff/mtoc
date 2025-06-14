@@ -52,22 +52,27 @@ mtoc is a music player and library browser for Linux that emphasizes smooth, con
 #### Build Instructions
 
 ```bash
-# Clone the repository
-git clone https://github.com/asa-degroff/mtoc.git
-cd mtoc
+  # Install dependencies (example for Ubuntu/Debian)
+  sudo apt install qt6-base-dev qt6-multimedia-dev qt6-declarative-dev \
+                   libtag1-dev libgstreamer1.0-dev pkg-config cmake
 
-# Create build directory
-mkdir build && cd build
+  # Clone and build
+  git clone https://github.com/asa-degroff/mtoc.git
+  cd mtoc
+  mkdir build && cd build
+  cmake ..
+  cmake --build .
 
-# Configure
-cmake ..
+  # Install system-wide (requires sudo)
+  sudo cmake --build . --target install
 
-# Build and install
-cmake --build . --target install
+  # Run
+  mtoc_app  # Now in system PATH
 
-# Run
-./mtoc_app 
-# or run from your desktop environment's app launcher
+  # Or for local testing without install:
+  # Run directly from build directory
+  ./mtoc_app
+
 ```
 
 ## Usage
