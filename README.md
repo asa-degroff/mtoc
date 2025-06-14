@@ -42,7 +42,7 @@ mtoc is a music player and library browser for Linux that emphasizes smooth, con
 ## Getting Started
 
 #### Dependencies
-- Qt6 (Core, Quick, Qml, Multimedia, DBus, Concurrent, Widgets, Sql)
+- Qt6 >= 6.2 (Core, Quick, Qml, Multimedia, DBus, Concurrent, Widgets, Sql)
 - CMake >= 3.16
 - TagLib >= 2.0
 - GStreamer >= 1.0
@@ -52,27 +52,29 @@ mtoc is a music player and library browser for Linux that emphasizes smooth, con
 #### Build Instructions
 
 ```bash
-  # Install dependencies (example for Ubuntu/Debian)
-  sudo apt install qt6-base-dev qt6-multimedia-dev qt6-declarative-dev \
-                   libtag1-dev libgstreamer1.0-dev pkg-config cmake
+# Install dependencies (example for Ubuntu/Debian)
+sudo apt install qt6-base-dev qt6-multimedia-dev qt6-declarative-dev \
+                 libtag1-dev libgstreamer1.0-dev pkg-config cmake
 
-  # Clone and build
-  git clone https://github.com/asa-degroff/mtoc.git
-  cd mtoc
-  mkdir build && cd build
-  cmake ..
-  cmake --build .
+# Clone the repository
+git clone https://github.com/asa-degroff/mtoc.git
+cd mtoc
 
-  # Install system-wide (requires sudo)
-  sudo cmake --build . --target install
+# Create build directory
+mkdir build && cd build
 
-  # Run
-  mtoc_app  # Now in system PATH
+# Configure
+cmake ..
 
-  # Or for local testing without install:
-  # Run directly from build directory
-  ./mtoc_app
+# Build
+cmake --build .
 
+# Run locally (without installation)
+./mtoc_app
+
+# Or install system-wide (optional)
+sudo cmake --build . --target install
+mtoc_app  # Now available in system PATH
 ```
 
 ## Usage

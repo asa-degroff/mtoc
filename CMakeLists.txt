@@ -7,6 +7,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+include(GNUInstallDirs)
+
 # Enable qDebug output even in release builds
 add_definitions(-DQT_MESSAGELOGCONTEXT -DQT_DEBUG)
 
@@ -19,9 +21,11 @@ pkg_check_modules(TAGLIB REQUIRED taglib)
 # Use pkg-config for GStreamer
 pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
 
-# Set Qt policies to suppress warnings and define behavior
-qt_policy(SET QTP0001 OLD) # Keep qrc:/ as the base for module resources unless overridden by URI
-qt_policy(SET QTP0004 OLD) # Do not require qmldir for subdirs not acting as modules
+# Set Qt policies to suppress warnings and define behavior (Qt 6.5+)
+if(Qt6_VERSION VERSION_GREATER_EQUAL "6.5.0")
+    qt_policy(SET QTP0001 OLD) # Keep qrc:/ as the base for module resources unless overridden by URI
+    qt_policy(SET QTP0004 OLD) # Do not require qmldir for subdirs not acting as modules
+endif()
 
 set(CMAKE_AUTOUIC ON)
 
