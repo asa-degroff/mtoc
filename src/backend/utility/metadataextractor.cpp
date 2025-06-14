@@ -14,6 +14,8 @@
 #include <taglib/mp4coverart.h>
 #include <taglib/flacfile.h>
 #include <taglib/flacpicture.h>
+#include <taglib/vorbisfile.h>
+#include <taglib/xiphcomment.h>
 
 namespace Mtoc {
 
@@ -359,6 +361,184 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             
             // Return here since we've handled everything MP4-specific
             // qDebug() << "MetadataExtractor: Final MP4 meta.albumArtist:" << meta.albumArtist;
+            return meta;
+        }
+    }
+    
+    // Special case for OGG Vorbis/Opus files
+    if (fileExt == "ogg" || fileExt == "oga" || fileExt == "opus") {
+        qDebug() << "MetadataExtractor: Using OGG-specific handling for" << filePath;
+        TagLib::Vorbis::File vorbisFile(filePathCStr);
+        
+        if (vorbisFile.isValid()) {
+            qDebug() << "MetadataExtractor: OGG file is valid";
+            // Get basic metadata from the tag
+            if (vorbisFile.tag()) {
+                TagLib::Tag* tag = vorbisFile.tag();
+                meta.title = QString::fromStdString(tag->title().to8Bit(true));
+                meta.artist = QString::fromStdString(tag->artist().to8Bit(true));
+                meta.album = QString::fromStdString(tag->album().to8Bit(true));
+                meta.genre = QString::fromStdString(tag->genre().to8Bit(true));
+                meta.year = tag->year();
+                meta.trackNumber = tag->track();
+            }
+            
+            // Get additional metadata from Xiph comment
+            TagLib::Ogg::XiphComment* xiphComment = vorbisFile.tag();
+            if (xiphComment) {
+                // Get properties for album artist and disc number
+                TagLib::PropertyMap properties = xiphComment->properties();
+                
+                // Album Artist
+                try {
+                    TagLib::StringList albumArtistList = properties.value("ALBUMARTIST");
+                    if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
+                        meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                    }
+                } catch (const std::exception& e) {
+                    qDebug() << "MetadataExtractor: Exception accessing ALBUMARTIST property:" << e.what();
+                } catch (...) {
+                    qDebug() << "MetadataExtractor: Failed to access ALBUMARTIST property";
+                }
+                
+                // Disc Number
+                try {
+                    TagLib::StringList discList = properties.value("DISCNUMBER");
+                    if (!discList.isEmpty() && discList.size() > 0) {
+                        QString discStr = QString::fromStdString(discList.front().to8Bit(true));
+                        bool ok;
+                        meta.discNumber = discStr.split('/').first().toInt(&ok);
+                        if (!ok) meta.discNumber = 0;
+                    }
+                } catch (const std::exception& e) {
+                    qDebug() << "MetadataExtractor: Exception accessing DISCNUMBER property:" << e.what();
+                } catch (...) {
+                    qDebug() << "MetadataExtractor: Failed to access DISCNUMBER property";
+                }
+                
+                // Extract album art from Xiph comment
+                if (extractAlbumArt) {
+                    qDebug() << "MetadataExtractor: Attempting to extract album art from OGG file";
+                    TagLib::List<TagLib::FLAC::Picture*> pictureList = xiphComment->pictureList();
+                    qDebug() << "MetadataExtractor: OGG picture list size:" << pictureList.size();
+                    if (!pictureList.isEmpty()) {
+                        // Get the first picture
+                        TagLib::FLAC::Picture* picture = pictureList.front();
+                        if (picture) {
+                            TagLib::ByteVector pictureData = picture->data();
+                            qDebug() << "MetadataExtractor: OGG picture data size:" << pictureData.size();
+                            if (!pictureData.isEmpty()) {
+                                meta.albumArtData = QByteArray(pictureData.data(), pictureData.size());
+                                
+                                // Get MIME type
+                                TagLib::String mimeType = picture->mimeType();
+                                meta.albumArtMimeType = QString::fromStdString(mimeType.to8Bit(true));
+                                qDebug() << "MetadataExtractor: OGG album art extracted, MIME type:" << meta.albumArtMimeType;
+                            }
+                        }
+                    } else {
+                        qDebug() << "MetadataExtractor: No pictures found in OGG file";
+                    }
+                }
+            }
+            
+            // Get audio properties
+            if (vorbisFile.audioProperties()) {
+                meta.duration = vorbisFile.audioProperties()->lengthInSeconds();
+            }
+            
+            // If album artist is still empty, fallback to artist
+            if (meta.albumArtist.isEmpty()) {
+                meta.albumArtist = meta.artist;
+            }
+            
+            qDebug() << "MetadataExtractor: Returning OGG metadata, has album art:" << !meta.albumArtData.isEmpty();
+            return meta;
+        } else {
+            qDebug() << "MetadataExtractor: OGG file is NOT valid";
+        }
+    }
+    
+    // Special case for FLAC files
+    if (fileExt == "flac") {
+        // qDebug() << "MetadataExtractor: Using FLAC-specific handling for" << filePath;
+        TagLib::FLAC::File flacFile(filePathCStr);
+        
+        if (flacFile.isValid()) {
+            // Get basic metadata from the tag
+            if (flacFile.tag()) {
+                TagLib::Tag* tag = flacFile.tag();
+                meta.title = QString::fromStdString(tag->title().to8Bit(true));
+                meta.artist = QString::fromStdString(tag->artist().to8Bit(true));
+                meta.album = QString::fromStdString(tag->album().to8Bit(true));
+                meta.genre = QString::fromStdString(tag->genre().to8Bit(true));
+                meta.year = tag->year();
+                meta.trackNumber = tag->track();
+            }
+            
+            // Get additional metadata from Xiph comment
+            TagLib::Ogg::XiphComment* xiphComment = flacFile.xiphComment();
+            if (xiphComment) {
+                // Get properties for album artist and disc number
+                TagLib::PropertyMap properties = xiphComment->properties();
+                
+                // Album Artist
+                try {
+                    TagLib::StringList albumArtistList = properties.value("ALBUMARTIST");
+                    if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
+                        meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                    }
+                } catch (const std::exception& e) {
+                    qDebug() << "MetadataExtractor: Exception accessing ALBUMARTIST property:" << e.what();
+                } catch (...) {
+                    qDebug() << "MetadataExtractor: Failed to access ALBUMARTIST property";
+                }
+                
+                // Disc Number
+                try {
+                    TagLib::StringList discList = properties.value("DISCNUMBER");
+                    if (!discList.isEmpty() && discList.size() > 0) {
+                        QString discStr = QString::fromStdString(discList.front().to8Bit(true));
+                        bool ok;
+                        meta.discNumber = discStr.split('/').first().toInt(&ok);
+                        if (!ok) meta.discNumber = 0;
+                    }
+                } catch (const std::exception& e) {
+                    qDebug() << "MetadataExtractor: Exception accessing DISCNUMBER property:" << e.what();
+                } catch (...) {
+                    qDebug() << "MetadataExtractor: Failed to access DISCNUMBER property";
+                }
+                
+                // Extract album art from picture blocks
+                if (extractAlbumArt) {
+                    TagLib::List<TagLib::FLAC::Picture*> pictureList = flacFile.pictureList();
+                    if (!pictureList.isEmpty()) {
+                        // Get the first picture
+                        TagLib::FLAC::Picture* picture = pictureList.front();
+                        if (picture) {
+                            TagLib::ByteVector pictureData = picture->data();
+                            if (!pictureData.isEmpty()) {
+                                meta.albumArtData = QByteArray(pictureData.data(), pictureData.size());
+                                
+                                // Get MIME type
+                                TagLib::String mimeType = picture->mimeType();
+                                meta.albumArtMimeType = QString::fromStdString(mimeType.to8Bit(true));
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Get audio properties
+            if (flacFile.audioProperties()) {
+                meta.duration = flacFile.audioProperties()->lengthInSeconds();
+            }
+            
+            // If album artist is still empty, fallback to artist
+            if (meta.albumArtist.isEmpty()) {
+                meta.albumArtist = meta.artist;
+            }
+            
             return meta;
         }
     }

@@ -1,6 +1,6 @@
-# mtoc - Modern Visually Rich Music Player
+# mtoc - Visually Rich Music Player
 
-mtoc is a music player and library browser for Linux that emphasizes smooth, continuous browsing experiences with album artwork at the forefront. Built with modern C++, Qt6, and QML, it combines high performance with an engaging visual interface.
+mtoc is a music player and library browser for Linux that emphasizes smooth, continuous browsing experiences with album artwork at the forefront. Built with modern C++, Qt6, and QML, it combines high performance with an engaging visual interface. 
 
 ![mtoc Music Player](resources/icons/mtoc-icon-256.png)
 
@@ -9,57 +9,33 @@ mtoc is a music player and library browser for Linux that emphasizes smooth, con
 ### 🎨 Visual Album Browsing
 - **Carousel-style horizontal browser** with 3D perspective effects
 - Albums tilt and overlap smoothly as you browse
-- High-resolution album artwork support with intelligent caching
-- Reflection effects and gradients enhance the visual experience
+- Uses efficient thumbnail artwork with intelligent caching
 
 ### 🚀 High Performance
 - Hardware-accelerated rendering using OpenGL/Qt RHI
 - Efficient memory management with QML delegates
 - Asynchronous metadata extraction and image loading
-- Optimized for smooth scrolling even with thousands of albums
+- Optimized for smooth scrolling and searching even with thousands of albums
 
 ### 📚 Library Management
 - Automatic library scanning
-- Support for MP3, MP4/M4A, FLAC, OGG/Vorbis formats
+- Supported formats: MP3, MP4/M4A (including iTunes-encoded AAC and ALAC), FLAC, OGG Vorbis, Opus
 - Metadata extraction using TagLib 2.0
-- Purpose-built metadata extraction for iTunes-encoded files
 - Smart organization by artist, album, and year
 - Embedded album artwork extraction
 - SQLite database for fast library access
 
 ### 🎵 Playback Features
-- GStreamer-based audio engine for reliable playback
+- GStreamer-based audio engine
 - Gapless audio support for seamless album listening
 - Standard controls: play/pause, previous/next, seek
 
 ### 🖥️ Desktop Integration
 - Full MPRIS support for media keys and system controls
-- Works with GNOME, KDE, and other desktop environments
-- Desktop notifications for track changes
-- Flatpak packaging for easy installation
 
 ## Installation
 
-### Flatpak (Coming Soon)
-
-```bash
-# Install from Flathub (when available)
-flatpak install flathub org._3fz.mtoc
-
-# Or build locally
-./build-flatpak.sh
-flatpak install org._3fz.mtoc.flatpak
-```
-
-### Building from Source
-
 #### Dependencies
-
-- Qt6 (>= 6.2) with modules: Core, Quick, QML, Multimedia, DBus, Concurrent, SQL
-- CMake (>= 3.16)
-- TagLib (>= 2.0)
-- GStreamer 1.0 with base plugins
-- C++17 compatible compiler
 
 #### Build Instructions
 
@@ -74,11 +50,11 @@ mkdir build && cd build
 # Configure
 cmake ..
 
-# Build
-cmake --build .
+# Build and install
+cmake --build . --target install
 
 # Run
-./mtoc_app
+./mtoc_app #or run from your desktop environment's app launcher
 ```
 
 ## Usage
@@ -89,16 +65,18 @@ On first launch, mtoc will feature an empty library. Click "Edit Library" and ad
 
 ### Navigation
 
-- **Mouse/Touch**: Click and drag to browse albums horizontally
+- **Mouse/Touch**: The carousel and all scrollable lists support both click + drag and mouse wheel scrolling
 - **Keyboard**: Arrow keys to navigate, Enter to play
 - **Media Keys**: Standard play/pause, previous/next keys work system-wide
+- **Search**: The search bar quickly brings up artists, albums, and tracks
 
 ### Library Management
 
 Access the library editor through the settings to:
 - Add or remove music directories
-- Trigger manual library rescans
+- Trigger library rescans
 - Clear the library when needed
+Rescan the library after adding, removing, or editing the files in your chosen directory to have the current versions populate the library. 
 
 ## Architecture
 
@@ -121,7 +99,7 @@ mtoc uses a modern, modular architecture:
 
 For the best experience:
 
-1. **GPU Acceleration**: Ensure your GPU drivers are properly installed
+**GPU Acceleration**: Ensure your GPU drivers are properly installed
 
 ## License
 
@@ -144,7 +122,12 @@ Project Link: [https://github.com/asa-degroff/mtoc](https://github.com/asa-degro
 ## Roadmap
 
 ### 1.x
-- Steamdeck optimization
+- Touchscreen, small screen, and Steam Deck controller optimization
+- Additional list sort options
+- M3U playlist support including playback and editing
 
-### 2.x
+### 2.0 and beyond
 - Metadata editor
+- Integrated CD ripper
+- Integrated sync utility
+- Rich podcast library with RSS support, streaming, and downloading
