@@ -121,6 +121,7 @@ void MediaPlayer::next()
         m_currentQueueIndex++;
         Mtoc::Track* nextTrack = m_playbackQueue[m_currentQueueIndex];
         playTrack(nextTrack);
+        emit playbackQueueChanged();
     }
 }
 
@@ -132,6 +133,7 @@ void MediaPlayer::previous()
         m_currentQueueIndex--;
         Mtoc::Track* prevTrack = m_playbackQueue[m_currentQueueIndex];
         playTrack(prevTrack);
+        emit playbackQueueChanged();
     } else {
         seek(0);
     }

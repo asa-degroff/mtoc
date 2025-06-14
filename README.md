@@ -1,4 +1,4 @@
-# mtoc - Visually Rich Music Player
+# mtoc - Visual Music Library
 
 mtoc is a music player and library browser for Linux that emphasizes smooth, continuous browsing experiences with album artwork at the forefront. Built with modern C++, Qt6, and QML, it combines high performance with an engaging visual interface. 
 
@@ -54,7 +54,8 @@ cmake ..
 cmake --build . --target install
 
 # Run
-./mtoc_app #or run from your desktop environment's app launcher
+./mtoc_app 
+# or run from your desktop environment's app launcher
 ```
 
 ## Usage
@@ -114,6 +115,7 @@ This project is licensed under the GPL v3 License - see the LICENSE file for det
 ## Contact
 
 Project Link: [https://github.com/asa-degroff/mtoc](https://github.com/asa-degroff/mtoc)
+
 email: asa@3fz.org
 
 ---
@@ -127,8 +129,8 @@ email: asa@3fz.org
 - Additional list sort options
 - M3U playlist support including playback and editing
 
-### 2.0 and beyond
+### >= 2.0
 - Metadata editor
 - Integrated CD ripper
-- Integrated sync utility
+- Integrated library sync utility
 - Rich podcast library with RSS support, streaming, and downloading
