@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        1.0.5
+Version:        1.0.4
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
