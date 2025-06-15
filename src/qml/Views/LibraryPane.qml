@@ -217,8 +217,8 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 16
-        spacing: 16
+        anchors.margins: 8
+        spacing: 8
         
         // Header section - minimal design
         Item {
@@ -229,7 +229,6 @@ Item {
                 anchors.fill: parent
                 anchors.leftMargin: 4
                 anchors.rightMargin: 4
-                spacing: 12
                 
                 Label {
                     text: "Music Library"
@@ -440,8 +439,9 @@ Item {
             // Left Pane: Artist List
             Rectangle {
                 id: leftPaneContainer
-                SplitView.preferredWidth: 450  // Width to fit 3 album covers
+                SplitView.preferredWidth: parent.width * 0.51  // 51% of parent width
                 SplitView.minimumWidth: 280  // Minimum for 2 album covers
+                SplitView.maximumWidth: 600  // Maximum width to prevent it from getting too wide
                 Layout.fillHeight: true
                 color: Qt.rgba(0.1, 0.1, 0.1, 0.25)  // Semi-transparent dark with smoky tint
                 radius: 8
@@ -948,7 +948,7 @@ Item {
             // Right Pane: Track List
             Rectangle {
                 id: rightPane
-                SplitView.minimumWidth: 160  // Reduced from 250 to fit better in smaller windows
+                SplitView.minimumWidth: 250  // Ensure enough space for track information
                 SplitView.fillWidth: true
                 color: Qt.rgba(0.1, 0.1, 0.1, 0.25)  // Semi-transparent dark with smoky tint
                 radius: 8
