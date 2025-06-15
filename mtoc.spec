@@ -51,6 +51,7 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %{_datadir}/icons/hicolor/*/apps/%{name}.*
 %{_datadir}/pixmaps/%{name}.png
 
-%changelog* Sat Jun 14 2025 Asa DeGroff <asa@3fz.org>
-- new package built with tito
+%changelog
+* Sat Jun 14 2025 Asa DeGroff <asa@3fz.org> - 1.0-1
+- Initial package built with tito
 
