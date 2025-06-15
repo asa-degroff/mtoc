@@ -220,33 +220,20 @@ Item {
         anchors.margins: 16
         spacing: 16
         
-        // Header section
-        Rectangle {
+        // Header section - minimal design
+        Item {
             Layout.fillWidth: true
-            height: 60
-            color: Qt.rgba(0.1, 0.1, 0.1, 0.38)  // Semi-transparent dark
-            radius: 8
-            border.width: 1
-            border.color: Qt.rgba(1, 1, 1, 0.08)
-            
-            // Inner shadow for depth
-            Rectangle {
-                anchors.fill: parent
-                anchors.margins: 1
-                radius: parent.radius - 1
-                color: "transparent"
-                border.width: 1
-                border.color: Qt.rgba(0, 0, 0, 0.25)
-            }
+            height: 24  // Reduced height
             
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: 8
+                anchors.leftMargin: 4
+                anchors.rightMargin: 4
                 spacing: 12
                 
                 Label {
                     text: "Music Library"
-                    font.pixelSize: 20
+                    font.pixelSize: 18  // Slightly smaller
                     font.bold: true
                     color: "white"
                 }
@@ -255,13 +242,13 @@ Item {
                 
                 Button {
                     text: "Edit Library"
-                    implicitHeight: 40
-                    implicitWidth: 120  // Proportional width for good spacing
+                    implicitHeight: 28  // Reduced button height
+                    implicitWidth: 100  // Smaller width
                     
                     background: Rectangle {
                         id: buttonRect
                         color: Qt.rgba(1, 1, 1, 0.03)  // Subtle background like artist items
-                        radius: 6
+                        radius: 4  // Smaller radius
                         
                         //light border
                         border.width: 1
@@ -274,7 +261,7 @@ Item {
                         color: "white"
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
-                        font.pixelSize: 14
+                        font.pixelSize: 12  // Smaller font
                     }
                     
                     // Add mouse area for hover effects
