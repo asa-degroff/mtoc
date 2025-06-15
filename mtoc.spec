@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        1.0.2
+Version:        1.0.3
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -52,6 +52,9 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %{_datadir}/pixmaps/%{name}.png
 
 %changelog* Sat Jun 14 2025 Asa DeGroff <asa@3fz.org>
+* Sat Jun 14 2025 Asa DeGroff <asa@3fz.org> 1.0.3-1
+- 
+
 * Sat Jun 14 2025 Asa DeGroff <asa@3fz.org> 1.0.2-1
 - 
 
