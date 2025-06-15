@@ -53,8 +53,3 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 
 %changelog* Sat Jun 14 2025 Asa DeGroff <asa@3fz.org>
 * Sat Jun 14 2025 Asa DeGroff <asa@3fz.org> 1.0.0-1
-- fixed spec formatting (asa@3fz.org)
-- fixed spec formatting (asa@3fz.org)
-
-- fixed spec formatting (asa@3fz.org)
-
