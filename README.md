@@ -41,6 +41,8 @@ mtoc is a music player and library browser for Linux that emphasizes smooth, con
 
 ## Getting Started
 
+Note: mtoc is currently developed and tested on Fedora 42. Support for other distributions is experiemental and may require additional configuration not detailed here.
+
 #### Dependencies
 - Qt6 >= 6.2 (Core, Quick, Qml, Multimedia, DBus, Concurrent, Widgets, Sql)
 - CMake >= 3.16
@@ -63,7 +65,7 @@ sudo dnf install qt6-qtbase-devel qt6-qtmultimedia-devel qt6-qtdeclarative-devel
                  taglib-devel gstreamer1-devel pkgconfig cmake gcc-c++
 
 # Arch Linux/SteamOS:
-sudo pacman -S qt6-base qt6-multimedia qt6-declarative \
+sudo pacman -S qt6-base qt6-multimedia qt6-declarative qt6-svg qt6-tools \
                taglib gstreamer cmake pkgconf base-devel
 
 # Clone the repository
@@ -86,8 +88,6 @@ cmake --build .
 sudo cmake --build . --target install
 mtoc_app  # Now available in system PATH
 ```
-
-**Note for older distributions**: Ubuntu 22.04 ships with Qt 6.2, which is supported. For Ubuntu 20.04 or older, you may need to add the official Qt PPA or build Qt6 from source.
 
 ## Usage
 

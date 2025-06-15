@@ -1,10 +1,10 @@
 Name:           mtoc
-Version:        0.2
+Version:        1.0
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
 License:        GPL-3.0
-URL:            https://github.com/yourusername/mtoc
+URL:            https://github.com/asa-degroff/mtoc
 Source0:        %{name}-%{version}.tar.gz
 
 BuildRequires:  cmake >= 3.16
@@ -28,11 +28,7 @@ Requires:       gstreamer1-plugins-base
 Requires:       gstreamer1-plugins-good
 
 %description
-mtoc is a music player and library browsing application built with Qt6 and QML.
-It emphasizes visual richness by featuring album art prominently while
-maintaining high performance. The app provides a smooth and continuous
-browsing experience with TagLib for metadata extraction and SQLite for
-database management.
+mtoc is a music player and library browser for Linux that emphasizes smooth, continuous browsing experiences with album artwork at the forefront.
 
 %prep
 %autosetup -n %{name}-%{version}
@@ -56,8 +52,3 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %{_datadir}/pixmaps/%{name}.png
 
 %changelog
-* Sat Jun 14 2025 Asa DeGroff <asa@3fz.org> 0.2-1
-- new package built with tito
-
-* Sun Jun 15 2025 Your Name <your.email@example.com> - 0.1-1
-- Initial RPM release
