@@ -61,8 +61,8 @@ Item {
     
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 40
-        spacing: 20
+        anchors.margins: Math.max(16, parent.height * 0.04)  // Dynamic margins: 4% of height, min 16px
+        spacing: Math.max(8, parent.height * 0.02)  // Dynamic spacing: 2% of height, min 8px
         
         // Album art
         Item {
@@ -107,8 +107,8 @@ Item {
         // Track information
         ColumnLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 80
-            spacing: 4
+            Layout.preferredHeight: Math.max(60, parent.height * 0.08)  // Dynamic height: 8% of parent, min 60px
+            spacing: 2
             
             // Track title (clickable - jumps to album)
             Item {
@@ -225,7 +225,7 @@ Item {
         // Playback controls
         PlaybackControls {
             Layout.fillWidth: true
-            Layout.preferredHeight: 120
+            Layout.preferredHeight: Math.max(80, parent.height * 0.06)  // Dynamic height: 12% of parent, min 80px
             
             onPlayPauseClicked: MediaPlayer.togglePlayPause()
             onPreviousClicked: MediaPlayer.previous()
@@ -236,7 +236,7 @@ Item {
         }
         
         Item {
-            Layout.preferredHeight: 20
+            Layout.preferredHeight: Math.max(24, parent.height * 0.01)  // Dynamic bottom spacing
         }
     }
 }
