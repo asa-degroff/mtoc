@@ -30,20 +30,20 @@
   </defs>
   
   <!-- Pause Button -->
-  <rect x="8" y="5" width="8" height="30" rx="2" ry="2"
+  <rect x="13" y="10" width="8" height="30" rx="2" ry="2"
         fill="url(#glassGradient)" 
         stroke="#b0b0b0" 
         stroke-width="1"
         filter="url(#dropShadow)"/>
-  <rect x="24" y="5" width="8" height="30" rx="2" ry="2"
+  <rect x="29" y="10" width="8" height="30" rx="2" ry="2"
         fill="url(#glassGradient)" 
         stroke="#b0b0b0" 
         stroke-width="1"
         filter="url(#dropShadow)"/>
-  <rect x="10" y="7" width="4" height="10" rx="1" ry="1"
+  <rect x="15" y="12" width="4" height="10" rx="1" ry="1"
         fill="url(#highlight)" 
         opacity="0.5"/>
-  <rect x="26" y="7" width="4" height="10" rx="1" ry="1"
+  <rect x="31" y="12" width="4" height="10" rx="1" ry="1"
         fill="url(#highlight)" 
         opacity="0.5"/>
 </svg>

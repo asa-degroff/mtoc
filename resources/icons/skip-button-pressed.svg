@@ -28,12 +28,12 @@
   </defs>
   
   <!-- Next/Skip Button - Pressed -->
-  <path d="M 5 5 L 5 35 L 30 20 Z M 32 5 L 35 5 L 35 35 L 32 35 Z" 
+  <path d="M 10 10 L 10 40 L 35 25 Z M 37 10 L 40 10 L 40 40 L 37 40 Z" 
         fill="url(#glassGradientPressed)" 
         stroke="#909090" 
         stroke-width="1"
         filter="url(#dropShadowPressed)"/>
-  <path d="M 5 5 L 5 35 L 30 20 Z M 32 5 L 35 5 L 35 35 L 32 35 Z" 
+  <path d="M 10 10 L 10 40 L 35 25 Z M 37 10 L 40 10 L 40 40 L 37 40 Z" 
         fill="url(#innerShadow)" 
         opacity="0.3"/>
 </svg>

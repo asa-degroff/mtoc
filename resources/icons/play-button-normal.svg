@@ -30,12 +30,12 @@
   </defs>
   
   <!-- Play Button -->
-  <path d="M 10 5 L 35 20 L 10 35 Z" 
+  <path d="M 12.5 10 L 37.5 25 L 12.5 40 Z" 
         fill="url(#glassGradient)" 
         stroke="#b0b0b0" 
         stroke-width="1"
         filter="url(#dropShadow)"/>
-  <path d="M 12 8 L 31 20 L 12 32 Z" 
+  <path d="M 14.5 13 L 33.5 25 L 14.5 37 Z" 
         fill="url(#highlight)" 
         opacity="0.5"/>
 </svg>
