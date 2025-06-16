@@ -28,12 +28,12 @@
   </defs>
   
   <!-- Play Button - Pressed -->
-  <path d="M 10 5 L 35 20 L 10 35 Z" 
+  <path d="M 12.5 10 L 37.5 25 L 12.5 40 Z" 
         fill="url(#glassGradientPressed)" 
         stroke="#909090" 
         stroke-width="1"
         filter="url(#dropShadowPressed)"/>
-  <path d="M 10 5 L 35 20 L 10 35 Z" 
+  <path d="M 12.5 10 L 37.5 25 L 12.5 40 Z" 
         fill="url(#innerShadow)" 
         opacity="0.3"/>
 </svg>

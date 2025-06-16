@@ -69,13 +69,15 @@ Item {
     
     ColumnLayout {
         anchors.fill: parent
-        spacing: 12
+        spacing: Math.max(8, parent.height * 0.1)  // Dynamic spacing: 10% of height, min 8px
         
         // Playback buttons
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 80
-            spacing: 20
+            Layout.fillHeight: true
+            Layout.leftMargin: 0
+            Layout.rightMargin: 0
+            spacing: Math.max(12, parent.width * 0.02)  // Dynamic spacing: 2% of width, min 12px
             
             Item { Layout.fillWidth: true }
             
@@ -118,14 +120,16 @@ Item {
         // Progress bar with time labels
         RowLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 20
-            Layout.rightMargin: 20
-            spacing: 12
+            Layout.leftMargin: 0
+            Layout.rightMargin: 0
+            spacing: Math.max(4, parent.width * 0.01)  // Dynamic spacing: 1% of width, min 4px
             
             Label {
                 text: formatTime(progressSlider.value)
                 color: "#b0b0b0"
                 font.pixelSize: 14
+                Layout.preferredWidth: 45  // Fixed width for consistent alignment
+                horizontalAlignment: Text.AlignRight
             }
             
             Slider {
@@ -243,6 +247,8 @@ Item {
                 text: formatTime(MediaPlayer.duration)
                 color: "#b0b0b0"
                 font.pixelSize: 14
+                Layout.preferredWidth: 45  // Fixed width for consistent alignment
+                horizontalAlignment: Text.AlignLeft
             }
         }
     }

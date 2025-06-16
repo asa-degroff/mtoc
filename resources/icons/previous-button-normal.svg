@@ -30,12 +30,12 @@
   </defs>
   
   <!-- Previous Button -->
-  <path d="M 5 5 L 5 35 L 8 35 L 8 5 Z M 10 20 L 35 5 L 35 35 Z" 
+  <path d="M 10 10 L 10 40 L 13 40 L 13 10 Z M 15 25 L 40 10 L 40 40 Z" 
         fill="url(#glassGradient)" 
         stroke="#b0b0b0" 
         stroke-width="1"
         filter="url(#dropShadow)"/>
-  <path d="M 6 8 L 6 15 L 7 15 L 7 8 Z M 12 20 L 31 9 L 31 15 Z" 
+  <path d="M 11 13 L 11 20 L 12 20 L 12 13 Z M 17 25 L 36 14 L 36 20 Z" 
         fill="url(#highlight)" 
         opacity="0.5"/>
 </svg>

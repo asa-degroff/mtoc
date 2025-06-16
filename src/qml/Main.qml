@@ -8,8 +8,8 @@ import "Components/"
 
 ApplicationWindow {
     id: window
-    width: 1920
-    height: 1200
+    width: 1280
+    height: 720
     minimumWidth: 800  // Set a reasonable minimum to fit all panes
     minimumHeight: 500
     visible: true
@@ -106,42 +106,42 @@ ApplicationWindow {
         interval: 100
         running: true
         repeat: false
-        onTriggered: {
-            console.log("=== RENDERING DEBUG INFO ===");
-            var renderInfo = window.rendererInterface;
-            if (renderInfo) {
-                console.log("Graphics API Type:", renderInfo.graphicsApi);
-                console.log("Major Version:", renderInfo.majorVersion);
-                console.log("Minor Version:", renderInfo.minorVersion);
+        // onTriggered: {
+        //     console.log("=== RENDERING DEBUG INFO ===");
+        //     var renderInfo = window.rendererInterface;
+        //     if (renderInfo) {
+        //         console.log("Graphics API Type:", renderInfo.graphicsApi);
+        //         console.log("Major Version:", renderInfo.majorVersion);
+        //         console.log("Minor Version:", renderInfo.minorVersion);
                 
-                // Map GraphicsApi enum values
-                var apiName = "";
-                switch(renderInfo.graphicsApi) {
-                    case 0: apiName = "Unknown"; break;
-                    case 1: apiName = "Software"; break;
-                    case 2: apiName = "OpenGL"; break;
-                    case 3: apiName = "Direct3D12"; break;
-                    case 4: apiName = "OpenVG"; break;
-                    case 5: apiName = "OpenGL ES"; break;
-                    case 6: apiName = "Vulkan"; break;
-                    case 7: apiName = "Metal"; break;
-                    case 8: apiName = "Null"; break;
-                    default: apiName = "Other"; break;
-                }
-                console.log("Graphics API Name:", apiName);
+        //         // Map GraphicsApi enum values
+        //         var apiName = "";
+        //         switch(renderInfo.graphicsApi) {
+        //             case 0: apiName = "Unknown"; break;
+        //             case 1: apiName = "Software"; break;
+        //             case 2: apiName = "OpenGL"; break;
+        //             case 3: apiName = "Direct3D12"; break;
+        //             case 4: apiName = "OpenVG"; break;
+        //             case 5: apiName = "OpenGL ES"; break;
+        //             case 6: apiName = "Vulkan"; break;
+        //             case 7: apiName = "Metal"; break;
+        //             case 8: apiName = "Null"; break;
+        //             default: apiName = "Other"; break;
+        //         }
+        //         console.log("Graphics API Name:", apiName);
                 
-                if (renderInfo.graphicsApi === 1) {
-                    console.warn("WARNING: Using software rendering! This will cause high CPU usage.");
-                    console.warn("Try running with: QSG_RHI_BACKEND=opengl ./build/mtoc_app");
-                    console.warn("Or use the provided run_mtoc.sh script");
-                } else if (renderInfo.graphicsApi === 2) {
-                    console.log("SUCCESS: Using hardware-accelerated OpenGL rendering");
-                }
-            } else {
-                console.log("rendererInterface not available");
-            }
-            console.log("===========================");
-        }
+        //         if (renderInfo.graphicsApi === 1) {
+        //             console.warn("WARNING: Using software rendering! This will cause high CPU usage.");
+        //             console.warn("Try running with: QSG_RHI_BACKEND=opengl ./build/mtoc_app");
+        //             console.warn("Or use the provided run_mtoc.sh script");
+        //         } else if (renderInfo.graphicsApi === 2) {
+        //             console.log("SUCCESS: Using hardware-accelerated OpenGL rendering");
+        //         }
+        //     } else {
+        //         console.log("rendererInterface not available");
+        //     }
+        //     console.log("===========================");
+        // }
     }
     
     // Initialize the application
