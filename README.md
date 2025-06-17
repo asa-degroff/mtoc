@@ -9,6 +9,7 @@ mtoc is a music player and library browser for Linux that emphasizes smooth, con
 ### 🎨 Album Browsing
 - **Carousel-style horizontal browser** with 3D perspective effects
 - Albums tilt and overlap smoothly as you browse
+- Mouse wheel, click + drag, and touchpad are all supported with smooth, intuitive tracking
 - Uses efficient thumbnail artwork with intelligent caching
 - Responsive search finds artists, albums, and tracks
 
@@ -51,7 +52,18 @@ Note: mtoc is currently developed and tested on Fedora 42. Support for other dis
 - pkg-config
 - C++17 compatible compiler
 
-#### Build Instructions
+#### Package Installation (Fedora 41+)
+
+```bash
+# Add the copr repository:
+sudo dnf copr enable 3fz-asa/mtoc
+
+# Install:
+sudo dnf install mtoc
+```
+
+
+#### Build From Source
 
 ```bash
 # Install dependencies
@@ -93,7 +105,8 @@ mtoc_app  # Now available in system PATH
 
 ### First Run
 
-On first launch, mtoc will feature an empty library. Click "Edit Library" and add the folder containing your music. mtoc will then scan and index your music collection, extracting metadata and album artwork.
+On first launch, mtoc will feature an empty library. Click "Edit Library" and add the folder containing your music. The default folder is ~/Music. You can add or remove any directories you want to scan. Press scan, and mtoc will then scan and index your music collection, extracting metadata and album artwork.
+
 
 ### Library Management
 
@@ -108,7 +121,7 @@ Access the library editor through the settings to:
 
 ## Architecture
 
-mtoc uses a modern, modular architecture:
+mtoc uses a modern, modular MVC architecture:
 
 - **Backend (C++)**
   - `LibraryManager`: Music collection scanning and organization
