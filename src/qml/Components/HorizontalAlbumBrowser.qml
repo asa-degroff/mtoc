@@ -109,6 +109,13 @@ Item {
         return index * itemWidth - centerOffset
     }
     
+    // Get the maximum allowed contentX value
+    function maxContentX() {
+        if (sortedAlbumIndices.length === 0) return 0
+        // The maximum contentX is when the last item is centered
+        return contentXForIndex(sortedAlbumIndices.length - 1)
+    }
+    
     // Find the index of the album closest to the center
     function nearestIndex() {
         var itemWidth = 220 + listView.spacing  // 55 effective width
@@ -186,11 +193,12 @@ Item {
                         root.scrollVelocity *= 0.95  // Damping factor
                         
                         // Clamp to bounds
+                        var maxX = maxContentX()
                         if (listView.contentX < 0) {
                             listView.contentX = 0
                             root.scrollVelocity = 0
-                        } else if (listView.contentX > listView.contentWidth - listView.width) {
-                            listView.contentX = listView.contentWidth - listView.width
+                        } else if (listView.contentX > maxX) {
+                            listView.contentX = maxX
                             root.scrollVelocity = 0
                         }
                     } else if (!root.isSnapping) {
@@ -336,7 +344,7 @@ Item {
                             var newContentX = listView.contentX - root.accumulatedDelta;
                             
                             // Clamp to bounds
-                            newContentX = Math.max(0, Math.min(listView.contentWidth - listView.width, newContentX));
+                            newContentX = Math.max(0, Math.min(maxContentX(), newContentX));
                             
                             // Apply the new position
                             listView.contentX = newContentX;
