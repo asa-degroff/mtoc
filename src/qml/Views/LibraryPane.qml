@@ -552,9 +552,18 @@ Item {
                     WheelHandler {
                         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
                         onWheel: function(event) {
-                            // Use a more moderate multiplier for better control
-                            var pixelDelta = event.pixelDelta.y || event.angleDelta.y / 4;
-                            artistsListView.flick(0, pixelDelta * 60); // Reduced from 400 for better control
+                            var pixelDelta = 0;
+                            
+                            // Different handling for touchpad vs mouse wheel
+                            if (event.pixelDelta.y !== 0) {
+                                // Touchpad - use pixelDelta with higher multiplier for faster scrolling
+                                pixelDelta = event.pixelDelta.y * 300; // Much higher sensitivity for touchpad
+                            } else {
+                                // Mouse wheel - use angleDelta with current multiplier
+                                pixelDelta = (event.angleDelta.y / 4) * 60; // Keep current behavior for mouse wheel
+                            }
+                            
+                            artistsListView.flick(0, pixelDelta);
                         }
                     }
 
@@ -1049,8 +1058,18 @@ Item {
                         WheelHandler {
                             acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
                             onWheel: function(event) {
-                                var pixelDelta = event.pixelDelta.y || event.angleDelta.y / 4;
-                                trackListView.flick(0, pixelDelta * 60); // Reduced for better control, matching artist list
+                                var pixelDelta = 0;
+                                
+                                // Different handling for touchpad vs mouse wheel
+                                if (event.pixelDelta.y !== 0) {
+                                    // Touchpad - use pixelDelta with higher multiplier for faster scrolling
+                                    pixelDelta = event.pixelDelta.y * 300; // Much higher sensitivity for touchpad
+                                } else {
+                                    // Mouse wheel - use angleDelta with current multiplier
+                                    pixelDelta = (event.angleDelta.y / 4) * 60; // Keep current behavior for mouse wheel
+                                }
+                                
+                                trackListView.flick(0, pixelDelta);
                             }
                         }
 

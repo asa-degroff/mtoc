@@ -8,8 +8,8 @@ import "Components/"
 
 ApplicationWindow {
     id: window
-    width: 1280
-    height: 720
+    width: 1920
+    height: 1200
     minimumWidth: 800  // Set a reasonable minimum to fit all panes
     minimumHeight: 500
     visible: true

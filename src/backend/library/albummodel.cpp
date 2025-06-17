@@ -129,7 +129,7 @@ int AlbumModel::indexOf(Album *album) const
 Album* AlbumModel::findAlbumByTitle(const QString &title) const
 {
     for (Album *album : m_albums) {
-        if (album->title().compare(title, Qt::CaseInsensitive) == 0) {
+        if (album->title().localeAwareCompare(title) == 0) {
             return album;
         }
     }
@@ -144,7 +144,7 @@ void AlbumModel::sortByTitle()
     beginResetModel();
     
     std::sort(m_albums.begin(), m_albums.end(), [](Album *a, Album *b) {
-        return a->title().compare(b->title(), Qt::CaseInsensitive) < 0;
+        return a->title().localeAwareCompare(b->title()) < 0;
     });
     
     endResetModel();
@@ -159,12 +159,12 @@ void AlbumModel::sortByArtist()
     
     std::sort(m_albums.begin(), m_albums.end(), [](Album *a, Album *b) {
         // First sort by artist
-        int artistCompare = a->artist().compare(b->artist(), Qt::CaseInsensitive);
+        int artistCompare = a->artist().localeAwareCompare(b->artist());
         if (artistCompare != 0)
             return artistCompare < 0;
             
         // Then by title
-        return a->title().compare(b->title(), Qt::CaseInsensitive) < 0;
+        return a->title().localeAwareCompare(b->title()) < 0;
     });
     
     endResetModel();
@@ -189,7 +189,7 @@ void AlbumModel::sortByYear()
         }
         
         // If same year, sort by title
-        return a->title().compare(b->title(), Qt::CaseInsensitive) < 0;
+        return a->title().localeAwareCompare(b->title()) < 0;
     });
     
     endResetModel();

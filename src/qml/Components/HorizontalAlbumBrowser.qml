@@ -11,6 +11,11 @@ Item {
     property int currentIndex: -1
     property var sortedAlbumIndices: []  // Array of indices into LibraryManager.albumModel
     
+    // Touchpad scrolling properties
+    property real scrollVelocity: 0
+    property real accumulatedDelta: 0
+    property bool isSnapping: false
+    
     signal albumClicked(var album)
     
     Component.onCompleted: {
@@ -41,8 +46,8 @@ Item {
         
         // Sort by artist first, then by year (descending) within each artist
         indexedAlbums.sort(function(a, b) {
-            // First compare by album artist
-            var artistCompare = a.albumArtist.localeCompare(b.albumArtist)
+            // First compare by album artist (case-insensitive)
+            var artistCompare = a.albumArtist.toLowerCase().localeCompare(b.albumArtist.toLowerCase())
             if (artistCompare !== 0) {
                 return artistCompare
             }
@@ -97,6 +102,35 @@ Item {
         }
     }
     
+    // Calculate the contentX position that centers a given index
+    function contentXForIndex(index) {
+        var itemWidth = 220 + listView.spacing  // 220 - 165 = 55 effective width
+        var centerOffset = listView.width / 2 - 110  // Center position
+        return index * itemWidth - centerOffset
+    }
+    
+    // Get the minimum allowed contentX value
+    function minContentX() {
+        // The minimum contentX is when the first item is centered
+        return contentXForIndex(0)
+    }
+    
+    // Get the maximum allowed contentX value
+    function maxContentX() {
+        if (sortedAlbumIndices.length === 0) return 0
+        // The maximum contentX is when the last item is centered
+        return contentXForIndex(sortedAlbumIndices.length - 1)
+    }
+    
+    // Find the index of the album closest to the center
+    function nearestIndex() {
+        var itemWidth = 220 + listView.spacing  // 55 effective width
+        var centerOffset = listView.width / 2 - 110
+        var centerX = listView.contentX + centerOffset
+        var index = Math.round(centerX / itemWidth)
+        return Math.max(0, Math.min(sortedAlbumIndices.length - 1, index))
+    }
+    
     Rectangle {
         anchors.fill: parent
         color: "transparent"  // Transparent to show parent's background
@@ -143,6 +177,108 @@ Item {
                 gcTimer.triggered()
             }
             
+            // Smooth velocity animation for touchpad scrolling
+            Behavior on contentX {
+                id: contentXBehavior
+                enabled: false  // Only enable during touchpad scrolling
+                NumberAnimation {
+                    duration: 300
+                    easing.type: Easing.OutQuad
+                }
+            }
+            
+            // Timer to apply velocity-based momentum
+            Timer {
+                id: velocityTimer
+                interval: 16  // ~60fps
+                repeat: true
+                running: false
+                onTriggered: {
+                    if (Math.abs(root.scrollVelocity) > 0.5 && !root.isSnapping) {
+                        listView.contentX += root.scrollVelocity
+                        root.scrollVelocity *= 0.95  // Damping factor
+                        
+                        // Clamp to bounds
+                        var minX = minContentX()
+                        var maxX = maxContentX()
+                        if (listView.contentX < minX) {
+                            listView.contentX = minX
+                            root.scrollVelocity = 0
+                        } else if (listView.contentX > maxX) {
+                            listView.contentX = maxX
+                            root.scrollVelocity = 0
+                        }
+                    } else if (!root.isSnapping) {
+                        // Velocity is low, start snapping to nearest album
+                        velocityTimer.stop()
+                        root.scrollVelocity = 0
+                        root.isSnapping = true
+                        
+                        // Find nearest album and animate to it
+                        var targetIndex = nearestIndex()
+                        var targetContentX = contentXForIndex(targetIndex)
+                        
+                        // Animate to the target position
+                        snapAnimation.to = targetContentX
+                        snapAnimation.start()
+                        
+                        // Update current index after a short delay to ensure smooth animation
+                        snapIndexTimer.targetIndex = targetIndex
+                        snapIndexTimer.start()
+                    }
+                }
+            }
+            
+            // Animation for snapping to nearest album
+            NumberAnimation {
+                id: snapAnimation
+                target: listView
+                property: "contentX"
+                duration: 200
+                easing.type: Easing.OutCubic
+                onStopped: {
+                    root.isSnapping = false
+                }
+            }
+            
+            // Timer to update index after snap animation starts
+            Timer {
+                id: snapIndexTimer
+                interval: 50  // Short delay to ensure animation has started
+                running: false
+                property int targetIndex: -1
+                onTriggered: {
+                    if (targetIndex >= 0) {
+                        listView.currentIndex = targetIndex
+                    }
+                }
+            }
+            
+            // Timer to detect when touchpad scrolling has stopped
+            Timer {
+                id: scrollEndTimer
+                interval: 100  // Wait 100ms after last scroll event
+                running: false
+                onTriggered: {
+                    // If velocity is very low or zero, snap to nearest album
+                    if (Math.abs(root.scrollVelocity) < 0.5 && !root.isSnapping) {
+                        root.isSnapping = true
+                        
+                        // Find nearest album and animate to it
+                        var targetIndex = nearestIndex()
+                        var targetContentX = contentXForIndex(targetIndex)
+                        
+                        // Animate to the target position
+                        snapAnimation.to = targetContentX
+                        snapAnimation.start()
+                        
+                        // Update current index
+                        snapIndexTimer.targetIndex = targetIndex
+                        snapIndexTimer.start()
+                    }
+                }
+            }
+            
             property int predictedIndex: -1
             property bool isPredicting: false
             
@@ -187,10 +323,60 @@ Item {
                 anchors.fill: parent
                 propagateComposedEvents: true
                 onWheel: function(wheel) {
-                    if (wheel.angleDelta.y > 0) {
-                        listView.decrementCurrentIndex()
+                    // Different behavior for touchpad vs mouse wheel
+                    if (wheel.pixelDelta.y !== 0 || wheel.pixelDelta.x !== 0) {
+                        // Touchpad - use direct content manipulation for smooth scrolling
+                        var deltaX = wheel.pixelDelta.x;
+                        var deltaY = wheel.pixelDelta.y;
+                        
+                        // Calculate the effective delta (support both horizontal and vertical gestures)
+                        var effectiveDelta = 0;
+                        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                            effectiveDelta = deltaX * 2; // Horizontal scrolling
+                        } else {
+                            effectiveDelta = -deltaY * 2; // Vertical scrolling (inverted)
+                        }
+                        
+                        // Accumulate small deltas for smoother micro-movements
+                        root.accumulatedDelta += effectiveDelta;
+                        
+                        // Apply accumulated delta when it's significant enough
+                        if (Math.abs(root.accumulatedDelta) >= 1) {
+                            // Stop any ongoing velocity animation or snap
+                            velocityTimer.stop();
+                            snapAnimation.stop();
+                            root.isSnapping = false;
+                            
+                            // Directly update content position
+                            var newContentX = listView.contentX - root.accumulatedDelta;
+                            
+                            // Clamp to bounds
+                            newContentX = Math.max(minContentX(), Math.min(maxContentX(), newContentX));
+                            
+                            // Apply the new position
+                            listView.contentX = newContentX;
+                            
+                            // Update velocity for momentum
+                            root.scrollVelocity = -root.accumulatedDelta * 0.3;
+                            
+                            // Reset accumulator
+                            root.accumulatedDelta = 0;
+                        }
+                        
+                        // Restart the scroll end detection timer
+                        scrollEndTimer.restart();
+                        
+                        // Start velocity timer for momentum when gesture has velocity
+                        if (!velocityTimer.running && Math.abs(root.scrollVelocity) > 0) {
+                            velocityTimer.start();
+                        }
                     } else {
-                        listView.incrementCurrentIndex()
+                        // Mouse wheel - keep the current per-item scrolling (1 album per notch)
+                        if (wheel.angleDelta.y > 0) {
+                            listView.decrementCurrentIndex()
+                        } else if (wheel.angleDelta.y < 0) {
+                            listView.incrementCurrentIndex()
+                        }
                     }
                     wheel.accepted = true
                 }
