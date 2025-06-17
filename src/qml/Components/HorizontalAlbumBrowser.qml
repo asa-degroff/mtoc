@@ -46,8 +46,8 @@ Item {
         
         // Sort by artist first, then by year (descending) within each artist
         indexedAlbums.sort(function(a, b) {
-            // First compare by album artist
-            var artistCompare = a.albumArtist.localeCompare(b.albumArtist, undefined, { sensitivity: 'base' })
+            // First compare by album artist (case-insensitive)
+            var artistCompare = a.albumArtist.toLowerCase().localeCompare(b.albumArtist.toLowerCase())
             if (artistCompare !== 0) {
                 return artistCompare
             }
