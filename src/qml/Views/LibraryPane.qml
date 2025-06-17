@@ -552,18 +552,9 @@ Item {
                     WheelHandler {
                         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
                         onWheel: function(event) {
-                            var pixelDelta = 0;
-                            
-                            // Touchpad typically provides pixelDelta
-                            if (event.pixelDelta.y !== 0) {
-                                // Touchpad - use pixelDelta directly with a small multiplier
-                                pixelDelta = event.pixelDelta.y * 2; // Increased sensitivity for touchpad
-                            } else {
-                                // Mouse wheel - use angleDelta with larger multiplier
-                                pixelDelta = (event.angleDelta.y / 4) * 60; // Keep current behavior for mouse wheel
-                            }
-                            
-                            artistsListView.flick(0, pixelDelta);
+                            // Use a more moderate multiplier for better control
+                            var pixelDelta = event.pixelDelta.y || event.angleDelta.y / 4;
+                            artistsListView.flick(0, pixelDelta * 60); // Reduced from 400 for better control
                         }
                     }
 
@@ -1058,18 +1049,8 @@ Item {
                         WheelHandler {
                             acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
                             onWheel: function(event) {
-                                var pixelDelta = 0;
-                                
-                                // Touchpad typically provides pixelDelta
-                                if (event.pixelDelta.y !== 0) {
-                                    // Touchpad - use pixelDelta directly with a small multiplier
-                                    pixelDelta = event.pixelDelta.y * 2; // Increased sensitivity for touchpad
-                                } else {
-                                    // Mouse wheel - use angleDelta with larger multiplier
-                                    pixelDelta = (event.angleDelta.y / 4) * 60; // Keep current behavior for mouse wheel
-                                }
-                                
-                                trackListView.flick(0, pixelDelta);
+                                var pixelDelta = event.pixelDelta.y || event.angleDelta.y / 4;
+                                trackListView.flick(0, pixelDelta * 60); // Reduced for better control, matching artist list
                             }
                         }
 
