@@ -187,10 +187,25 @@ Item {
                 anchors.fill: parent
                 propagateComposedEvents: true
                 onWheel: function(wheel) {
-                    if (wheel.angleDelta.y > 0) {
-                        listView.decrementCurrentIndex()
+                    // Different behavior for touchpad vs mouse wheel
+                    if (wheel.pixelDelta.y !== 0 || wheel.pixelDelta.x !== 0) {
+                        // Touchpad - use flick for smooth scrolling
+                        var deltaX = wheel.pixelDelta.x * 0.5; // Reduced sensitivity for touchpad
+                        var deltaY = wheel.pixelDelta.y * 0.5;
+                        
+                        // Support both vertical and horizontal touchpad scrolling
+                        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                            listView.flick(deltaX * 4, 0); // Horizontal scrolling
+                        } else {
+                            listView.flick(-deltaY * 4, 0); // Vertical scrolling (inverted to match direction)
+                        }
                     } else {
-                        listView.incrementCurrentIndex()
+                        // Mouse wheel - keep the current per-item scrolling
+                        if (wheel.angleDelta.y > 0) {
+                            listView.decrementCurrentIndex()
+                        } else {
+                            listView.incrementCurrentIndex()
+                        }
                     }
                     wheel.accepted = true
                 }
