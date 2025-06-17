@@ -190,8 +190,8 @@ Item {
                     // Different behavior for touchpad vs mouse wheel
                     if (wheel.pixelDelta.y !== 0 || wheel.pixelDelta.x !== 0) {
                         // Touchpad - use flick for smooth scrolling
-                        var deltaX = wheel.pixelDelta.x * 0.3; // Reduced sensitivity for touchpad
-                        var deltaY = wheel.pixelDelta.y * 0.3;
+                        var deltaX = wheel.pixelDelta.x * 3; // Increased sensitivity for touchpad
+                        var deltaY = wheel.pixelDelta.y * 3;
                         
                         // Support both vertical and horizontal touchpad scrolling
                         if (Math.abs(deltaX) > Math.abs(deltaY)) {

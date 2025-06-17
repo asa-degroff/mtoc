@@ -557,7 +557,7 @@ Item {
                             // Different handling for touchpad vs mouse wheel
                             if (event.pixelDelta.y !== 0) {
                                 // Touchpad - use pixelDelta with higher multiplier for faster scrolling
-                                pixelDelta = event.pixelDelta.y * 3; // Increased sensitivity for touchpad
+                                pixelDelta = event.pixelDelta.y * 30; // Much higher sensitivity for touchpad
                             } else {
                                 // Mouse wheel - use angleDelta with current multiplier
                                 pixelDelta = (event.angleDelta.y / 4) * 60; // Keep current behavior for mouse wheel
@@ -1063,7 +1063,7 @@ Item {
                                 // Different handling for touchpad vs mouse wheel
                                 if (event.pixelDelta.y !== 0) {
                                     // Touchpad - use pixelDelta with higher multiplier for faster scrolling
-                                    pixelDelta = event.pixelDelta.y * 3; // Increased sensitivity for touchpad
+                                    pixelDelta = event.pixelDelta.y * 30; // Much higher sensitivity for touchpad
                                 } else {
                                     // Mouse wheel - use angleDelta with current multiplier
                                     pixelDelta = (event.angleDelta.y / 4) * 60; // Keep current behavior for mouse wheel
