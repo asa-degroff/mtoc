@@ -14,6 +14,7 @@ Item {
     // Touchpad scrolling properties
     property real scrollVelocity: 0
     property real accumulatedDelta: 0
+    property bool isSnapping: false
     
     signal albumClicked(var album)
     
@@ -101,6 +102,22 @@ Item {
         }
     }
     
+    // Calculate the contentX position that centers a given index
+    function contentXForIndex(index) {
+        var itemWidth = 220 + listView.spacing  // 220 - 165 = 55 effective width
+        var centerOffset = listView.width / 2 - 110  // Center position
+        return index * itemWidth - centerOffset
+    }
+    
+    // Find the index of the album closest to the center
+    function nearestIndex() {
+        var itemWidth = 220 + listView.spacing  // 55 effective width
+        var centerOffset = listView.width / 2 - 110
+        var centerX = listView.contentX + centerOffset
+        var index = Math.round(centerX / itemWidth)
+        return Math.max(0, Math.min(sortedAlbumIndices.length - 1, index))
+    }
+    
     Rectangle {
         anchors.fill: parent
         color: "transparent"  // Transparent to show parent's background
@@ -164,7 +181,7 @@ Item {
                 repeat: true
                 running: false
                 onTriggered: {
-                    if (Math.abs(root.scrollVelocity) > 0.5) {
+                    if (Math.abs(root.scrollVelocity) > 0.5 && !root.isSnapping) {
                         listView.contentX += root.scrollVelocity
                         root.scrollVelocity *= 0.95  // Damping factor
                         
@@ -176,9 +193,73 @@ Item {
                             listView.contentX = listView.contentWidth - listView.width
                             root.scrollVelocity = 0
                         }
-                    } else {
+                    } else if (!root.isSnapping) {
+                        // Velocity is low, start snapping to nearest album
                         velocityTimer.stop()
                         root.scrollVelocity = 0
+                        root.isSnapping = true
+                        
+                        // Find nearest album and animate to it
+                        var targetIndex = nearestIndex()
+                        var targetContentX = contentXForIndex(targetIndex)
+                        
+                        // Animate to the target position
+                        snapAnimation.to = targetContentX
+                        snapAnimation.start()
+                        
+                        // Update current index after a short delay to ensure smooth animation
+                        snapIndexTimer.targetIndex = targetIndex
+                        snapIndexTimer.start()
+                    }
+                }
+            }
+            
+            // Animation for snapping to nearest album
+            NumberAnimation {
+                id: snapAnimation
+                target: listView
+                property: "contentX"
+                duration: 200
+                easing.type: Easing.OutCubic
+                onStopped: {
+                    root.isSnapping = false
+                }
+            }
+            
+            // Timer to update index after snap animation starts
+            Timer {
+                id: snapIndexTimer
+                interval: 50  // Short delay to ensure animation has started
+                running: false
+                property int targetIndex: -1
+                onTriggered: {
+                    if (targetIndex >= 0) {
+                        listView.currentIndex = targetIndex
+                    }
+                }
+            }
+            
+            // Timer to detect when touchpad scrolling has stopped
+            Timer {
+                id: scrollEndTimer
+                interval: 100  // Wait 100ms after last scroll event
+                running: false
+                onTriggered: {
+                    // If velocity is very low or zero, snap to nearest album
+                    if (Math.abs(root.scrollVelocity) < 0.5 && !root.isSnapping) {
+                        root.isSnapping = true
+                        
+                        // Find nearest album and animate to it
+                        var targetIndex = nearestIndex()
+                        var targetContentX = contentXForIndex(targetIndex)
+                        
+                        // Animate to the target position
+                        snapAnimation.to = targetContentX
+                        snapAnimation.start()
+                        
+                        // Update current index
+                        snapIndexTimer.targetIndex = targetIndex
+                        snapIndexTimer.start()
                     }
                 }
             }
@@ -246,8 +327,10 @@ Item {
                         
                         // Apply accumulated delta when it's significant enough
                         if (Math.abs(root.accumulatedDelta) >= 1) {
-                            // Stop any ongoing velocity animation
+                            // Stop any ongoing velocity animation or snap
                             velocityTimer.stop();
+                            snapAnimation.stop();
+                            root.isSnapping = false;
                             
                             // Directly update content position
                             var newContentX = listView.contentX - root.accumulatedDelta;
@@ -265,7 +348,10 @@ Item {
                             root.accumulatedDelta = 0;
                         }
                         
-                        // Start velocity timer for momentum when gesture ends
+                        // Restart the scroll end detection timer
+                        scrollEndTimer.restart();
+                        
+                        // Start velocity timer for momentum when gesture has velocity
                         if (!velocityTimer.running && Math.abs(root.scrollVelocity) > 0) {
                             velocityTimer.start();
                         }
