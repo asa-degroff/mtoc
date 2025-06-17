@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        1.1
+Version:        1.1.1
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -52,6 +52,9 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %{_datadir}/pixmaps/%{name}.png
 
 %changelog
+* Tue Jun 17 2025 Asa DeGroff <asa@3fz.org> 1.1.1-1
+- bump version and update readme (asa@3fz.org)
+
 * Mon Jun 16 2025 Asa DeGroff <asa@3fz.org> 1.1-1
 - This update includes new touchpad-specific navigation for the carousel that directly manipulates content with inertial flicking and snapping. 
 * Sun Jun 15 2025 Asa DeGroff <asa@3fz.org> 1.0.9-1
