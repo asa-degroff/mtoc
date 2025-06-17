@@ -109,6 +109,12 @@ Item {
         return index * itemWidth - centerOffset
     }
     
+    // Get the minimum allowed contentX value
+    function minContentX() {
+        // The minimum contentX is when the first item is centered
+        return contentXForIndex(0)
+    }
+    
     // Get the maximum allowed contentX value
     function maxContentX() {
         if (sortedAlbumIndices.length === 0) return 0
@@ -193,9 +199,10 @@ Item {
                         root.scrollVelocity *= 0.95  // Damping factor
                         
                         // Clamp to bounds
+                        var minX = minContentX()
                         var maxX = maxContentX()
-                        if (listView.contentX < 0) {
-                            listView.contentX = 0
+                        if (listView.contentX < minX) {
+                            listView.contentX = minX
                             root.scrollVelocity = 0
                         } else if (listView.contentX > maxX) {
                             listView.contentX = maxX
@@ -344,7 +351,7 @@ Item {
                             var newContentX = listView.contentX - root.accumulatedDelta;
                             
                             // Clamp to bounds
-                            newContentX = Math.max(0, Math.min(maxContentX(), newContentX));
+                            newContentX = Math.max(minContentX(), Math.min(maxContentX(), newContentX));
                             
                             // Apply the new position
                             listView.contentX = newContentX;
