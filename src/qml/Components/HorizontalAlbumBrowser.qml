@@ -11,6 +11,10 @@ Item {
     property int currentIndex: -1
     property var sortedAlbumIndices: []  // Array of indices into LibraryManager.albumModel
     
+    // Touchpad scrolling properties
+    property real scrollVelocity: 0
+    property real accumulatedDelta: 0
+    
     signal albumClicked(var album)
     
     Component.onCompleted: {
@@ -143,6 +147,42 @@ Item {
                 gcTimer.triggered()
             }
             
+            // Smooth velocity animation for touchpad scrolling
+            Behavior on contentX {
+                id: contentXBehavior
+                enabled: false  // Only enable during touchpad scrolling
+                NumberAnimation {
+                    duration: 300
+                    easing.type: Easing.OutQuad
+                }
+            }
+            
+            // Timer to apply velocity-based momentum
+            Timer {
+                id: velocityTimer
+                interval: 16  // ~60fps
+                repeat: true
+                running: false
+                onTriggered: {
+                    if (Math.abs(root.scrollVelocity) > 0.5) {
+                        listView.contentX += root.scrollVelocity
+                        root.scrollVelocity *= 0.95  // Damping factor
+                        
+                        // Clamp to bounds
+                        if (listView.contentX < 0) {
+                            listView.contentX = 0
+                            root.scrollVelocity = 0
+                        } else if (listView.contentX > listView.contentWidth - listView.width) {
+                            listView.contentX = listView.contentWidth - listView.width
+                            root.scrollVelocity = 0
+                        }
+                    } else {
+                        velocityTimer.stop()
+                        root.scrollVelocity = 0
+                    }
+                }
+            }
+            
             property int predictedIndex: -1
             property bool isPredicting: false
             
@@ -189,15 +229,45 @@ Item {
                 onWheel: function(wheel) {
                     // Different behavior for touchpad vs mouse wheel
                     if (wheel.pixelDelta.y !== 0 || wheel.pixelDelta.x !== 0) {
-                        // Touchpad - use flick for smooth scrolling
-                        var deltaX = wheel.pixelDelta.x * 30; // Increased sensitivity for touchpad
-                        var deltaY = wheel.pixelDelta.y * 30;
+                        // Touchpad - use direct content manipulation for smooth scrolling
+                        var deltaX = wheel.pixelDelta.x;
+                        var deltaY = wheel.pixelDelta.y;
                         
-                        // Support both vertical and horizontal touchpad scrolling
+                        // Calculate the effective delta (support both horizontal and vertical gestures)
+                        var effectiveDelta = 0;
                         if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                            listView.flick(deltaX * 5, 0); // Horizontal scrolling
+                            effectiveDelta = deltaX * 2; // Horizontal scrolling
                         } else {
-                            listView.flick(-deltaY * 5, 0); // Vertical scrolling (inverted to match direction)
+                            effectiveDelta = -deltaY * 2; // Vertical scrolling (inverted)
+                        }
+                        
+                        // Accumulate small deltas for smoother micro-movements
+                        root.accumulatedDelta += effectiveDelta;
+                        
+                        // Apply accumulated delta when it's significant enough
+                        if (Math.abs(root.accumulatedDelta) >= 1) {
+                            // Stop any ongoing velocity animation
+                            velocityTimer.stop();
+                            
+                            // Directly update content position
+                            var newContentX = listView.contentX - root.accumulatedDelta;
+                            
+                            // Clamp to bounds
+                            newContentX = Math.max(0, Math.min(listView.contentWidth - listView.width, newContentX));
+                            
+                            // Apply the new position
+                            listView.contentX = newContentX;
+                            
+                            // Update velocity for momentum
+                            root.scrollVelocity = -root.accumulatedDelta * 0.3;
+                            
+                            // Reset accumulator
+                            root.accumulatedDelta = 0;
+                        }
+                        
+                        // Start velocity timer for momentum when gesture ends
+                        if (!velocityTimer.running && Math.abs(root.scrollVelocity) > 0) {
+                            velocityTimer.start();
                         }
                     } else {
                         // Mouse wheel - keep the current per-item scrolling (1 album per notch)
