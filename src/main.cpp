@@ -8,6 +8,7 @@
 #include <QLoggingCategory>
 #include <QIcon>
 #include <QSurfaceFormat>
+#include <QLocale>
 
 #include "backend/systeminfo.h"
 #include "backend/utility/metadataextractor.h"
@@ -124,6 +125,18 @@ int main(int argc, char *argv[])
     // QSurfaceFormat::setDefaultFormat(format);
     
     QApplication app(argc, argv);
+    
+    // Set up locale for proper string comparison
+    // Check if user has set a specific locale via environment variable
+    const char* locale_override = qgetenv("MTOC_LOCALE").constData();
+    if (locale_override[0]) {
+        QLocale::setDefault(QLocale(QString::fromUtf8(locale_override)));
+        qDebug() << "Main: Using user-specified locale:" << locale_override;
+    } else {
+        // Use system locale
+        QLocale::setDefault(QLocale::system());
+        qDebug() << "Main: Using system locale:" << QLocale().name();
+    }
     
     // Debug rendering backend
     qDebug() << "Main: === GRAPHICS BACKEND INFO ===";

@@ -171,7 +171,7 @@ void TrackModel::sortByTitle()
     beginResetModel();
     
     std::sort(m_tracks.begin(), m_tracks.end(), [](Track *a, Track *b) {
-        return a->title().compare(b->title(), Qt::CaseInsensitive) < 0;
+        return a->title().localeAwareCompare(b->title()) < 0;
     });
     
     endResetModel();
@@ -186,12 +186,12 @@ void TrackModel::sortByArtist()
     
     std::sort(m_tracks.begin(), m_tracks.end(), [](Track *a, Track *b) {
         // First sort by artist
-        int artistCompare = a->artist().compare(b->artist(), Qt::CaseInsensitive);
+        int artistCompare = a->artist().localeAwareCompare(b->artist());
         if (artistCompare != 0)
             return artistCompare < 0;
             
         // Then by title
-        return a->title().compare(b->title(), Qt::CaseInsensitive) < 0;
+        return a->title().localeAwareCompare(b->title()) < 0;
     });
     
     endResetModel();
@@ -206,7 +206,7 @@ void TrackModel::sortByAlbum()
     
     std::sort(m_tracks.begin(), m_tracks.end(), [](Track *a, Track *b) {
         // First sort by album
-        int albumCompare = a->album().compare(b->album(), Qt::CaseInsensitive);
+        int albumCompare = a->album().localeAwareCompare(b->album());
         if (albumCompare != 0)
             return albumCompare < 0;
             

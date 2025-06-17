@@ -535,7 +535,7 @@ QVariantList DatabaseManager::getTracksByAlbumAndArtist(const QString& albumTitl
         "LEFT JOIN albums al ON t.album_id = al.id "
         "LEFT JOIN album_artists aa ON al.album_artist_id = aa.id "
         "WHERE al.title = :album_title AND aa.name = :album_artist "
-        "ORDER BY t.disc_number, t.track_number, t.title"
+        "ORDER BY t.disc_number, t.track_number, t.title COLLATE NOCASE"
     );
     
     query.bindValue(":album_title", albumTitle);
@@ -721,7 +721,7 @@ QVariantList DatabaseManager::searchTracks(const QString& searchTerm)
         "OR a.name LIKE :search "
         "OR al.title LIKE :search "
         "OR t.genre LIKE :search "
-        "ORDER BY t.title"
+        "ORDER BY t.title COLLATE NOCASE"
     );
     
     QString wildcardSearch = "%" + searchTerm + "%";
@@ -994,7 +994,7 @@ QVariantList DatabaseManager::getAllAlbums()
         "LEFT JOIN album_art art ON al.id = art.album_id "
         "GROUP BY al.id, al.title, al.year, aa.name, art.id "
         "HAVING COUNT(t.id) > 0 "
-        "ORDER BY al.title"
+        "ORDER BY al.title COLLATE NOCASE"
     );
     
     if (!query.exec()) {
@@ -1037,7 +1037,7 @@ QVariantList DatabaseManager::getAllArtists()
         "  WHEN LOWER(SUBSTR(aa.name, 1, 1)) BETWEEN 'a' AND 'z' THEN 0 "
         "  ELSE 1 "
         "END, "
-        "LOWER(aa.name)"
+        "aa.name COLLATE NOCASE"
     );
     
     while (query.next()) {
@@ -1069,7 +1069,7 @@ QVariantList DatabaseManager::getAlbumsByAlbumArtist(int albumArtistId)
         "LEFT JOIN album_art art ON al.id = art.album_id "
         "WHERE al.album_artist_id = :artist_id "
         "GROUP BY al.id "
-        "ORDER BY al.year DESC, al.title"
+        "ORDER BY al.year DESC, al.title COLLATE NOCASE"
     );
     query.bindValue(":artist_id", albumArtistId);
     
