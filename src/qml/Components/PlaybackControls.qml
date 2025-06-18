@@ -170,11 +170,11 @@ Item {
                 }
                 
                 background: Rectangle {
-                    x: progressSlider.leftPadding
+                    x: progressSlider.leftPadding + progressSlider.handle.width / 2
                     y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
                     implicitWidth: 200
                     implicitHeight: 10
-                    width: progressSlider.availableWidth
+                    width: progressSlider.availableWidth - progressSlider.handle.width
                     height: implicitHeight
                     radius: 5
                     color: "white"
@@ -196,7 +196,7 @@ Item {
                 
                 handle: Item {
                     id: sliderHandle
-                    x: progressSlider.leftPadding + progressSlider.visualPosition * progressSlider.availableWidth - width / 2
+                    x: progressSlider.leftPadding + progressSlider.visualPosition * (progressSlider.availableWidth - width)
                     y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
                     implicitWidth: 36
                     implicitHeight: 36
