@@ -74,6 +74,9 @@ public:
     Q_INVOKABLE TrackModel* tracksForAlbum(const QString &albumTitle, const QString &artistName = QString()) const;
     Q_INVOKABLE QVariantList getTracksForAlbumAsVariantList(const QString &artistName, const QString &albumTitle) const;
     Q_INVOKABLE QVariantList getAlbumsForArtist(const QString &artistName) const;
+    Q_INVOKABLE QVariantList getAlbumsPaginated(int offset, int limit) const;
+    Q_INVOKABLE void preloadAlbumsForArtists(const QStringList &artistNames) const;
+    Q_INVOKABLE QVariantList getLightweightAlbumModel() const;
     
     // Search methods
     Q_INVOKABLE TrackModel* searchTracks(const QString &query) const;
@@ -128,6 +131,9 @@ private:
     // Cache for performance
     mutable QVariantList m_cachedAlbumModel;
     mutable bool m_albumModelCacheValid;
+    mutable QHash<QString, QVariantList> m_albumsByArtistCache;  // Artist name -> albums
+    mutable int m_cachedAlbumCount;  // Cache the total album count
+    mutable bool m_albumCountCacheValid;
     
     // Models for UI
     TrackModel *m_allTracksModel;

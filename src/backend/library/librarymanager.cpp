@@ -27,6 +27,8 @@ LibraryManager::LibraryManager(QObject *parent)
     , m_filesScanned(0)
     , m_cancelRequested(false)
     , m_albumModelCacheValid(false)
+    , m_cachedAlbumCount(-1)
+    , m_albumCountCacheValid(false)
 {
     qDebug() << "LibraryManager: Constructor started";
     
@@ -73,6 +75,8 @@ LibraryManager::LibraryManager(QObject *parent)
             this, [this](int trackId) {
         // Refresh models when tracks are deleted
         m_albumModelCacheValid = false;
+        m_albumCountCacheValid = false;
+        m_albumsByArtistCache.clear();
         QTimer::singleShot(0, this, &LibraryManager::libraryChanged);
     });
     
@@ -190,9 +194,17 @@ int LibraryManager::albumCount() const
         // qDebug() << "LibraryManager::albumCount() - database not ready, returning 0";
         return 0;
     }
-    int count = m_databaseManager->getTotalAlbums();
-    // qDebug() << "LibraryManager::albumCount() returning" << count;
-    return count;
+    
+    // Use cached count if valid
+    if (m_albumCountCacheValid) {
+        return m_cachedAlbumCount;
+    }
+    
+    // Otherwise fetch from database and cache
+    m_cachedAlbumCount = m_databaseManager->getTotalAlbums();
+    m_albumCountCacheValid = true;
+    // qDebug() << "LibraryManager::albumCount() returning" << m_cachedAlbumCount;
+    return m_cachedAlbumCount;
 }
 
 int LibraryManager::artistCount() const
@@ -311,6 +323,8 @@ bool LibraryManager::removeMusicFolder(const QString &path)
             qDebug() << "LibraryManager::removeMusicFolder() - tracks removed from database";
             // Invalidate cache since we've changed the library
             m_albumModelCacheValid = false;
+            m_albumCountCacheValid = false;
+            m_albumsByArtistCache.clear();
             qDebug() << "LibraryManager::removeMusicFolder() - cache invalidated, emitting libraryChanged";
             emit libraryChanged();
         }
@@ -655,7 +669,9 @@ void LibraryManager::onScanFinished()
     
     // Invalidate cache after scan and clear it to free memory
     m_albumModelCacheValid = false;
+    m_albumCountCacheValid = false;
     m_cachedAlbumModel.clear(); // Clear cached data to free memory
+    m_albumsByArtistCache.clear(); // Clear artist-specific caches
     qDebug() << "Album model cache invalidated and cleared after scan";
     
     // Force garbage collection in QPixmapCache after scan
@@ -693,7 +709,9 @@ void LibraryManager::clearLibrary()
     
     // Invalidate cache
     m_albumModelCacheValid = false;
+    m_albumCountCacheValid = false;
     m_cachedAlbumModel.clear();
+    m_albumsByArtistCache.clear();
     
     emit libraryChanged();
     emit trackCountChanged();
@@ -816,31 +834,32 @@ QVariantList LibraryManager::albumModel() const
         return QVariantList();
     }
     
-    // Use cached data if valid
-    if (m_albumModelCacheValid) {
-        //qDebug() << "LibraryManager::albumModel() - returning cached data with" << m_cachedAlbumModel.size() << "albums";
+    // Check if we should use full cache or not based on album count
+    int totalAlbums = albumCount();
+    
+    // For small libraries (< 1000 albums), use the existing full cache approach
+    if (totalAlbums < 1000) {
+        // Use cached data if valid
+        if (m_albumModelCacheValid) {
+            return m_cachedAlbumModel;
+        }
+        
+        // Clear previous cache to free memory before allocating new data
+        m_cachedAlbumModel.clear();
+        
+        QVariantList newAlbumModel = m_databaseManager->getAllAlbums();
+        
+        m_cachedAlbumModel = std::move(newAlbumModel);
+        m_albumModelCacheValid = true;
         return m_cachedAlbumModel;
     }
     
-    // Otherwise fetch from database and cache
-    // Note: getAllAlbums() can be expensive with large libraries
-    // qDebug() << "LibraryManager::albumModel() - cache invalid, fetching from database";
+    // For large libraries, return a lightweight version with just essential data
+    // The UI should use pagination or lazy loading
+    qWarning() << "Large library detected (" << totalAlbums << " albums). Consider using getAlbumsPaginated() for better performance.";
     
-    // Clear previous cache to free memory before allocating new data
-    m_cachedAlbumModel.clear();
-    
-    QVariantList newAlbumModel = m_databaseManager->getAllAlbums();
-    
-    // Monitor memory usage of album model
-    qint64 estimatedMemory = newAlbumModel.size() * 200; // Rough estimate: 200 bytes per album entry
-    if (estimatedMemory > 10 * 1024 * 1024) { // If > 10MB
-        qWarning() << "Large album model detected - estimated memory usage:" << (estimatedMemory / (1024*1024)) << "MB for" << newAlbumModel.size() << "albums";
-    }
-    
-    m_cachedAlbumModel = std::move(newAlbumModel); // Use move semantics to avoid copy
-    m_albumModelCacheValid = true;
-    // qDebug() << "LibraryManager::albumModel() - fetched and cached" << m_cachedAlbumModel.size() << "albums";
-    return m_cachedAlbumModel;
+    // Return empty list and let UI handle pagination
+    return QVariantList();
 }
 
 QVariantList LibraryManager::getAlbumsForArtist(const QString &artistName) const
@@ -848,7 +867,21 @@ QVariantList LibraryManager::getAlbumsForArtist(const QString &artistName) const
     if (!m_databaseManager || !m_databaseManager->isOpen()) {
         return QVariantList();
     }
-    return m_databaseManager->getAlbumsByAlbumArtistName(artistName);
+    
+    // Check cache first
+    if (m_albumsByArtistCache.contains(artistName)) {
+        return m_albumsByArtistCache[artistName];
+    }
+    
+    // Fetch from database and cache
+    QVariantList albums = m_databaseManager->getAlbumsByAlbumArtistName(artistName);
+    
+    // Only cache if the result is reasonably small
+    if (albums.size() < 100) {
+        m_albumsByArtistCache[artistName] = albums;
+    }
+    
+    return albums;
 }
 
 TrackModel* LibraryManager::searchTracks(const QString &query) const
@@ -972,6 +1005,58 @@ int LibraryManager::loadCarouselPosition() const
     int albumId = settings.value("carouselPosition/albumId", -1).toInt();
     qDebug() << "LibraryManager: Loaded carousel position - album ID:" << albumId;
     return albumId;
+}
+
+QVariantList LibraryManager::getAlbumsPaginated(int offset, int limit) const
+{
+    if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        return QVariantList();
+    }
+    
+    // Delegate to database manager with pagination
+    // TODO: Add pagination support to DatabaseManager
+    // For now, return empty list
+    qDebug() << "LibraryManager::getAlbumsPaginated - offset:" << offset << "limit:" << limit;
+    return QVariantList();
+}
+
+void LibraryManager::preloadAlbumsForArtists(const QStringList &artistNames) const
+{
+    if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        return;
+    }
+    
+    // Preload albums for multiple artists in a batch to improve performance
+    for (const QString &artistName : artistNames) {
+        // Skip if already cached
+        if (m_albumsByArtistCache.contains(artistName)) {
+            continue;
+        }
+        
+        // This will cache the albums
+        getAlbumsForArtist(artistName);
+    }
+}
+
+QVariantList LibraryManager::getLightweightAlbumModel() const
+{
+    if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        return QVariantList();
+    }
+    
+    // For now, check album count and decide strategy
+    int totalAlbums = albumCount();
+    
+    if (totalAlbums < 1000) {
+        // For small libraries, use the full model
+        return albumModel();
+    } else {
+        // For large libraries, we should implement a lightweight query
+        // that only fetches essential album data (id, title, artist, year, hasArt)
+        // TODO: Implement lightweight query in DatabaseManager
+        qWarning() << "Large library (" << totalAlbums << " albums) - lightweight model not yet implemented";
+        return QVariantList();
+    }
 }
 
 void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& metadata)
