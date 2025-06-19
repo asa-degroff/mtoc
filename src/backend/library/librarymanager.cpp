@@ -76,13 +76,9 @@ LibraryManager::LibraryManager(QObject *parent)
         QTimer::singleShot(0, this, &LibraryManager::libraryChanged);
     });
     
-    qDebug() << "LibraryManager: About to load library from database";
-    
     // Don't load library data immediately - wait for first access
     // This should speed up startup
     m_albumModelCacheValid = false;
-    
-    qDebug() << "LibraryManager: Deferred library loading initialized";
     
     // Connect scan watcher
     connect(&m_scanWatcher, &QFutureWatcher<void>::finished,
@@ -113,15 +109,6 @@ LibraryManager::~LibraryManager()
     m_cachedAlbumModel.clear();
     
     // Database is automatically closed by DatabaseManager destructor
-    qDebug() << "LibraryManager: Clearing in-memory data...";
-    
-    // Clear only in-memory data, not the database
-    qDeleteAll(m_tracks);
-    m_tracks.clear();
-    qDeleteAll(m_albums);
-    m_albums.clear();
-    qDeleteAll(m_artists);
-    m_artists.clear();
     
     qDebug() << "LibraryManager: Destructor completed";
 }
@@ -133,32 +120,6 @@ void LibraryManager::initializeDatabase()
     }
 }
 
-void LibraryManager::loadLibraryFromDatabase()
-{
-    if (!m_databaseManager->isOpen()) {
-        qWarning() << "Database not open, cannot load library";
-        return;
-    }
-    
-    // Clear existing in-memory data
-    qDeleteAll(m_tracks);
-    m_tracks.clear();
-    qDeleteAll(m_albums);
-    m_albums.clear();
-    qDeleteAll(m_artists);
-    m_artists.clear();
-    
-    // For now, we'll load data on-demand rather than loading everything into memory
-    // This is more efficient for large libraries
-    
-    // Invalidate cache
-    m_albumModelCacheValid = false;
-    
-    emit libraryChanged();
-    emit trackCountChanged();
-    emit albumCountChanged();
-    emit artistCountChanged();
-}
 
 // Property getters
 bool LibraryManager::isScanning() const
@@ -381,15 +342,11 @@ void LibraryManager::startScan()
     m_scanProgress = 0;
     m_filesScanned = 0;
     m_cancelRequested = false;
-    m_pendingFiles.clear();
     
     qDebug() << "Emitting scan state change signals...";
     emit scanningChanged();
     emit scanProgressChanged();
     emit scanProgressTextChanged();
-    
-    // Clear pending tracks
-    m_pendingTracks.clear();
     
     qDebug() << "Starting QtConcurrent task...";
     qDebug() << "Current thread:" << QThread::currentThread();
@@ -730,17 +687,13 @@ void LibraryManager::clearLibrary()
     // Clear database
     m_databaseManager->clearDatabase();
     
-    // Clear in-memory data
-    qDeleteAll(m_tracks);
-    m_tracks.clear();
-    qDeleteAll(m_albums);
-    m_albums.clear();
-    qDeleteAll(m_artists);
-    m_artists.clear();
-    
     // Clear models
     m_allTracksModel->clear();
     m_allAlbumsModel->clear();
+    
+    // Invalidate cache
+    m_albumModelCacheValid = false;
+    m_cachedAlbumModel.clear();
     
     emit libraryChanged();
     emit trackCountChanged();
@@ -909,7 +862,6 @@ TrackModel* LibraryManager::searchTracks(const QString &query) const
 }
 
 // Stub implementations for remaining methods
-// These would need to be fully implemented based on your specific needs
 
 TrackModel* LibraryManager::tracksForArtist(const QString &artistName) const
 {
@@ -989,47 +941,22 @@ QVariantMap LibraryManager::searchAll(const QString &query) const
 
 Track* LibraryManager::trackByPath(const QString &path) const
 {
-    return m_tracks.value(path, nullptr);
+    // TODO: Implement database lookup
+    return nullptr;
 }
 
 Album* LibraryManager::albumByTitle(const QString &title, const QString &artistName) const
 {
-    QString key = artistName.isEmpty() ? title : artistName + ":" + title;
-    return m_albums.value(key, nullptr);
+    // TODO: Implement database lookup
+    return nullptr;
 }
 
 Artist* LibraryManager::artistByName(const QString &name) const
 {
-    return m_artists.value(name, nullptr);
-}
-
-Track* LibraryManager::processFile(const QString &filePath)
-{
-    // This method is now replaced by syncWithDatabase
+    // TODO: Implement database lookup
     return nullptr;
 }
 
-void LibraryManager::addTrackToLibrary(Track *track)
-{
-    // This is now handled by the database
-}
-
-Album* LibraryManager::findOrCreateAlbum(const QString &title, const QString &artistName)
-{
-    // This is now handled by the database
-    return nullptr;
-}
-
-Artist* LibraryManager::findOrCreateArtist(const QString &name)
-{
-    // This is now handled by the database
-    return nullptr;
-}
-
-void LibraryManager::processScannedFiles()
-{
-    // This is now handled differently with the database approach
-}
 
 void LibraryManager::saveCarouselPosition(int albumId)
 {

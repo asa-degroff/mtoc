@@ -104,14 +104,8 @@ signals:
     void albumCountChanged();
     void artistCountChanged();
     void libraryChanged();
-    
-    // Detailed signals for UI updates during scanning
-    void trackAdded(Track *track);
-    void albumAdded(Album *album);
-    void artistAdded(Artist *artist);
 
 private slots:
-    void processScannedFiles();
     void onScanFinished();
 
 private:
@@ -119,28 +113,17 @@ private:
     QStringList findMusicFiles(const QString &dir);
     void processDirectory(const QString &dir, QStringList &musicFiles);
     bool isMusicFile(const QFileInfo &fileInfo) const;
-    Track* processFile(const QString &filePath);
-    void addTrackToLibrary(Track *track);
-    Album* findOrCreateAlbum(const QString &title, const QString &artistName);
-    Artist* findOrCreateArtist(const QString &name);
     void initializeDatabase();
-    void loadLibraryFromDatabase();
     void syncWithDatabase(const QString &filePath);
     void scanInBackground();
     void insertTrackInThread(QSqlDatabase& db, const QVariantMap& metadata);
     
     // Private data
-    MetadataExtractor m_metadataExtractor;
     DatabaseManager *m_databaseManager;
     AlbumArtManager *m_albumArtManager;
     QStringList m_musicFolders;
     QMap<QString, QString> m_folderDisplayPaths;  // canonical path -> display path
-    QMap<QString, Track*> m_tracks;      // Path -> Track
-    QMap<QString, Album*> m_albums;      // "Artist:Album" -> Album
-    QMap<QString, Artist*> m_artists;    // Name -> Artist
     mutable QMutex m_databaseMutex;     // Protect database access
-    QList<QVariantMap> m_pendingTracks; // Tracks waiting to be inserted
-    mutable QMutex m_pendingTracksMutex; // Protect pending tracks list
     
     // Cache for performance
     mutable QVariantList m_cachedAlbumModel;
@@ -155,8 +138,6 @@ private:
     int m_scanProgress;
     int m_totalFilesToScan;
     int m_filesScanned;
-    QStringList m_pendingFiles;
-    QMutex m_pendingFilesMutex;
     QFuture<void> m_scanFuture;
     QFutureWatcher<void> m_scanWatcher;
     bool m_cancelRequested;
