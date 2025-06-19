@@ -11,6 +11,7 @@
 #include <QSettings>
 #include <QSet>
 #include <QPixmapCache>
+#include <QThreadPool>
 #include <exception>
 
 namespace Mtoc {
@@ -519,16 +520,13 @@ void LibraryManager::scanInBackground()
         
         // Process files in batches for better database performance
         const int batchSize = 50; // Batch size for database operations
+        const int parallelExtractionBatch = 10; // Number of files to extract metadata in parallel
         QList<QVariantMap> batchMetadata;
+        QList<QFuture<QVariantMap>> extractionFutures;
         
         for (int i = 0; i < allFiles.size() && !m_cancelRequested; ++i) {
             const QString &filePath = allFiles[i];
             QFileInfo fileInfo(filePath);
-            
-            // Check if file exists
-            if (!fileInfo.exists()) {
-                continue;
-            }
             
             // Check if already in database before extracting metadata
             {
@@ -546,49 +544,69 @@ void LibraryManager::scanInBackground()
                 }
             }
             
-            // Extract metadata (serialized to avoid TagLib threading issues)
-            try {
-                QVariantMap metadata = threadExtractor.extractAsVariantMap(filePath);
-                
-                // Validate metadata before using
-                if (metadata.isEmpty() || !metadata.contains("filePath")) {
-                    qWarning() << "Invalid metadata extracted from" << filePath;
-                    m_filesScanned++;
-                    continue;
+            // Queue metadata extraction for parallel processing
+            QFuture<QVariantMap> future = QtConcurrent::run([filePath, fileInfo]() -> QVariantMap {
+                try {
+                    // Create a thread-local extractor to avoid threading issues
+                    Mtoc::MetadataExtractor localExtractor;
+                    QVariantMap metadata = localExtractor.extractAsVariantMap(filePath);
+                    
+                    // Validate metadata before using
+                    if (!metadata.isEmpty() && metadata.contains("filePath")) {
+                        // Add file info to metadata
+                        metadata["fileSize"] = fileInfo.size();
+                        metadata["fileModified"] = fileInfo.lastModified();
+                        metadata["filePath"] = filePath;
+                        metadata["valid"] = true;
+                    } else {
+                        metadata["valid"] = false;
+                        metadata["filePath"] = filePath;
+                    }
+                    return metadata;
+                } catch (const std::exception& e) {
+                    QVariantMap errorMetadata;
+                    errorMetadata["valid"] = false;
+                    errorMetadata["filePath"] = filePath;
+                    errorMetadata["error"] = QString::fromStdString(e.what());
+                    return errorMetadata;
+                } catch (...) {
+                    QVariantMap errorMetadata;
+                    errorMetadata["valid"] = false;
+                    errorMetadata["filePath"] = filePath;
+                    errorMetadata["error"] = "Unknown error";
+                    return errorMetadata;
                 }
-                
-                // Add file info to metadata
-                metadata["fileSize"] = fileInfo.size();
-                metadata["fileModified"] = fileInfo.lastModified();
-                metadata["filePath"] = filePath;
-                
-                // Add to batch
-                batchMetadata.append(metadata);
-            } catch (const std::exception& e) {
-                qWarning() << "Error extracting metadata from" << filePath << ":" << e.what();
-                m_filesScanned++;
-                continue;
-            } catch (...) {
-                qWarning() << "Unknown error extracting metadata from" << filePath;
-                m_filesScanned++;
-                continue;
+            });
+            
+            extractionFutures.append(future);
+            
+            // Process futures when we have enough or at the end of the list
+            if (extractionFutures.size() >= parallelExtractionBatch || i == allFiles.size() - 1) {
+                // Wait for all futures in this batch to complete
+                for (const QFuture<QVariantMap> &f : extractionFutures) {
+                    QVariantMap metadata = f.result();
+                    if (metadata.value("valid", false).toBool()) {
+                        batchMetadata.append(metadata);
+                    } else {
+                        QString error = metadata.value("error", "Invalid metadata").toString();
+                        if (!error.isEmpty() && error != "Invalid metadata") {
+                            qWarning() << "Error extracting metadata from" << metadata.value("filePath").toString() << ":" << error;
+                        }
+                    }
+                }
+                extractionFutures.clear();
             }
             
-            // Update scanned count after successful extraction
+            // Update scanned count
             m_filesScanned++;
             
             // Insert batch when it reaches the batch size or at the end
             if (batchMetadata.size() >= batchSize || i == allFiles.size() - 1) {
-                // Insert batch into database
-                for (const QVariantMap &metadata : batchMetadata) {
-                    if (m_cancelRequested) {
-                        break;
-                    }
-                    
-                    // Insert track using thread-local database connection
-                    insertTrackInThread(db, metadata);
+                if (!batchMetadata.isEmpty()) {
+                    // Use prepared statements for better performance
+                    insertBatchTracksInThread(db, batchMetadata);
+                    batchMetadata.clear();
                 }
-                batchMetadata.clear();
             }
             
             // Update progress
@@ -599,21 +617,16 @@ void LibraryManager::scanInBackground()
                 QMetaObject::invokeMethod(this, "scanProgressTextChanged", Qt::QueuedConnection);
             }
             
-            // Occasionally allow other threads to run
+            // Yield to other threads more intelligently based on system load
             if (i % 100 == 0) {
-                QThread::msleep(1);
+                QThread::yieldCurrentThread();
             }
         }
         
         // Process any remaining items in the batch
         if (!batchMetadata.isEmpty() && !m_cancelRequested) {
             qDebug() << "Processing final batch with" << batchMetadata.size() << "tracks";
-            for (const QVariantMap &metadata : batchMetadata) {
-                if (m_cancelRequested) {
-                    break;
-                }
-                insertTrackInThread(db, metadata);
-            }
+            insertBatchTracksInThread(db, batchMetadata);
             batchMetadata.clear();
         }
         
@@ -1265,6 +1278,241 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
         qWarning() << "Failed to insert track:" << filePath << "-" << query.lastError().text();
         qWarning() << "SQL:" << query.lastQuery();
         qWarning() << "Bound values:" << query.boundValues();
+    }
+}
+
+void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVariantMap>& batchMetadata)
+{
+    if (batchMetadata.isEmpty() || m_cancelRequested) {
+        return;
+    }
+    
+    // Use maps to cache artist/album lookups within this batch
+    QHash<QString, int> artistCache;
+    QHash<QString, int> albumArtistCache;
+    QHash<QPair<QString, int>, int> albumCache; // (album title, album artist id) -> album id
+    
+    // Helper lambdas with caching
+    auto getCachedArtist = [&db, &artistCache](const QString& artistName) -> int {
+        if (artistName.isEmpty()) return 0;
+        
+        if (artistCache.contains(artistName)) {
+            return artistCache[artistName];
+        }
+        
+        QSqlQuery query(db);
+        query.prepare("SELECT id FROM artists WHERE name = :name");
+        query.bindValue(":name", artistName);
+        
+        if (query.exec() && query.next()) {
+            int id = query.value(0).toInt();
+            artistCache[artistName] = id;
+            return id;
+        }
+        
+        // Insert new artist
+        query.prepare("INSERT INTO artists (name) VALUES (:name)");
+        query.bindValue(":name", artistName);
+        
+        if (query.exec()) {
+            int id = query.lastInsertId().toInt();
+            artistCache[artistName] = id;
+            return id;
+        }
+        
+        return 0;
+    };
+    
+    auto getCachedAlbumArtist = [&db, &albumArtistCache](const QString& albumArtistName) -> int {
+        if (albumArtistName.isEmpty()) return 0;
+        
+        if (albumArtistCache.contains(albumArtistName)) {
+            return albumArtistCache[albumArtistName];
+        }
+        
+        QSqlQuery query(db);
+        query.prepare("SELECT id FROM album_artists WHERE name = :name");
+        query.bindValue(":name", albumArtistName);
+        
+        if (query.exec() && query.next()) {
+            int id = query.value(0).toInt();
+            albumArtistCache[albumArtistName] = id;
+            return id;
+        }
+        
+        // Insert new album artist
+        query.prepare("INSERT INTO album_artists (name) VALUES (:name)");
+        query.bindValue(":name", albumArtistName);
+        
+        if (query.exec()) {
+            int id = query.lastInsertId().toInt();
+            albumArtistCache[albumArtistName] = id;
+            return id;
+        }
+        
+        return 0;
+    };
+    
+    auto getCachedAlbum = [&db, &albumCache](const QString& albumName, int albumArtistId, int albumYear) -> int {
+        if (albumName.isEmpty()) return 0;
+        
+        QPair<QString, int> key(albumName, albumArtistId);
+        if (albumCache.contains(key)) {
+            return albumCache[key];
+        }
+        
+        QSqlQuery query(db);
+        
+        // Try to find existing album
+        if (albumArtistId > 0) {
+            query.prepare("SELECT id FROM albums WHERE title = :title AND album_artist_id = :artist_id");
+            query.bindValue(":title", albumName);
+            query.bindValue(":artist_id", albumArtistId);
+        } else {
+            query.prepare("SELECT id FROM albums WHERE title = :title AND album_artist_id IS NULL");
+            query.bindValue(":title", albumName);
+        }
+        
+        if (query.exec() && query.next()) {
+            int existingAlbumId = query.value(0).toInt();
+            albumCache[key] = existingAlbumId;
+            
+            // Update year if provided and not already set
+            if (albumYear > 0) {
+                QSqlQuery updateQuery(db);
+                updateQuery.prepare("UPDATE albums SET year = :year WHERE id = :id AND (year IS NULL OR year = 0)");
+                updateQuery.bindValue(":year", albumYear);
+                updateQuery.bindValue(":id", existingAlbumId);
+                updateQuery.exec();
+            }
+            
+            return existingAlbumId;
+        }
+        
+        // Insert new album with year
+        query.prepare("INSERT INTO albums (title, album_artist_id, year) VALUES (:title, :artist_id, :year)");
+        query.bindValue(":title", albumName);
+        query.bindValue(":artist_id", albumArtistId > 0 ? albumArtistId : QVariant());
+        query.bindValue(":year", albumYear > 0 ? albumYear : QVariant());
+        
+        if (query.exec()) {
+            int id = query.lastInsertId().toInt();
+            albumCache[key] = id;
+            return id;
+        }
+        
+        return 0;
+    };
+    
+    // Prepare track insert statement once
+    QSqlQuery trackInsert(db);
+    trackInsert.prepare(
+        "INSERT INTO tracks (file_path, title, artist_id, album_id, genre, year, "
+        "track_number, disc_number, duration, file_size, file_modified) "
+        "VALUES (:file_path, :title, :artist_id, :album_id, :genre, :year, "
+        ":track_number, :disc_number, :duration, :file_size, :file_modified)"
+    );
+    
+    // Process each track in the batch
+    for (const QVariantMap &metadata : batchMetadata) {
+        if (m_cancelRequested) {
+            break;
+        }
+        
+        // Extract data
+        QString filePath = metadata.value("filePath").toString();
+        QString title = metadata.value("title").toString();
+        QString artist = metadata.value("artist").toString();
+        QString albumArtist = metadata.value("albumArtist").toString();
+        QString album = metadata.value("album").toString();
+        QString genre = metadata.value("genre").toString();
+        int year = metadata.value("year").toInt();
+        int trackNumber = metadata.value("trackNumber").toInt();
+        int discNumber = metadata.value("discNumber").toInt();
+        int duration = metadata.value("duration").toInt();
+        qint64 fileSize = metadata.value("fileSize", 0).toLongLong();
+        QDateTime fileModified = metadata.value("fileModified").toDateTime();
+        
+        // Get or create artist (using cache)
+        int artistId = getCachedArtist(artist);
+        
+        // Get or create album artist (using cache)
+        int albumArtistId = 0;
+        if (!albumArtist.isEmpty()) {
+            albumArtistId = getCachedAlbumArtist(albumArtist);
+        } else if (!artist.isEmpty()) {
+            albumArtistId = getCachedAlbumArtist(artist);
+        }
+        
+        // Get or create album (using cache)
+        int albumId = getCachedAlbum(album, albumArtistId, year);
+        
+        // Process album art if needed (only for new albums)
+        if (albumId > 0 && metadata.contains("hasAlbumArt") && metadata.value("hasAlbumArt").toBool()) {
+            // Check if album art already exists
+            QSqlQuery artCheckQuery(db);
+            artCheckQuery.prepare("SELECT 1 FROM album_art WHERE album_id = :album_id LIMIT 1");
+            artCheckQuery.bindValue(":album_id", albumId);
+            
+            if (artCheckQuery.exec() && !artCheckQuery.next()) {
+                // Album art doesn't exist, process and store it
+                QByteArray albumArtData = metadata.value("albumArtData").toByteArray();
+                QString mimeType = metadata.value("albumArtMimeType").toString();
+                
+                if (!albumArtData.isEmpty()) {
+                    // Process album art
+                    AlbumArtManager albumArtManager;
+                    AlbumArtManager::ProcessedAlbumArt processed = 
+                        albumArtManager.processAlbumArt(albumArtData, album, 
+                                                       albumArtistId > 0 ? albumArtist : artist,
+                                                       mimeType);
+                    
+                    if (processed.success) {
+                        // Insert album art into database
+                        QSqlQuery artQuery(db);
+                        artQuery.prepare(
+                            "INSERT INTO album_art "
+                            "(album_id, full_path, full_hash, thumbnail, thumbnail_size, "
+                            "width, height, format, file_size) "
+                            "VALUES (:album_id, :full_path, :full_hash, :thumbnail, :thumbnail_size, "
+                            ":width, :height, :format, :file_size)"
+                        );
+                        
+                        artQuery.bindValue(":album_id", albumId);
+                        artQuery.bindValue(":full_path", processed.fullImagePath);
+                        artQuery.bindValue(":full_hash", processed.hash);
+                        artQuery.bindValue(":thumbnail", processed.thumbnailData);
+                        artQuery.bindValue(":thumbnail_size", processed.thumbnailData.size());
+                        artQuery.bindValue(":width", processed.originalSize.width());
+                        artQuery.bindValue(":height", processed.originalSize.height());
+                        artQuery.bindValue(":format", processed.format);
+                        artQuery.bindValue(":file_size", processed.fileSize);
+                        
+                        if (!artQuery.exec()) {
+                            qWarning() << "Failed to insert album art for album:" << album 
+                                      << "-" << artQuery.lastError().text();
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Insert track using prepared statement
+        trackInsert.bindValue(":file_path", filePath);
+        trackInsert.bindValue(":title", title);
+        trackInsert.bindValue(":artist_id", artistId > 0 ? artistId : QVariant());
+        trackInsert.bindValue(":album_id", albumId > 0 ? albumId : QVariant());
+        trackInsert.bindValue(":genre", genre);
+        trackInsert.bindValue(":year", year > 0 ? year : QVariant());
+        trackInsert.bindValue(":track_number", trackNumber > 0 ? trackNumber : QVariant());
+        trackInsert.bindValue(":disc_number", discNumber > 0 ? discNumber : QVariant());
+        trackInsert.bindValue(":duration", duration > 0 ? duration : QVariant());
+        trackInsert.bindValue(":file_size", fileSize > 0 ? fileSize : QVariant());
+        trackInsert.bindValue(":file_modified", fileModified.isValid() ? fileModified : QVariant());
+        
+        if (!trackInsert.exec()) {
+            qWarning() << "Failed to insert track:" << filePath << "-" << trackInsert.lastError().text();
+        }
     }
 }
 

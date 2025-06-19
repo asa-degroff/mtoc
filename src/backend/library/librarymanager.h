@@ -120,6 +120,7 @@ private:
     void syncWithDatabase(const QString &filePath);
     void scanInBackground();
     void insertTrackInThread(QSqlDatabase& db, const QVariantMap& metadata);
+    void insertBatchTracksInThread(QSqlDatabase& db, const QList<QVariantMap>& batchMetadata);
     
     // Private data
     DatabaseManager *m_databaseManager;
