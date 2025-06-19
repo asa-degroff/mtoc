@@ -94,7 +94,6 @@ qt_add_qml_module(mtoc
     VERSION 1.0
     QML_FILES
         src/qml/Main.qml
-        src/qml/Components/AlbumArtView.qml
         src/qml/Components/BlurredBackground.qml
         src/qml/Components/HorizontalAlbumBrowser.qml
         src/qml/Components/PlaybackControls.qml
