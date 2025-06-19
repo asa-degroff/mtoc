@@ -88,6 +88,10 @@ public:
     
     // Access to database manager (for image provider)
     DatabaseManager* databaseManager() const { return m_databaseManager; }
+    
+    // Carousel persistence methods
+    Q_INVOKABLE void saveCarouselPosition(int albumId);
+    Q_INVOKABLE int loadCarouselPosition() const;
 
 signals:
     void scanningChanged();

@@ -142,34 +142,6 @@ int main(int argc, char *argv[])
         qDebug() << "Main: Using system locale:" << QLocale().name();
     }
     
-    // Debug rendering backend
-    qDebug() << "Main: === GRAPHICS BACKEND INFO ===";
-    qDebug() << "Main: Qt Platform:" << QGuiApplication::platformName();
-    const char* backend = qgetenv("QSG_RHI_BACKEND").constData();
-    qDebug() << "Main: QSG_RHI_BACKEND:" << (backend[0] ? backend : "not set");
-    const char* render_loop = qgetenv("QSG_RENDER_LOOP").constData();
-    qDebug() << "Main: QSG_RENDER_LOOP:" << (render_loop[0] ? render_loop : "not set");
-    
-    // Check for OpenGL information if available
-    QSurfaceFormat currentFormat = QSurfaceFormat::defaultFormat();
-    qDebug() << "Main: OpenGL Version:" << currentFormat.majorVersion() << "." << currentFormat.minorVersion();
-    qDebug() << "Main: OpenGL Profile:" << (currentFormat.profile() == QSurfaceFormat::CoreProfile ? "Core" : 
-                                            currentFormat.profile() == QSurfaceFormat::CompatibilityProfile ? "Compatibility" : "None");
-    
-    // Check environment variables that affect rendering
-    const char* glx_vendor = qgetenv("__GLX_VENDOR_LIBRARY_NAME").constData();
-    qDebug() << "Main: __GLX_VENDOR_LIBRARY_NAME:" << (glx_vendor[0] ? glx_vendor : "not set");
-    
-    // Note: We already set the format before app creation, so just log if it worked
-    if (currentFormat.majorVersion() >= 3) {
-        qDebug() << "Main: Successfully using OpenGL" << currentFormat.majorVersion() << "." << currentFormat.minorVersion();
-    } else {
-        qDebug() << "Main: WARNING: Still using OpenGL" << currentFormat.majorVersion() << "." << currentFormat.minorVersion();
-        qDebug() << "Main: This indicates software rendering is being used!";
-    }
-    
-    qDebug() << "Main: ============================";
-    
     // Set application metadata
     app.setOrganizationName("mtoc");
     app.setApplicationName("mtoc");
@@ -188,7 +160,7 @@ int main(int argc, char *argv[])
         app.setWindowIcon(QIcon(":/resources/icons/mtoc-icon-512.png"));
     }
     
-    // Increase pixmap cache size for album art (128MB)
+    // pixmap cache size for album art (128MB)
     QPixmapCache::setCacheLimit(128 * 1024);
 
     QQmlApplicationEngine engine;
@@ -267,6 +239,9 @@ int main(int argc, char *argv[])
         if (libraryManager->isScanning()) {
             libraryManager->cancelScan();
         }
+        
+        // Note: Carousel position is automatically saved when it changes
+        // The QML timer handles this, no need for explicit save here
         
         // Explicitly delete objects in the correct order before Qt's automatic cleanup
         // This ensures database is not closed while other objects might still need it
