@@ -9,6 +9,8 @@
 #include <QIcon>
 #include <QSurfaceFormat>
 #include <QLocale>
+#include <QDir>
+#include <QStandardPaths>
 
 #include "backend/systeminfo.h"
 #include "backend/utility/metadataextractor.h"
@@ -54,8 +56,10 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context, const QSt
         }
     }
     
-    // Open a file for logging with absolute path
-    QFile logFile("/home/asa/code/mtoc/debug_log.txt");
+    // Open a file for logging in the app data directory
+    QString dataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir().mkpath(dataPath); // Ensure the directory exists
+    QFile logFile(QDir(dataPath).filePath("debug_log.txt"));
     // Try to open the file with writing and appending permissions
     if (!logFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
         fprintf(stderr, "Failed to open log file!\n");
@@ -172,7 +176,17 @@ int main(int argc, char *argv[])
     app.setApplicationDisplayName("mtoc Music Player");
     
     // Set application icon
-    app.setWindowIcon(QIcon(":/resources/icons/mtoc-icon-512.png"));
+    // Check if running in Flatpak
+    QString flatpakId = qgetenv("FLATPAK_ID");
+    if (!flatpakId.isEmpty()) {
+        // Running in Flatpak - use the desktop ID for the icon
+        app.setWindowIcon(QIcon::fromTheme(flatpakId));
+        // Also set desktop file name for better integration
+        app.setDesktopFileName(flatpakId);
+    } else {
+        // Not in Flatpak - use resource icon
+        app.setWindowIcon(QIcon(":/resources/icons/mtoc-icon-512.png"));
+    }
     
     // Increase pixmap cache size for album art (128MB)
     QPixmapCache::setCacheLimit(128 * 1024);

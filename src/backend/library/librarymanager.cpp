@@ -39,6 +39,14 @@ LibraryManager::LibraryManager(QObject *parent)
     QSettings settings;
     m_musicFolders = settings.value("musicFolders", QStringList()).toStringList();
     
+    // Load display paths mapping
+    settings.beginGroup("musicFolderDisplayPaths");
+    QStringList keys = settings.allKeys();
+    for (const QString &key : keys) {
+        m_folderDisplayPaths[key] = settings.value(key).toString();
+    }
+    settings.endGroup();
+    
     // Default to the user's Music folder if no folders saved
     if (m_musicFolders.isEmpty()) {
         QStringList musicDirs = QStandardPaths::standardLocations(QStandardPaths::MusicLocation);
@@ -179,6 +187,29 @@ QStringList LibraryManager::musicFolders() const
     return m_musicFolders;
 }
 
+QStringList LibraryManager::musicFoldersDisplay() const
+{
+    qDebug() << "musicFoldersDisplay() called";
+    qDebug() << "Current folders:" << m_musicFolders;
+    qDebug() << "Display mappings:" << m_folderDisplayPaths;
+    
+    QStringList displayPaths;
+    for (const QString &folder : m_musicFolders) {
+        // Check if we have a display path for this folder
+        if (m_folderDisplayPaths.contains(folder)) {
+            QString displayPath = m_folderDisplayPaths[folder];
+            qDebug() << "Using display path for" << folder << ":" << displayPath;
+            displayPaths << displayPath;
+        } else {
+            // Fall back to the actual path if no display path is stored
+            qDebug() << "No display path for" << folder << ", using actual path";
+            displayPaths << folder;
+        }
+    }
+    qDebug() << "Returning display paths:" << displayPaths;
+    return displayPaths;
+}
+
 int LibraryManager::trackCount() const
 {
     // qDebug() << "LibraryManager::trackCount() called";
@@ -235,12 +266,54 @@ bool LibraryManager::addMusicFolder(const QString &path)
     }
     
     QString canonicalPath = dir.canonicalPath();
+    qDebug() << "Canonical path:" << canonicalPath;
+    qDebug() << "Original path:" << path;
+    
+    // For portal paths, try to create a more user-friendly display path
+    QString displayPath = path;
+    if (path.startsWith("/run/flatpak/doc/") || path.startsWith("/run/user/")) {
+        qDebug() << "Detected portal path, trying to create user-friendly display";
+        
+        // Check if this is the user's home Music folder
+        QString musicPath = QStandardPaths::writableLocation(QStandardPaths::MusicLocation);
+        if (canonicalPath == QDir(musicPath).canonicalPath()) {
+            displayPath = musicPath;
+            qDebug() << "Portal path matches user's Music folder:" << displayPath;
+        } else {
+            // Try to extract a meaningful name from the portal path
+            // Portal paths often end with the actual folder name
+            QStringList parts = path.split('/');
+            if (!parts.isEmpty()) {
+                QString lastPart = parts.last();
+                // If the last part looks like a hash, try to find a better name
+                if (lastPart.length() > 20 && !lastPart.contains('.')) {
+                    // This might be a portal hash, use a generic name
+                    displayPath = "Music Folder";
+                } else {
+                    // Use the last part as the display name
+                    displayPath = QDir::homePath() + "/" + lastPart;
+                }
+            }
+        }
+    }
+    
     if (!m_musicFolders.contains(canonicalPath)) {
         m_musicFolders.append(canonicalPath);
+        
+        // Store the display path mapping
+        m_folderDisplayPaths[canonicalPath] = displayPath;
+        qDebug() << "Stored display path mapping:" << canonicalPath << "->" << displayPath;
         
         // Save to settings
         QSettings settings;
         settings.setValue("musicFolders", m_musicFolders);
+        
+        // Save display paths mapping
+        settings.beginGroup("musicFolderDisplayPaths");
+        for (auto it = m_folderDisplayPaths.begin(); it != m_folderDisplayPaths.end(); ++it) {
+            settings.setValue(it.key(), it.value());
+        }
+        settings.endGroup();
         
         qDebug() << "LibraryManager::addMusicFolder() - folder added, emitting signal";
         emit musicFoldersChanged();
@@ -257,9 +330,20 @@ bool LibraryManager::removeMusicFolder(const QString &path)
     QString canonicalPath = dir.canonicalPath();
     
     if (m_musicFolders.removeAll(canonicalPath) > 0) {
+        // Remove display path mapping
+        m_folderDisplayPaths.remove(canonicalPath);
+        
         // Save to settings
         QSettings settings;
         settings.setValue("musicFolders", m_musicFolders);
+        
+        // Update display paths in settings
+        settings.beginGroup("musicFolderDisplayPaths");
+        settings.remove(""); // Clear the group
+        for (auto it = m_folderDisplayPaths.begin(); it != m_folderDisplayPaths.end(); ++it) {
+            settings.setValue(it.key(), it.value());
+        }
+        settings.endGroup();
         
         // Remove all tracks from this folder from the database
         if (m_databaseManager->deleteTracksByFolderPath(canonicalPath)) {

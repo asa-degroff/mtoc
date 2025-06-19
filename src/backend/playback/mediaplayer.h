@@ -79,6 +79,7 @@ private:
     void playNextInQueue();
     void handleTrackFinished();
     void onEngineStateChanged(AudioEngine::State state);
+    static QString getDebugLogPath();
     
     std::unique_ptr<AudioEngine> m_audioEngine;
     Mtoc::Track* m_currentTrack = nullptr;
