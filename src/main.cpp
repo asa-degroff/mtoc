@@ -176,7 +176,17 @@ int main(int argc, char *argv[])
     app.setApplicationDisplayName("mtoc Music Player");
     
     // Set application icon
-    app.setWindowIcon(QIcon(":/resources/icons/mtoc-icon-512.png"));
+    // Check if running in Flatpak
+    QString flatpakId = qgetenv("FLATPAK_ID");
+    if (!flatpakId.isEmpty()) {
+        // Running in Flatpak - use the desktop ID for the icon
+        app.setWindowIcon(QIcon::fromTheme(flatpakId));
+        // Also set desktop file name for better integration
+        app.setDesktopFileName(flatpakId);
+    } else {
+        // Not in Flatpak - use resource icon
+        app.setWindowIcon(QIcon(":/resources/icons/mtoc-icon-512.png"));
+    }
     
     // Increase pixmap cache size for album art (128MB)
     QPixmapCache::setCacheLimit(128 * 1024);
