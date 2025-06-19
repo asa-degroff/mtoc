@@ -853,7 +853,7 @@ QVariantList LibraryManager::getAlbumsForArtist(const QString &artistName) const
 
 TrackModel* LibraryManager::searchTracks(const QString &query) const
 {
-    TrackModel *model = new TrackModel();
+    TrackModel *model = new TrackModel(const_cast<LibraryManager*>(this));
     QVariantList results = m_databaseManager->searchTracks(query);
     
     // TODO: Convert QVariantList to Track objects and add to model
@@ -866,12 +866,12 @@ TrackModel* LibraryManager::searchTracks(const QString &query) const
 TrackModel* LibraryManager::tracksForArtist(const QString &artistName) const
 {
     // TODO: Implement
-    return new TrackModel();
+    return new TrackModel(const_cast<LibraryManager*>(this));
 }
 
 AlbumModel* LibraryManager::albumsForArtist(const QString &artistName) const
 {
-    AlbumModel *model = new AlbumModel();
+    AlbumModel *model = new AlbumModel(const_cast<LibraryManager*>(this));
     
     // Get albums from database
     QVariantList albumData = m_databaseManager->getAlbumsByAlbumArtistName(artistName);
@@ -880,10 +880,11 @@ AlbumModel* LibraryManager::albumsForArtist(const QString &artistName) const
     for (const QVariant &v : albumData) {
         QVariantMap albumMap = v.toMap();
         
-        // Create Album object
+        // Create Album object with model as parent for proper memory management
         Album *album = new Album(
             albumMap["title"].toString(),
-            artistName  // Use the album artist name
+            artistName,  // Use the album artist name
+            model  // Set parent to ensure cleanup
         );
         
         // Set additional properties if needed
@@ -900,7 +901,7 @@ AlbumModel* LibraryManager::albumsForArtist(const QString &artistName) const
 TrackModel* LibraryManager::tracksForAlbum(const QString &albumTitle, const QString &artistName) const
 {
     // TODO: Implement
-    return new TrackModel();
+    return new TrackModel(const_cast<LibraryManager*>(this));
 }
 
 QVariantList LibraryManager::getTracksForAlbumAsVariantList(const QString &artistName, const QString &albumTitle) const
@@ -921,7 +922,7 @@ QVariantList LibraryManager::getTracksForAlbumAsVariantList(const QString &artis
 AlbumModel* LibraryManager::searchAlbums(const QString &query) const
 {
     // TODO: Implement proper AlbumModel search
-    return new AlbumModel();
+    return new AlbumModel(const_cast<LibraryManager*>(this));
 }
 
 QStringList LibraryManager::searchArtists(const QString &query) const
