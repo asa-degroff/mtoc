@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        1.1.1
+Version:        1.1.2
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -52,6 +52,14 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %{_datadir}/pixmaps/%{name}.png
 
 %changelog
+* Wed Jun 18 2025 Asa DeGroff <asa@3fz.org> 1.1.2-1
+- fix: adjust progress slider positioning and dimensions for better alignment
+  (asa@3fz.org)
+
+* Wed Jun 18 2025 Asa DeGroff <asa@3fz.org>
+- fix: adjust progress slider positioning and dimensions for better alignment
+  (asa@3fz.org)
+
 * Tue Jun 17 2025 Asa DeGroff <asa@3fz.org> 1.1.1-1
 - bump version and update readme (asa@3fz.org)
 
