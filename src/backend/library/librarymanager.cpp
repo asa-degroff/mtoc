@@ -1095,6 +1095,21 @@ QVariantList LibraryManager::getLightweightAlbumModel() const
     }
 }
 
+void LibraryManager::saveCarouselPosition(int albumId)
+{
+    QSettings settings;
+    settings.setValue("carouselPosition/albumId", albumId);
+    qDebug() << "LibraryManager: Saved carousel position - album ID:" << albumId;
+}
+
+int LibraryManager::loadCarouselPosition() const
+{
+    QSettings settings;
+    int albumId = settings.value("carouselPosition/albumId", -1).toInt();
+    qDebug() << "LibraryManager: Loaded carousel position - album ID:" << albumId;
+    return albumId;
+}
+
 void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& metadata)
 {
     // Extract data
