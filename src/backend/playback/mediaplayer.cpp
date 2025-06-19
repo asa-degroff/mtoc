@@ -6,6 +6,15 @@
 #include <QFile>
 #include <QDateTime>
 #include <QTextStream>
+#include <QStandardPaths>
+#include <QDir>
+
+QString MediaPlayer::getDebugLogPath()
+{
+    QString dataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir().mkpath(dataPath); // Ensure the directory exists
+    return QDir(dataPath).filePath("debug_log.txt");
+}
 
 MediaPlayer::MediaPlayer(QObject *parent)
     : QObject(parent)
@@ -13,7 +22,7 @@ MediaPlayer::MediaPlayer(QObject *parent)
 {
     setupConnections();
     
-    QFile debugFile("debug_log.txt");
+    QFile debugFile(getDebugLogPath());
     if (debugFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
         QTextStream stream(&debugFile);
         stream << QDateTime::currentDateTime().toString() << " - MediaPlayer initialized" << Qt::endl;
@@ -156,7 +165,7 @@ void MediaPlayer::playTrack(Mtoc::Track* track)
     //          << "by" << track->artist() 
     //          << "path:" << track->filePath();
     
-    QFile debugFile("debug_log.txt");
+    QFile debugFile(getDebugLogPath());
     if (debugFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
         QTextStream stream(&debugFile);
         stream << QDateTime::currentDateTime().toString() 
@@ -183,7 +192,7 @@ void MediaPlayer::playAlbum(Mtoc::Album* album, int startIndex)
         return;
     }
     
-    QFile debugFile("debug_log.txt");
+    QFile debugFile(getDebugLogPath());
     if (debugFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
         QTextStream stream(&debugFile);
         stream << QDateTime::currentDateTime().toString() 
@@ -335,7 +344,7 @@ void MediaPlayer::updateCurrentTrack(Mtoc::Track* track)
 
 void MediaPlayer::handleTrackFinished()
 {
-    QFile debugFile("debug_log.txt");
+    QFile debugFile(getDebugLogPath());
     if (debugFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
         QTextStream stream(&debugFile);
         stream << QDateTime::currentDateTime().toString() 

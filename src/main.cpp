@@ -9,6 +9,8 @@
 #include <QIcon>
 #include <QSurfaceFormat>
 #include <QLocale>
+#include <QDir>
+#include <QStandardPaths>
 
 #include "backend/systeminfo.h"
 #include "backend/utility/metadataextractor.h"
@@ -54,8 +56,10 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context, const QSt
         }
     }
     
-    // Open a file for logging with absolute path
-    QFile logFile("/home/asa/code/mtoc/debug_log.txt");
+    // Open a file for logging in the app data directory
+    QString dataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir().mkpath(dataPath); // Ensure the directory exists
+    QFile logFile(QDir(dataPath).filePath("debug_log.txt"));
     // Try to open the file with writing and appending permissions
     if (!logFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
         fprintf(stderr, "Failed to open log file!\n");

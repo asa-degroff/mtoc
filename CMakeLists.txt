@@ -24,7 +24,10 @@ pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
 # Set Qt policies to suppress warnings and define behavior (Qt 6.5+)
 if(Qt6_VERSION VERSION_GREATER_EQUAL "6.5.0")
     qt_policy(SET QTP0001 OLD) # Keep qrc:/ as the base for module resources unless overridden by URI
-    qt_policy(SET QTP0004 OLD) # Do not require qmldir for subdirs not acting as modules
+    # QTP0004 is only available in Qt 6.8+
+    if(Qt6_VERSION VERSION_GREATER_EQUAL "6.8.0")
+        qt_policy(SET QTP0004 OLD) # Do not require qmldir for subdirs not acting as modules
+    endif()
 endif()
 
 set(CMAKE_AUTOUIC ON)

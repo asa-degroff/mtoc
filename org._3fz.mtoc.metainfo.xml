@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org._3fz.mtoc</id>
+  <launchable type="desktop-id">org._3fz.mtoc.desktop</launchable>
+  <name>mtoc</name>
+  <summary>Visual Music Library</summary>
+  <description>
+    <p>mtoc is a music player and library management application for Linux. It features:</p>
+    <ul>
+      <li>Visual album browsing with cover art</li>
+      <li>Fast SQLite-based library management</li>
+      <li>MPRIS integration for system media controls</li>
+      <li>Support for common audio formats (MP3, FLAC, OGG, M4A)</li>
+      <li>Clean, modern user interface</li>
+    </ul>
+  </description>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0+</project_license>
+  <url type="homepage">https://github.com/asa-degroff/mtoc</url>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="1.1.1" date="2025-06-24">
+      <description>
+        <p>This update includes new touchpad-specific navigation for the carousel that directly manipulates content with inertial flicking and snapping.</p>
+      </description>
+    </release>
+  </releases>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main window showing album library</caption>
+      <image>https://github.com/asa-degroff/mtoc/raw/main/resources/banner/mtoc-banner.png</image>
+    </screenshot>
+  </screenshots>
+  <developer>
+    <id>org._3fz</id>
+    <name>3fz</name>
+  </developer>
+  <update_contact>asa@3fz.org</update_contact>
+</component>
