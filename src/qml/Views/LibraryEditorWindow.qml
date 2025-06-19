@@ -21,11 +21,42 @@ ApplicationWindow {
         acceptLabel: "Add Folder"
         rejectLabel: "Cancel"
         
+        property string displayPath: ""
+        
         onAccepted: {
+            console.log("FolderDialog accepted");
+            console.log("selectedFolder:", selectedFolder);
+            console.log("selectedFolder.toString():", selectedFolder.toString());
+            console.log("currentFolder:", currentFolder);
+            console.log("currentFolder.toString():", currentFolder.toString());
+            
             var path = selectedFolder.toString();
             // Remove the file:// prefix if present
             if (path.startsWith("file://")) {
                 path = path.substring(7);
+            }
+            
+            console.log("Path after processing:", path);
+            
+            // Try to get the display name from the folder dialog
+            // In Flatpak, the selectedFolder might be a portal path
+            // but the dialog should know what the user actually selected
+            var displayName = path;
+            
+            // Check if this looks like a portal path
+            if (path.startsWith("/run/flatpak/doc/") || path.startsWith("/run/user/")) {
+                // Try to extract a more meaningful display name
+                // Portal paths often contain a hash followed by the original folder name
+                var parts = path.split("/");
+                if (parts.length > 0) {
+                    // Get the last part as a fallback display name
+                    displayName = parts[parts.length - 1];
+                    // If it looks like a hash, try the second to last
+                    if (displayName.match(/^[a-f0-9]{8,}$/)) {
+                        displayName = parts[parts.length - 2] || displayName;
+                    }
+                }
+                console.log("Detected portal path, using display name:", displayName);
             }
             
             if (path.length > 0) {
@@ -214,7 +245,7 @@ ApplicationWindow {
                             anchors.fill: parent
                             anchors.margins: 1  // Small margin to show the rounded corners
                             clip: true
-                            model: LibraryManager.musicFolders
+                            model: LibraryManager.musicFoldersDisplay
                             
                             delegate: Rectangle {
                                 width: ListView.view.width
@@ -274,6 +305,7 @@ ApplicationWindow {
                                     }
                                     
                                     onClicked: {
+                                        // Remove using the display path - it will be converted to canonical path internally
                                         LibraryManager.removeMusicFolder(modelData);
                                     }
                                 }

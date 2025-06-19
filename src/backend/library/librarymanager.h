@@ -32,6 +32,7 @@ class LibraryManager : public QObject
     Q_PROPERTY(int scanProgress READ scanProgress NOTIFY scanProgressChanged)
     Q_PROPERTY(QString scanProgressText READ scanProgressText NOTIFY scanProgressTextChanged)
     Q_PROPERTY(QStringList musicFolders READ musicFolders WRITE setMusicFolders NOTIFY musicFoldersChanged)
+    Q_PROPERTY(QStringList musicFoldersDisplay READ musicFoldersDisplay NOTIFY musicFoldersChanged)
     Q_PROPERTY(int trackCount READ trackCount NOTIFY trackCountChanged)
     Q_PROPERTY(int albumCount READ albumCount NOTIFY albumCountChanged)
     Q_PROPERTY(int artistCount READ artistCount NOTIFY artistCountChanged)
@@ -47,6 +48,7 @@ public:
     int scanProgress() const;
     QString scanProgressText() const;
     QStringList musicFolders() const;
+    QStringList musicFoldersDisplay() const;
     int trackCount() const;
     int albumCount() const;
     int artistCount() const;
@@ -128,6 +130,7 @@ private:
     DatabaseManager *m_databaseManager;
     AlbumArtManager *m_albumArtManager;
     QStringList m_musicFolders;
+    QMap<QString, QString> m_folderDisplayPaths;  // canonical path -> display path
     QMap<QString, Track*> m_tracks;      // Path -> Track
     QMap<QString, Album*> m_albums;      // "Artist:Album" -> Album
     QMap<QString, Artist*> m_artists;    // Name -> Artist
