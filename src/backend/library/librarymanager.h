@@ -135,6 +135,8 @@ private:
     mutable QHash<QString, QVariantList> m_albumsByArtistCache;  // Artist name -> albums
     mutable int m_cachedAlbumCount;  // Cache the total album count
     mutable bool m_albumCountCacheValid;
+    mutable QVariantList m_cachedArtistModel;  // Cache for artist model
+    mutable bool m_artistModelCacheValid;
     
     // Models for UI
     TrackModel *m_allTracksModel;

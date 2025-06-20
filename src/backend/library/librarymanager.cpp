@@ -30,6 +30,7 @@ LibraryManager::LibraryManager(QObject *parent)
     , m_albumModelCacheValid(false)
     , m_cachedAlbumCount(-1)
     , m_albumCountCacheValid(false)
+    , m_artistModelCacheValid(false)
 {
     qDebug() << "LibraryManager: Constructor started";
     
@@ -77,6 +78,7 @@ LibraryManager::LibraryManager(QObject *parent)
         // Refresh models when tracks are deleted
         m_albumModelCacheValid = false;
         m_albumCountCacheValid = false;
+        m_artistModelCacheValid = false;
         m_albumsByArtistCache.clear();
         QTimer::singleShot(0, this, &LibraryManager::libraryChanged);
     });
@@ -112,6 +114,8 @@ LibraryManager::~LibraryManager()
     // Clear the album model cache
     m_albumModelCacheValid = false;
     m_cachedAlbumModel.clear();
+    m_artistModelCacheValid = false;
+    m_cachedArtistModel.clear();
     
     // Database is automatically closed by DatabaseManager destructor
     
@@ -325,6 +329,7 @@ bool LibraryManager::removeMusicFolder(const QString &path)
             // Invalidate cache since we've changed the library
             m_albumModelCacheValid = false;
             m_albumCountCacheValid = false;
+            m_artistModelCacheValid = false;
             m_albumsByArtistCache.clear();
             qDebug() << "LibraryManager::removeMusicFolder() - cache invalidated, emitting libraryChanged";
             emit libraryChanged();
@@ -683,9 +688,11 @@ void LibraryManager::onScanFinished()
     // Invalidate cache after scan and clear it to free memory
     m_albumModelCacheValid = false;
     m_albumCountCacheValid = false;
+    m_artistModelCacheValid = false;
     m_cachedAlbumModel.clear(); // Clear cached data to free memory
+    m_cachedArtistModel.clear(); // Clear cached artist data to free memory
     m_albumsByArtistCache.clear(); // Clear artist-specific caches
-    qDebug() << "Album model cache invalidated and cleared after scan";
+    qDebug() << "Album and artist model cache invalidated and cleared after scan";
     
     // Force garbage collection in QPixmapCache after scan
     QPixmapCache::clear();
@@ -723,7 +730,9 @@ void LibraryManager::clearLibrary()
     // Invalidate cache
     m_albumModelCacheValid = false;
     m_albumCountCacheValid = false;
+    m_artistModelCacheValid = false;
     m_cachedAlbumModel.clear();
+    m_cachedArtistModel.clear();
     m_albumsByArtistCache.clear();
     
     emit libraryChanged();
@@ -835,9 +844,23 @@ QStringList LibraryManager::allArtists() const
 QVariantList LibraryManager::artistModel() const
 {
     if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        qDebug() << "LibraryManager::artistModel() - database not ready, returning empty list";
         return QVariantList();
     }
-    return m_databaseManager->getAllArtists();
+    
+    // Use cached data if valid
+    if (m_artistModelCacheValid) {
+        return m_cachedArtistModel;
+    }
+    
+    // Clear previous cache to free memory before allocating new data
+    m_cachedArtistModel.clear();
+    
+    QVariantList newArtistModel = m_databaseManager->getAllArtists();
+    
+    m_cachedArtistModel = std::move(newArtistModel);
+    m_artistModelCacheValid = true;
+    return m_cachedArtistModel;
 }
 
 QVariantList LibraryManager::albumModel() const
