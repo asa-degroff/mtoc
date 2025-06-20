@@ -24,6 +24,7 @@ Item {
     property var expandedArtists: ({})  // Object to store expansion state by artist name
     property string highlightedArtist: ""  // Track which artist to highlight
     property url thumbnailUrl: ""
+    property var artistNameToIndex: ({})  // Cache for artist name to index mapping
     
     // Search state
     property string currentSearchTerm: ""
@@ -64,6 +65,26 @@ Item {
             var encodedAlbum = encodeURIComponent(MediaPlayer.currentTrack.album)
             thumbnailUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/thumbnail"
         }
+        // Build initial artist index mapping
+        updateArtistIndexMapping()
+    }
+    
+    // Update artist mapping when library changes
+    Connections {
+        target: LibraryManager
+        function onLibraryChanged() {
+            updateArtistIndexMapping()
+        }
+    }
+    
+    // Function to build artist name to index mapping for O(1) lookups
+    function updateArtistIndexMapping() {
+        var mapping = {}
+        var artists = LibraryManager.artistModel
+        for (var i = 0; i < artists.length; i++) {
+            mapping[artists[i].name] = i
+        }
+        artistNameToIndex = mapping
     }
 
     onSelectedAlbumChanged: {
@@ -335,13 +356,10 @@ Item {
                     // Highlight the album's artist
                     root.highlightedArtist = album.albumArtist
                     
-                    // Find the artist in the list and ensure it's visible
-                    var artists = LibraryManager.artistModel
-                    for (var i = 0; i < artists.length; i++) {
-                        if (artists[i].name === album.albumArtist) {
-                            artistsListView.positionViewAtIndex(i, ListView.Contain)
-                            break
-                        }
+                    // Use O(1) lookup instead of O(n) linear search
+                    var artistIndex = artistNameToIndex[album.albumArtist]
+                    if (artistIndex !== undefined) {
+                        artistsListView.positionViewAtIndex(artistIndex, ListView.Contain)
                     }
                 }
             }
@@ -1403,41 +1421,37 @@ Item {
         resetNavigation()
         if (searchResults.bestMatch && searchResults.bestMatchType === "artist") {
             navigationMode = "artist"
-            var artists = LibraryManager.artistModel
-            for (var i = 0; i < artists.length; i++) {
-                if (artists[i].name === searchResults.bestMatch.name) {
-                    selectedArtistIndex = i
-                    selectedArtistName = artists[i].name
-                    artistsListView.positionViewAtIndex(i, ListView.Contain)
-                    break
-                }
+            // Use O(1) lookup instead of O(n) linear search
+            var artistIndex = artistNameToIndex[searchResults.bestMatch.name]
+            if (artistIndex !== undefined) {
+                selectedArtistIndex = artistIndex
+                selectedArtistName = searchResults.bestMatch.name
+                artistsListView.positionViewAtIndex(artistIndex, ListView.Contain)
             }
         } else if (searchResults.bestMatch && searchResults.bestMatchType === "album") {
             // Start with the album's artist expanded and album selected
             var artistName = searchResults.bestMatch.albumArtist
-            var artists = LibraryManager.artistModel
-            for (var i = 0; i < artists.length; i++) {
-                if (artists[i].name === artistName) {
-                    selectedArtistIndex = i
-                    selectedArtistName = artistName
-                    artistsListView.positionViewAtIndex(i, ListView.Contain)
-                    
-                    // Ensure artist is expanded
-                    var updatedExpanded = Object.assign({}, expandedArtists)
-                    updatedExpanded[artistName] = true
-                    expandedArtists = updatedExpanded
-                    
-                    // Switch to album navigation
-                    navigationMode = "album"
-                    var albums = LibraryManager.getAlbumsForArtist(artistName)
-                    for (var j = 0; j < albums.length; j++) {
-                        if (albums[j].title === searchResults.bestMatch.title) {
-                            selectedAlbumIndex = j
-                            selectedAlbumData = albums[j]
-                            break
-                        }
+            // Use O(1) lookup instead of O(n) linear search
+            var artistIndex = artistNameToIndex[artistName]
+            if (artistIndex !== undefined) {
+                selectedArtistIndex = artistIndex
+                selectedArtistName = artistName
+                artistsListView.positionViewAtIndex(artistIndex, ListView.Contain)
+                
+                // Ensure artist is expanded
+                var updatedExpanded = Object.assign({}, expandedArtists)
+                updatedExpanded[artistName] = true
+                expandedArtists = updatedExpanded
+                
+                // Switch to album navigation
+                navigationMode = "album"
+                var albums = LibraryManager.getAlbumsForArtist(artistName)
+                for (var j = 0; j < albums.length; j++) {
+                    if (albums[j].title === searchResults.bestMatch.title) {
+                        selectedAlbumIndex = j
+                        selectedAlbumData = albums[j]
+                        break
                     }
-                    break
                 }
             }
         }

@@ -74,6 +74,9 @@ public:
     Q_INVOKABLE TrackModel* tracksForAlbum(const QString &albumTitle, const QString &artistName = QString()) const;
     Q_INVOKABLE QVariantList getTracksForAlbumAsVariantList(const QString &artistName, const QString &albumTitle) const;
     Q_INVOKABLE QVariantList getAlbumsForArtist(const QString &artistName) const;
+    Q_INVOKABLE QVariantList getAlbumsPaginated(int offset, int limit) const;
+    Q_INVOKABLE void preloadAlbumsForArtists(const QStringList &artistNames) const;
+    Q_INVOKABLE QVariantList getLightweightAlbumModel() const;
     
     // Search methods
     Q_INVOKABLE TrackModel* searchTracks(const QString &query) const;
@@ -88,6 +91,10 @@ public:
     
     // Access to database manager (for image provider)
     DatabaseManager* databaseManager() const { return m_databaseManager; }
+    
+    // Carousel persistence methods
+    Q_INVOKABLE void saveCarouselPosition(int albumId);
+    Q_INVOKABLE int loadCarouselPosition() const;
 
 signals:
     void scanningChanged();
@@ -100,14 +107,8 @@ signals:
     void albumCountChanged();
     void artistCountChanged();
     void libraryChanged();
-    
-    // Detailed signals for UI updates during scanning
-    void trackAdded(Track *track);
-    void albumAdded(Album *album);
-    void artistAdded(Artist *artist);
 
 private slots:
-    void processScannedFiles();
     void onScanFinished();
 
 private:
@@ -115,32 +116,27 @@ private:
     QStringList findMusicFiles(const QString &dir);
     void processDirectory(const QString &dir, QStringList &musicFiles);
     bool isMusicFile(const QFileInfo &fileInfo) const;
-    Track* processFile(const QString &filePath);
-    void addTrackToLibrary(Track *track);
-    Album* findOrCreateAlbum(const QString &title, const QString &artistName);
-    Artist* findOrCreateArtist(const QString &name);
     void initializeDatabase();
-    void loadLibraryFromDatabase();
     void syncWithDatabase(const QString &filePath);
     void scanInBackground();
     void insertTrackInThread(QSqlDatabase& db, const QVariantMap& metadata);
+    void insertBatchTracksInThread(QSqlDatabase& db, const QList<QVariantMap>& batchMetadata);
     
     // Private data
-    MetadataExtractor m_metadataExtractor;
     DatabaseManager *m_databaseManager;
     AlbumArtManager *m_albumArtManager;
     QStringList m_musicFolders;
     QMap<QString, QString> m_folderDisplayPaths;  // canonical path -> display path
-    QMap<QString, Track*> m_tracks;      // Path -> Track
-    QMap<QString, Album*> m_albums;      // "Artist:Album" -> Album
-    QMap<QString, Artist*> m_artists;    // Name -> Artist
     mutable QMutex m_databaseMutex;     // Protect database access
-    QList<QVariantMap> m_pendingTracks; // Tracks waiting to be inserted
-    mutable QMutex m_pendingTracksMutex; // Protect pending tracks list
     
     // Cache for performance
     mutable QVariantList m_cachedAlbumModel;
     mutable bool m_albumModelCacheValid;
+    mutable QHash<QString, QVariantList> m_albumsByArtistCache;  // Artist name -> albums
+    mutable int m_cachedAlbumCount;  // Cache the total album count
+    mutable bool m_albumCountCacheValid;
+    mutable QVariantList m_cachedArtistModel;  // Cache for artist model
+    mutable bool m_artistModelCacheValid;
     
     // Models for UI
     TrackModel *m_allTracksModel;
@@ -151,8 +147,6 @@ private:
     int m_scanProgress;
     int m_totalFilesToScan;
     int m_filesScanned;
-    QStringList m_pendingFiles;
-    QMutex m_pendingFilesMutex;
     QFuture<void> m_scanFuture;
     QFutureWatcher<void> m_scanWatcher;
     bool m_cancelRequested;

@@ -227,6 +227,7 @@ bool DatabaseManager::createIndexes()
     // Full-text search indexes
     query.exec("CREATE INDEX IF NOT EXISTS idx_tracks_search ON tracks(title, genre)");
     query.exec("CREATE INDEX IF NOT EXISTS idx_artists_name ON artists(name)");
+    query.exec("CREATE INDEX IF NOT EXISTS idx_album_artists_name ON album_artists(name)");
     query.exec("CREATE INDEX IF NOT EXISTS idx_albums_title ON albums(title)");
     
     return true;

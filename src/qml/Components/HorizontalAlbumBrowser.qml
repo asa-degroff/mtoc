@@ -20,13 +20,43 @@ Item {
     
     Component.onCompleted: {
         updateSortedIndices()
+        // Restore carousel position after indices are sorted
+        restoreCarouselPosition()
+    }
+    
+    // Timer to save position after user stops scrolling
+    Timer {
+        id: savePositionTimer
+        interval: 3000  // Save 3 seconds after user stops scrolling
+        running: false
+        onTriggered: {
+            if (selectedAlbum && selectedAlbum.id) {
+                LibraryManager.saveCarouselPosition(selectedAlbum.id)
+            }
+        }
     }
     
     Connections {
         target: LibraryManager
         function onLibraryChanged() {
             console.log("HorizontalAlbumBrowser: libraryChanged signal received, updating sorted indices");
+            // Save current position before updating
+            var currentAlbumId = selectedAlbum ? selectedAlbum.id : -1
             updateSortedIndices()
+            
+            // Try to restore to the same album if it still exists
+            if (currentAlbumId > 0) {
+                var sourceAlbums = LibraryManager.albumModel
+                for (var i = 0; i < sourceAlbums.length; i++) {
+                    if (sourceAlbums[i].id === currentAlbumId) {
+                        jumpToAlbum(sourceAlbums[i])
+                        return
+                    }
+                }
+            }
+            
+            // If album was removed, try to restore saved position
+            restoreCarouselPosition()
         }
     }
     
@@ -66,6 +96,22 @@ Item {
         if (sortedAlbumIndices.length > 0 && currentIndex === -1) {
             currentIndex = 0
             selectedAlbum = sourceAlbums[sortedAlbumIndices[0]]
+        }
+    }
+    
+    function restoreCarouselPosition() {
+        var savedAlbumId = LibraryManager.loadCarouselPosition()
+        if (savedAlbumId > 0) {
+            // Find the album with this ID and jump to it
+            var sourceAlbums = LibraryManager.albumModel
+            for (var i = 0; i < sourceAlbums.length; i++) {
+                if (sourceAlbums[i].id === savedAlbumId) {
+                    console.log("HorizontalAlbumBrowser: Restoring carousel position to album:", sourceAlbums[i].title)
+                    jumpToAlbum(sourceAlbums[i])
+                    return
+                }
+            }
+            console.log("HorizontalAlbumBrowser: Saved album not found, defaulting to first album")
         }
     }
     
@@ -315,6 +361,9 @@ Item {
                     root.currentIndex = currentIndex
                     var albumIndex = sortedAlbumIndices[currentIndex]
                     root.selectedAlbum = LibraryManager.albumModel[albumIndex]
+                    
+                    // Save position after a delay
+                    savePositionTimer.restart()
                 }
             }
             

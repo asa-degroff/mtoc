@@ -11,6 +11,7 @@
 #include <QSettings>
 #include <QSet>
 #include <QPixmapCache>
+#include <QThreadPool>
 #include <exception>
 
 namespace Mtoc {
@@ -27,6 +28,9 @@ LibraryManager::LibraryManager(QObject *parent)
     , m_filesScanned(0)
     , m_cancelRequested(false)
     , m_albumModelCacheValid(false)
+    , m_cachedAlbumCount(-1)
+    , m_albumCountCacheValid(false)
+    , m_artistModelCacheValid(false)
 {
     qDebug() << "LibraryManager: Constructor started";
     
@@ -73,16 +77,15 @@ LibraryManager::LibraryManager(QObject *parent)
             this, [this](int trackId) {
         // Refresh models when tracks are deleted
         m_albumModelCacheValid = false;
+        m_albumCountCacheValid = false;
+        m_artistModelCacheValid = false;
+        m_albumsByArtistCache.clear();
         QTimer::singleShot(0, this, &LibraryManager::libraryChanged);
     });
-    
-    qDebug() << "LibraryManager: About to load library from database";
     
     // Don't load library data immediately - wait for first access
     // This should speed up startup
     m_albumModelCacheValid = false;
-    
-    qDebug() << "LibraryManager: Deferred library loading initialized";
     
     // Connect scan watcher
     connect(&m_scanWatcher, &QFutureWatcher<void>::finished,
@@ -111,17 +114,10 @@ LibraryManager::~LibraryManager()
     // Clear the album model cache
     m_albumModelCacheValid = false;
     m_cachedAlbumModel.clear();
+    m_artistModelCacheValid = false;
+    m_cachedArtistModel.clear();
     
     // Database is automatically closed by DatabaseManager destructor
-    qDebug() << "LibraryManager: Clearing in-memory data...";
-    
-    // Clear only in-memory data, not the database
-    qDeleteAll(m_tracks);
-    m_tracks.clear();
-    qDeleteAll(m_albums);
-    m_albums.clear();
-    qDeleteAll(m_artists);
-    m_artists.clear();
     
     qDebug() << "LibraryManager: Destructor completed";
 }
@@ -133,32 +129,6 @@ void LibraryManager::initializeDatabase()
     }
 }
 
-void LibraryManager::loadLibraryFromDatabase()
-{
-    if (!m_databaseManager->isOpen()) {
-        qWarning() << "Database not open, cannot load library";
-        return;
-    }
-    
-    // Clear existing in-memory data
-    qDeleteAll(m_tracks);
-    m_tracks.clear();
-    qDeleteAll(m_albums);
-    m_albums.clear();
-    qDeleteAll(m_artists);
-    m_artists.clear();
-    
-    // For now, we'll load data on-demand rather than loading everything into memory
-    // This is more efficient for large libraries
-    
-    // Invalidate cache
-    m_albumModelCacheValid = false;
-    
-    emit libraryChanged();
-    emit trackCountChanged();
-    emit albumCountChanged();
-    emit artistCountChanged();
-}
 
 // Property getters
 bool LibraryManager::isScanning() const
@@ -229,9 +199,17 @@ int LibraryManager::albumCount() const
         // qDebug() << "LibraryManager::albumCount() - database not ready, returning 0";
         return 0;
     }
-    int count = m_databaseManager->getTotalAlbums();
-    // qDebug() << "LibraryManager::albumCount() returning" << count;
-    return count;
+    
+    // Use cached count if valid
+    if (m_albumCountCacheValid) {
+        return m_cachedAlbumCount;
+    }
+    
+    // Otherwise fetch from database and cache
+    m_cachedAlbumCount = m_databaseManager->getTotalAlbums();
+    m_albumCountCacheValid = true;
+    // qDebug() << "LibraryManager::albumCount() returning" << m_cachedAlbumCount;
+    return m_cachedAlbumCount;
 }
 
 int LibraryManager::artistCount() const
@@ -350,6 +328,9 @@ bool LibraryManager::removeMusicFolder(const QString &path)
             qDebug() << "LibraryManager::removeMusicFolder() - tracks removed from database";
             // Invalidate cache since we've changed the library
             m_albumModelCacheValid = false;
+            m_albumCountCacheValid = false;
+            m_artistModelCacheValid = false;
+            m_albumsByArtistCache.clear();
             qDebug() << "LibraryManager::removeMusicFolder() - cache invalidated, emitting libraryChanged";
             emit libraryChanged();
         }
@@ -381,15 +362,11 @@ void LibraryManager::startScan()
     m_scanProgress = 0;
     m_filesScanned = 0;
     m_cancelRequested = false;
-    m_pendingFiles.clear();
     
     qDebug() << "Emitting scan state change signals...";
     emit scanningChanged();
     emit scanProgressChanged();
     emit scanProgressTextChanged();
-    
-    // Clear pending tracks
-    m_pendingTracks.clear();
     
     qDebug() << "Starting QtConcurrent task...";
     qDebug() << "Current thread:" << QThread::currentThread();
@@ -548,16 +525,13 @@ void LibraryManager::scanInBackground()
         
         // Process files in batches for better database performance
         const int batchSize = 50; // Batch size for database operations
+        const int parallelExtractionBatch = 10; // Number of files to extract metadata in parallel
         QList<QVariantMap> batchMetadata;
+        QList<QFuture<QVariantMap>> extractionFutures;
         
         for (int i = 0; i < allFiles.size() && !m_cancelRequested; ++i) {
             const QString &filePath = allFiles[i];
             QFileInfo fileInfo(filePath);
-            
-            // Check if file exists
-            if (!fileInfo.exists()) {
-                continue;
-            }
             
             // Check if already in database before extracting metadata
             {
@@ -575,49 +549,69 @@ void LibraryManager::scanInBackground()
                 }
             }
             
-            // Extract metadata (serialized to avoid TagLib threading issues)
-            try {
-                QVariantMap metadata = threadExtractor.extractAsVariantMap(filePath);
-                
-                // Validate metadata before using
-                if (metadata.isEmpty() || !metadata.contains("filePath")) {
-                    qWarning() << "Invalid metadata extracted from" << filePath;
-                    m_filesScanned++;
-                    continue;
+            // Queue metadata extraction for parallel processing
+            QFuture<QVariantMap> future = QtConcurrent::run([filePath, fileInfo]() -> QVariantMap {
+                try {
+                    // Create a thread-local extractor to avoid threading issues
+                    Mtoc::MetadataExtractor localExtractor;
+                    QVariantMap metadata = localExtractor.extractAsVariantMap(filePath);
+                    
+                    // Validate metadata before using
+                    if (!metadata.isEmpty() && metadata.contains("filePath")) {
+                        // Add file info to metadata
+                        metadata["fileSize"] = fileInfo.size();
+                        metadata["fileModified"] = fileInfo.lastModified();
+                        metadata["filePath"] = filePath;
+                        metadata["valid"] = true;
+                    } else {
+                        metadata["valid"] = false;
+                        metadata["filePath"] = filePath;
+                    }
+                    return metadata;
+                } catch (const std::exception& e) {
+                    QVariantMap errorMetadata;
+                    errorMetadata["valid"] = false;
+                    errorMetadata["filePath"] = filePath;
+                    errorMetadata["error"] = QString::fromStdString(e.what());
+                    return errorMetadata;
+                } catch (...) {
+                    QVariantMap errorMetadata;
+                    errorMetadata["valid"] = false;
+                    errorMetadata["filePath"] = filePath;
+                    errorMetadata["error"] = "Unknown error";
+                    return errorMetadata;
                 }
-                
-                // Add file info to metadata
-                metadata["fileSize"] = fileInfo.size();
-                metadata["fileModified"] = fileInfo.lastModified();
-                metadata["filePath"] = filePath;
-                
-                // Add to batch
-                batchMetadata.append(metadata);
-            } catch (const std::exception& e) {
-                qWarning() << "Error extracting metadata from" << filePath << ":" << e.what();
-                m_filesScanned++;
-                continue;
-            } catch (...) {
-                qWarning() << "Unknown error extracting metadata from" << filePath;
-                m_filesScanned++;
-                continue;
+            });
+            
+            extractionFutures.append(future);
+            
+            // Process futures when we have enough or at the end of the list
+            if (extractionFutures.size() >= parallelExtractionBatch || i == allFiles.size() - 1) {
+                // Wait for all futures in this batch to complete
+                for (const QFuture<QVariantMap> &f : extractionFutures) {
+                    QVariantMap metadata = f.result();
+                    if (metadata.value("valid", false).toBool()) {
+                        batchMetadata.append(metadata);
+                    } else {
+                        QString error = metadata.value("error", "Invalid metadata").toString();
+                        if (!error.isEmpty() && error != "Invalid metadata") {
+                            qWarning() << "Error extracting metadata from" << metadata.value("filePath").toString() << ":" << error;
+                        }
+                    }
+                }
+                extractionFutures.clear();
             }
             
-            // Update scanned count after successful extraction
+            // Update scanned count
             m_filesScanned++;
             
             // Insert batch when it reaches the batch size or at the end
             if (batchMetadata.size() >= batchSize || i == allFiles.size() - 1) {
-                // Insert batch into database
-                for (const QVariantMap &metadata : batchMetadata) {
-                    if (m_cancelRequested) {
-                        break;
-                    }
-                    
-                    // Insert track using thread-local database connection
-                    insertTrackInThread(db, metadata);
+                if (!batchMetadata.isEmpty()) {
+                    // Use prepared statements for better performance
+                    insertBatchTracksInThread(db, batchMetadata);
+                    batchMetadata.clear();
                 }
-                batchMetadata.clear();
             }
             
             // Update progress
@@ -628,21 +622,16 @@ void LibraryManager::scanInBackground()
                 QMetaObject::invokeMethod(this, "scanProgressTextChanged", Qt::QueuedConnection);
             }
             
-            // Occasionally allow other threads to run
+            // Yield to other threads more intelligently based on system load
             if (i % 100 == 0) {
-                QThread::msleep(1);
+                QThread::yieldCurrentThread();
             }
         }
         
         // Process any remaining items in the batch
         if (!batchMetadata.isEmpty() && !m_cancelRequested) {
             qDebug() << "Processing final batch with" << batchMetadata.size() << "tracks";
-            for (const QVariantMap &metadata : batchMetadata) {
-                if (m_cancelRequested) {
-                    break;
-                }
-                insertTrackInThread(db, metadata);
-            }
+            insertBatchTracksInThread(db, batchMetadata);
             batchMetadata.clear();
         }
         
@@ -698,8 +687,12 @@ void LibraryManager::onScanFinished()
     
     // Invalidate cache after scan and clear it to free memory
     m_albumModelCacheValid = false;
+    m_albumCountCacheValid = false;
+    m_artistModelCacheValid = false;
     m_cachedAlbumModel.clear(); // Clear cached data to free memory
-    qDebug() << "Album model cache invalidated and cleared after scan";
+    m_cachedArtistModel.clear(); // Clear cached artist data to free memory
+    m_albumsByArtistCache.clear(); // Clear artist-specific caches
+    qDebug() << "Album and artist model cache invalidated and cleared after scan";
     
     // Force garbage collection in QPixmapCache after scan
     QPixmapCache::clear();
@@ -730,17 +723,17 @@ void LibraryManager::clearLibrary()
     // Clear database
     m_databaseManager->clearDatabase();
     
-    // Clear in-memory data
-    qDeleteAll(m_tracks);
-    m_tracks.clear();
-    qDeleteAll(m_albums);
-    m_albums.clear();
-    qDeleteAll(m_artists);
-    m_artists.clear();
-    
     // Clear models
     m_allTracksModel->clear();
     m_allAlbumsModel->clear();
+    
+    // Invalidate cache
+    m_albumModelCacheValid = false;
+    m_albumCountCacheValid = false;
+    m_artistModelCacheValid = false;
+    m_cachedAlbumModel.clear();
+    m_cachedArtistModel.clear();
+    m_albumsByArtistCache.clear();
     
     emit libraryChanged();
     emit trackCountChanged();
@@ -851,9 +844,23 @@ QStringList LibraryManager::allArtists() const
 QVariantList LibraryManager::artistModel() const
 {
     if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        qDebug() << "LibraryManager::artistModel() - database not ready, returning empty list";
         return QVariantList();
     }
-    return m_databaseManager->getAllArtists();
+    
+    // Use cached data if valid
+    if (m_artistModelCacheValid) {
+        return m_cachedArtistModel;
+    }
+    
+    // Clear previous cache to free memory before allocating new data
+    m_cachedArtistModel.clear();
+    
+    QVariantList newArtistModel = m_databaseManager->getAllArtists();
+    
+    m_cachedArtistModel = std::move(newArtistModel);
+    m_artistModelCacheValid = true;
+    return m_cachedArtistModel;
 }
 
 QVariantList LibraryManager::albumModel() const
@@ -863,31 +870,32 @@ QVariantList LibraryManager::albumModel() const
         return QVariantList();
     }
     
-    // Use cached data if valid
-    if (m_albumModelCacheValid) {
-        //qDebug() << "LibraryManager::albumModel() - returning cached data with" << m_cachedAlbumModel.size() << "albums";
+    // Check if we should use full cache or not based on album count
+    int totalAlbums = albumCount();
+    
+    // For small libraries (< 1000 albums), use the existing full cache approach
+    if (totalAlbums < 1000) {
+        // Use cached data if valid
+        if (m_albumModelCacheValid) {
+            return m_cachedAlbumModel;
+        }
+        
+        // Clear previous cache to free memory before allocating new data
+        m_cachedAlbumModel.clear();
+        
+        QVariantList newAlbumModel = m_databaseManager->getAllAlbums();
+        
+        m_cachedAlbumModel = std::move(newAlbumModel);
+        m_albumModelCacheValid = true;
         return m_cachedAlbumModel;
     }
     
-    // Otherwise fetch from database and cache
-    // Note: getAllAlbums() can be expensive with large libraries
-    // qDebug() << "LibraryManager::albumModel() - cache invalid, fetching from database";
+    // For large libraries, return a lightweight version with just essential data
+    // The UI should use pagination or lazy loading
+    qWarning() << "Large library detected (" << totalAlbums << " albums). Consider using getAlbumsPaginated() for better performance.";
     
-    // Clear previous cache to free memory before allocating new data
-    m_cachedAlbumModel.clear();
-    
-    QVariantList newAlbumModel = m_databaseManager->getAllAlbums();
-    
-    // Monitor memory usage of album model
-    qint64 estimatedMemory = newAlbumModel.size() * 200; // Rough estimate: 200 bytes per album entry
-    if (estimatedMemory > 10 * 1024 * 1024) { // If > 10MB
-        qWarning() << "Large album model detected - estimated memory usage:" << (estimatedMemory / (1024*1024)) << "MB for" << newAlbumModel.size() << "albums";
-    }
-    
-    m_cachedAlbumModel = std::move(newAlbumModel); // Use move semantics to avoid copy
-    m_albumModelCacheValid = true;
-    // qDebug() << "LibraryManager::albumModel() - fetched and cached" << m_cachedAlbumModel.size() << "albums";
-    return m_cachedAlbumModel;
+    // Return empty list and let UI handle pagination
+    return QVariantList();
 }
 
 QVariantList LibraryManager::getAlbumsForArtist(const QString &artistName) const
@@ -895,12 +903,26 @@ QVariantList LibraryManager::getAlbumsForArtist(const QString &artistName) const
     if (!m_databaseManager || !m_databaseManager->isOpen()) {
         return QVariantList();
     }
-    return m_databaseManager->getAlbumsByAlbumArtistName(artistName);
+    
+    // Check cache first
+    if (m_albumsByArtistCache.contains(artistName)) {
+        return m_albumsByArtistCache[artistName];
+    }
+    
+    // Fetch from database and cache
+    QVariantList albums = m_databaseManager->getAlbumsByAlbumArtistName(artistName);
+    
+    // Only cache if the result is reasonably small
+    if (albums.size() < 100) {
+        m_albumsByArtistCache[artistName] = albums;
+    }
+    
+    return albums;
 }
 
 TrackModel* LibraryManager::searchTracks(const QString &query) const
 {
-    TrackModel *model = new TrackModel();
+    TrackModel *model = new TrackModel(const_cast<LibraryManager*>(this));
     QVariantList results = m_databaseManager->searchTracks(query);
     
     // TODO: Convert QVariantList to Track objects and add to model
@@ -909,17 +931,16 @@ TrackModel* LibraryManager::searchTracks(const QString &query) const
 }
 
 // Stub implementations for remaining methods
-// These would need to be fully implemented based on your specific needs
 
 TrackModel* LibraryManager::tracksForArtist(const QString &artistName) const
 {
     // TODO: Implement
-    return new TrackModel();
+    return new TrackModel(const_cast<LibraryManager*>(this));
 }
 
 AlbumModel* LibraryManager::albumsForArtist(const QString &artistName) const
 {
-    AlbumModel *model = new AlbumModel();
+    AlbumModel *model = new AlbumModel(const_cast<LibraryManager*>(this));
     
     // Get albums from database
     QVariantList albumData = m_databaseManager->getAlbumsByAlbumArtistName(artistName);
@@ -928,10 +949,11 @@ AlbumModel* LibraryManager::albumsForArtist(const QString &artistName) const
     for (const QVariant &v : albumData) {
         QVariantMap albumMap = v.toMap();
         
-        // Create Album object
+        // Create Album object with model as parent for proper memory management
         Album *album = new Album(
             albumMap["title"].toString(),
-            artistName  // Use the album artist name
+            artistName,  // Use the album artist name
+            model  // Set parent to ensure cleanup
         );
         
         // Set additional properties if needed
@@ -948,7 +970,7 @@ AlbumModel* LibraryManager::albumsForArtist(const QString &artistName) const
 TrackModel* LibraryManager::tracksForAlbum(const QString &albumTitle, const QString &artistName) const
 {
     // TODO: Implement
-    return new TrackModel();
+    return new TrackModel(const_cast<LibraryManager*>(this));
 }
 
 QVariantList LibraryManager::getTracksForAlbumAsVariantList(const QString &artistName, const QString &albumTitle) const
@@ -969,7 +991,7 @@ QVariantList LibraryManager::getTracksForAlbumAsVariantList(const QString &artis
 AlbumModel* LibraryManager::searchAlbums(const QString &query) const
 {
     // TODO: Implement proper AlbumModel search
-    return new AlbumModel();
+    return new AlbumModel(const_cast<LibraryManager*>(this));
 }
 
 QStringList LibraryManager::searchArtists(const QString &query) const
@@ -989,46 +1011,88 @@ QVariantMap LibraryManager::searchAll(const QString &query) const
 
 Track* LibraryManager::trackByPath(const QString &path) const
 {
-    return m_tracks.value(path, nullptr);
+    // TODO: Implement database lookup
+    return nullptr;
 }
 
 Album* LibraryManager::albumByTitle(const QString &title, const QString &artistName) const
 {
-    QString key = artistName.isEmpty() ? title : artistName + ":" + title;
-    return m_albums.value(key, nullptr);
+    // TODO: Implement database lookup
+    return nullptr;
 }
 
 Artist* LibraryManager::artistByName(const QString &name) const
 {
-    return m_artists.value(name, nullptr);
-}
-
-Track* LibraryManager::processFile(const QString &filePath)
-{
-    // This method is now replaced by syncWithDatabase
+    // TODO: Implement database lookup
     return nullptr;
 }
 
-void LibraryManager::addTrackToLibrary(Track *track)
+
+void LibraryManager::saveCarouselPosition(int albumId)
 {
-    // This is now handled by the database
+    QSettings settings;
+    settings.setValue("carouselPosition/albumId", albumId);
+    qDebug() << "LibraryManager: Saved carousel position - album ID:" << albumId;
 }
 
-Album* LibraryManager::findOrCreateAlbum(const QString &title, const QString &artistName)
+int LibraryManager::loadCarouselPosition() const
 {
-    // This is now handled by the database
-    return nullptr;
+    QSettings settings;
+    int albumId = settings.value("carouselPosition/albumId", -1).toInt();
+    qDebug() << "LibraryManager: Loaded carousel position - album ID:" << albumId;
+    return albumId;
 }
 
-Artist* LibraryManager::findOrCreateArtist(const QString &name)
+QVariantList LibraryManager::getAlbumsPaginated(int offset, int limit) const
 {
-    // This is now handled by the database
-    return nullptr;
+    if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        return QVariantList();
+    }
+    
+    // Delegate to database manager with pagination
+    // TODO: Add pagination support to DatabaseManager
+    // For now, return empty list
+    qDebug() << "LibraryManager::getAlbumsPaginated - offset:" << offset << "limit:" << limit;
+    return QVariantList();
 }
 
-void LibraryManager::processScannedFiles()
+void LibraryManager::preloadAlbumsForArtists(const QStringList &artistNames) const
 {
-    // This is now handled differently with the database approach
+    if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        return;
+    }
+    
+    // Preload albums for multiple artists in a batch to improve performance
+    for (const QString &artistName : artistNames) {
+        // Skip if already cached
+        if (m_albumsByArtistCache.contains(artistName)) {
+            continue;
+        }
+        
+        // This will cache the albums
+        getAlbumsForArtist(artistName);
+    }
+}
+
+QVariantList LibraryManager::getLightweightAlbumModel() const
+{
+    if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        return QVariantList();
+    }
+    
+    // For now, check album count and decide strategy
+    int totalAlbums = albumCount();
+    
+    if (totalAlbums < 1000) {
+        // For small libraries, use the full model
+        return albumModel();
+    } else {
+        // For large libraries, we should implement a lightweight query
+        // that only fetches essential album data (id, title, artist, year, hasArt)
+        // TODO: Implement lightweight query in DatabaseManager
+        qWarning() << "Large library (" << totalAlbums << " albums) - lightweight model not yet implemented";
+        return QVariantList();
+    }
 }
 
 void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& metadata)
@@ -1237,6 +1301,241 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
         qWarning() << "Failed to insert track:" << filePath << "-" << query.lastError().text();
         qWarning() << "SQL:" << query.lastQuery();
         qWarning() << "Bound values:" << query.boundValues();
+    }
+}
+
+void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVariantMap>& batchMetadata)
+{
+    if (batchMetadata.isEmpty() || m_cancelRequested) {
+        return;
+    }
+    
+    // Use maps to cache artist/album lookups within this batch
+    QHash<QString, int> artistCache;
+    QHash<QString, int> albumArtistCache;
+    QHash<QPair<QString, int>, int> albumCache; // (album title, album artist id) -> album id
+    
+    // Helper lambdas with caching
+    auto getCachedArtist = [&db, &artistCache](const QString& artistName) -> int {
+        if (artistName.isEmpty()) return 0;
+        
+        if (artistCache.contains(artistName)) {
+            return artistCache[artistName];
+        }
+        
+        QSqlQuery query(db);
+        query.prepare("SELECT id FROM artists WHERE name = :name");
+        query.bindValue(":name", artistName);
+        
+        if (query.exec() && query.next()) {
+            int id = query.value(0).toInt();
+            artistCache[artistName] = id;
+            return id;
+        }
+        
+        // Insert new artist
+        query.prepare("INSERT INTO artists (name) VALUES (:name)");
+        query.bindValue(":name", artistName);
+        
+        if (query.exec()) {
+            int id = query.lastInsertId().toInt();
+            artistCache[artistName] = id;
+            return id;
+        }
+        
+        return 0;
+    };
+    
+    auto getCachedAlbumArtist = [&db, &albumArtistCache](const QString& albumArtistName) -> int {
+        if (albumArtistName.isEmpty()) return 0;
+        
+        if (albumArtistCache.contains(albumArtistName)) {
+            return albumArtistCache[albumArtistName];
+        }
+        
+        QSqlQuery query(db);
+        query.prepare("SELECT id FROM album_artists WHERE name = :name");
+        query.bindValue(":name", albumArtistName);
+        
+        if (query.exec() && query.next()) {
+            int id = query.value(0).toInt();
+            albumArtistCache[albumArtistName] = id;
+            return id;
+        }
+        
+        // Insert new album artist
+        query.prepare("INSERT INTO album_artists (name) VALUES (:name)");
+        query.bindValue(":name", albumArtistName);
+        
+        if (query.exec()) {
+            int id = query.lastInsertId().toInt();
+            albumArtistCache[albumArtistName] = id;
+            return id;
+        }
+        
+        return 0;
+    };
+    
+    auto getCachedAlbum = [&db, &albumCache](const QString& albumName, int albumArtistId, int albumYear) -> int {
+        if (albumName.isEmpty()) return 0;
+        
+        QPair<QString, int> key(albumName, albumArtistId);
+        if (albumCache.contains(key)) {
+            return albumCache[key];
+        }
+        
+        QSqlQuery query(db);
+        
+        // Try to find existing album
+        if (albumArtistId > 0) {
+            query.prepare("SELECT id FROM albums WHERE title = :title AND album_artist_id = :artist_id");
+            query.bindValue(":title", albumName);
+            query.bindValue(":artist_id", albumArtistId);
+        } else {
+            query.prepare("SELECT id FROM albums WHERE title = :title AND album_artist_id IS NULL");
+            query.bindValue(":title", albumName);
+        }
+        
+        if (query.exec() && query.next()) {
+            int existingAlbumId = query.value(0).toInt();
+            albumCache[key] = existingAlbumId;
+            
+            // Update year if provided and not already set
+            if (albumYear > 0) {
+                QSqlQuery updateQuery(db);
+                updateQuery.prepare("UPDATE albums SET year = :year WHERE id = :id AND (year IS NULL OR year = 0)");
+                updateQuery.bindValue(":year", albumYear);
+                updateQuery.bindValue(":id", existingAlbumId);
+                updateQuery.exec();
+            }
+            
+            return existingAlbumId;
+        }
+        
+        // Insert new album with year
+        query.prepare("INSERT INTO albums (title, album_artist_id, year) VALUES (:title, :artist_id, :year)");
+        query.bindValue(":title", albumName);
+        query.bindValue(":artist_id", albumArtistId > 0 ? albumArtistId : QVariant());
+        query.bindValue(":year", albumYear > 0 ? albumYear : QVariant());
+        
+        if (query.exec()) {
+            int id = query.lastInsertId().toInt();
+            albumCache[key] = id;
+            return id;
+        }
+        
+        return 0;
+    };
+    
+    // Prepare track insert statement once
+    QSqlQuery trackInsert(db);
+    trackInsert.prepare(
+        "INSERT INTO tracks (file_path, title, artist_id, album_id, genre, year, "
+        "track_number, disc_number, duration, file_size, file_modified) "
+        "VALUES (:file_path, :title, :artist_id, :album_id, :genre, :year, "
+        ":track_number, :disc_number, :duration, :file_size, :file_modified)"
+    );
+    
+    // Process each track in the batch
+    for (const QVariantMap &metadata : batchMetadata) {
+        if (m_cancelRequested) {
+            break;
+        }
+        
+        // Extract data
+        QString filePath = metadata.value("filePath").toString();
+        QString title = metadata.value("title").toString();
+        QString artist = metadata.value("artist").toString();
+        QString albumArtist = metadata.value("albumArtist").toString();
+        QString album = metadata.value("album").toString();
+        QString genre = metadata.value("genre").toString();
+        int year = metadata.value("year").toInt();
+        int trackNumber = metadata.value("trackNumber").toInt();
+        int discNumber = metadata.value("discNumber").toInt();
+        int duration = metadata.value("duration").toInt();
+        qint64 fileSize = metadata.value("fileSize", 0).toLongLong();
+        QDateTime fileModified = metadata.value("fileModified").toDateTime();
+        
+        // Get or create artist (using cache)
+        int artistId = getCachedArtist(artist);
+        
+        // Get or create album artist (using cache)
+        int albumArtistId = 0;
+        if (!albumArtist.isEmpty()) {
+            albumArtistId = getCachedAlbumArtist(albumArtist);
+        } else if (!artist.isEmpty()) {
+            albumArtistId = getCachedAlbumArtist(artist);
+        }
+        
+        // Get or create album (using cache)
+        int albumId = getCachedAlbum(album, albumArtistId, year);
+        
+        // Process album art if needed (only for new albums)
+        if (albumId > 0 && metadata.contains("hasAlbumArt") && metadata.value("hasAlbumArt").toBool()) {
+            // Check if album art already exists
+            QSqlQuery artCheckQuery(db);
+            artCheckQuery.prepare("SELECT 1 FROM album_art WHERE album_id = :album_id LIMIT 1");
+            artCheckQuery.bindValue(":album_id", albumId);
+            
+            if (artCheckQuery.exec() && !artCheckQuery.next()) {
+                // Album art doesn't exist, process and store it
+                QByteArray albumArtData = metadata.value("albumArtData").toByteArray();
+                QString mimeType = metadata.value("albumArtMimeType").toString();
+                
+                if (!albumArtData.isEmpty()) {
+                    // Process album art
+                    AlbumArtManager albumArtManager;
+                    AlbumArtManager::ProcessedAlbumArt processed = 
+                        albumArtManager.processAlbumArt(albumArtData, album, 
+                                                       albumArtistId > 0 ? albumArtist : artist,
+                                                       mimeType);
+                    
+                    if (processed.success) {
+                        // Insert album art into database
+                        QSqlQuery artQuery(db);
+                        artQuery.prepare(
+                            "INSERT INTO album_art "
+                            "(album_id, full_path, full_hash, thumbnail, thumbnail_size, "
+                            "width, height, format, file_size) "
+                            "VALUES (:album_id, :full_path, :full_hash, :thumbnail, :thumbnail_size, "
+                            ":width, :height, :format, :file_size)"
+                        );
+                        
+                        artQuery.bindValue(":album_id", albumId);
+                        artQuery.bindValue(":full_path", processed.fullImagePath);
+                        artQuery.bindValue(":full_hash", processed.hash);
+                        artQuery.bindValue(":thumbnail", processed.thumbnailData);
+                        artQuery.bindValue(":thumbnail_size", processed.thumbnailData.size());
+                        artQuery.bindValue(":width", processed.originalSize.width());
+                        artQuery.bindValue(":height", processed.originalSize.height());
+                        artQuery.bindValue(":format", processed.format);
+                        artQuery.bindValue(":file_size", processed.fileSize);
+                        
+                        if (!artQuery.exec()) {
+                            qWarning() << "Failed to insert album art for album:" << album 
+                                      << "-" << artQuery.lastError().text();
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Insert track using prepared statement
+        trackInsert.bindValue(":file_path", filePath);
+        trackInsert.bindValue(":title", title);
+        trackInsert.bindValue(":artist_id", artistId > 0 ? artistId : QVariant());
+        trackInsert.bindValue(":album_id", albumId > 0 ? albumId : QVariant());
+        trackInsert.bindValue(":genre", genre);
+        trackInsert.bindValue(":year", year > 0 ? year : QVariant());
+        trackInsert.bindValue(":track_number", trackNumber > 0 ? trackNumber : QVariant());
+        trackInsert.bindValue(":disc_number", discNumber > 0 ? discNumber : QVariant());
+        trackInsert.bindValue(":duration", duration > 0 ? duration : QVariant());
+        trackInsert.bindValue(":file_size", fileSize > 0 ? fileSize : QVariant());
+        trackInsert.bindValue(":file_modified", fileModified.isValid() ? fileModified : QVariant());
+        
+        if (!trackInsert.exec()) {
+            qWarning() << "Failed to insert track:" << filePath << "-" << trackInsert.lastError().text();
+        }
     }
 }
 
