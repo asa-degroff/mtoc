@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        1.1.2
+Version:        1.1.3
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -52,6 +52,24 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %{_datadir}/pixmaps/%{name}.png
 
 %changelog
+* Thu Jun 19 2025 Asa DeGroff <asa@3fz.org> 1.1.3-1
+- perf: improved performance in LibraryManager by replacing linear search with
+  constant time lookup for artists and albums (asa@3fz.org)
+- perf: implement parallelized metadata extraction and batch insertion in
+  LibraryManager (asa@3fz.org)
+- feat: add pagination and caching for album retrieval in LibraryManager
+  (asa@3fz.org)
+- fix: ensure proper memory management by setting LibraryManager as parent for
+  TrackModel and AlbumModel instances (asa@3fz.org)
+- Pruned librarymanager (asa@3fz.org)
+- feat: implement carousel position persistence between restarts in
+  HorizontalAlbumBrowser (asa@3fz.org)
+- cleanup (asa@3fz.org)
+- fix: enhance icon handling for Flatpak integration (asa@3fz.org)
+- fix: add  proper display path mapping in UI for music folders when using
+  flatpak (asa@3fz.org)
+- Flatpak distribution preparation (asa@3fz.org)
+
 * Wed Jun 18 2025 Asa DeGroff <asa@3fz.org> 1.1.2-1
 - fix: adjust progress slider positioning and dimensions for better alignment
   (asa@3fz.org)
