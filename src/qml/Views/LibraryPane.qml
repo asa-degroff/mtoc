@@ -535,8 +535,22 @@ Item {
                         reuseItems: true  // Enable recycling for better performance
                         cacheBuffer: 600  // Increase cache for smoother scrolling
                         
-                        // Disable layer effect for better performance
-                        // Content clipping is handled by parent container's clip property
+                        // Layer effect to maintain rounded corners during scrolling
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            maskEnabled: true
+                            maskInverted: false
+                            maskThresholdMin: 0.5
+                            maskSpreadAtMin: 1.0
+                            maskSource: ShaderEffectSource {
+                                sourceItem: Rectangle {
+                                    width: artistsListView.width
+                                    height: artistsListView.height
+                                    radius: 6  // Match the parent's radius minus borders
+                                    color: "white"
+                                }
+                            }
+                        }
                     
                     // Increase scroll speed
                     flickDeceleration: 8000  // Default is 1500, can increase for faster stopping
@@ -1063,6 +1077,23 @@ Item {
                         cacheBuffer: 400  // Limit cache for track list
                         
                         // Track list model updates automatically
+                        
+                        // Layer effect to maintain rounded corners during scrolling
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            maskEnabled: true
+                            maskInverted: false
+                            maskThresholdMin: 0.5
+                            maskSpreadAtMin: 1.0
+                            maskSource: ShaderEffectSource {
+                                sourceItem: Rectangle {
+                                    width: trackListView.width
+                                    height: trackListView.height
+                                    radius: 6  // Match the parent's radius minus borders
+                                    color: "white"
+                                }
+                            }
+                        }
                         
                         // Increase scroll speed to match artist list
                         flickDeceleration: 8000
