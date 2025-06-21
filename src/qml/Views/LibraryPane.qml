@@ -359,7 +359,14 @@ Item {
                     // Use O(1) lookup instead of O(n) linear search
                     var artistIndex = artistNameToIndex[album.albumArtist]
                     if (artistIndex !== undefined) {
-                        artistsListView.positionViewAtIndex(artistIndex, ListView.Contain)
+                        // Position at top for better visibility
+                        artistsListView.positionViewAtIndex(artistIndex, ListView.Beginning)
+                        // Add a small offset to ensure the artist is not right at the edge
+                        Qt.callLater(function() {
+                            if (artistsListView.contentY > 0) {
+                                artistsListView.contentY = Math.max(0, artistsListView.contentY - 8)
+                            }
+                        })
                     }
                 }
             }
@@ -1381,16 +1388,18 @@ Item {
             if (artistName) {
                 highlightedArtist = artistName
                 
-                // Expand the artist
+                // Expand the artist first
                 var updatedExpanded = Object.assign({}, expandedArtists)
                 updatedExpanded[artistName] = true
                 expandedArtists = updatedExpanded
                 
-                // Scroll to the artist
-                scrollToArtist(artistName)
-                
                 // Select the album
                 selectedAlbum = bestMatch
+                
+                // Scroll to the artist after expansion to ensure artist stays at top
+                Qt.callLater(function() {
+                    scrollToArtist(artistName)
+                })
             }
         } else if (matchType === "track") {
             // Find the album and artist for this track and expand
@@ -1402,9 +1411,6 @@ Item {
                 updatedExpanded[bestMatch.artist] = true
                 expandedArtists = updatedExpanded
                 
-                // Scroll to the artist
-                scrollToArtist(bestMatch.artist)
-                
                 // Try to find and select the album
                 var albums = LibraryManager.getAlbumsForArtist(bestMatch.artist)
                 for (var i = 0; i < albums.length; i++) {
@@ -1413,6 +1419,11 @@ Item {
                         break
                     }
                 }
+                
+                // Scroll to the artist after expansion and album selection
+                Qt.callLater(function() {
+                    scrollToArtist(bestMatch.artist)
+                })
             }
         }
     }
@@ -1422,7 +1433,14 @@ Item {
         var artists = LibraryManager.artistModel
         for (var i = 0; i < artists.length; i++) {
             if (artists[i].name === artistName) {
-                artistsListView.positionViewAtIndex(i, ListView.Contain)
+                // Use ListView.Beginning to position the artist at the top of the view
+                artistsListView.positionViewAtIndex(i, ListView.Beginning)
+                // Add a small offset to ensure the artist is not right at the edge
+                Qt.callLater(function() {
+                    if (artistsListView.contentY > 0) {
+                        artistsListView.contentY = Math.max(0, artistsListView.contentY - 8)
+                    }
+                })
                 break
             }
         }
@@ -1444,7 +1462,13 @@ Item {
             navigationMode = "artist"
             selectedArtistIndex = 0
             selectedArtistName = LibraryManager.artistModel[0].name
-            artistsListView.positionViewAtIndex(0, ListView.Contain)
+            artistsListView.positionViewAtIndex(0, ListView.Beginning)
+            // Add a small offset to ensure the artist is not right at the edge
+            Qt.callLater(function() {
+                if (artistsListView.contentY > 0) {
+                    artistsListView.contentY = Math.max(0, artistsListView.contentY - 8)
+                }
+            })
         }
     }
     
@@ -1457,7 +1481,14 @@ Item {
             if (artistIndex !== undefined) {
                 selectedArtistIndex = artistIndex
                 selectedArtistName = searchResults.bestMatch.name
-                artistsListView.positionViewAtIndex(artistIndex, ListView.Contain)
+                // Position at top for better visibility
+                artistsListView.positionViewAtIndex(artistIndex, ListView.Beginning)
+                // Add a small offset to ensure the artist is not right at the edge
+                Qt.callLater(function() {
+                    if (artistsListView.contentY > 0) {
+                        artistsListView.contentY = Math.max(0, artistsListView.contentY - 8)
+                    }
+                })
             }
         } else if (searchResults.bestMatch && searchResults.bestMatchType === "album") {
             // Start with the album's artist expanded and album selected
@@ -1467,7 +1498,14 @@ Item {
             if (artistIndex !== undefined) {
                 selectedArtistIndex = artistIndex
                 selectedArtistName = artistName
-                artistsListView.positionViewAtIndex(artistIndex, ListView.Contain)
+                // Position at top for better visibility
+                artistsListView.positionViewAtIndex(artistIndex, ListView.Beginning)
+                // Add a small offset to ensure the artist is not right at the edge
+                Qt.callLater(function() {
+                    if (artistsListView.contentY > 0) {
+                        artistsListView.contentY = Math.max(0, artistsListView.contentY - 8)
+                    }
+                })
                 
                 // Ensure artist is expanded
                 var updatedExpanded = Object.assign({}, expandedArtists)
@@ -1575,7 +1613,14 @@ Item {
             for (var i = 0; i < artists.length; i++) {
                 if (artists[i] && artists[i].name === artistName) {
                     if (artistsListView) {
-                        artistsListView.positionViewAtIndex(i, ListView.Contain)
+                        // Position at top for better visibility
+                        artistsListView.positionViewAtIndex(i, ListView.Beginning)
+                        // Add a small offset to ensure the artist is not right at the edge
+                        Qt.callLater(function() {
+                            if (artistsListView.contentY > 0) {
+                                artistsListView.contentY = Math.max(0, artistsListView.contentY - 8)
+                            }
+                        })
                     }
                     break
                 }
