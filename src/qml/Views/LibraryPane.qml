@@ -60,24 +60,11 @@ Item {
                 searchBar.forceActiveFocus()
                 event.accepted = true
             } else if (event.key === Qt.Key_Left) {
-                // Navigate back to artist list from albums/tracks
-                if (navigationMode === "album" || navigationMode === "track") {
-                    navigationMode = "artist"
-                    selectedAlbumIndex = -1
-                    selectedTrackIndex = -1
-                    event.accepted = true
-                }
+                handleNavigationLeft()
+                event.accepted = true
             } else if (event.key === Qt.Key_Right) {
-                // Navigate forward from artist to albums
-                if (navigationMode === "artist" && expandedArtists[selectedArtistName]) {
-                    var albums = LibraryManager.getAlbumsForArtist(selectedArtistName)
-                    if (albums.length > 0) {
-                        navigationMode = "album"
-                        selectedAlbumIndex = 0
-                        selectedAlbumData = albums[0]
-                        event.accepted = true
-                    }
-                }
+                handleNavigationRight()
+                event.accepted = true
             }
         } else {
             // When not in navigation mode, allow quick search access
@@ -1578,14 +1565,90 @@ Item {
             }
         } else if (navigationMode === "album") {
             var albums = LibraryManager.getAlbumsForArtist(selectedArtistName)
-            if (selectedAlbumIndex < albums.length - 1) {
-                selectedAlbumIndex++
+            // Calculate grid dimensions
+            var gridWidth = Math.floor((artistsListView.width - 24) / 130) // Approximate columns based on cell width
+            var currentRow = Math.floor(selectedAlbumIndex / gridWidth)
+            var currentCol = selectedAlbumIndex % gridWidth
+            var totalRows = Math.ceil(albums.length / gridWidth)
+            
+            // Try to move down a row
+            var newIndex = selectedAlbumIndex + gridWidth
+            
+            if (newIndex < albums.length) {
+                // Move down within the same artist's albums
+                selectedAlbumIndex = newIndex
                 selectedAlbumData = albums[selectedAlbumIndex]
+            } else if (currentRow < totalRows - 1) {
+                // We're on the last incomplete row, go to last album
+                selectedAlbumIndex = albums.length - 1
+                selectedAlbumData = albums[selectedAlbumIndex]
+            } else {
+                // We're at the bottom of this artist's albums, move to next artist
+                if (selectedArtistIndex < LibraryManager.artistModel.length - 1) {
+                    navigationMode = "artist"
+                    selectedArtistIndex++
+                    selectedArtistName = LibraryManager.artistModel[selectedArtistIndex].name
+                    selectedAlbumIndex = -1
+                    selectedAlbumData = null
+                    artistsListView.positionViewAtIndex(selectedArtistIndex, ListView.Contain)
+                }
             }
         } else if (navigationMode === "track") {
             if (selectedTrackIndex < rightPane.currentAlbumTracks.length - 1) {
                 selectedTrackIndex++
             }
+        }
+    }
+    
+    function handleNavigationLeft() {
+        if (navigationMode === "album") {
+            // Navigate left within album grid
+            if (selectedAlbumIndex > 0) {
+                selectedAlbumIndex--
+                var albums = LibraryManager.getAlbumsForArtist(selectedArtistName)
+                selectedAlbumData = albums[selectedAlbumIndex]
+            } else {
+                // At the beginning of albums, go back to artist navigation
+                navigationMode = "artist"
+                selectedAlbumIndex = -1
+                selectedAlbumData = null
+            }
+        } else if (navigationMode === "track") {
+            // From track list, go back to album navigation
+            navigationMode = "album"
+            selectedTrackIndex = -1
+        } else if (navigationMode === "artist") {
+            // Already at leftmost navigation level
+        }
+    }
+    
+    function handleNavigationRight() {
+        if (navigationMode === "artist") {
+            // Navigate from artist to albums
+            if (expandedArtists[selectedArtistName]) {
+                var albums = LibraryManager.getAlbumsForArtist(selectedArtistName)
+                if (albums.length > 0) {
+                    navigationMode = "album"
+                    selectedAlbumIndex = 0
+                    selectedAlbumData = albums[0]
+                }
+            }
+        } else if (navigationMode === "album") {
+            // Navigate right within album grid
+            var albums = LibraryManager.getAlbumsForArtist(selectedArtistName)
+            if (selectedAlbumIndex < albums.length - 1) {
+                selectedAlbumIndex++
+                selectedAlbumData = albums[selectedAlbumIndex]
+            } else if (selectedAlbumData) {
+                // At the end of albums, select the album and go to tracks
+                selectedAlbum = selectedAlbumData
+                if (rightPane.currentAlbumTracks.length > 0) {
+                    navigationMode = "track"
+                    selectedTrackIndex = 0
+                }
+            }
+        } else if (navigationMode === "track") {
+            // Already at rightmost navigation level
         }
     }
     
@@ -1597,10 +1660,34 @@ Item {
                 artistsListView.positionViewAtIndex(selectedArtistIndex, ListView.Contain)
             }
         } else if (navigationMode === "album") {
-            if (selectedAlbumIndex > 0) {
-                selectedAlbumIndex--
-                var albums = LibraryManager.getAlbumsForArtist(selectedArtistName)
+            var albums = LibraryManager.getAlbumsForArtist(selectedArtistName)
+            // Calculate grid dimensions
+            var gridWidth = Math.floor((artistsListView.width - 24) / 130) // Approximate columns based on cell width
+            var currentRow = Math.floor(selectedAlbumIndex / gridWidth)
+            
+            // Try to move up a row
+            var newIndex = selectedAlbumIndex - gridWidth
+            
+            if (newIndex >= 0) {
+                // Move up within the same artist's albums
+                selectedAlbumIndex = newIndex
                 selectedAlbumData = albums[selectedAlbumIndex]
+            } else if (currentRow > 0) {
+                // We're on the first row but not at index 0, go to first album
+                selectedAlbumIndex = 0
+                selectedAlbumData = albums[selectedAlbumIndex]
+            } else {
+                // We're at the top of this artist's albums, move to previous artist
+                if (selectedArtistIndex > 0) {
+                    navigationMode = "artist"
+                    selectedArtistIndex--
+                    selectedArtistName = LibraryManager.artistModel[selectedArtistIndex].name
+                    selectedAlbumIndex = -1
+                    selectedAlbumData = null
+                    artistsListView.positionViewAtIndex(selectedArtistIndex, ListView.Contain)
+                    
+                    // Don't auto-expand - let user explicitly expand with Enter/Right
+                }
             }
         } else if (navigationMode === "track") {
             if (selectedTrackIndex > 0) {
