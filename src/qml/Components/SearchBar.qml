@@ -19,6 +19,7 @@ Rectangle {
     signal searchRequested(string searchTerm)
     signal clearRequested()
     signal focusRequested()
+    signal enterPressed()
     
     // Inner shadow for depth
     Rectangle {
@@ -126,10 +127,12 @@ Rectangle {
             
             Keys.onReturnPressed: {
                 root.searchRequested(text)
+                root.enterPressed()
             }
             
             Keys.onEnterPressed: {
                 root.searchRequested(text)
+                root.enterPressed()
             }
             
             function clear() {
@@ -210,5 +213,11 @@ Rectangle {
         onClicked: {
             textInput.forceActiveFocus()
         }
+    }
+    
+    // Function to focus and select all text
+    function forceActiveFocus() {
+        textInput.forceActiveFocus()
+        textInput.selectAll()
     }
 }

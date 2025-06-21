@@ -43,19 +43,50 @@ Item {
     
     // Keyboard navigation handler
     Keys.onPressed: function(event) {
-        if (event.key === Qt.Key_Tab || event.key === Qt.Key_Down) {
-            handleNavigationDown()
-            event.accepted = true
-        } else if (event.key === Qt.Key_Backtab || event.key === Qt.Key_Up) {
-            handleNavigationUp()
-            event.accepted = true
-        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-            handleNavigationActivate()
-            event.accepted = true
-        } else if (event.key === Qt.Key_Escape) {
-            resetNavigation()
-            event.accepted = true
+        // Only handle navigation keys if we're in navigation mode
+        if (navigationMode !== "none") {
+            if (event.key === Qt.Key_Down) {
+                handleNavigationDown()
+                event.accepted = true
+            } else if (event.key === Qt.Key_Up) {
+                handleNavigationUp()
+                event.accepted = true
+            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                handleNavigationActivate()
+                event.accepted = true
+            } else if (event.key === Qt.Key_Escape) {
+                // Return focus to search bar on Escape
+                resetNavigation()
+                searchBar.forceActiveFocus()
+                event.accepted = true
+            } else if (event.key === Qt.Key_Left) {
+                // Navigate back to artist list from albums/tracks
+                if (navigationMode === "album" || navigationMode === "track") {
+                    navigationMode = "artist"
+                    selectedAlbumIndex = -1
+                    selectedTrackIndex = -1
+                    event.accepted = true
+                }
+            } else if (event.key === Qt.Key_Right) {
+                // Navigate forward from artist to albums
+                if (navigationMode === "artist" && expandedArtists[selectedArtistName]) {
+                    var albums = LibraryManager.getAlbumsForArtist(selectedArtistName)
+                    if (albums.length > 0) {
+                        navigationMode = "album"
+                        selectedAlbumIndex = 0
+                        selectedAlbumData = albums[0]
+                        event.accepted = true
+                    }
+                }
+            }
+        } else {
+            // When not in navigation mode, allow quick search access
+            if (event.key === Qt.Key_Slash || event.key === Qt.Key_F && event.modifiers & Qt.ControlModifier) {
+                searchBar.forceActiveFocus()
+                event.accepted = true
+            }
         }
+        // Allow Tab/Shift+Tab to work normally for focus traversal
     }
     
     Component.onCompleted: {
@@ -512,6 +543,18 @@ Item {
                             // Scroll to top when search is focused and reset navigation
                             artistsListView.positionViewAtBeginning()
                             resetNavigation()
+                        }
+                        
+                        onEnterPressed: {
+                            // Move focus to library content on Enter key
+                            if (currentSearchTerm.length > 0 && searchResults.bestMatch) {
+                                // Start navigation from search result
+                                setupNavigationFromSearch()
+                            } else if (LibraryManager.artistModel.length > 0) {
+                                // Start navigation from beginning if no search
+                                startArtistNavigation()
+                            }
+                            root.forceActiveFocus()
                         }
                         
                         // Handle Tab key to transfer focus to library navigation
