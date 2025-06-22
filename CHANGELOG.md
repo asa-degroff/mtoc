@@ -1,3 +1,9 @@
+1.1.4
+- Improved keyboard input handling for library navigation, various performance improvements and bug fixes
+
+1.1.3
+- This release includes performance improvements for library scanning and fixes a bug that caused the carousel to lag while navigating a large library.
+
 1.1.2
 - This patch fixes the offset of the progress bar slider.
 
