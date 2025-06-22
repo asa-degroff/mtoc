@@ -77,8 +77,20 @@ Item {
         
         // Sort by artist first, then by year (descending) within each artist
         indexedAlbums.sort(function(a, b) {
-            // First compare by album artist (case-insensitive)
-            var artistCompare = a.albumArtist.toLowerCase().localeCompare(b.albumArtist.toLowerCase())
+            // Get artist names for comparison, removing "The " prefix
+            var artistA = a.albumArtist.toLowerCase()
+            var artistB = b.albumArtist.toLowerCase()
+            
+            // Remove "The " prefix for sorting purposes
+            if (artistA.indexOf("the ") === 0) {
+                artistA = artistA.substring(4)
+            }
+            if (artistB.indexOf("the ") === 0) {
+                artistB = artistB.substring(4)
+            }
+            
+            // First compare by album artist (case-insensitive, without "The " prefix)
+            var artistCompare = artistA.localeCompare(artistB)
             if (artistCompare !== 0) {
                 return artistCompare
             }
@@ -101,7 +113,7 @@ Item {
         albumIdToSortedIndex = idToIndex
         
         // Memory usage estimate: only storing integers instead of full album objects
-        var memoryEstimate = sortedAlbumIndices.length * 4 // 4 bytes per integer
+        // var memoryEstimate = sortedAlbumIndices.length * 4 // 4 bytes per integer
         // console.log("HorizontalAlbumBrowser: Using approximately", memoryEstimate, "bytes for sorted indices vs", 
         //             (sourceAlbums.length * 200), "bytes estimated for full album copies")
         

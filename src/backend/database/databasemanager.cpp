@@ -1038,7 +1038,10 @@ QVariantList DatabaseManager::getAllArtists()
         "  WHEN LOWER(SUBSTR(aa.name, 1, 1)) BETWEEN 'a' AND 'z' THEN 0 "
         "  ELSE 1 "
         "END, "
-        "aa.name COLLATE NOCASE"
+        "CASE "
+        "  WHEN LOWER(SUBSTR(aa.name, 1, 4)) = 'the ' THEN LOWER(SUBSTR(aa.name, 5)) "
+        "  ELSE LOWER(aa.name) "
+        "END COLLATE NOCASE"
     );
     
     while (query.next()) {

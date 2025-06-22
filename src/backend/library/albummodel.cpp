@@ -158,8 +158,20 @@ void AlbumModel::sortByArtist()
     beginResetModel();
     
     std::sort(m_albums.begin(), m_albums.end(), [](Album *a, Album *b) {
-        // First sort by artist
-        int artistCompare = a->artist().localeAwareCompare(b->artist());
+        // Get artist names, removing "The " prefix for sorting
+        QString artistA = a->artist();
+        QString artistB = b->artist();
+        
+        // Remove "The " prefix (case-insensitive) for sorting purposes
+        if (artistA.startsWith("The ", Qt::CaseInsensitive)) {
+            artistA = artistA.mid(4);
+        }
+        if (artistB.startsWith("The ", Qt::CaseInsensitive)) {
+            artistB = artistB.mid(4);
+        }
+        
+        // First sort by artist (without "The " prefix)
+        int artistCompare = artistA.localeAwareCompare(artistB);
         if (artistCompare != 0)
             return artistCompare < 0;
             
