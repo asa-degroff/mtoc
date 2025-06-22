@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        1.1.3
+Version:        1.1.4
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -52,6 +52,24 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %{_datadir}/pixmaps/%{name}.png
 
 %changelog
+* Sat Jun 21 2025 Asa DeGroff <asa@3fz.org> 1.1.4-1
+- feat: add caching for artist albums to improve lookup performance in
+  LibraryPane (asa@3fz.org)
+- perf: optimize image handling and caching in BlurredBackground and
+  LibraryPane components (asa@3fz.org)
+- feat: improve keyboard navigation handling for album and track lists
+  (asa@3fz.org)
+- feat: enhance search functionality with enter key handling and improved
+  keyboard navigation (asa@3fz.org)
+- fix: search results now move to the top of the view (asa@3fz.org)
+- feat: add layer effects to maintain rounded corners during scrolling in
+  artist and track lists (asa@3fz.org)
+- Automatic commit of package [mtoc] release [1.1.3-1]. (asa@3fz.org)
+- feat: implement carousel position persistence between restarts in
+  HorizontalAlbumBrowser (asa@3fz.org)
+- cleanup (asa@3fz.org)
+- Automatic commit of package [mtoc] release [1.1.2-1]. (asa@3fz.org)
+
 * Thu Jun 19 2025 Asa DeGroff <asa@3fz.org> 1.1.3-1
 - perf: improved performance in LibraryManager by replacing linear search with
   constant time lookup for artists and albums (asa@3fz.org)
