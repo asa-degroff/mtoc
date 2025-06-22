@@ -10,6 +10,7 @@ Item {
     property var selectedAlbum: null
     property int currentIndex: -1
     property var sortedAlbumIndices: []  // Array of indices into LibraryManager.albumModel
+    property var albumIdToSortedIndex: ({})  // Map album ID to sorted index for O(1) lookup
     
     // Touchpad scrolling properties
     property real scrollVelocity: 0
@@ -88,6 +89,17 @@ Item {
         // Extract just the sorted indices
         sortedAlbumIndices = indexedAlbums.map(function(item) { return item.index })
         
+        // Build the album ID to sorted index mapping for O(1) lookup
+        var idToIndex = {}
+        for (var i = 0; i < sortedAlbumIndices.length; i++) {
+            var albumIndex = sortedAlbumIndices[i]
+            var album = sourceAlbums[albumIndex]
+            if (album && album.id) {
+                idToIndex[album.id] = i
+            }
+        }
+        albumIdToSortedIndex = idToIndex
+        
         // Memory usage estimate: only storing integers instead of full album objects
         var memoryEstimate = sortedAlbumIndices.length * 4 // 4 bytes per integer
         // console.log("HorizontalAlbumBrowser: Using approximately", memoryEstimate, "bytes for sorted indices vs", 
@@ -123,26 +135,25 @@ Item {
                 return;
             }
             
-            // Validate sortedAlbumIndices array
-            if (!sortedAlbumIndices || !Array.isArray(sortedAlbumIndices)) {
-                console.warn("HorizontalAlbumBrowser.jumpToAlbum: sortedAlbumIndices is not a valid array");
-                return;
-            }
-            
-            var sourceAlbums = LibraryManager.albumModel
-            for (var i = 0; i < sortedAlbumIndices.length; i++) {
-                var albumIndex = sortedAlbumIndices[i]
-                var currentAlbum = sourceAlbums[albumIndex]
-                if (currentAlbum && 
-                    typeof currentAlbum === "object" && 
-                    typeof currentAlbum.id !== "undefined" && 
-                    currentAlbum.id === album.id) {
-                    // Animate to the new index instead of jumping
-                    listView.currentIndex = i
-                    selectedAlbum = currentAlbum
-                    break
+            // Use O(1) lookup to find the sorted index
+            var sortedIndex = albumIdToSortedIndex[album.id]
+            if (sortedIndex !== undefined && sortedIndex >= 0 && sortedIndex < sortedAlbumIndices.length) {
+                // Get the actual album to ensure it still exists
+                var albumIndex = sortedAlbumIndices[sortedIndex]
+                var sourceAlbums = LibraryManager.albumModel
+                if (albumIndex < sourceAlbums.length) {
+                    var currentAlbum = sourceAlbums[albumIndex]
+                    if (currentAlbum && currentAlbum.id === album.id) {
+                        // Animate to the new index instead of jumping
+                        listView.currentIndex = sortedIndex
+                        selectedAlbum = currentAlbum
+                        return
+                    }
                 }
             }
+            
+            // Fallback: album not found in the mapping (shouldn't happen in normal use)
+            console.warn("HorizontalAlbumBrowser.jumpToAlbum: Album not found in sorted index mapping:", album.id);
         } catch (error) {
             console.warn("HorizontalAlbumBrowser.jumpToAlbum error:", error);
         }

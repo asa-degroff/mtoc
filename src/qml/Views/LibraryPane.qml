@@ -27,6 +27,7 @@ Item {
     property url thumbnailUrl: ""
     property url pendingThumbnailUrl: ""  // Buffer for thumbnail URL changes
     property var artistNameToIndex: ({})  // Cache for artist name to index mapping
+    property var artistAlbumCache: ({})  // Cache for artist's albums: { "artistName": { "albumTitle": albumObject } }
     
     // Search state
     property string currentSearchTerm: ""
@@ -99,6 +100,7 @@ Item {
             // Clear caches when library changes
             searchResultsCache = {}
             albumDurationCache = {}
+            artistAlbumCache = {}
         }
     }
     
@@ -797,6 +799,8 @@ Item {
                                 if (visible && artistData && artistData.name && cachedArtistName !== artistData.name) {
                                     cachedArtistName = artistData.name
                                     cachedAlbums = LibraryManager.getAlbumsForArtist(artistData.name)
+                                    // Update the album cache when artist is expanded
+                                    root.updateAlbumCacheForArtist(artistData.name)
                                 }
                             }
 
@@ -1829,6 +1833,23 @@ Item {
         }
     }
     
+    // Helper function to update album cache for an artist
+    function updateAlbumCacheForArtist(artistName) {
+        if (!artistName || typeof artistName !== "string") return
+        
+        var albums = LibraryManager.getAlbumsForArtist(artistName)
+        if (!albums) return
+        
+        var albumMap = {}
+        for (var i = 0; i < albums.length; i++) {
+            if (albums[i] && albums[i].title) {
+                albumMap[albums[i].title] = albums[i]
+            }
+        }
+        
+        artistAlbumCache[artistName] = albumMap
+    }
+    
     function jumpToAlbum(artistName, albumTitle) {
         try {
             if (!artistName || !albumTitle || typeof artistName !== "string" || typeof albumTitle !== "string") return
@@ -1836,19 +1857,21 @@ Item {
             // First jump to the artist
             jumpToArtist(artistName)
             
-            // Find and select the album
-            var albums = LibraryManager.getAlbumsForArtist(artistName)
-            if (!albums) return
+            // Check if we have cached albums for this artist
+            if (!artistAlbumCache[artistName]) {
+                updateAlbumCacheForArtist(artistName)
+            }
             
-            for (var i = 0; i < albums.length; i++) {
-                if (albums[i] && albums[i].title === albumTitle) {
-                    selectedAlbum = albums[i]
-                    // Also jump to it in the album browser
-                    if (albumBrowser && typeof albumBrowser.jumpToAlbum === "function") {
-                        albumBrowser.jumpToAlbum(albums[i])
-                    }
-                    break
+            // Use O(1) lookup from cache
+            var albumMap = artistAlbumCache[artistName]
+            if (albumMap && albumMap[albumTitle]) {
+                selectedAlbum = albumMap[albumTitle]
+                // Also jump to it in the album browser
+                if (albumBrowser && typeof albumBrowser.jumpToAlbum === "function") {
+                    albumBrowser.jumpToAlbum(albumMap[albumTitle])
                 }
+            } else {
+                console.warn("Album not found in cache:", artistName, "-", albumTitle)
             }
         } catch (error) {
             console.warn("Error in jumpToAlbum:", error)
