@@ -1027,22 +1027,6 @@ Artist* LibraryManager::artistByName(const QString &name) const
     return nullptr;
 }
 
-
-void LibraryManager::saveCarouselPosition(int albumId)
-{
-    QSettings settings;
-    settings.setValue("carouselPosition/albumId", albumId);
-    qDebug() << "LibraryManager: Saved carousel position - album ID:" << albumId;
-}
-
-int LibraryManager::loadCarouselPosition() const
-{
-    QSettings settings;
-    int albumId = settings.value("carouselPosition/albumId", -1).toInt();
-    qDebug() << "LibraryManager: Loaded carousel position - album ID:" << albumId;
-    return albumId;
-}
-
 QVariantList LibraryManager::getAlbumsPaginated(int offset, int limit) const
 {
     if (!m_databaseManager || !m_databaseManager->isOpen()) {
@@ -1093,6 +1077,21 @@ QVariantList LibraryManager::getLightweightAlbumModel() const
         qWarning() << "Large library (" << totalAlbums << " albums) - lightweight model not yet implemented";
         return QVariantList();
     }
+}
+
+void LibraryManager::saveCarouselPosition(int albumId)
+{
+    QSettings settings;
+    settings.setValue("carouselPosition/albumId", albumId);
+    qDebug() << "LibraryManager: Saved carousel position - album ID:" << albumId;
+}
+
+int LibraryManager::loadCarouselPosition() const
+{
+    QSettings settings;
+    int albumId = settings.value("carouselPosition/albumId", -1).toInt();
+    qDebug() << "LibraryManager: Loaded carousel position - album ID:" << albumId;
+    return albumId;
 }
 
 void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& metadata)

@@ -52,6 +52,8 @@ Item {
                     cache: true
                     asynchronous: true
                     source: root.source
+                    sourceSize.width: 48  // Tiny size looks good when blurred heavily
+                    sourceSize.height: 48
                     
                     onStatusChanged: {
                         if (status === Image.Error) {
@@ -79,8 +81,8 @@ Item {
                 height: textureSource.height
                 source: textureSource
                 blurEnabled: true
-                blur: root.blurRadius / 256.0  // MultiEffect uses 0.0 to 1.0 range
-                blurMax: 32
+                blur: Math.min(1.0, root.blurRadius / 256.0)  // MultiEffect uses 0.0 to 1.0 range
+                blurMax: 64  // Reduce for better performance
                 visible: sourceImage.status === Image.Ready
                 opacity: root.backgroundOpacity
                 autoPaddingEnabled: false
