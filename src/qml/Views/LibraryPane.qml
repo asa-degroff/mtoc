@@ -22,8 +22,10 @@ Item {
     
     property var selectedAlbum: null
     property var expandedArtists: ({})  // Object to store expansion state by artist name
+    property var expandedArtistsCache: ({})  // Cache for quick lookups without triggering bindings
     property string highlightedArtist: ""  // Track which artist to highlight
     property url thumbnailUrl: ""
+    property url pendingThumbnailUrl: ""  // Buffer for thumbnail URL changes
     property var artistNameToIndex: ({})  // Cache for artist name to index mapping
     
     // Search state
@@ -31,6 +33,8 @@ Item {
     property var searchResults: ({})
     property bool isSearching: false
     property string previousExpandedState: ""  // Store expanded state before search
+    property var searchResultsCache: ({})  // Cache for search results
+    property int cacheExpiryTime: 60000  // Cache expires after 1 minute
     
     // TODO: fix keybaord navigation
     // Navigation state for keyboard controls
@@ -92,6 +96,9 @@ Item {
         target: LibraryManager
         function onLibraryChanged() {
             updateArtistIndexMapping()
+            // Clear caches when library changes
+            searchResultsCache = {}
+            albumDurationCache = {}
         }
     }
     
@@ -222,7 +229,6 @@ Item {
         id: blurredBg
         anchors.fill: parent
         source: thumbnailUrl
-        blurRadius: 512
         backgroundOpacity: 0.8
         z: -2  // Put this behind the dark overlay
     }
@@ -231,7 +237,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: "black"
-        opacity: 0.5
+        opacity: 0.65  // Increased to compensate for reduced blur
         z: -1  // This should be above the blurred background but below content
     }
     
@@ -643,16 +649,18 @@ Item {
                         
                         // Store modelData for easier access in nested views/functions
                         property var artistData: modelData
-                        property bool albumsVisible: root.expandedArtists[artistData.name] === true
+                        property bool albumsVisible: root.expandedArtistsCache[artistData.name] === true || root.expandedArtists[artistData.name] === true
+                        property bool isHighlighted: root.highlightedArtist === artistData.name
+                        property bool isKeyboardFocused: root.selectedArtistIndex === index && root.navigationMode === "artist"
                         
                         // Listen for changes to the expanded artists
                         Connections {
                             target: root
                             function onExpandedArtistsChanged() {
-                                // Force re-evaluation by updating the binding
-                                albumsVisible = Qt.binding(function() { 
-                                    return root.expandedArtists[artistData.name] === true 
-                                })
+                                // Update cache and binding efficiently
+                                var isExpanded = root.expandedArtists[artistData.name] === true;
+                                root.expandedArtistsCache[artistData.name] = isExpanded;
+                                albumsVisible = isExpanded;
                             }
                         } 
 
@@ -664,9 +672,9 @@ Item {
                             color: {
                                 if (artistsListView.currentIndex === index) {
                                     return Qt.rgba(0.25, 0.32, 0.71, 0.38)  // Selected color with transparency
-                                } else if (root.selectedArtistIndex === index && root.navigationMode === "artist") {
+                                } else if (isKeyboardFocused) {
                                     return Qt.rgba(0.35, 0.42, 0.81, 0.3)  // Keyboard navigation focus
-                                } else if (root.highlightedArtist === artistData.name) {
+                                } else if (isHighlighted) {
                                     return Qt.rgba(0.16, 0.16, 0.31, 0.25)  // Highlighted color with transparency
                                 } else {
                                     return Qt.rgba(1, 1, 1, 0.03)  // Subtle background
@@ -729,11 +737,14 @@ Item {
                                     }
                                     
                                     // Toggle expansion state more efficiently
-                                    var newExpandedState = !(root.expandedArtists[artistData.name] || false);
+                                    var currentState = root.expandedArtistsCache[artistData.name] || false;
+                                    var newExpandedState = !currentState;
                                     
-                                    // Only update if state actually changes
-                                    if ((newExpandedState && !root.expandedArtists[artistData.name]) ||
-                                        (!newExpandedState && root.expandedArtists[artistData.name])) {
+                                    // Update cache immediately for responsive UI
+                                    root.expandedArtistsCache[artistData.name] = newExpandedState;
+                                    
+                                    // Batch update the property to reduce re-renders
+                                    Qt.callLater(function() {
                                         var updatedExpanded = Object.assign({}, root.expandedArtists);
                                         if (newExpandedState) {
                                             updatedExpanded[artistData.name] = true;
@@ -741,7 +752,7 @@ Item {
                                             delete updatedExpanded[artistData.name];
                                         }
                                         root.expandedArtists = updatedExpanded;
-                                    }
+                                    });
                                     artistsListView.currentIndex = index; // Optional: select on expand
                                 }
                             }
@@ -777,6 +788,17 @@ Item {
                             // Subtle inset shadow
                             border.width: 1
                             border.color: Qt.rgba(0, 0, 0, 0.13)
+                            
+                            // Cache albums data when artist changes or becomes visible
+                            property var cachedAlbums: []
+                            property string cachedArtistName: ""
+                            
+                            onVisibleChanged: {
+                                if (visible && artistData && artistData.name && cachedArtistName !== artistData.name) {
+                                    cachedArtistName = artistData.name
+                                    cachedAlbums = LibraryManager.getAlbumsForArtist(artistData.name)
+                                }
+                            }
 
                             GridView {
                                 id: albumsGrid
@@ -791,8 +813,7 @@ Item {
                                 reuseItems: true  // Enable recycling for better performance
                                 cacheBuffer: 300  // Reasonable cache for album grid
 
-                                model: albumsVisible && artistData && artistData.name ? 
-                                       LibraryManager.getAlbumsForArtist(artistData.name) : []
+                                model: artistAlbumsContainer.cachedAlbums
 
                                 delegate: Item { 
                                     width: albumsGrid.cellWidth - 10
@@ -809,9 +830,11 @@ Item {
                                             border.width: 2
                                             border.color: Qt.rgba(0.35, 0.42, 0.81, 0.7)
                                             radius: 6
-                                            visible: root.navigationMode === "album" && 
+                                            // Cache the visibility check
+                                            property bool shouldShow: root.navigationMode === "album" && 
                                                     root.selectedArtistName === artistData.name && 
                                                     root.selectedAlbumIndex === index
+                                            visible: shouldShow
                                         }
 
                                         Rectangle { // Album Art container
@@ -830,6 +853,8 @@ Item {
                                                 fillMode: Image.PreserveAspectFit
                                                 clip: false
                                                 asynchronous: true
+                                                sourceSize.width: 220  // Limit to 2x the display size for retina
+                                                sourceSize.height: 220
                                                 
                                                 // Disable layer effect for better performance
                                                 // Rounded corners handled by container clipping
@@ -1113,6 +1138,18 @@ Item {
                         reuseItems: true
                         cacheBuffer: 400  // Limit cache for track list
                         
+                        // Cache multi-disc check for all tracks
+                        property bool isMultiDiscAlbum: {
+                            if (!rightPane.currentAlbumTracks || rightPane.currentAlbumTracks.length <= 1) return false
+                            for (var i = 0; i < rightPane.currentAlbumTracks.length; i++) {
+                                var track = rightPane.currentAlbumTracks[i]
+                                if (track && track.discNumber && track.discNumber > 1) {
+                                    return true
+                                }
+                            }
+                            return false
+                        }
+                        
                         // Track list model updates automatically
                         
                         // Layer effect to maintain rounded corners during scrolling
@@ -1163,29 +1200,13 @@ Item {
                             width: ListView.view.width
                             
                             // Helper properties to determine if we should show disc number
-                            property bool showDiscNumber: {
-                                if (!modelData.discNumber || modelData.discNumber < 1) return false
-                                
-                                // Check if this is the first track of a new disc
-                                if (index === 0) return true
-                                
-                                // Check if previous track has different disc number
-                                var prevTrack = rightPane.currentAlbumTracks[index - 1]
-                                return prevTrack && prevTrack.discNumber !== modelData.discNumber
-                            }
+                            property int currentDiscNumber: modelData.discNumber || 1
+                            property int previousDiscNumber: index > 0 && rightPane.currentAlbumTracks[index - 1] ? 
+                                                           (rightPane.currentAlbumTracks[index - 1].discNumber || 1) : 0
+                            property bool showDiscNumber: currentDiscNumber > 1 && (index === 0 || currentDiscNumber !== previousDiscNumber)
                             
-                            property bool isMultiDisc: {
-                                if (!rightPane.currentAlbumTracks || rightPane.currentAlbumTracks.length <= 1) return false
-                                
-                                var maxDisc = 1
-                                for (var i = 0; i < rightPane.currentAlbumTracks.length; i++) {
-                                    var track = rightPane.currentAlbumTracks[i]
-                                    if (track && track.discNumber && track.discNumber > maxDisc) {
-                                        maxDisc = track.discNumber
-                                    }
-                                }
-                                return maxDisc > 1
-                            }
+                            // Cache multi-disc check at the ListView level
+                            property bool isMultiDisc: trackListView.isMultiDiscAlbum
                             
                             // Disc number indicator
                             Item {
@@ -1251,6 +1272,8 @@ Item {
                                         source: "qrc:/resources/icons/speaker.svg"
                                         Layout.preferredWidth: 16
                                         Layout.preferredHeight: 16
+                                        sourceSize.width: 32  // 2x for retina
+                                        sourceSize.height: 32
                                         visible: MediaPlayer.currentTrack && 
                                                 MediaPlayer.currentTrack.filePath === modelData.filePath &&
                                                 MediaPlayer.state === MediaPlayer.PlayingState
@@ -1327,10 +1350,19 @@ Item {
         return min + ":" + (sec < 10 ? "0" : "") + sec;
     }
     
+    // Cache for album duration calculations
+    property var albumDurationCache: ({})
+    
     function formatAlbumDuration() {
         try {
             if (!rightPane || !rightPane.currentAlbumTracks || rightPane.currentAlbumTracks.length === 0) {
                 return "";
+            }
+            
+            // Create a cache key from album ID
+            var cacheKey = root.selectedAlbum ? root.selectedAlbum.id : "empty"
+            if (albumDurationCache[cacheKey]) {
+                return albumDurationCache[cacheKey]
             }
             
             var totalSeconds = 0;
@@ -1352,11 +1384,16 @@ Item {
             var minutes = Math.floor((totalSeconds % 3600) / 60);
             var seconds = Math.floor(totalSeconds % 60);
             
+            var result;
             if (hours > 0) {
-                return hours + ":" + (minutes < 10 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+                result = hours + ":" + (minutes < 10 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
             } else {
-                return minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+                result = minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
             }
+            
+            // Cache the result
+            albumDurationCache[cacheKey] = result
+            return result
         } catch (error) {
             console.warn("Error in formatAlbumDuration:", error);
             return "";
@@ -1377,8 +1414,20 @@ Item {
             previousExpandedState = JSON.stringify(expandedArtists)
         }
         
+        // Check cache first
+        var cacheKey = searchTerm.toLowerCase()
+        var cachedResult = searchResultsCache[cacheKey]
+        if (cachedResult && (Date.now() - cachedResult.timestamp < cacheExpiryTime)) {
+            searchResults = cachedResult.results
+        } else {
         // Get search results from LibraryManager
         searchResults = LibraryManager.searchAll(searchTerm)
+            // Cache the results
+            searchResultsCache[cacheKey] = {
+                results: searchResults,
+                timestamp: Date.now()
+            }
+        }
         
         if (searchResults.bestMatch && searchResults.bestMatchType) {
             handleSearchResult(searchResults.bestMatch, searchResults.bestMatchType)
@@ -1419,9 +1468,12 @@ Item {
                 highlightedArtist = artistName
                 
                 // Expand the artist first
+                expandedArtistsCache[artistName] = true
+                Qt.callLater(function() {
                 var updatedExpanded = Object.assign({}, expandedArtists)
                 updatedExpanded[artistName] = true
                 expandedArtists = updatedExpanded
+                })
                 
                 // Select the album
                 selectedAlbum = bestMatch
@@ -1437,9 +1489,12 @@ Item {
                 highlightedArtist = bestMatch.artist
                 
                 // Expand the artist
+                expandedArtistsCache[bestMatch.artist] = true
+                Qt.callLater(function() {
                 var updatedExpanded = Object.assign({}, expandedArtists)
                 updatedExpanded[bestMatch.artist] = true
                 expandedArtists = updatedExpanded
+                })
                 
                 // Try to find and select the album
                 var albums = LibraryManager.getAlbumsForArtist(bestMatch.artist)
@@ -1538,9 +1593,12 @@ Item {
                 })
                 
                 // Ensure artist is expanded
+                expandedArtistsCache[artistName] = true
+                Qt.callLater(function() {
                 var updatedExpanded = Object.assign({}, expandedArtists)
                 updatedExpanded[artistName] = true
                 expandedArtists = updatedExpanded
+                })
                 
                 // Switch to album navigation
                 navigationMode = "album"
@@ -1625,7 +1683,7 @@ Item {
     function handleNavigationRight() {
         if (navigationMode === "artist") {
             // Navigate from artist to albums
-            if (expandedArtists[selectedArtistName]) {
+            if (expandedArtistsCache[selectedArtistName] || expandedArtists[selectedArtistName]) {
                 var albums = LibraryManager.getAlbumsForArtist(selectedArtistName)
                 if (albums.length > 0) {
                     navigationMode = "album"
@@ -1699,9 +1757,12 @@ Item {
     function handleNavigationActivate() {
         if (navigationMode === "artist") {
             // Expand the artist to show albums
+            expandedArtistsCache[selectedArtistName] = true
+            Qt.callLater(function() {
             var updatedExpanded = Object.assign({}, expandedArtists)
             updatedExpanded[selectedArtistName] = true
             expandedArtists = updatedExpanded
+            })
             
             // Switch to album navigation
             var albums = LibraryManager.getAlbumsForArtist(selectedArtistName)
@@ -1757,9 +1818,12 @@ Item {
             }
             
             // Expand the artist to show albums
+            expandedArtistsCache[artistName] = true
+            Qt.callLater(function() {
             var updatedExpanded = Object.assign({}, expandedArtists)
             updatedExpanded[artistName] = true
             expandedArtists = updatedExpanded
+            })
         } catch (error) {
             console.warn("Error in jumpToArtist:", error)
         }

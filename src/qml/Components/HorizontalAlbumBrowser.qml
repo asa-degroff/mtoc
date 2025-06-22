@@ -647,6 +647,8 @@ Item {
                             asynchronous: true
                             antialiasing: true
                             cache: true  // Enable caching to prevent reloading
+                            sourceSize.width: 400  // 2x the display size for retina
+                            sourceSize.height: 400
                             
                             onStatusChanged: {
                                 if (status === Image.Error) {
