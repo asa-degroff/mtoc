@@ -1069,6 +1069,12 @@ Item {
                 property var currentAlbumTracks: []
                 property string albumTitleText: "No album selected"
 
+                onCurrentAlbumTracksChanged: {
+                    if (trackListView) {
+                        trackListView.currentIndex = -1
+                    }
+                }
+
                 ColumnLayout {
                     anchors.fill: parent
                     anchors.margins: 4
@@ -1156,22 +1162,8 @@ Item {
                         
                         // Track list model updates automatically
                         
-                        // Layer effect to maintain rounded corners during scrolling
-                        layer.enabled: true
-                        layer.effect: MultiEffect {
-                            maskEnabled: true
-                            maskInverted: false
-                            maskThresholdMin: 0.5
-                            maskSpreadAtMin: 1.0
-                            maskSource: ShaderEffectSource {
-                                sourceItem: Rectangle {
-                                    width: trackListView.width
-                                    height: trackListView.height
-                                    radius: 6  // Match the parent's radius minus borders
-                                    color: "white"
-                                }
-                            }
-                        }
+                        // Layer effect removed to fix rendering artifact.
+                        // Parent container handles corner clipping.
                         
                         // Increase scroll speed to match artist list
                         flickDeceleration: 8000
