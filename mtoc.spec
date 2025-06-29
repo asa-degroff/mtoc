@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        1.1.4
+Version:        1.1.5
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -52,6 +52,14 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %{_datadir}/pixmaps/%{name}.png
 
 %changelog
+* Sat Jun 28 2025 Asa DeGroff <asa@3fz.org> 1.1.5-1
+- fix: remove layer effect to improve performance in LibraryPane (asa@3fz.org)
+- fix: reset track list index on album change and remove layer effect to
+  address rendering artifacts (asa@3fz.org)
+- feat: enhance artist sorting by removing "The " prefix for better
+  alphabetical order (asa@3fz.org)
+- update changelog (asa@3fz.org)
+
 * Sat Jun 21 2025 Asa DeGroff <asa@3fz.org> 1.1.4-1
 - feat: add caching for artist albums to improve lookup performance in
   LibraryPane (asa@3fz.org)
