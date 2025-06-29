@@ -28,6 +28,11 @@ Item {
     property url pendingThumbnailUrl: ""  // Buffer for thumbnail URL changes
     property var artistNameToIndex: ({})  // Cache for artist name to index mapping
     property var artistAlbumCache: ({})  // Cache for artist's albums: { "artistName": { "albumTitle": albumObject } }
+    property var collapsedArtistCleanupTimers: ({})  // Timers for cleaning up collapsed artist data
+    property int cleanupDelayMs: 30000  // Clean up artist data 30 seconds after collapse
+    property var expandCollapseDebounceTimer: null  // Debounce timer for expansion/collapse
+    property string pendingExpandCollapseArtist: ""  // Artist pending expansion/collapse
+    property bool pendingExpandCollapseState: false  // State to apply after debounce
     
     // Search state
     property string currentSearchTerm: ""
@@ -45,6 +50,81 @@ Item {
     property int selectedTrackIndex: -1
     property string selectedArtistName: ""
     property var selectedAlbumData: null
+    
+    // Memory cleanup timer
+    Timer {
+        id: memoryCleanupTimer
+        interval: 60000  // Run cleanup check every minute
+        running: true
+        repeat: true
+        onTriggered: {
+            cleanupUnusedMemory()
+        }
+    }
+    
+    // Function to schedule cleanup for a collapsed artist
+    function scheduleArtistCleanup(artistName) {
+        if (!artistName) return
+        
+        // Clear any existing timer for this artist
+        if (collapsedArtistCleanupTimers[artistName]) {
+            collapsedArtistCleanupTimers[artistName].stop()
+            collapsedArtistCleanupTimers[artistName].destroy()
+        }
+        
+        // Create a new timer for cleanup
+        var cleanupTimer = Qt.createQmlObject(
+            'import QtQuick 2.15; Timer { interval: ' + cleanupDelayMs + '; running: true; repeat: false }',
+            root
+        )
+        
+        cleanupTimer.triggered.connect(function() {
+            // Clean up this artist's data if still collapsed
+            if (!expandedArtists[artistName] && !expandedArtistsCache[artistName]) {
+                delete artistAlbumCache[artistName]
+                delete expandedArtistsCache[artistName]
+            }
+            // Clean up the timer itself
+            delete collapsedArtistCleanupTimers[artistName]
+            cleanupTimer.destroy()
+        })
+        
+        collapsedArtistCleanupTimers[artistName] = cleanupTimer
+    }
+    
+    // Function to cancel cleanup for an artist (when expanded)
+    function cancelArtistCleanup(artistName) {
+        if (!artistName) return
+        
+        if (collapsedArtistCleanupTimers[artistName]) {
+            collapsedArtistCleanupTimers[artistName].stop()
+            collapsedArtistCleanupTimers[artistName].destroy()
+            delete collapsedArtistCleanupTimers[artistName]
+        }
+    }
+    
+    // Function to clean up unused memory
+    function cleanupUnusedMemory() {
+        // Clean up artist album cache for artists that are no longer expanded
+        var artistsToClean = []
+        for (var artist in artistAlbumCache) {
+            if (!expandedArtists[artist] && !expandedArtistsCache[artist]) {
+                artistsToClean.push(artist)
+            }
+        }
+        
+        artistsToClean.forEach(function(artist) {
+            delete artistAlbumCache[artist]
+        })
+        
+        // Clean up search results cache based on expiry time
+        var currentTime = Date.now()
+        for (var searchTerm in searchResultsCache) {
+            if (currentTime - searchResultsCache[searchTerm].timestamp > cacheExpiryTime) {
+                delete searchResultsCache[searchTerm]
+            }
+        }
+    }
     
     // Keyboard navigation handler
     Keys.onPressed: function(event) {
@@ -90,6 +170,22 @@ Item {
         }
         // Build initial artist index mapping
         updateArtistIndexMapping()
+    }
+    
+    Component.onDestruction: {
+        // Clean up all timers
+        if (expandCollapseDebounceTimer) {
+            expandCollapseDebounceTimer.stop()
+            expandCollapseDebounceTimer.destroy()
+        }
+        
+        // Clean up all artist cleanup timers
+        for (var artist in collapsedArtistCleanupTimers) {
+            if (collapsedArtistCleanupTimers[artist]) {
+                collapsedArtistCleanupTimers[artist].stop()
+                collapsedArtistCleanupTimers[artist].destroy()
+            }
+        }
     }
     
     // Update artist mapping when library changes
@@ -381,19 +477,6 @@ Item {
                     
                     // Highlight the album's artist
                     root.highlightedArtist = album.albumArtist
-                    
-                    // Use O(1) lookup instead of O(n) linear search
-                    var artistIndex = artistNameToIndex[album.albumArtist]
-                    if (artistIndex !== undefined) {
-                        // Position at top for better visibility
-                        artistsListView.positionViewAtIndex(artistIndex, ListView.Beginning)
-                        // Add a small offset to ensure the artist is not right at the edge
-                        Qt.callLater(function() {
-                            if (artistsListView.contentY > 0) {
-                                artistsListView.contentY = Math.max(0, artistsListView.contentY - 8)
-                            }
-                        })
-                    }
                 }
             }
             
@@ -588,25 +671,6 @@ Item {
                     boundsMovement: Flickable.StopAtBounds
                     boundsBehavior: Flickable.StopAtBounds
                     
-                    // Store the index and offset of the top visible item for scroll preservation
-                    property int savedTopIndex: -1
-                    property real savedTopOffset: 0
-                    property bool preserveScrollPosition: false
-                    
-                    // Better scroll position preservation using index-based approach
-                    onContentHeightChanged: {
-                        if (preserveScrollPosition && savedTopIndex >= 0) {
-                            // Use Qt.callLater to avoid immediate position changes that cause snapping
-                            Qt.callLater(function() {
-                                if (savedTopIndex >= 0 && savedTopIndex < count) {
-                                    positionViewAtIndex(savedTopIndex, ListView.Beginning)
-                                    contentY = Math.max(0, contentY + savedTopOffset)
-                                    preserveScrollPosition = false
-                                    savedTopIndex = -1
-                                }
-                            })
-                        }
-                    }
                     
                     // Smooth wheel scrolling with moderate speed
                     WheelHandler {
@@ -634,15 +698,32 @@ Item {
                         
                         // Store modelData for easier access in nested views/functions
                         property var artistData: modelData
-                        property bool albumsVisible: root.expandedArtistsCache[artistData.name] === true || root.expandedArtists[artistData.name] === true
+                        property bool albumsVisible: false
                         property bool isHighlighted: root.highlightedArtist === artistData.name
                         property bool isKeyboardFocused: root.selectedArtistIndex === index && root.navigationMode === "artist"
                         
-                        // Listen for changes to the expanded artists
-                        Connections {
-                            target: root
-                            function onExpandedArtistsChanged() {
-                                // Update cache and binding efficiently
+                        // Update albumsVisible binding whenever artist data changes or component completes
+                        function updateAlbumsVisibility() {
+                            if (artistData && artistData.name) {
+                                albumsVisible = root.expandedArtistsCache[artistData.name] === true || root.expandedArtists[artistData.name] === true
+                            } else {
+                                albumsVisible = false
+                            }
+                        }
+                        
+                        // Reset delegate state when recycled by monitoring artistData changes
+                        onArtistDataChanged: {
+                            updateAlbumsVisibility()
+                        }
+                        
+                        Component.onCompleted: {
+                            updateAlbumsVisibility()
+                        }
+                        
+                        // Watch for expandedArtists changes more efficiently
+                        property var expandedArtistsWatcher: root.expandedArtists
+                        onExpandedArtistsWatcherChanged: {
+                            if (artistData && artistData.name) {
                                 var isExpanded = root.expandedArtists[artistData.name] === true;
                                 root.expandedArtistsCache[artistData.name] = isExpanded;
                                 albumsVisible = isExpanded;
@@ -713,31 +794,56 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 
                                 onClicked: {
-                                    // Save current top visible item before expanding/collapsing
-                                    var topItem = artistsListView.itemAt(0, artistsListView.contentY);
-                                    if (topItem) {
-                                        artistsListView.savedTopIndex = artistsListView.indexAt(0, artistsListView.contentY);
-                                        artistsListView.savedTopOffset = artistsListView.contentY - topItem.y;
-                                        artistsListView.preserveScrollPosition = true;
-                                    }
-                                    
-                                    // Toggle expansion state more efficiently
+                                    // Debounced expansion/collapse handling
                                     var currentState = root.expandedArtistsCache[artistData.name] || false;
                                     var newExpandedState = !currentState;
                                     
-                                    // Update cache immediately for responsive UI
+                                    // Update visual state immediately for responsiveness
                                     root.expandedArtistsCache[artistData.name] = newExpandedState;
+                                    albumsVisible = newExpandedState;
                                     
-                                    // Batch update the property to reduce re-renders
-                                    Qt.callLater(function() {
-                                        var updatedExpanded = Object.assign({}, root.expandedArtists);
-                                        if (newExpandedState) {
-                                            updatedExpanded[artistData.name] = true;
+                                    // Store pending state
+                                    root.pendingExpandCollapseArtist = artistData.name;
+                                    root.pendingExpandCollapseState = newExpandedState;
+                                    
+                                    // Cancel any existing debounce timer
+                                    if (root.expandCollapseDebounceTimer) {
+                                        root.expandCollapseDebounceTimer.stop();
+                                        root.expandCollapseDebounceTimer.destroy();
+                                    }
+                                    
+                                    // Create new debounce timer
+                                    root.expandCollapseDebounceTimer = Qt.createQmlObject(
+                                        'import QtQuick 2.15; Timer { interval: 150; running: true; repeat: false }',
+                                        root
+                                    );
+                                    
+                                    root.expandCollapseDebounceTimer.triggered.connect(function() {
+                                        // Apply the debounced state change
+                                        var artistName = root.pendingExpandCollapseArtist;
+                                        var expandState = root.pendingExpandCollapseState;
+                                        
+                                        // Schedule cleanup or cancel it based on new state
+                                        if (expandState) {
+                                            root.cancelArtistCleanup(artistName);
                                         } else {
-                                            delete updatedExpanded[artistData.name];
+                                            root.scheduleArtistCleanup(artistName);
+                                        }
+                                        
+                                        // Batch update the property to reduce re-renders
+                                        var updatedExpanded = Object.assign({}, root.expandedArtists);
+                                        if (expandState) {
+                                            updatedExpanded[artistName] = true;
+                                        } else {
+                                            delete updatedExpanded[artistName];
                                         }
                                         root.expandedArtists = updatedExpanded;
+                                        
+                                        // Clean up timer
+                                        root.expandCollapseDebounceTimer.destroy();
+                                        root.expandCollapseDebounceTimer = null;
                                     });
+                                    
                                     artistsListView.currentIndex = index; // Optional: select on expand
                                 }
                             }
@@ -778,13 +884,30 @@ Item {
                             property var cachedAlbums: []
                             property string cachedArtistName: ""
                             
-                            onVisibleChanged: {
-                                if (visible && artistData && artistData.name && cachedArtistName !== artistData.name) {
-                                    cachedArtistName = artistData.name
-                                    cachedAlbums = LibraryManager.getAlbumsForArtist(artistData.name)
-                                    // Update the album cache when artist is expanded
-                                    root.updateAlbumCacheForArtist(artistData.name)
+                            // Function to refresh album data
+                            function refreshAlbumData() {
+                                if (visible && artistData && artistData.name) {
+                                    if (cachedArtistName !== artistData.name) {
+                                        cachedArtistName = artistData.name
+                                        cachedAlbums = LibraryManager.getAlbumsForArtist(artistData.name)
+                                        // Update the album cache when artist is expanded
+                                        root.updateAlbumCacheForArtist(artistData.name)
+                                    }
+                                } else {
+                                    // Clear cache when not visible or no artist data
+                                    cachedArtistName = ""
+                                    cachedAlbums = []
                                 }
+                            }
+                            
+                            onVisibleChanged: {
+                                refreshAlbumData()
+                            }
+                            
+                            // Also refresh when parent's artistData changes (delegate recycled)
+                            property var artistDataWatcher: parent.artistData
+                            onArtistDataWatcherChanged: {
+                                refreshAlbumData()
                             }
 
                             GridView {
@@ -900,12 +1023,11 @@ Item {
                                                 // Match the image dimensions based on its aspect ratio
                                                 Component.onCompleted: updateSelectionBounds()
                                                 
-                                                Connections {
-                                                    target: albumImage
-                                                    function onStatusChanged() {
-                                                        if (albumImage.status === Image.Ready) {
-                                                            selectionIndicator.updateSelectionBounds()
-                                                        }
+                                                // Watch album image status directly
+                                                property int imageStatus: albumImage.status
+                                                onImageStatusChanged: {
+                                                    if (imageStatus === Image.Ready) {
+                                                        updateSelectionBounds()
                                                     }
                                                 }
                                                 
