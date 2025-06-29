@@ -579,23 +579,6 @@ Item {
                         // Enable delegate recycling to prevent memory leaks
                         reuseItems: true  // Enable recycling for better performance
                         cacheBuffer: 600  // Increase cache for smoother scrolling
-                        
-                        // Layer effect to maintain rounded corners during scrolling
-                        layer.enabled: true
-                        layer.effect: MultiEffect {
-                            maskEnabled: true
-                            maskInverted: false
-                            maskThresholdMin: 0.5
-                            maskSpreadAtMin: 1.0
-                            maskSource: ShaderEffectSource {
-                                sourceItem: Rectangle {
-                                    width: artistsListView.width
-                                    height: artistsListView.height
-                                    radius: 6  // Match the parent's radius minus borders
-                                    color: "white"
-                                }
-                            }
-                        }
                     
                     // Increase scroll speed
                     flickDeceleration: 8000  // Default is 1500, can increase for faster stopping
@@ -1069,6 +1052,12 @@ Item {
                 property var currentAlbumTracks: []
                 property string albumTitleText: "No album selected"
 
+                onCurrentAlbumTracksChanged: {
+                    if (trackListView) {
+                        trackListView.currentIndex = -1
+                    }
+                }
+
                 ColumnLayout {
                     anchors.fill: parent
                     anchors.margins: 4
@@ -1156,22 +1145,8 @@ Item {
                         
                         // Track list model updates automatically
                         
-                        // Layer effect to maintain rounded corners during scrolling
-                        layer.enabled: true
-                        layer.effect: MultiEffect {
-                            maskEnabled: true
-                            maskInverted: false
-                            maskThresholdMin: 0.5
-                            maskSpreadAtMin: 1.0
-                            maskSource: ShaderEffectSource {
-                                sourceItem: Rectangle {
-                                    width: trackListView.width
-                                    height: trackListView.height
-                                    radius: 6  // Match the parent's radius minus borders
-                                    color: "white"
-                                }
-                            }
-                        }
+                        // Layer effect removed to fix rendering artifact.
+                        // Parent container handles corner clipping.
                         
                         // Increase scroll speed to match artist list
                         flickDeceleration: 8000
