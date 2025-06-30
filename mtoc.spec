@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        1.1.5
+Version:        1.1.6
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -52,6 +52,10 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %{_datadir}/pixmaps/%{name}.png
 
 %changelog
+* Sun Jun 29 2025 Asa DeGroff <asa@3fz.org> 1.1.6-1
+- fix for buggy delegate recycling with memory cleanup and debounce for artist
+  expansion in LibraryPane (asa@3fz.org)
+
 * Sat Jun 28 2025 Asa DeGroff <asa@3fz.org> 1.1.5-1
 - fix: remove layer effect to improve performance in LibraryPane (asa@3fz.org)
 - fix: reset track list index on album change and remove layer effect to
