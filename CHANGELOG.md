@@ -1,3 +1,9 @@
+1.1.6
+- Improved delegate recycling behavior in the artists column to resolve glitchy scrolling and a bug where albums would appear under the wrong artist. 
+
+1.1.5
+- This patch fixes visual bugs in the track list causing blurry text and erroneous highlighting.
+
 1.1.4
 - Improved keyboard input handling for library navigation, various performance improvements and bug fixes
 
