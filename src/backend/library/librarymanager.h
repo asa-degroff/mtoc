@@ -38,6 +38,7 @@ class LibraryManager : public QObject
     Q_PROPERTY(int artistCount READ artistCount NOTIFY artistCountChanged)
     Q_PROPERTY(QVariantList artistModel READ artistModel NOTIFY libraryChanged)
     Q_PROPERTY(QVariantList albumModel READ albumModel NOTIFY libraryChanged)
+    Q_PROPERTY(bool processingAlbumArt READ isProcessingAlbumArt NOTIFY processingAlbumArtChanged)
 
 public:
     explicit LibraryManager(QObject *parent = nullptr);
@@ -54,6 +55,7 @@ public:
     int artistCount() const;
     QVariantList artistModel() const;
     QVariantList albumModel() const;
+    bool isProcessingAlbumArt() const;
     
     // Property setters
     void setMusicFolders(const QStringList &folders);
@@ -107,6 +109,7 @@ signals:
     void albumCountChanged();
     void artistCountChanged();
     void libraryChanged();
+    void processingAlbumArtChanged();
 
 private slots:
     void onScanFinished();
@@ -152,6 +155,7 @@ private:
     QFutureWatcher<void> m_scanWatcher;
     bool m_cancelRequested;
     int m_originalPixmapCacheLimit;  // Store original cache limit to restore after scan
+    bool m_processingAlbumArt;  // Track album art processing status
 };
 
 } // namespace Mtoc
