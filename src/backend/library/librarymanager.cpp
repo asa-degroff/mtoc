@@ -12,7 +12,12 @@
 #include <QSet>
 #include <QPixmapCache>
 #include <QThreadPool>
+#include <QCoreApplication>
 #include <exception>
+
+#ifdef Q_OS_LINUX
+#include <malloc.h>
+#endif
 
 namespace Mtoc {
 
@@ -31,6 +36,7 @@ LibraryManager::LibraryManager(QObject *parent)
     , m_cachedAlbumCount(-1)
     , m_albumCountCacheValid(false)
     , m_artistModelCacheValid(false)
+    , m_originalPixmapCacheLimit(QPixmapCache::cacheLimit())
 {
     qDebug() << "LibraryManager: Constructor started";
     
@@ -357,6 +363,11 @@ void LibraryManager::startScan()
         return;
     }
     
+    // Set QPixmapCache limit to prevent excessive memory usage during scan
+    m_originalPixmapCacheLimit = QPixmapCache::cacheLimit();
+    QPixmapCache::setCacheLimit(10240); // 10MB limit during scan
+    qDebug() << "Set QPixmapCache limit from" << m_originalPixmapCacheLimit << "to 10MB for scanning";
+    
     qDebug() << "Setting scan state to true...";
     m_scanning = true;
     m_scanProgress = 0;
@@ -554,7 +565,8 @@ void LibraryManager::scanInBackground()
                 try {
                     // Create a thread-local extractor to avoid threading issues
                     Mtoc::MetadataExtractor localExtractor;
-                    QVariantMap metadata = localExtractor.extractAsVariantMap(filePath);
+                    // Skip album art extraction during bulk scanning to save memory
+                    QVariantMap metadata = localExtractor.extractAsVariantMap(filePath, false);
                     
                     // Validate metadata before using
                     if (!metadata.isEmpty() && metadata.contains("filePath")) {
@@ -620,6 +632,25 @@ void LibraryManager::scanInBackground()
                 m_scanProgress = newProgress;
                 QMetaObject::invokeMethod(this, "scanProgressChanged", Qt::QueuedConnection);
                 QMetaObject::invokeMethod(this, "scanProgressTextChanged", Qt::QueuedConnection);
+            }
+            
+            // Periodically clear caches to prevent memory accumulation
+            if (i % 500 == 0 && i > 0) {
+                // Clear the artist cache if it's getting too large
+                if (m_albumsByArtistCache.size() > 100) {
+                    QMetaObject::invokeMethod(this, [this]() {
+                        m_albumsByArtistCache.clear();
+                        qDebug() << "Cleared albumsByArtistCache during scan to free memory";
+                    }, Qt::QueuedConnection);
+                }
+                
+                // Clear QPixmapCache periodically
+                if (i % 1000 == 0) {
+                    QMetaObject::invokeMethod(this, []() {
+                        QPixmapCache::clear();
+                        qDebug() << "Cleared QPixmapCache during scan to free memory";
+                    }, Qt::QueuedConnection);
+                }
             }
             
             // Yield to other threads more intelligently based on system load
@@ -689,14 +720,37 @@ void LibraryManager::onScanFinished()
     m_albumModelCacheValid = false;
     m_albumCountCacheValid = false;
     m_artistModelCacheValid = false;
-    m_cachedAlbumModel.clear(); // Clear cached data to free memory
-    m_cachedArtistModel.clear(); // Clear cached artist data to free memory
-    m_albumsByArtistCache.clear(); // Clear artist-specific caches
+    
+    // Use swap idiom to ensure memory is actually released
+    {
+        QVariantList emptyList;
+        m_cachedAlbumModel.swap(emptyList);
+    }
+    {
+        QVariantList emptyList;
+        m_cachedArtistModel.swap(emptyList);
+    }
+    {
+        QHash<QString, QVariantList> emptyCache;
+        m_albumsByArtistCache.swap(emptyCache);
+    }
+    
     qDebug() << "Album and artist model cache invalidated and cleared after scan";
     
     // Force garbage collection in QPixmapCache after scan
     QPixmapCache::clear();
-    qDebug() << "QPixmapCache cleared after scan to prevent memory accumulation";
+    // Restore original cache limit
+    QPixmapCache::setCacheLimit(m_originalPixmapCacheLimit);
+    qDebug() << "QPixmapCache cleared and limit restored to" << m_originalPixmapCacheLimit;
+    
+    // Process events to allow Qt to clean up
+    QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+    
+    // Force memory compaction on some platforms
+#ifdef Q_OS_LINUX
+    // On Linux, we can try to give memory back to the OS
+    malloc_trim(0);
+#endif
     
     // Use queued connections to ensure signals are emitted from main thread
     QMetaObject::invokeMethod(this, "scanningChanged", Qt::QueuedConnection);
@@ -707,6 +761,11 @@ void LibraryManager::onScanFinished()
         QMetaObject::invokeMethod(this, "scanCancelled", Qt::QueuedConnection);
     } else {
         QMetaObject::invokeMethod(this, "scanCompleted", Qt::QueuedConnection);
+        
+        // Start album art processing as a separate background task
+        QtConcurrent::run([this]() {
+            processAlbumArtInBackground();
+        });
     }
     
     // Refresh all counts and models - ensure these are from main thread
@@ -912,8 +971,12 @@ QVariantList LibraryManager::getAlbumsForArtist(const QString &artistName) const
     // Fetch from database and cache
     QVariantList albums = m_databaseManager->getAlbumsByAlbumArtistName(artistName);
     
-    // Only cache if the result is reasonably small
-    if (albums.size() < 100) {
+    // Only cache if the result is reasonably small and cache isn't too large
+    if (albums.size() < 100 && m_albumsByArtistCache.size() < 200) {
+        // If cache is getting full, remove oldest entries (simple FIFO)
+        while (m_albumsByArtistCache.size() >= 200) {
+            m_albumsByArtistCache.erase(m_albumsByArtistCache.begin());
+        }
         m_albumsByArtistCache[artistName] = albums;
     }
     
@@ -1224,55 +1287,8 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
     if (!album.isEmpty()) {
         albumId = insertOrGetAlbum(album, albumArtistId, year);
         
-        // Process album art if we have it and it's not already stored
-        if (albumId > 0 && metadata.contains("hasAlbumArt") && metadata.value("hasAlbumArt").toBool()) {
-            // Check if album art already exists
-            QSqlQuery artCheckQuery(db);
-            artCheckQuery.prepare("SELECT 1 FROM album_art WHERE album_id = :album_id LIMIT 1");
-            artCheckQuery.bindValue(":album_id", albumId);
-            
-            if (artCheckQuery.exec() && !artCheckQuery.next()) {
-                // Album art doesn't exist, process and store it
-                QByteArray albumArtData = metadata.value("albumArtData").toByteArray();
-                QString mimeType = metadata.value("albumArtMimeType").toString();
-                
-                if (!albumArtData.isEmpty()) {
-                    // Process album art
-                    AlbumArtManager albumArtManager;
-                    AlbumArtManager::ProcessedAlbumArt processed = 
-                        albumArtManager.processAlbumArt(albumArtData, album, 
-                                                       albumArtistId > 0 ? albumArtist : artist,
-                                                       mimeType);
-                    
-                    if (processed.success) {
-                        // Insert album art into database
-                        QSqlQuery artQuery(db);
-                        artQuery.prepare(
-                            "INSERT INTO album_art "
-                            "(album_id, full_path, full_hash, thumbnail, thumbnail_size, "
-                            "width, height, format, file_size) "
-                            "VALUES (:album_id, :full_path, :full_hash, :thumbnail, :thumbnail_size, "
-                            ":width, :height, :format, :file_size)"
-                        );
-                        
-                        artQuery.bindValue(":album_id", albumId);
-                        artQuery.bindValue(":full_path", processed.fullImagePath);
-                        artQuery.bindValue(":full_hash", processed.hash);
-                        artQuery.bindValue(":thumbnail", processed.thumbnailData);
-                        artQuery.bindValue(":thumbnail_size", processed.thumbnailData.size());
-                        artQuery.bindValue(":width", processed.originalSize.width());
-                        artQuery.bindValue(":height", processed.originalSize.height());
-                        artQuery.bindValue(":format", processed.format);
-                        artQuery.bindValue(":file_size", processed.fileSize);
-                        
-                        if (!artQuery.exec()) {
-                            qWarning() << "Failed to insert album art for album:" << album 
-                                      << "-" << artQuery.lastError().text();
-                        }
-                    }
-                }
-            }
-        }
+        // Album art processing removed from bulk scanning to save memory
+        // Album art will be processed in a separate pass after initial scan
     }
     
     // Insert track
@@ -1469,55 +1485,8 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         // Get or create album (using cache)
         int albumId = getCachedAlbum(album, albumArtistId, year);
         
-        // Process album art if needed (only for new albums)
-        if (albumId > 0 && metadata.contains("hasAlbumArt") && metadata.value("hasAlbumArt").toBool()) {
-            // Check if album art already exists
-            QSqlQuery artCheckQuery(db);
-            artCheckQuery.prepare("SELECT 1 FROM album_art WHERE album_id = :album_id LIMIT 1");
-            artCheckQuery.bindValue(":album_id", albumId);
-            
-            if (artCheckQuery.exec() && !artCheckQuery.next()) {
-                // Album art doesn't exist, process and store it
-                QByteArray albumArtData = metadata.value("albumArtData").toByteArray();
-                QString mimeType = metadata.value("albumArtMimeType").toString();
-                
-                if (!albumArtData.isEmpty()) {
-                    // Process album art
-                    AlbumArtManager albumArtManager;
-                    AlbumArtManager::ProcessedAlbumArt processed = 
-                        albumArtManager.processAlbumArt(albumArtData, album, 
-                                                       albumArtistId > 0 ? albumArtist : artist,
-                                                       mimeType);
-                    
-                    if (processed.success) {
-                        // Insert album art into database
-                        QSqlQuery artQuery(db);
-                        artQuery.prepare(
-                            "INSERT INTO album_art "
-                            "(album_id, full_path, full_hash, thumbnail, thumbnail_size, "
-                            "width, height, format, file_size) "
-                            "VALUES (:album_id, :full_path, :full_hash, :thumbnail, :thumbnail_size, "
-                            ":width, :height, :format, :file_size)"
-                        );
-                        
-                        artQuery.bindValue(":album_id", albumId);
-                        artQuery.bindValue(":full_path", processed.fullImagePath);
-                        artQuery.bindValue(":full_hash", processed.hash);
-                        artQuery.bindValue(":thumbnail", processed.thumbnailData);
-                        artQuery.bindValue(":thumbnail_size", processed.thumbnailData.size());
-                        artQuery.bindValue(":width", processed.originalSize.width());
-                        artQuery.bindValue(":height", processed.originalSize.height());
-                        artQuery.bindValue(":format", processed.format);
-                        artQuery.bindValue(":file_size", processed.fileSize);
-                        
-                        if (!artQuery.exec()) {
-                            qWarning() << "Failed to insert album art for album:" << album 
-                                      << "-" << artQuery.lastError().text();
-                        }
-                    }
-                }
-            }
-        }
+        // Album art processing removed from bulk scanning to save memory
+        // Album art will be processed in a separate pass after initial scan
         
         // Insert track using prepared statement
         trackInsert.bindValue(":file_path", filePath);
@@ -1536,6 +1505,114 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
             qWarning() << "Failed to insert track:" << filePath << "-" << trackInsert.lastError().text();
         }
     }
+}
+
+void LibraryManager::processAlbumArtInBackground()
+{
+    qDebug() << "LibraryManager::processAlbumArtInBackground() starting";
+    
+    // Create a thread-local database connection
+    QString connectionName = QString("AlbumArtThread_%1").arg(quintptr(QThread::currentThreadId()));
+    QSqlDatabase db = DatabaseManager::createThreadConnection(connectionName);
+    
+    if (!db.isOpen()) {
+        qCritical() << "Failed to create thread database connection for album art processing";
+        return;
+    }
+    
+    try {
+        // Get all albums that don't have album art yet
+        QSqlQuery albumQuery(db);
+        albumQuery.prepare(
+            "SELECT DISTINCT a.id, a.title, aa.name as album_artist_name "
+            "FROM albums a "
+            "LEFT JOIN album_artists aa ON a.album_artist_id = aa.id "
+            "WHERE a.id NOT IN (SELECT album_id FROM album_art)"
+        );
+        
+        if (!albumQuery.exec()) {
+            qWarning() << "Failed to query albums without art:" << albumQuery.lastError().text();
+            DatabaseManager::removeThreadConnection(connectionName);
+            return;
+        }
+        
+        // Process albums in small batches to control memory usage
+        while (albumQuery.next()) {
+            int albumId = albumQuery.value(0).toInt();
+            QString albumTitle = albumQuery.value(1).toString();
+            QString albumArtist = albumQuery.value(2).toString();
+            
+            // Get a track from this album to extract art from
+            QSqlQuery trackQuery(db);
+            trackQuery.prepare(
+                "SELECT file_path FROM tracks WHERE album_id = :album_id LIMIT 1"
+            );
+            trackQuery.bindValue(":album_id", albumId);
+            
+            if (trackQuery.exec() && trackQuery.next()) {
+                QString filePath = trackQuery.value(0).toString();
+                
+                // Extract album art from this track
+                Mtoc::MetadataExtractor extractor;
+                QByteArray albumArtData = extractor.extractAlbumArt(filePath);
+                
+                if (!albumArtData.isEmpty()) {
+                    // Process and store album art
+                    AlbumArtManager albumArtManager;
+                    AlbumArtManager::ProcessedAlbumArt processed = 
+                        albumArtManager.processAlbumArt(albumArtData, albumTitle, 
+                                                       albumArtist, "");
+                    
+                    if (processed.success) {
+                        // Insert album art into database
+                        QSqlQuery artInsert(db);
+                        artInsert.prepare(
+                            "INSERT INTO album_art "
+                            "(album_id, full_path, full_hash, thumbnail, thumbnail_size, "
+                            "width, height, format, file_size) "
+                            "VALUES (:album_id, :full_path, :full_hash, :thumbnail, :thumbnail_size, "
+                            ":width, :height, :format, :file_size)"
+                        );
+                        
+                        artInsert.bindValue(":album_id", albumId);
+                        artInsert.bindValue(":full_path", processed.fullImagePath);
+                        artInsert.bindValue(":full_hash", processed.hash);
+                        artInsert.bindValue(":thumbnail", processed.thumbnailData);
+                        artInsert.bindValue(":thumbnail_size", processed.thumbnailData.size());
+                        artInsert.bindValue(":width", processed.originalSize.width());
+                        artInsert.bindValue(":height", processed.originalSize.height());
+                        artInsert.bindValue(":format", processed.format);
+                        artInsert.bindValue(":file_size", processed.fileSize);
+                        
+                        if (!artInsert.exec()) {
+                            qWarning() << "Failed to insert album art for album:" << albumTitle 
+                                      << "-" << artInsert.lastError().text();
+                        } else {
+                            qDebug() << "Successfully processed album art for:" << albumTitle;
+                        }
+                    }
+                }
+                
+                // Clear album art data immediately to free memory
+                albumArtData.clear();
+                albumArtData.squeeze(); // Force deallocation
+            }
+            
+            // Yield to other threads periodically
+            if (albumId % 10 == 0) {
+                QThread::yieldCurrentThread();
+            }
+        }
+        
+        qDebug() << "LibraryManager::processAlbumArtInBackground() completed";
+    } catch (const std::exception& e) {
+        qCritical() << "Exception in processAlbumArtInBackground():" << e.what();
+    } catch (...) {
+        qCritical() << "Unknown exception in processAlbumArtInBackground()";
+    }
+    
+    // Clean up thread-local database connection
+    DatabaseManager::removeThreadConnection(connectionName);
 }
 
 } // namespace Mtoc

@@ -121,6 +121,7 @@ private:
     void scanInBackground();
     void insertTrackInThread(QSqlDatabase& db, const QVariantMap& metadata);
     void insertBatchTracksInThread(QSqlDatabase& db, const QList<QVariantMap>& batchMetadata);
+    void processAlbumArtInBackground();
     
     // Private data
     DatabaseManager *m_databaseManager;
@@ -150,6 +151,7 @@ private:
     QFuture<void> m_scanFuture;
     QFutureWatcher<void> m_scanWatcher;
     bool m_cancelRequested;
+    int m_originalPixmapCacheLimit;  // Store original cache limit to restore after scan
 };
 
 } // namespace Mtoc
