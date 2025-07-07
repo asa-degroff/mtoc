@@ -8,6 +8,8 @@
 #include <QTextStream>
 #include <QStandardPaths>
 #include <QDir>
+#include <QTimer>
+#include <QFileInfo>
 
 QString MediaPlayer::getDebugLogPath()
 {
@@ -19,8 +21,13 @@ QString MediaPlayer::getDebugLogPath()
 MediaPlayer::MediaPlayer(QObject *parent)
     : QObject(parent)
     , m_audioEngine(std::make_unique<AudioEngine>(this))
+    , m_saveStateTimer(new QTimer(this))
 {
     setupConnections();
+    
+    // Set up periodic state saving every 10 seconds while playing
+    m_saveStateTimer->setInterval(10000); // 10 seconds
+    connect(m_saveStateTimer, &QTimer::timeout, this, &MediaPlayer::periodicStateSave);
     
     QFile debugFile(getDebugLogPath());
     if (debugFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
@@ -378,5 +385,118 @@ void MediaPlayer::onEngineStateChanged(AudioEngine::State state)
     if (m_state != newState) {
         m_state = newState;
         emit stateChanged(m_state);
+        
+        // Manage periodic save timer based on state
+        if (m_state == PlayingState) {
+            m_saveStateTimer->start();
+            // Save immediately when starting playback
+            saveState();
+        } else {
+            m_saveStateTimer->stop();
+            // Save state when pausing or stopping
+            if (m_state == PausedState || (m_state == StoppedState && m_currentTrack)) {
+                saveState();
+            }
+        }
+    }
+}
+
+void MediaPlayer::saveState()
+{
+    if (!m_libraryManager || !m_currentTrack) {
+        qDebug() << "MediaPlayer::saveState - no current track or library manager";
+        return;
+    }
+    
+    QString filePath = m_currentTrack->filePath();
+    qint64 currentPosition = position();
+    
+    // Get album info if playing from an album
+    QString albumArtist;
+    QString albumTitle;
+    int trackIndex = m_currentQueueIndex;
+    
+    if (m_currentAlbum) {
+        albumArtist = m_currentAlbum->artist();
+        albumTitle = m_currentAlbum->title();
+    } else if (!m_playbackQueue.isEmpty() && m_currentQueueIndex >= 0) {
+        // We're playing from a queue but don't have album object
+        // Try to get album info from the current track
+        albumArtist = m_currentTrack->albumArtist();
+        if (albumArtist.isEmpty()) {
+            albumArtist = m_currentTrack->artist();
+        }
+        albumTitle = m_currentTrack->album();
+    }
+    
+    // Save the state
+    m_libraryManager->savePlaybackState(filePath, currentPosition, 
+                                        albumArtist, albumTitle, trackIndex);
+    
+    qDebug() << "MediaPlayer::saveState - saved state for track:" << m_currentTrack->title()
+             << "position:" << currentPosition << "ms";
+}
+
+void MediaPlayer::restoreState()
+{
+    if (!m_libraryManager) {
+        qDebug() << "MediaPlayer::restoreState - no library manager";
+        return;
+    }
+    
+    QVariantMap state = m_libraryManager->loadPlaybackState();
+    if (state.isEmpty()) {
+        qDebug() << "MediaPlayer::restoreState - no saved state found";
+        return;
+    }
+    
+    QString filePath = state["filePath"].toString();
+    qint64 savedPosition = state["position"].toLongLong();
+    QString albumArtist = state["albumArtist"].toString();
+    QString albumTitle = state["albumTitle"].toString();
+    int trackIndex = state["trackIndex"].toInt();
+    
+    qDebug() << "MediaPlayer::restoreState - restoring track:" << filePath
+             << "position:" << savedPosition << "ms"
+             << "album:" << albumArtist << "-" << albumTitle
+             << "index:" << trackIndex;
+    
+    // If we have album info, try to restore the album queue
+    if (!albumArtist.isEmpty() && !albumTitle.isEmpty()) {
+        // Load the album and start at the saved track
+        playAlbumByName(albumArtist, albumTitle, trackIndex);
+        
+        // Wait a bit for the track to load, then seek to position
+        // We need to delay this because loading is asynchronous
+        QTimer::singleShot(100, this, [this, savedPosition]() {
+            if (m_audioEngine && m_audioEngine->duration() > 0) {
+                seek(savedPosition);
+                // Start paused so user can choose when to resume
+                pause();
+            }
+        });
+    } else {
+        // Just play the single track
+        QVariantMap trackData;
+        trackData["filePath"] = filePath;
+        trackData["title"] = QFileInfo(filePath).baseName(); // Fallback title
+        
+        playTrackFromData(trackData);
+        
+        // Wait for track to load then seek
+        QTimer::singleShot(100, this, [this, savedPosition]() {
+            if (m_audioEngine && m_audioEngine->duration() > 0) {
+                seek(savedPosition);
+                // Start paused so user can choose when to resume
+                pause();
+            }
+        });
+    }
+}
+
+void MediaPlayer::periodicStateSave()
+{
+    if (m_state == PlayingState) {
+        saveState();
     }
 }

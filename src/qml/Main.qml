@@ -14,6 +14,14 @@ ApplicationWindow {
     minimumHeight: 500
     visible: true
     title: SystemInfo.appName + " - " + SystemInfo.appVersion
+    
+    // Save state when window is closing
+    onClosing: function(close) {
+        console.log("Main.qml: Window closing, saving playback state");
+        if (MediaPlayer) {
+            MediaPlayer.saveState();
+        }
+    }
 
     // Property to hold the current track metadata
     property var currentTrack: ({})
@@ -108,4 +116,14 @@ ApplicationWindow {
         repeat: false
     }
     
+    // Restore playback state when application is fully loaded
+    Component.onCompleted: {
+        console.log("Main.qml: Window loaded, restoring playback state");
+        // Delay slightly to ensure all components are ready
+        Qt.callLater(function() {
+            if (MediaPlayer) {
+                MediaPlayer.restoreState();
+            }
+        });
+    }
 }

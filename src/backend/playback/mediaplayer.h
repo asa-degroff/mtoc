@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QString>
 #include <QUrl>
+#include <QTimer>
 #include <memory>
 #include "audioengine.h"
 
@@ -62,6 +63,10 @@ public slots:
     Q_INVOKABLE void playAlbumByName(const QString& artist, const QString& title, int startIndex = 0);
     Q_INVOKABLE void playTrackFromData(const QVariant& trackData);
     void clearQueue();
+    
+    // State persistence
+    void saveState();
+    void restoreState();
 
 signals:
     void stateChanged(MediaPlayer::State state);
@@ -72,6 +77,9 @@ signals:
     void currentAlbumChanged(Mtoc::Album* album);
     void playbackQueueChanged();
     void error(const QString &message);
+
+private slots:
+    void periodicStateSave();
 
 private:
     void setupConnections();
@@ -88,6 +96,7 @@ private:
     int m_currentQueueIndex = -1;
     State m_state = StoppedState;
     Mtoc::LibraryManager* m_libraryManager = nullptr;
+    QTimer* m_saveStateTimer = nullptr;
 };
 
 #endif // MEDIAPLAYER_H

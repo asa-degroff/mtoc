@@ -13,6 +13,7 @@
 #include <QPixmapCache>
 #include <QThreadPool>
 #include <QCoreApplication>
+#include <QDateTime>
 #include <exception>
 
 #ifdef Q_OS_LINUX
@@ -1161,6 +1162,65 @@ int LibraryManager::loadCarouselPosition() const
     int albumId = settings.value("carouselPosition/albumId", -1).toInt();
     qDebug() << "LibraryManager: Loaded carousel position - album ID:" << albumId;
     return albumId;
+}
+
+void LibraryManager::savePlaybackState(const QString &filePath, qint64 position, 
+                                       const QString &albumArtist, const QString &albumTitle, 
+                                       int trackIndex)
+{
+    QSettings settings;
+    settings.beginGroup("playbackState");
+    
+    // Save track info
+    settings.setValue("filePath", filePath);
+    settings.setValue("position", position);
+    settings.setValue("albumArtist", albumArtist);
+    settings.setValue("albumTitle", albumTitle);
+    settings.setValue("trackIndex", trackIndex);
+    settings.setValue("savedTime", QDateTime::currentDateTime());
+    
+    settings.endGroup();
+    settings.sync(); // Force immediate write to disk
+    
+    qDebug() << "LibraryManager: Saved playback state - file:" << filePath 
+             << "position:" << position << "ms"
+             << "album:" << albumArtist << "-" << albumTitle 
+             << "track:" << trackIndex;
+}
+
+QVariantMap LibraryManager::loadPlaybackState() const
+{
+    QSettings settings;
+    QVariantMap state;
+    
+    settings.beginGroup("playbackState");
+    
+    QString filePath = settings.value("filePath").toString();
+    if (!filePath.isEmpty()) {
+        // Verify the file still exists
+        QFileInfo fileInfo(filePath);
+        if (fileInfo.exists()) {
+            state["filePath"] = filePath;
+            state["position"] = settings.value("position", 0).toLongLong();
+            state["albumArtist"] = settings.value("albumArtist").toString();
+            state["albumTitle"] = settings.value("albumTitle").toString();
+            state["trackIndex"] = settings.value("trackIndex", -1).toInt();
+            state["savedTime"] = settings.value("savedTime").toDateTime();
+            
+            qDebug() << "LibraryManager: Loaded playback state - file:" << filePath
+                     << "position:" << state["position"].toLongLong() << "ms";
+        } else {
+            qDebug() << "LibraryManager: Saved track no longer exists:" << filePath;
+            // Clear the invalid saved state
+            settings.remove("");
+        }
+    } else {
+        qDebug() << "LibraryManager: No saved playback state found";
+    }
+    
+    settings.endGroup();
+    
+    return state;
 }
 
 void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& metadata)

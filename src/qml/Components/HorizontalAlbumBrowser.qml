@@ -522,11 +522,11 @@ Item {
                     } else if (indexDiff > 0) {
                         // Albums to the right of center (higher index)
                         // Closer to center = higher z-order
-                        return Math.max(0, 500 - indexDiff * 10)
+                        return (500 - indexDiff * 10) > 0 ? (500 - indexDiff * 10) : 0
                     } else {
                         // Albums to the left of center (lower index)
                         // Closer to center = higher z-order
-                        return Math.max(0, 500 + indexDiff * 10)
+                        return (500 + indexDiff * 10) > 0 ? (500 + indexDiff * 10) : 0
                     }
                 }
                 

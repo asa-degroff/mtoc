@@ -97,6 +97,12 @@ public:
     // Carousel persistence methods
     Q_INVOKABLE void saveCarouselPosition(int albumId);
     Q_INVOKABLE int loadCarouselPosition() const;
+    
+    // Playback state persistence methods
+    Q_INVOKABLE void savePlaybackState(const QString &filePath, qint64 position, 
+                                       const QString &albumArtist, const QString &albumTitle, 
+                                       int trackIndex);
+    Q_INVOKABLE QVariantMap loadPlaybackState() const;
 
 signals:
     void scanningChanged();
