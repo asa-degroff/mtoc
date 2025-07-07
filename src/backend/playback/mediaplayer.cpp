@@ -455,6 +455,11 @@ void MediaPlayer::restoreState()
     QVariantMap state = m_libraryManager->loadPlaybackState();
     if (state.isEmpty()) {
         qDebug() << "MediaPlayer::restoreState - no saved state found";
+        // Ensure restoration state is cleared
+        m_restoringState = false;
+        m_savedPosition = 0;
+        emit restoringStateChanged(false);
+        emit savedPositionChanged(0);
         return;
     }
     
@@ -546,16 +551,17 @@ void MediaPlayer::restoreAlbumByName(const QString& artist, const QString& title
             loadTrack(m_playbackQueue[trackIndex], false);
             
             // Wait for track to load then seek to position
-            QTimer::singleShot(100, this, [this, position]() {
+            QTimer::singleShot(200, this, [this, position]() {
                 if (m_audioEngine && m_audioEngine->duration() > 0) {
                     seek(position);
-                    
-                    // Clear restoration state after seeking
-                    m_restoringState = false;
-                    m_savedPosition = 0;
-                    emit restoringStateChanged(false);
-                    emit savedPositionChanged(0);
                 }
+                
+                // Always clear restoration state after attempting to seek
+                m_restoringState = false;
+                m_savedPosition = 0;
+                emit restoringStateChanged(false);
+                emit savedPositionChanged(0);
+                qDebug() << "MediaPlayer: Restoration state cleared after album restore";
             });
         }
     } else {
@@ -595,15 +601,16 @@ void MediaPlayer::restoreTrackFromData(const QString& filePath, qint64 position)
     emit playbackQueueChanged();
     
     // Wait for track to load then seek
-    QTimer::singleShot(100, this, [this, position]() {
+    QTimer::singleShot(200, this, [this, position]() {
         if (m_audioEngine && m_audioEngine->duration() > 0) {
             seek(position);
-            
-            // Clear restoration state after seeking
-            m_restoringState = false;
-            m_savedPosition = 0;
-            emit restoringStateChanged(false);
-            emit savedPositionChanged(0);
         }
+        
+        // Always clear restoration state after attempting to seek
+        m_restoringState = false;
+        m_savedPosition = 0;
+        emit restoringStateChanged(false);
+        emit savedPositionChanged(0);
+        qDebug() << "MediaPlayer: Restoration state cleared after track restore";
     });
 }

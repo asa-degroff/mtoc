@@ -9,13 +9,22 @@ Item {
     
     height: 120
     
-    property alias position: progressSlider.value
-    property alias duration: progressSlider.to
+    // Remove these aliases as they might cause binding loops
+    // property alias position: progressSlider.value
+    // property alias duration: progressSlider.to
     
     signal playPauseClicked()
     signal previousClicked()
     signal nextClicked()
     signal seekRequested(real position)
+    
+    // Debug connection to verify signals are working
+    Connections {
+        target: MediaPlayer
+        function onRestoringStateChanged(restoring) {
+            console.log("PlaybackControls: MediaPlayer.restoringState changed to:", restoring)
+        }
+    }
     
     function formatTime(milliseconds) {
         if (isNaN(milliseconds) || milliseconds < 0) {
@@ -144,18 +153,49 @@ Item {
                 property real targetValue: 0
                 property bool isSeeking: false
                 
-                // Show saved position during restoration, otherwise show live position
-                value: isSeeking ? targetValue : (MediaPlayer.restoringState ? MediaPlayer.savedPosition : MediaPlayer.position)
+                // Debug property to track what's happening
+                property bool debugEnabled: false
+                
+                // Use Binding for cleaner logic
+                Binding {
+                    target: progressSlider
+                    property: "value"
+                    value: MediaPlayer.position
+                    when: !progressSlider.isSeeking && !MediaPlayer.restoringState
+                }
+                
+                Binding {
+                    target: progressSlider
+                    property: "value"
+                    value: MediaPlayer.savedPosition
+                    when: !progressSlider.isSeeking && MediaPlayer.restoringState
+                }
+                
+                Binding {
+                    target: progressSlider
+                    property: "value"
+                    value: progressSlider.targetValue
+                    when: progressSlider.isSeeking
+                }
                 
                 onPressedChanged: {
                     if (pressed) {
                         isSeeking = true
                         targetValue = value
+                        seekTimeoutTimer.stop()
                     } else if (isSeeking) {
+                        // Keep showing target value until seek completes
                         root.seekRequested(targetValue)
-                        // Keep isSeeking true briefly to prevent snap-back
-                        seekDelayTimer.start()
+                        // Start timeout timer as fallback
+                        seekTimeoutTimer.start()
                     }
+                }
+                
+                // Fallback timer to clear seeking state if position doesn't update
+                Timer {
+                    id: seekTimeoutTimer
+                    interval: 300
+                    onTriggered: progressSlider.isSeeking = false
                 }
                 
                 onMoved: {
@@ -164,10 +204,20 @@ Item {
                     }
                 }
                 
-                Timer {
-                    id: seekDelayTimer
-                    interval: 100
-                    onTriggered: progressSlider.isSeeking = false
+                // Monitor position changes to detect when seek completes
+                Connections {
+                    target: MediaPlayer
+                    function onPositionChanged() {
+                        if (progressSlider.isSeeking && !progressSlider.pressed) {
+                            // Check if position is close to target (within 500ms)
+                            var diff = Math.abs(MediaPlayer.position - progressSlider.targetValue)
+                            if (diff < 500) {
+                                // Seek completed, stop showing target value
+                                seekTimeoutTimer.stop()
+                                progressSlider.isSeeking = false
+                            }
+                        }
+                    }
                 }
                 
                 background: Rectangle {
