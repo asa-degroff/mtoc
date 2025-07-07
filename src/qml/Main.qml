@@ -118,12 +118,15 @@ ApplicationWindow {
     
     // Restore playback state when application is fully loaded
     Component.onCompleted: {
-        console.log("Main.qml: Window loaded, restoring playback state");
-        // Delay slightly to ensure all components are ready
-        Qt.callLater(function() {
-            if (MediaPlayer) {
-                MediaPlayer.restoreState();
-            }
-        });
+        console.log("Main.qml: Window loaded");
+        // Wait for MediaPlayer to be ready before restoring state
+        if (MediaPlayer.isReady) {
+            console.log("Main.qml: MediaPlayer is ready, restoring playback state");
+            MediaPlayer.restoreState();
+        } else {
+            console.log("Main.qml: MediaPlayer not ready yet, waiting...");
+            // MediaPlayer will handle restoration when it becomes ready
+            MediaPlayer.restoreState();
+        }
     }
 }

@@ -27,6 +27,7 @@ class MediaPlayer : public QObject
     Q_PROPERTY(bool hasPrevious READ hasPrevious NOTIFY playbackQueueChanged)
     Q_PROPERTY(bool restoringState READ isRestoringState NOTIFY restoringStateChanged)
     Q_PROPERTY(qint64 savedPosition READ savedPosition NOTIFY savedPositionChanged)
+    Q_PROPERTY(bool isReady READ isReady NOTIFY readyChanged)
 
 public:
     enum State {
@@ -39,7 +40,7 @@ public:
     explicit MediaPlayer(QObject *parent = nullptr);
     ~MediaPlayer();
     
-    void setLibraryManager(Mtoc::LibraryManager* manager) { m_libraryManager = manager; }
+    void setLibraryManager(Mtoc::LibraryManager* manager);
 
     State state() const;
     qint64 position() const;
@@ -51,6 +52,7 @@ public:
     bool hasPrevious() const;
     bool isRestoringState() const { return m_restoringState; }
     qint64 savedPosition() const { return m_savedPosition; }
+    bool isReady() const { return m_isReady; }
 
 public slots:
     void play();
@@ -83,9 +85,12 @@ signals:
     void error(const QString &message);
     void restoringStateChanged(bool restoring);
     void savedPositionChanged(qint64 position);
+    void readyChanged(bool ready);
 
 private slots:
     void periodicStateSave();
+    void onTrackLoadedForRestore();
+    void onTrackLoadTimeout();
 
 private:
     void setupConnections();
@@ -97,6 +102,8 @@ private:
     void loadTrack(Mtoc::Track* track, bool autoPlay = true);
     void restoreAlbumByName(const QString& artist, const QString& title, int trackIndex, qint64 position);
     void restoreTrackFromData(const QString& filePath, qint64 position);
+    void clearRestorationState();
+    void setReady(bool ready);
     
     std::unique_ptr<AudioEngine> m_audioEngine;
     Mtoc::Track* m_currentTrack = nullptr;
@@ -106,8 +113,12 @@ private:
     State m_state = StoppedState;
     Mtoc::LibraryManager* m_libraryManager = nullptr;
     QTimer* m_saveStateTimer = nullptr;
+    QTimer* m_loadTimeoutTimer = nullptr;
     bool m_restoringState = false;
     qint64 m_savedPosition = 0;
+    qint64 m_targetRestorePosition = 0;
+    bool m_isReady = false;
+    QMetaObject::Connection m_restoreConnection;
 };
 
 #endif // MEDIAPLAYER_H
