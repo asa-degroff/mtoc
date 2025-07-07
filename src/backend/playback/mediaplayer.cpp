@@ -433,8 +433,8 @@ void MediaPlayer::saveState()
     m_libraryManager->savePlaybackState(filePath, currentPosition, 
                                         albumArtist, albumTitle, trackIndex);
     
-    qDebug() << "MediaPlayer::saveState - saved state for track:" << m_currentTrack->title()
-             << "position:" << currentPosition << "ms";
+    //qDebug() << "MediaPlayer::saveState - saved state for track:" << m_currentTrack->title()
+    //         << "position:" << currentPosition << "ms";
 }
 
 void MediaPlayer::restoreState()
@@ -456,10 +456,16 @@ void MediaPlayer::restoreState()
     QString albumTitle = state["albumTitle"].toString();
     int trackIndex = state["trackIndex"].toInt();
     
-    qDebug() << "MediaPlayer::restoreState - restoring track:" << filePath
-             << "position:" << savedPosition << "ms"
-             << "album:" << albumArtist << "-" << albumTitle
-             << "index:" << trackIndex;
+    // qDebug() << "MediaPlayer::restoreState - restoring track:" << filePath
+    //          << "position:" << savedPosition << "ms"
+    //          << "album:" << albumArtist << "-" << albumTitle
+    //          << "index:" << trackIndex;
+    
+    // Set restoration state
+    m_restoringState = true;
+    m_savedPosition = savedPosition;
+    emit restoringStateChanged(true);
+    emit savedPositionChanged(m_savedPosition);
     
     // If we have album info, try to restore the album queue
     if (!albumArtist.isEmpty() && !albumTitle.isEmpty()) {
@@ -473,6 +479,12 @@ void MediaPlayer::restoreState()
                 seek(savedPosition);
                 // Start paused so user can choose when to resume
                 pause();
+                
+                // Clear restoration state after seeking
+                m_restoringState = false;
+                m_savedPosition = 0;
+                emit restoringStateChanged(false);
+                emit savedPositionChanged(0);
             }
         });
     } else {
@@ -489,6 +501,12 @@ void MediaPlayer::restoreState()
                 seek(savedPosition);
                 // Start paused so user can choose when to resume
                 pause();
+                
+                // Clear restoration state after seeking
+                m_restoringState = false;
+                m_savedPosition = 0;
+                emit restoringStateChanged(false);
+                emit savedPositionChanged(0);
             }
         });
     }

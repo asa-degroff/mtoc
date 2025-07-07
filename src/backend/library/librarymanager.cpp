@@ -1153,7 +1153,7 @@ void LibraryManager::saveCarouselPosition(int albumId)
 {
     QSettings settings;
     settings.setValue("carouselPosition/albumId", albumId);
-    qDebug() << "LibraryManager: Saved carousel position - album ID:" << albumId;
+    //qDebug() << "LibraryManager: Saved carousel position - album ID:" << albumId;
 }
 
 int LibraryManager::loadCarouselPosition() const
@@ -1182,10 +1182,10 @@ void LibraryManager::savePlaybackState(const QString &filePath, qint64 position,
     settings.endGroup();
     settings.sync(); // Force immediate write to disk
     
-    qDebug() << "LibraryManager: Saved playback state - file:" << filePath 
-             << "position:" << position << "ms"
-             << "album:" << albumArtist << "-" << albumTitle 
-             << "track:" << trackIndex;
+    // qDebug() << "LibraryManager: Saved playback state - file:" << filePath 
+    //          << "position:" << position << "ms"
+    //          << "album:" << albumArtist << "-" << albumTitle 
+    //          << "track:" << trackIndex;
 }
 
 QVariantMap LibraryManager::loadPlaybackState() const
@@ -1207,8 +1207,8 @@ QVariantMap LibraryManager::loadPlaybackState() const
             state["trackIndex"] = settings.value("trackIndex", -1).toInt();
             state["savedTime"] = settings.value("savedTime").toDateTime();
             
-            qDebug() << "LibraryManager: Loaded playback state - file:" << filePath
-                     << "position:" << state["position"].toLongLong() << "ms";
+            //qDebug() << "LibraryManager: Loaded playback state - file:" << filePath
+            //         << "position:" << state["position"].toLongLong() << "ms";
         } else {
             qDebug() << "LibraryManager: Saved track no longer exists:" << filePath;
             // Clear the invalid saved state

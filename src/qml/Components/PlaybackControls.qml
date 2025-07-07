@@ -125,7 +125,7 @@ Item {
             spacing: Math.max(4, parent.width * 0.01)  // Dynamic spacing: 1% of width, min 4px
             
             Label {
-                text: formatTime(progressSlider.value)
+                text: formatTime(MediaPlayer.restoringState ? MediaPlayer.savedPosition : progressSlider.value)
                 color: "#b0b0b0"
                 font.pixelSize: 14
                 Layout.preferredWidth: 45  // Fixed width for consistent alignment
@@ -144,7 +144,8 @@ Item {
                 property real targetValue: 0
                 property bool isSeeking: false
                 
-                value: isSeeking ? targetValue : MediaPlayer.position
+                // Show saved position during restoration, otherwise show live position
+                value: isSeeking ? targetValue : (MediaPlayer.restoringState ? MediaPlayer.savedPosition : MediaPlayer.position)
                 
                 onPressedChanged: {
                     if (pressed) {

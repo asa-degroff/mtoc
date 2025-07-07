@@ -25,6 +25,8 @@ class MediaPlayer : public QObject
     Q_PROPERTY(Mtoc::Album* currentAlbum READ currentAlbum NOTIFY currentAlbumChanged)
     Q_PROPERTY(bool hasNext READ hasNext NOTIFY playbackQueueChanged)
     Q_PROPERTY(bool hasPrevious READ hasPrevious NOTIFY playbackQueueChanged)
+    Q_PROPERTY(bool restoringState READ isRestoringState NOTIFY restoringStateChanged)
+    Q_PROPERTY(qint64 savedPosition READ savedPosition NOTIFY savedPositionChanged)
 
 public:
     enum State {
@@ -47,6 +49,8 @@ public:
     Mtoc::Album* currentAlbum() const { return m_currentAlbum; }
     bool hasNext() const;
     bool hasPrevious() const;
+    bool isRestoringState() const { return m_restoringState; }
+    qint64 savedPosition() const { return m_savedPosition; }
 
 public slots:
     void play();
@@ -77,6 +81,8 @@ signals:
     void currentAlbumChanged(Mtoc::Album* album);
     void playbackQueueChanged();
     void error(const QString &message);
+    void restoringStateChanged(bool restoring);
+    void savedPositionChanged(qint64 position);
 
 private slots:
     void periodicStateSave();
@@ -97,6 +103,8 @@ private:
     State m_state = StoppedState;
     Mtoc::LibraryManager* m_libraryManager = nullptr;
     QTimer* m_saveStateTimer = nullptr;
+    bool m_restoringState = false;
+    qint64 m_savedPosition = 0;
 };
 
 #endif // MEDIAPLAYER_H
