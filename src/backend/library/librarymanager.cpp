@@ -343,7 +343,7 @@ bool LibraryManager::removeMusicFolder(const QString &path)
             m_albumCountCacheValid = false;
             m_artistModelCacheValid = false;
             m_albumsByArtistCache.clear();
-            qDebug() << "LibraryManager::removeMusicFolder() - cache invalidated, emitting libraryChanged";
+            //qDebug() << "LibraryManager::removeMusicFolder() - cache invalidated, emitting libraryChanged";
             emit libraryChanged();
         }
         
@@ -1663,7 +1663,7 @@ void LibraryManager::processAlbumArtInBackground()
                 QMetaObject::invokeMethod(this, [this]() {
                     m_albumModelCacheValid = false;
                     emit libraryChanged();
-                    qDebug() << "LibraryManager: Emitted libraryChanged after processing batch of album art";
+                    // qDebug() << "LibraryManager: Emitted libraryChanged after processing batch of album art";
                 }, Qt::QueuedConnection);
             }
             
@@ -1684,7 +1684,7 @@ void LibraryManager::processAlbumArtInBackground()
                 m_albumModelCacheValid = false;
                 m_cachedAlbumModel.clear();
                 emit libraryChanged();
-                qDebug() << "LibraryManager: Emitted final libraryChanged after album art processing";
+                // qDebug() << "LibraryManager: Emitted final libraryChanged after album art processing";
             }, Qt::QueuedConnection);
         }
         

@@ -40,7 +40,7 @@ Item {
     Connections {
         target: LibraryManager
         function onLibraryChanged() {
-            console.log("HorizontalAlbumBrowser: libraryChanged signal received, updating sorted indices");
+            //console.log("HorizontalAlbumBrowser: libraryChanged signal received, updating sorted indices");
             // Save current position before updating
             var currentAlbumId = selectedAlbum ? selectedAlbum.id : -1
             updateSortedIndices()
@@ -63,7 +63,7 @@ Item {
     
     function updateSortedIndices() {
         var sourceAlbums = LibraryManager.albumModel
-        console.log("HorizontalAlbumBrowser: updateSortedIndices called, got", sourceAlbums.length, "albums from LibraryManager");
+        //console.log("HorizontalAlbumBrowser: updateSortedIndices called, got", sourceAlbums.length, "albums from LibraryManager");
         
         // Create array of indices with album data for sorting
         var indexedAlbums = []
