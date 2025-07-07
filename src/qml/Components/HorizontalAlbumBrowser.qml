@@ -223,6 +223,9 @@ Item {
             flickDeceleration: 3000     // Faster deceleration
             boundsBehavior: Flickable.StopAtBounds  // Ensure we can reach the bounds
             
+            // Cached value for delegate optimization - calculated once per frame
+            readonly property real viewCenterX: width / 2
+            
             // Enable delegate recycling and limit cache to prevent memory leaks
             reuseItems: true
             cacheBuffer: 440  // Reduced to 2 items on each side (220px * 2)
@@ -350,35 +353,7 @@ Item {
             
             property int predictedIndex: -1
             property bool isPredicting: false
-            
-            // Predictive approach - commented out for now
-            /*
-            onFlickStarted: {
-                // Calculate where we'll end up based on velocity and deceleration
-                var velocity = horizontalVelocity
-                var deceleration = flickDeceleration
-                var currentPos = contentX
-                
-                // Physics calculation: distance = velocity²/(2*deceleration)
-                var distance = (velocity * Math.abs(velocity)) / (2 * deceleration)
-                var predictedContentX = currentPos - distance
-                
-                // Calculate which index this corresponds to
-                var itemWidth = 220 + spacing // 220 - 165 = 55 effective width per item
-                var centerOffset = width / 2 - 110
-                var predictedCenterX = predictedContentX + centerOffset
-                var rawIndex = Math.round(predictedCenterX / itemWidth)
-                
-                // Clamp to valid range
-                predictedIndex = Math.max(0, Math.min(allAlbums.length - 1, rawIndex))
-                isPredicting = true
-            }
-            
-            onMovementEnded: {
-                isPredicting = false
-                predictedIndex = -1
-            }
-            */            
+                    
             onCurrentIndexChanged: {
                 if (currentIndex >= 0 && currentIndex < sortedAlbumIndices.length) {
                     root.currentIndex = currentIndex
@@ -494,9 +469,8 @@ Item {
                 }
                 
                 // Cache expensive calculations - only update when contentX changes
-                property real centerX: listView.width / 2
                 property real itemCenterX: x + width / 2 - listView.contentX
-                property real distance: itemCenterX - centerX
+                property real distance: itemCenterX - listView.viewCenterX
                 property real absDistance: Math.abs(distance)
                 
                 // Optimization: Skip expensive calculations for far-away items
@@ -506,57 +480,44 @@ Item {
                 property real horizontalOffset: {
                     if (!isVisible) return 0
                     
-                    // Phase 1: Small slide in dead zone (0-20px)
-                    var slideDeadZone = 20
-                    var phase1Spacing = 50  // Significantly increased initial slide amount
+                    // Constants for phase calculations
+                    var phase1Spacing = 50
+                    var phase3Spacing = 40
+                    var sign = distance > 0 ? 1 : -1
                     
-                    // Phase 3: Additional slide after rotation (60-80px)
-                    var phase3Start = 60
-                    var phase3End = 80
-                    var phase3Spacing = 40  // Increased additional spacing
-                    
-                    if (absDistance < slideDeadZone) {
+                    if (absDistance < 20) {
                         // Phase 1: Proportional slide in dead zone
-                        var phase1Progress = absDistance / slideDeadZone
-                        return distance > 0 ? phase1Spacing * phase1Progress : -phase1Spacing * phase1Progress
-                    } else if (absDistance < phase3Start) {
+                        return sign * phase1Spacing * (absDistance / 20)
+                    } else if (absDistance < 60) {
                         // Phase 2: Maintain slide during rotation
-                        return distance > 0 ? phase1Spacing : -phase1Spacing
-                    } else if (absDistance < phase3End) {
+                        return sign * phase1Spacing
+                    } else if (absDistance < 80) {
                         // Phase 3: Additional slide after rotation
-                        var phase3Progress = (absDistance - phase3Start) / (phase3End - phase3Start)
-                        var totalSpacing = phase1Spacing + (phase3Spacing * phase3Progress)
-                        return distance > 0 ? totalSpacing : -totalSpacing
+                        return sign * (phase1Spacing + phase3Spacing * ((absDistance - 60) / 20))
                     } else {
                         // Final spacing
-                        return distance > 0 ? (phase1Spacing + phase3Spacing) : -(phase1Spacing + phase3Spacing)
+                        return sign * (phase1Spacing + phase3Spacing)
                     }
                 }
                 
                 property real itemAngle: {
                     if (!isVisible) return distance > 0 ? -65 : 65
                     
-                    var slideDeadZone = 10  // Dead zone for sliding only
-                    var rotationEnd = 60    // Where rotation completes
-                    
-                    if (absDistance < slideDeadZone) {
-                        // Dead zone - no rotation, only sliding
+                    if (absDistance < 10) {
+                        // Dead zone - no rotation
                         return 0
-                    } else if (absDistance < rotationEnd) {
-                        // Smooth rotation after dead zone
-                        var normalizedDistance = (absDistance - slideDeadZone) / (rotationEnd - slideDeadZone)
-                        return distance > 0 ? -normalizedDistance * 65 : normalizedDistance * 65
+                    } else if (absDistance < 60) {
+                        // Smooth rotation: map 10-60 range to 0-65 degrees
+                        var progress = (absDistance - 10) / 50
+                        return (distance > 0 ? -1 : 1) * progress * 65
                     } else {
-                        // Fixed angle for all albums outside the rotation zone
+                        // Fixed angle outside rotation zone
                         return distance > 0 ? -65 : 65
                     }
                 }
                 
-                // Reuse cached distance calculation
-                property real distanceFromCenter: distance
                 
                 z: {
-                    var absDistance = Math.abs(distanceFromCenter)
                     // Center album has highest z-order
                     if (absDistance < 5) {
                         return 1000  // Ensure center album is always on top
@@ -583,16 +544,16 @@ Item {
                 property real scaleAmount: {
                     if (!isVisible) return 0.85
                     
-                    // If this is the predicted destination, start scaling up early
+                    // Early exit for predicted destination
                     if (listView.isPredicting && index === listView.predictedIndex) {
-                        return 1.0  // Full size for predicted destination
+                        return 1.0
                     }
                     
-                    // Simplified scaling calculation
+                    // Simplified piecewise linear scaling
                     if (absDistance < 20) {
-                        return 1.0 - (0.02 * absDistance / 20)
+                        return 1.0 - 0.001 * absDistance  // 1.0 to 0.98
                     } else if (absDistance < 60) {
-                        return 0.98 - (0.13 * (absDistance - 20) / 40)
+                        return 0.98 - 0.00325 * (absDistance - 20)  // 0.98 to 0.85
                     } else {
                         return 0.85
                     }
@@ -609,14 +570,14 @@ Item {
                         yScale: scaleAmount
                         
                         Behavior on xScale {
-                            enabled: Math.abs(distanceFromCenter) < 200 // Only animate near center
+                            enabled: absDistance < 200 // Only animate near center
                             NumberAnimation {
                                 duration: 300
                                 easing.type: Easing.OutCubic 
                             }
                         }
                         Behavior on yScale {
-                            enabled: Math.abs(distanceFromCenter) < 200 // Only animate near center
+                            enabled: absDistance < 200 // Only animate near center
                             NumberAnimation { 
                                 duration: 300
                                 easing.type: Easing.OutCubic 
@@ -626,10 +587,10 @@ Item {
                     Rotation {
                         // Asymmetric rotation axis - 1/10 from the "front" edge
                         origin.x: {
-                            if (distanceFromCenter > 0) {
+                            if (distance > 0) {
                                 // Moving right
                                 return delegateItem.width * 0.75
-                            } else if (distanceFromCenter < 0) {
+                            } else if (distance < 0) {
                                 // Moving left
                                 return delegateItem.width * 0.25
                             } else {
@@ -728,7 +689,7 @@ Item {
                             id: reflection
                             anchors.fill: parent
                             sourceItem: albumContainer  // Always keep the source
-                            visible: Math.abs(distanceFromCenter) < 900  // Increased to cover all visible albums in max width
+                            visible: absDistance < 900  // Increased to cover all visible albums in max width
                             live: false  // Static reflection for better performance
                             recursive: false
                             // Capture the bottom portion of the album for reflection
