@@ -134,7 +134,7 @@ Item {
             spacing: Math.max(4, parent.width * 0.01)  // Dynamic spacing: 1% of width, min 4px
             
             Label {
-                text: formatTime(MediaPlayer.restoringState ? MediaPlayer.savedPosition : progressSlider.value)
+                text: formatTime(MediaPlayer.savedPosition > 0 ? MediaPlayer.savedPosition : progressSlider.value)
                 color: "#b0b0b0"
                 font.pixelSize: 14
                 Layout.preferredWidth: 45  // Fixed width for consistent alignment
@@ -161,14 +161,14 @@ Item {
                     target: progressSlider
                     property: "value"
                     value: MediaPlayer.position
-                    when: !progressSlider.isSeeking && !MediaPlayer.restoringState
+                    when: !progressSlider.isSeeking && MediaPlayer.savedPosition === 0
                 }
                 
                 Binding {
                     target: progressSlider
                     property: "value"
                     value: MediaPlayer.savedPosition
-                    when: !progressSlider.isSeeking && MediaPlayer.restoringState
+                    when: !progressSlider.isSeeking && MediaPlayer.savedPosition > 0
                 }
                 
                 Binding {

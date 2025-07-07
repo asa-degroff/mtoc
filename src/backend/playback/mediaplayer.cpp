@@ -22,18 +22,12 @@ MediaPlayer::MediaPlayer(QObject *parent)
     : QObject(parent)
     , m_audioEngine(std::make_unique<AudioEngine>(this))
     , m_saveStateTimer(new QTimer(this))
-    , m_loadTimeoutTimer(new QTimer(this))
 {
     setupConnections();
     
     // Set up periodic state saving every 10 seconds while playing
     m_saveStateTimer->setInterval(10000); // 10 seconds
     connect(m_saveStateTimer, &QTimer::timeout, this, &MediaPlayer::periodicStateSave);
-    
-    // Set up load timeout timer for restoration
-    m_loadTimeoutTimer->setSingleShot(true);
-    m_loadTimeoutTimer->setInterval(5000); // 5 second timeout
-    connect(m_loadTimeoutTimer, &QTimer::timeout, this, &MediaPlayer::onTrackLoadTimeout);
     
     QFile debugFile(getDebugLogPath());
     if (debugFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
@@ -50,12 +44,6 @@ MediaPlayer::~MediaPlayer()
     // Cancel any pending restoration
     if (m_restoreConnection) {
         disconnect(m_restoreConnection);
-    }
-    if (m_loadTimeoutTimer) {
-        m_loadTimeoutTimer->stop();
-    }
-    if (m_saveStateTimer) {
-        m_saveStateTimer->stop();
     }
     clearRestorationState();
     
@@ -78,6 +66,9 @@ void MediaPlayer::setupConnections()
     
     connect(m_audioEngine.get(), &AudioEngine::positionChanged,
             this, &MediaPlayer::positionChanged);
+    
+    connect(m_audioEngine.get(), &AudioEngine::positionChanged,
+            this, &MediaPlayer::checkPositionSync);
     
     connect(m_audioEngine.get(), &AudioEngine::durationChanged,
             this, &MediaPlayer::durationChanged);
@@ -611,15 +602,13 @@ void MediaPlayer::restoreAlbumByName(const QString& artist, const QString& title
             
             m_restoreConnection = connect(m_audioEngine.get(), &AudioEngine::durationChanged, this, [this]() {
                 if (m_audioEngine->duration() > 0) {
+                    qDebug() << "MediaPlayer: Track loaded for restoration, duration:" << m_audioEngine->duration();
                     // Track is loaded, disconnect and handle restoration
                     disconnect(m_restoreConnection);
                     m_restoreConnection = QMetaObject::Connection();
                     onTrackLoadedForRestore();
                 }
             });
-            
-            // Start timeout timer
-            m_loadTimeoutTimer->start();
             
             // Load track without auto-playing
             loadTrack(m_playbackQueue[trackIndex], false);
@@ -666,9 +655,6 @@ void MediaPlayer::restoreTrackFromData(const QString& filePath, qint64 position)
         }
     });
     
-    // Start timeout timer
-    m_loadTimeoutTimer->start();
-    
     // Load the single track without auto-playing
     loadTrack(track, false);
     
@@ -678,10 +664,8 @@ void MediaPlayer::restoreTrackFromData(const QString& filePath, qint64 position)
 void MediaPlayer::clearRestorationState()
 {
     m_restoringState = false;
-    m_savedPosition = 0;
     m_targetRestorePosition = 0;
     emit restoringStateChanged(false);
-    emit savedPositionChanged(0);
     
     // Disconnect any pending restore connections
     if (m_restoreConnection) {
@@ -689,9 +673,31 @@ void MediaPlayer::clearRestorationState()
         m_restoreConnection = QMetaObject::Connection();
     }
     
-    // Stop any pending timers
-    if (m_loadTimeoutTimer && m_loadTimeoutTimer->isActive()) {
-        m_loadTimeoutTimer->stop();
+    // Don't clear savedPosition immediately - let it persist until position syncs
+    qDebug() << "MediaPlayer: Restoration state cleared, savedPosition preserved at:" << m_savedPosition;
+}
+
+void MediaPlayer::clearSavedPosition()
+{
+    if (m_savedPosition != 0) {
+        qDebug() << "MediaPlayer: Clearing saved position, was:" << m_savedPosition;
+        m_savedPosition = 0;
+        emit savedPositionChanged(0);
+    }
+}
+
+void MediaPlayer::checkPositionSync()
+{
+    // If we have a saved position and it's significantly different from current position,
+    // check if we should clear it
+    if (m_savedPosition > 0 && !m_restoringState) {
+        qint64 currentPos = position();
+        qint64 diff = qAbs(currentPos - m_savedPosition);
+        
+        // If positions are close (within 1 second) or if we're playing and position has moved significantly
+        if (diff < 1000 || (m_state == PlayingState && currentPos > m_savedPosition + 5000)) {
+            clearSavedPosition();
+        }
     }
 }
 
@@ -707,13 +713,15 @@ void MediaPlayer::setReady(bool ready)
 void MediaPlayer::onTrackLoadedForRestore()
 {
     // This slot is called when a track is successfully loaded during restoration
-    m_loadTimeoutTimer->stop();
     
     if (m_targetRestorePosition > 0 && m_audioEngine && m_audioEngine->duration() > 0) {
+        qDebug() << "MediaPlayer: Seeking to restored position:" << m_targetRestorePosition;
         seek(m_targetRestorePosition);
+    } else {
+        qDebug() << "MediaPlayer: No position to restore or track not ready";
     }
     
-    // Clear restoration state
+    // Clear restoration state - UI will handle smooth transition
     clearRestorationState();
 }
 

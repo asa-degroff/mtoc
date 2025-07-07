@@ -103,6 +103,8 @@ private:
     void restoreAlbumByName(const QString& artist, const QString& title, int trackIndex, qint64 position);
     void restoreTrackFromData(const QString& filePath, qint64 position);
     void clearRestorationState();
+    void clearSavedPosition();
+    void checkPositionSync();
     void setReady(bool ready);
     
     std::unique_ptr<AudioEngine> m_audioEngine;
