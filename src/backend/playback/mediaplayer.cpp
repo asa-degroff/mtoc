@@ -162,13 +162,18 @@ void MediaPlayer::seek(qint64 position)
 
 void MediaPlayer::playTrack(Mtoc::Track* track)
 {
+    loadTrack(track, true);
+}
+
+void MediaPlayer::loadTrack(Mtoc::Track* track, bool autoPlay)
+{
     if (!track) {
-        qWarning() << "MediaPlayer::playTrack called with null track";
+        qWarning() << "MediaPlayer::loadTrack called with null track";
         return;
     }
     
     // Log to file only to reduce overhead
-    // qDebug() << "MediaPlayer::playTrack called with track:" << track->title() 
+    // qDebug() << "MediaPlayer::loadTrack called with track:" << track->title() 
     //          << "by" << track->artist() 
     //          << "path:" << track->filePath();
     
@@ -176,8 +181,9 @@ void MediaPlayer::playTrack(Mtoc::Track* track)
     if (debugFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
         QTextStream stream(&debugFile);
         stream << QDateTime::currentDateTime().toString() 
-               << " - Playing track: " << track->title() 
-               << " by " << track->artist() << Qt::endl;
+               << " - Loading track: " << track->title() 
+               << " by " << track->artist() 
+               << " (autoPlay: " << autoPlay << ")" << Qt::endl;
     }
     
     updateCurrentTrack(track);
@@ -190,7 +196,9 @@ void MediaPlayer::playTrack(Mtoc::Track* track)
     
     // qDebug() << "Loading track into audio engine:" << filePath;
     m_audioEngine->loadTrack(filePath);
-    m_audioEngine->play();
+    if (autoPlay) {
+        m_audioEngine->play();
+    }
 }
 
 void MediaPlayer::playAlbum(Mtoc::Album* album, int startIndex)
@@ -469,46 +477,11 @@ void MediaPlayer::restoreState()
     
     // If we have album info, try to restore the album queue
     if (!albumArtist.isEmpty() && !albumTitle.isEmpty()) {
-        // Load the album and start at the saved track
-        playAlbumByName(albumArtist, albumTitle, trackIndex);
-        
-        // Wait a bit for the track to load, then seek to position
-        // We need to delay this because loading is asynchronous
-        QTimer::singleShot(100, this, [this, savedPosition]() {
-            if (m_audioEngine && m_audioEngine->duration() > 0) {
-                seek(savedPosition);
-                // Start paused so user can choose when to resume
-                pause();
-                
-                // Clear restoration state after seeking
-                m_restoringState = false;
-                m_savedPosition = 0;
-                emit restoringStateChanged(false);
-                emit savedPositionChanged(0);
-            }
-        });
+        // Load the album without auto-playing
+        restoreAlbumByName(albumArtist, albumTitle, trackIndex, savedPosition);
     } else {
-        // Just play the single track
-        QVariantMap trackData;
-        trackData["filePath"] = filePath;
-        trackData["title"] = QFileInfo(filePath).baseName(); // Fallback title
-        
-        playTrackFromData(trackData);
-        
-        // Wait for track to load then seek
-        QTimer::singleShot(100, this, [this, savedPosition]() {
-            if (m_audioEngine && m_audioEngine->duration() > 0) {
-                seek(savedPosition);
-                // Start paused so user can choose when to resume
-                pause();
-                
-                // Clear restoration state after seeking
-                m_restoringState = false;
-                m_savedPosition = 0;
-                emit restoringStateChanged(false);
-                emit savedPositionChanged(0);
-            }
-        });
+        // Just load the single track without auto-playing
+        restoreTrackFromData(filePath, savedPosition);
     }
 }
 
@@ -517,4 +490,120 @@ void MediaPlayer::periodicStateSave()
     if (m_state == PlayingState) {
         saveState();
     }
+}
+
+void MediaPlayer::restoreAlbumByName(const QString& artist, const QString& title, int trackIndex, qint64 position)
+{
+    qDebug() << "MediaPlayer::restoreAlbumByName called with artist:" << artist << "title:" << title << "trackIndex:" << trackIndex;
+    
+    if (!m_libraryManager) {
+        qWarning() << "LibraryManager not set on MediaPlayer";
+        return;
+    }
+    
+    // Get tracks for the album and create a temporary queue
+    auto trackList = m_libraryManager->getTracksForAlbumAsVariantList(artist, title);
+    qDebug() << "Found" << trackList.size() << "tracks for album via getTracksForAlbumAsVariantList";
+    
+    if (!trackList.isEmpty()) {
+        // Clear current queue and set up new one
+        clearQueue();
+        
+        // Set the current album info
+        m_currentAlbum = nullptr; // We don't have the actual album object
+        
+        // Build the queue from track data
+        for (const auto& trackData : trackList) {
+            auto trackMap = trackData.toMap();
+            QString title = trackMap.value("title").toString();
+            QString filePath = trackMap.value("filePath").toString();
+            
+            if (filePath.isEmpty()) {
+                qWarning() << "Empty filePath for track:" << title;
+                continue;
+            }
+            
+            // Create a new Track object from the data
+            Mtoc::Track* track = new Mtoc::Track(this);
+            track->setTitle(title);
+            track->setArtist(trackMap.value("artist").toString());
+            track->setAlbum(trackMap.value("album").toString());
+            track->setAlbumArtist(trackMap.value("albumArtist").toString());
+            track->setTrackNumber(trackMap.value("trackNumber").toInt());
+            track->setDuration(trackMap.value("duration").toInt());
+            track->setFileUrl(QUrl::fromLocalFile(filePath));
+            
+            m_playbackQueue.append(track);
+        }
+        
+        qDebug() << "Built queue with" << m_playbackQueue.size() << "tracks";
+        
+        if (!m_playbackQueue.isEmpty() && trackIndex < m_playbackQueue.size()) {
+            m_currentQueueIndex = trackIndex;
+            emit playbackQueueChanged();
+            
+            // Load track without auto-playing
+            loadTrack(m_playbackQueue[trackIndex], false);
+            
+            // Wait for track to load then seek to position
+            QTimer::singleShot(100, this, [this, position]() {
+                if (m_audioEngine && m_audioEngine->duration() > 0) {
+                    seek(position);
+                    
+                    // Clear restoration state after seeking
+                    m_restoringState = false;
+                    m_savedPosition = 0;
+                    emit restoringStateChanged(false);
+                    emit savedPositionChanged(0);
+                }
+            });
+        }
+    } else {
+        qWarning() << "No tracks found for album:" << artist << "-" << title;
+        // Clear restoration state if album not found
+        m_restoringState = false;
+        m_savedPosition = 0;
+        emit restoringStateChanged(false);
+        emit savedPositionChanged(0);
+    }
+}
+
+void MediaPlayer::restoreTrackFromData(const QString& filePath, qint64 position)
+{
+    qDebug() << "MediaPlayer::restoreTrackFromData called with path:" << filePath;
+    
+    if (filePath.isEmpty()) {
+        qWarning() << "Empty filePath for track";
+        return;
+    }
+    
+    // Clear any existing queue
+    clearQueue();
+    
+    // Create a new Track object from the data
+    Mtoc::Track* track = new Mtoc::Track(this);
+    track->setTitle(QFileInfo(filePath).baseName()); // Fallback title
+    track->setFileUrl(QUrl::fromLocalFile(filePath));
+    
+    // Add to queue so it gets cleaned up properly
+    m_playbackQueue.append(track);
+    m_currentQueueIndex = 0;
+    
+    // Load the single track without auto-playing
+    loadTrack(track, false);
+    
+    emit playbackQueueChanged();
+    
+    // Wait for track to load then seek
+    QTimer::singleShot(100, this, [this, position]() {
+        if (m_audioEngine && m_audioEngine->duration() > 0) {
+            seek(position);
+            
+            // Clear restoration state after seeking
+            m_restoringState = false;
+            m_savedPosition = 0;
+            emit restoringStateChanged(false);
+            emit savedPositionChanged(0);
+        }
+    });
 }

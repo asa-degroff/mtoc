@@ -94,6 +94,9 @@ private:
     void handleTrackFinished();
     void onEngineStateChanged(AudioEngine::State state);
     static QString getDebugLogPath();
+    void loadTrack(Mtoc::Track* track, bool autoPlay = true);
+    void restoreAlbumByName(const QString& artist, const QString& title, int trackIndex, qint64 position);
+    void restoreTrackFromData(const QString& filePath, qint64 position);
     
     std::unique_ptr<AudioEngine> m_audioEngine;
     Mtoc::Track* m_currentTrack = nullptr;
