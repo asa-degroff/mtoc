@@ -40,7 +40,6 @@ Item {
     Connections {
         target: LibraryManager
         function onLibraryChanged() {
-            //console.log("HorizontalAlbumBrowser: libraryChanged signal received, updating sorted indices");
             // Save current position before updating
             var currentAlbumId = selectedAlbum ? selectedAlbum.id : -1
             updateSortedIndices()
@@ -63,8 +62,6 @@ Item {
     
     function updateSortedIndices() {
         var sourceAlbums = LibraryManager.albumModel
-        //console.log("HorizontalAlbumBrowser: updateSortedIndices called, got", sourceAlbums.length, "albums from LibraryManager");
-        
         // Create array of indices with album data for sorting
         var indexedAlbums = []
         for (var i = 0; i < sourceAlbums.length; i++) {
@@ -111,11 +108,6 @@ Item {
             }
         }
         albumIdToSortedIndex = idToIndex
-        
-        // Memory usage estimate: only storing integers instead of full album objects
-        // var memoryEstimate = sortedAlbumIndices.length * 4 // 4 bytes per integer
-        // console.log("HorizontalAlbumBrowser: Using approximately", memoryEstimate, "bytes for sorted indices vs", 
-        //             (sourceAlbums.length * 200), "bytes estimated for full album copies")
         
         if (sortedAlbumIndices.length > 0 && currentIndex === -1) {
             currentIndex = 0
@@ -350,9 +342,6 @@ Item {
                     }
                 }
             }
-            
-            property int predictedIndex: -1
-            property bool isPredicting: false
                     
             onCurrentIndexChanged: {
                 if (currentIndex >= 0 && currentIndex < sortedAlbumIndices.length) {
@@ -474,7 +463,7 @@ Item {
                 property real absDistance: Math.abs(distance)
                 
                 // Optimization: Skip expensive calculations for far-away items
-                property bool isNearCenter: absDistance < 600
+                property bool isNearCenter: absDistance < 800
                 property bool isVisible: isNearCenter
                 
                 property real horizontalOffset: {
@@ -543,11 +532,6 @@ Item {
                 
                 property real scaleAmount: {
                     if (!isVisible) return 0.85
-                    
-                    // Early exit for predicted destination
-                    if (listView.isPredicting && index === listView.predictedIndex) {
-                        return 1.0
-                    }
                     
                     // Simplified piecewise linear scaling
                     if (absDistance < 20) {
@@ -689,7 +673,7 @@ Item {
                             id: reflection
                             anchors.fill: parent
                             sourceItem: albumContainer  // Always keep the source
-                            visible: absDistance < 900  // Increased to cover all visible albums in max width
+                            visible: absDistance < 800  // Cover all visible albums in max width
                             live: false  // Static reflection for better performance
                             recursive: false
                             // Capture the bottom portion of the album for reflection

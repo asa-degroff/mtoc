@@ -469,7 +469,7 @@ Item {
             HorizontalAlbumBrowser {
                 id: albumBrowser
                 anchors.centerIn: parent
-                width: Math.min(parent.width - 16, 1800)  // Max width with margins
+                width: Math.min(parent.width - 16, 1600)  // Max width with margins
                 height: parent.height - 16  // Account for margins
                 
                 onAlbumClicked: function(album) {
