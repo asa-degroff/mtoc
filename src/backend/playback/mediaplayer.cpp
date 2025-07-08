@@ -208,6 +208,11 @@ void MediaPlayer::loadTrack(Mtoc::Track* track, bool autoPlay)
     
     updateCurrentTrack(track);
     
+    // Clear saved position when loading a new track (unless we're restoring state)
+    if (!m_restoringState) {
+        clearSavedPosition();
+    }
+    
     QString filePath = track->filePath();
     if (filePath.isEmpty()) {
         qWarning() << "Track has empty file path!";
