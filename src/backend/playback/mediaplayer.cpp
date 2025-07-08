@@ -676,7 +676,6 @@ void MediaPlayer::restoreAlbumByName(const QString& artist, const QString& title
             
             m_restoreConnection = connect(m_audioEngine.get(), &AudioEngine::durationChanged, this, [this]() {
                 if (m_audioEngine->duration() > 0) {
-                    qDebug() << "MediaPlayer: Track loaded for restoration, duration:" << m_audioEngine->duration();
                     // Track is loaded, disconnect and handle restoration
                     disconnect(m_restoreConnection);
                     m_restoreConnection = QMetaObject::Connection();
@@ -763,15 +762,11 @@ void MediaPlayer::clearRestorationState()
             emit savedPositionChanged(m_savedPosition);
         }
     }
-    
-    // Don't clear savedPosition immediately - let it persist until position syncs
-    qDebug() << "MediaPlayer: Restoration state cleared, savedPosition preserved at:" << m_savedPosition;
 }
 
 void MediaPlayer::clearSavedPosition()
 {
     if (m_savedPosition != 0) {
-        qDebug() << "MediaPlayer: Clearing saved position, was:" << m_savedPosition;
         m_savedPosition = 0;
         emit savedPositionChanged(0);
     }
@@ -806,7 +801,6 @@ void MediaPlayer::onTrackLoadedForRestore()
     // This slot is called when a track is successfully loaded during restoration
     
     if (m_targetRestorePosition > 0 && m_audioEngine && m_audioEngine->duration() > 0) {
-        qDebug() << "MediaPlayer: Seeking to restored position:" << m_targetRestorePosition;
         seek(m_targetRestorePosition);
     } else {
         qDebug() << "MediaPlayer: No position to restore or track not ready";

@@ -18,14 +18,6 @@ Item {
     signal nextClicked()
     signal seekRequested(real position)
     
-    // Debug connection to verify signals are working
-    Connections {
-        target: MediaPlayer
-        function onRestoringStateChanged(restoring) {
-            console.log("PlaybackControls: MediaPlayer.restoringState changed to:", restoring)
-        }
-    }
-    
     function formatTime(milliseconds) {
         if (isNaN(milliseconds) || milliseconds < 0) {
             return "0:00"

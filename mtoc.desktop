@@ -10,4 +10,3 @@ Terminal=false
 Categories=AudioVideo;Audio;Player;Qt;
 Keywords=Music;Player;Audio;Library;
 StartupNotify=true
-MimeType=audio/mpeg;audio/x-mp3;audio/mp4;audio/x-m4a;audio/flac;audio/ogg;audio/x-vorbis+ogg;
