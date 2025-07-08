@@ -1,3 +1,9 @@
+1.2
+- Added persistence to track selection and playback position that restores upon restart.
+- Separated album art processing from the rest of the metadata extraction for improved scanning speed.
+- Asynchronous album art population happens in the background after a library scan.
+- Bug fixes and performance improvements
+
 1.1.6
 - Improved delegate recycling behavior in the artists column to resolve glitchy scrolling and a bug where albums would appear under the wrong artist. 
 
