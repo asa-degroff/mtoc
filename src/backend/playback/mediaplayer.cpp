@@ -211,6 +211,12 @@ void MediaPlayer::loadTrack(Mtoc::Track* track, bool autoPlay)
     // Clear saved position when loading a new track (unless we're restoring state)
     if (!m_restoringState) {
         clearSavedPosition();
+        // Also clear any lingering restore state to prevent seeking to old positions
+        m_targetRestorePosition = 0;
+        if (m_restoreConnection) {
+            disconnect(m_restoreConnection);
+            m_restoreConnection = QMetaObject::Connection();
+        }
     }
     
     QString filePath = track->filePath();
@@ -231,6 +237,10 @@ void MediaPlayer::playAlbum(Mtoc::Album* album, int startIndex)
     if (!album || album->tracks().isEmpty()) {
         return;
     }
+    
+    // Clear any restoration state to prevent old positions from being applied
+    clearRestorationState();
+    clearSavedPosition();
     
     QFile debugFile(getDebugLogPath());
     if (debugFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
@@ -276,6 +286,10 @@ void MediaPlayer::playAlbumByName(const QString& artist, const QString& title, i
         qWarning() << "LibraryManager not set on MediaPlayer";
         return;
     }
+    
+    // Clear any restoration state to prevent old positions from being applied
+    clearRestorationState();
+    clearSavedPosition();
     
     // Debug: Check library state
     qDebug() << "LibraryManager album count:" << m_libraryManager->albumCount();
@@ -342,6 +356,10 @@ void MediaPlayer::playTrackFromData(const QVariant& trackData)
         qWarning() << "Empty filePath for track:" << title;
         return;
     }
+    
+    // Clear any restoration state to prevent old positions from being applied
+    clearRestorationState();
+    clearSavedPosition();
     
     // Clear any existing queue
     clearQueue();
