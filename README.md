@@ -31,6 +31,7 @@ mtoc is a music player and library browser for Linux that emphasizes smooth, con
 - GStreamer-based audio engine
 - Gapless audio support for seamless album listening
 - Standard controls: play/pause, previous/next, seek
+- Playback state persistence: saves your playback state between restarts so you can pick up where you left off
 
 ### 🖥️ Desktop Integration
 - Full MPRIS support for media keys and system controls
