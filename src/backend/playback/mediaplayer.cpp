@@ -71,7 +71,27 @@ void MediaPlayer::setupConnections()
             this, &MediaPlayer::checkPositionSync);
     
     connect(m_audioEngine.get(), &AudioEngine::durationChanged,
-            this, &MediaPlayer::durationChanged);
+            this, [this](qint64 engineDuration) {
+                // During restoration, be careful about duration signals from AudioEngine
+                if (m_restoringState) {
+                    // If we have a valid track duration already, don't let AudioEngine override it
+                    if (m_currentTrack && m_currentTrack->duration() > 0) {
+                        // Only emit if the engine duration matches what we expect
+                        // (allow some tolerance for rounding)
+                        qint64 expectedDuration = m_currentTrack->duration() * 1000;
+                        if (qAbs(engineDuration - expectedDuration) < 1000) {
+                            emit durationChanged(engineDuration);
+                        }
+                        return;
+                    }
+                    // Ignore zero duration during restoration
+                    if (engineDuration == 0) {
+                        qDebug() << "MediaPlayer: Ignoring zero duration during restoration";
+                        return;
+                    }
+                }
+                emit durationChanged(engineDuration);
+            });
     
     connect(m_audioEngine.get(), &AudioEngine::trackFinished,
             this, &MediaPlayer::handleTrackFinished);
@@ -92,6 +112,12 @@ qint64 MediaPlayer::position() const
 
 qint64 MediaPlayer::duration() const
 {
+    // If we have a current track with a valid duration, use that (convert seconds to milliseconds)
+    if (m_currentTrack && m_currentTrack->duration() > 0) {
+        return m_currentTrack->duration() * 1000;
+    }
+    
+    // Fall back to AudioEngine duration
     return m_audioEngine->duration();
 }
 
@@ -207,6 +233,22 @@ void MediaPlayer::loadTrack(Mtoc::Track* track, bool autoPlay)
     }
     
     updateCurrentTrack(track);
+    
+    // If we're restoring and the track has a duration, emit the signal immediately
+    // This ensures QML gets the duration even before AudioEngine loads
+    if (m_restoringState && track && track->duration() > 0) {
+        qDebug() << "MediaPlayer: Emitting duration during restoration for track:" << track->title() 
+                 << "duration:" << track->duration() * 1000 << "ms";
+        emit durationChanged(track->duration() * 1000);
+        
+        // Also emit after a short delay to ensure QML bindings are updated
+        QTimer::singleShot(100, this, [this, track]() {
+            if (m_currentTrack == track && track->duration() > 0) {
+                qDebug() << "MediaPlayer: Re-emitting duration after delay:" << track->duration() * 1000 << "ms";
+                emit durationChanged(track->duration() * 1000);
+            }
+        });
+    }
     
     // Clear saved position when loading a new track (unless we're restoring state)
     if (!m_restoringState) {
@@ -480,11 +522,14 @@ void MediaPlayer::saveState()
         albumTitle = m_currentTrack->album();
     }
     
+    // Get the duration
+    qint64 trackDuration = duration(); // This already handles both track and engine duration
+    
     // Save the state
     m_libraryManager->savePlaybackState(filePath, currentPosition, 
-                                        albumArtist, albumTitle, trackIndex);
+                                        albumArtist, albumTitle, trackIndex, trackDuration);
     
-    //qDebug() << "MediaPlayer::saveState - saved state for track:" << m_currentTrack->title()
+    // qDebug() << "MediaPlayer::saveState - saved state for track:" << m_currentTrack->title()
     //         << "position:" << currentPosition << "ms";
 }
 
@@ -522,6 +567,7 @@ void MediaPlayer::restoreState()
     
     QString filePath = state["filePath"].toString();
     qint64 savedPosition = state["position"].toLongLong();
+    qint64 savedDuration = state["duration"].toLongLong();
     QString albumArtist = state["albumArtist"].toString();
     QString albumTitle = state["albumTitle"].toString();
     int trackIndex = state["trackIndex"].toInt();
@@ -553,7 +599,7 @@ void MediaPlayer::restoreState()
             restoreAlbumByName(albumArtist, albumTitle, trackIndex, savedPosition);
         } else {
             // Just load the single track without auto-playing
-            restoreTrackFromData(filePath, savedPosition);
+            restoreTrackFromData(filePath, savedPosition, savedDuration);
         }
     } catch (const std::exception& e) {
         qWarning() << "MediaPlayer::restoreState - exception during restoration:" << e.what();
@@ -643,9 +689,9 @@ void MediaPlayer::restoreAlbumByName(const QString& artist, const QString& title
     }
 }
 
-void MediaPlayer::restoreTrackFromData(const QString& filePath, qint64 position)
+void MediaPlayer::restoreTrackFromData(const QString& filePath, qint64 position, qint64 duration)
 {
-    qDebug() << "MediaPlayer::restoreTrackFromData called with path:" << filePath;
+    qDebug() << "MediaPlayer::restoreTrackFromData called with path:" << filePath << "duration:" << duration;
     
     if (filePath.isEmpty()) {
         qWarning() << "Empty filePath for track";
@@ -659,6 +705,12 @@ void MediaPlayer::restoreTrackFromData(const QString& filePath, qint64 position)
     Mtoc::Track* track = new Mtoc::Track(this);
     track->setTitle(QFileInfo(filePath).baseName()); // Fallback title
     track->setFileUrl(QUrl::fromLocalFile(filePath));
+    
+    // Set the duration from saved state (convert ms to seconds)
+    if (duration > 0) {
+        qDebug() << "Restoring track with duration:" << duration << "ms";
+        track->setDuration(duration / 1000);
+    }
     
     // Add to queue so it gets cleaned up properly
     m_playbackQueue.append(track);
@@ -694,6 +746,12 @@ void MediaPlayer::clearRestorationState()
     if (m_restoreConnection) {
         disconnect(m_restoreConnection);
         m_restoreConnection = QMetaObject::Connection();
+    }
+    
+    // Emit duration changed to ensure QML gets the correct duration
+    // Now that restoration is complete, the duration() method will return the correct value
+    if (m_currentTrack) {
+        emit durationChanged(duration());
     }
     
     // Don't clear savedPosition immediately - let it persist until position syncs

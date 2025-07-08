@@ -1166,7 +1166,7 @@ int LibraryManager::loadCarouselPosition() const
 
 void LibraryManager::savePlaybackState(const QString &filePath, qint64 position, 
                                        const QString &albumArtist, const QString &albumTitle, 
-                                       int trackIndex)
+                                       int trackIndex, qint64 duration)
 {
     QSettings settings;
     settings.beginGroup("playbackState");
@@ -1174,6 +1174,7 @@ void LibraryManager::savePlaybackState(const QString &filePath, qint64 position,
     // Save track info
     settings.setValue("filePath", filePath);
     settings.setValue("position", position);
+    settings.setValue("duration", duration);
     settings.setValue("albumArtist", albumArtist);
     settings.setValue("albumTitle", albumTitle);
     settings.setValue("trackIndex", trackIndex);
@@ -1184,6 +1185,7 @@ void LibraryManager::savePlaybackState(const QString &filePath, qint64 position,
     
     // qDebug() << "LibraryManager: Saved playback state - file:" << filePath 
     //          << "position:" << position << "ms"
+    //          << "duration:" << duration << "ms"
     //          << "album:" << albumArtist << "-" << albumTitle 
     //          << "track:" << trackIndex;
 }
@@ -1202,6 +1204,7 @@ QVariantMap LibraryManager::loadPlaybackState() const
         if (fileInfo.exists()) {
             state["filePath"] = filePath;
             state["position"] = settings.value("position", 0).toLongLong();
+            state["duration"] = settings.value("duration", 0).toLongLong();
             state["albumArtist"] = settings.value("albumArtist").toString();
             state["albumTitle"] = settings.value("albumTitle").toString();
             state["trackIndex"] = settings.value("trackIndex", -1).toInt();

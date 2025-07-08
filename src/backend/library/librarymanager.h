@@ -101,7 +101,7 @@ public:
     // Playback state persistence methods
     Q_INVOKABLE void savePlaybackState(const QString &filePath, qint64 position, 
                                        const QString &albumArtist, const QString &albumTitle, 
-                                       int trackIndex);
+                                       int trackIndex, qint64 duration);
     Q_INVOKABLE QVariantMap loadPlaybackState() const;
 
 signals:

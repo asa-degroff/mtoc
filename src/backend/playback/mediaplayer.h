@@ -101,7 +101,7 @@ private:
     static QString getDebugLogPath();
     void loadTrack(Mtoc::Track* track, bool autoPlay = true);
     void restoreAlbumByName(const QString& artist, const QString& title, int trackIndex, qint64 position);
-    void restoreTrackFromData(const QString& filePath, qint64 position);
+    void restoreTrackFromData(const QString& filePath, qint64 position, qint64 duration);
     void clearRestorationState();
     void clearSavedPosition();
     void checkPositionSync();
