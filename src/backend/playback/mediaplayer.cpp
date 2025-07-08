@@ -246,6 +246,11 @@ void MediaPlayer::loadTrack(Mtoc::Track* track, bool autoPlay)
             if (m_currentTrack == track && track->duration() > 0) {
                 qDebug() << "MediaPlayer: Re-emitting duration after delay:" << track->duration() * 1000 << "ms";
                 emit durationChanged(track->duration() * 1000);
+                
+                // Re-emit position to update progress bar visual position
+                if (m_savedPosition > 0) {
+                    emit savedPositionChanged(m_savedPosition);
+                }
             }
         });
     }
@@ -752,6 +757,11 @@ void MediaPlayer::clearRestorationState()
     // Now that restoration is complete, the duration() method will return the correct value
     if (m_currentTrack) {
         emit durationChanged(duration());
+        
+        // Re-emit savedPosition to force progress bar update with correct duration
+        if (m_savedPosition > 0) {
+            emit savedPositionChanged(m_savedPosition);
+        }
     }
     
     // Don't clear savedPosition immediately - let it persist until position syncs
