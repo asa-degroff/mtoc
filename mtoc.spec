@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        1.1.6
+Version:        1.2
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -52,6 +52,36 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %{_datadir}/pixmaps/%{name}.png
 
 %changelog
+* Tue Jul 08 2025 Asa DeGroff <asa@3fz.org> 1.2-1
+- changelog and version bump (asa@3fz.org)
+- cleanup (asa@3fz.org)
+- Re-emit saved position to update progress bar during track loading and
+  restoration (asa@3fz.org)
+- Add duration handling to playback state saving and restoration (asa@3fz.org)
+- Clear restoration state and saved position when loading tracks and albums
+  (asa@3fz.org)
+- Clear saved position when loading a new track, unless restoring state
+  (asa@3fz.org)
+- Refactor playback restoration logic and improve saved position handling
+  (asa@3fz.org)
+- Fix playback state restoration crashes on startup (asa@3fz.org)
+- Enhance playback state restoration and improve progress slider behavior
+  during seeking (asa@3fz.org)
+- fix for playback resumption bug (asa@3fz.org)
+- progress bar reflects restored state after restart (asa@3fz.org)
+- Implement playback state persistence with save and restore functionality
+  (asa@3fz.org)
+- code cleanup and improved behavior of carousel at the edges of max width
+  (asa@3fz.org)
+- Optimize HorizontalAlbumBrowser for performance and clarity by caching view
+  center and simplifying distance calculations (asa@3fz.org)
+- cleaned up excessive debug output (asa@3fz.org)
+- Fix for background album art processing and incremental database insertion
+  (asa@3fz.org)
+- Optimize memory management during scanning and add background processing for
+  album art (asa@3fz.org)
+- update changelog (asa@3fz.org)
+
 * Sun Jun 29 2025 Asa DeGroff <asa@3fz.org> 1.1.6-1
 - fix for buggy delegate recycling with memory cleanup and debounce for artist
   expansion in LibraryPane (asa@3fz.org)
