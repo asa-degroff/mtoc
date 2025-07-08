@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        1.2
+Version:        1.2.0.1
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -52,6 +52,16 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %{_datadir}/pixmaps/%{name}.png
 
 %changelog
+* Tue Jul 08 2025 Asa DeGroff <asa@3fz.org> 1.2.0.1-1
+- Revert "Automatic commit of package [mtoc] release [1.3-1]." (asa@3fz.org)
+- Automatic commit of package [mtoc] release [1.3-1]. (asa@3fz.org)
+- version bump, banner, and docs (asa@3fz.org)
+
+* Tue Jul 08 2025 Asa DeGroff <asa@3fz.org>
+- Revert "Automatic commit of package [mtoc] release [1.3-1]." (asa@3fz.org)
+- Automatic commit of package [mtoc] release [1.3-1]. (asa@3fz.org)
+- version bump, banner, and docs (asa@3fz.org)
+
 * Tue Jul 08 2025 Asa DeGroff <asa@3fz.org> 1.2-1
 - changelog and version bump (asa@3fz.org)
 - cleanup (asa@3fz.org)
