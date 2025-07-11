@@ -1,3 +1,6 @@
+1.2.1
+- Fixed a bug that prevented the MPRIS previous control from restarting the first track in the queue.
+
 1.2
 - Added persistence to track selection and playback position that restores upon restart.
 - Separated album art processing from the rest of the metadata extraction for improved scanning speed.
