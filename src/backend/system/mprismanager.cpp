@@ -152,7 +152,16 @@ bool MediaPlayer2PlayerAdaptor::canGoNext() const
 
 bool MediaPlayer2PlayerAdaptor::canGoPrevious() const
 {
-    return m_mediaPlayer ? m_mediaPlayer->hasPrevious() : false;
+    // Return true if we can go to previous track OR if we're playing/paused
+    // (so Previous can restart the current track)
+    if (!m_mediaPlayer) {
+        return false;
+    }
+    
+    MediaPlayer::State state = m_mediaPlayer->state();
+    return m_mediaPlayer->hasPrevious() || 
+           state == MediaPlayer::PlayingState || 
+           state == MediaPlayer::PausedState;
 }
 
 void MediaPlayer2PlayerAdaptor::Next()
@@ -287,7 +296,7 @@ bool MprisManager::initialize()
             // Update CanGoNext and CanGoPrevious properties
             QVariantMap changedProperties;
             changedProperties["CanGoNext"] = m_mediaPlayer->hasNext();
-            changedProperties["CanGoPrevious"] = m_mediaPlayer->hasPrevious();
+            changedProperties["CanGoPrevious"] = m_playerAdaptor->canGoPrevious();
             emitPropertiesChanged("org.mpris.MediaPlayer2.Player", changedProperties);
         });
 
@@ -338,6 +347,7 @@ void MprisManager::onStateChanged()
 {
     QVariantMap changedProperties;
     changedProperties["PlaybackStatus"] = m_playerAdaptor->playbackStatus();
+    changedProperties["CanGoPrevious"] = m_playerAdaptor->canGoPrevious();
     emitPropertiesChanged("org.mpris.MediaPlayer2.Player", changedProperties);
 }
 
