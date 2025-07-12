@@ -1974,4 +1974,9 @@ Item {
             console.warn("Error in jumpToAlbum:", error)
         }
     }
+    
+    // Public function to focus the search bar
+    function focusSearchBar() {
+        searchBar.forceActiveFocus()
+    }
 }

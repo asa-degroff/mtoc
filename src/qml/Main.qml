@@ -129,4 +129,12 @@ ApplicationWindow {
             MediaPlayer.restoreState();
         }
     }
+    
+    // Global keyboard shortcut for search
+    Shortcut {
+        sequence: StandardKey.Find  // Ctrl+F on Linux, Cmd+F on macOS
+        onActivated: {
+            libraryPane.focusSearchBar()
+        }
+    }
 }
