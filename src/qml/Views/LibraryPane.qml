@@ -677,6 +677,18 @@ Item {
                         model: LibraryManager.artistModel
                         spacing: 2
                         
+                        // Property to control smooth scrolling
+                        property bool smoothScrollingEnabled: false
+                        
+                        // Smooth scrolling animation
+                        Behavior on contentY {
+                            enabled: artistsListView.smoothScrollingEnabled
+                            NumberAnimation {
+                                duration: 300
+                                easing.type: Easing.InOutQuad
+                            }
+                        }
+                        
                         // Enable delegate recycling to prevent memory leaks
                         reuseItems: true  // Enable recycling for better performance
                         cacheBuffer: 600  // Increase cache for smoother scrolling
@@ -1638,14 +1650,37 @@ Item {
         var artists = LibraryManager.artistModel
         for (var i = 0; i < artists.length; i++) {
             if (artists[i].name === artistName) {
-                // Use ListView.Beginning to position the artist at the top of the view
-                artistsListView.positionViewAtIndex(i, ListView.Beginning)
-                // Add a small offset to ensure the artist is not right at the edge
-                Qt.callLater(function() {
-                    if (artistsListView.contentY > 0) {
-                        artistsListView.contentY = Math.max(0, artistsListView.contentY - 8)
+                // Calculate the target position
+                var itemHeight = 40 // Height of artist item
+                var expandedHeight = 0
+                
+                // Account for expanded artists above this one
+                for (var j = 0; j < i; j++) {
+                    if (expandedArtists[artists[j].name] || expandedArtistsCache[artists[j].name]) {
+                        var albums = LibraryManager.getAlbumsForArtist(artists[j].name)
+                        if (albums.length > 0) {
+                            // Calculate grid rows: cellHeight = 140 + 10, cellWidth = 120 + 10
+                            var gridWidth = Math.floor((artistsListView.width - 24) / 130)
+                            var rows = Math.ceil(albums.length / gridWidth)
+                            expandedHeight += rows * 150 + 16 // grid height + padding
+                        }
                     }
+                }
+                
+                // Target position with small offset
+                var targetY = i * (itemHeight + 2) + expandedHeight - 8
+                
+                // Enable smooth scrolling animation
+                artistsListView.smoothScrollingEnabled = true
+                
+                // Animate to target position
+                artistsListView.contentY = Math.max(0, targetY)
+                
+                // Disable smooth scrolling after animation completes
+                Qt.callLater(function() {
+                    artistsListView.smoothScrollingEnabled = false
                 })
+                
                 break
             }
         }
