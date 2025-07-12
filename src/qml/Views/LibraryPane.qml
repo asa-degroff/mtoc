@@ -212,6 +212,11 @@ Item {
 
     onSelectedAlbumChanged: {
         try {
+            // Clear track selection immediately when album changes
+            if (trackListView) {
+                trackListView.currentIndex = -1;
+            }
+            
             // Validate selectedAlbum is a valid object with required string properties
             if (selectedAlbum && 
                 typeof selectedAlbum === "object" &&
