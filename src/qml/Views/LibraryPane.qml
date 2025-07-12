@@ -1903,6 +1903,11 @@ Item {
                 navigationMode = "album"
                 selectedAlbumIndex = 0
                 selectedAlbumData = albums[0]
+                
+                // Scroll to position the artist at the top to show albums
+                Qt.callLater(function() {
+                    scrollToArtist(selectedArtistName)
+                })
             }
         } else if (navigationMode === "album") {
             // Select the album and switch to track navigation
