@@ -20,6 +20,19 @@ Item {
         z: -3  // Behind everything else
     }
     
+    // Background mouse area to enable keyboard navigation
+    MouseArea {
+        anchors.fill: parent
+        z: -2  // Above background but below content
+        onClicked: {
+            // Enable keyboard navigation when clicking on empty space
+            if (navigationMode === "none" && LibraryManager.artistModel.length > 0) {
+                root.forceActiveFocus()
+                startArtistNavigation()
+            }
+        }
+    }
+    
     property var selectedAlbum: null
     property var expandedArtists: ({})  // Object to store expansion state by artist name
     property var expandedArtistsCache: ({})  // Cache for quick lookups without triggering bindings
@@ -1338,8 +1351,6 @@ Item {
                                 color: {
                                     if (trackListView.currentIndex === index) {
                                         return Qt.rgba(0.25, 0.32, 0.71, 0.25)  // Selected track
-                                    } else if (root.navigationMode === "track" && root.selectedTrackIndex === index) {
-                                        return Qt.rgba(0.35, 0.42, 0.81, 0.2)  // Keyboard navigation focus
                                     } else {
                                         return Qt.rgba(1, 1, 1, 0.02)  // Default background
                                     }
@@ -1401,6 +1412,9 @@ Item {
                                     
                                     onClicked: {
                                         trackListView.currentIndex = index;
+                                        // Sync keyboard navigation state
+                                        root.navigationMode = "track";
+                                        root.selectedTrackIndex = index;
                                     }
                                     onDoubleClicked: {
                                         // If we have a selected album, play the album starting from this track
@@ -1758,8 +1772,13 @@ Item {
                 }
             }
         } else if (navigationMode === "track") {
-            if (selectedTrackIndex < rightPane.currentAlbumTracks.length - 1) {
+            if (selectedTrackIndex === -1 && rightPane.currentAlbumTracks.length > 0) {
+                // First navigation down selects first track
+                selectedTrackIndex = 0
+                trackListView.currentIndex = 0
+            } else if (selectedTrackIndex < rightPane.currentAlbumTracks.length - 1) {
                 selectedTrackIndex++
+                trackListView.currentIndex = selectedTrackIndex
             }
         }
     }
@@ -1781,6 +1800,7 @@ Item {
             // From track list, go back to album navigation
             navigationMode = "album"
             selectedTrackIndex = -1
+            trackListView.currentIndex = -1
         } else if (navigationMode === "artist") {
             // Already at leftmost navigation level
         }
@@ -1795,6 +1815,9 @@ Item {
                     navigationMode = "album"
                     selectedAlbumIndex = 0
                     selectedAlbumData = albums[0]
+                    // Clear track selection when moving to albums
+                    selectedTrackIndex = -1
+                    trackListView.currentIndex = -1
                 }
             }
         } else if (navigationMode === "album") {
@@ -1806,7 +1829,8 @@ Item {
             } else if (selectedAlbum && rightPane.currentAlbumTracks.length > 0) {
                 // At the end of albums, if an album is already selected, move to tracks
                 navigationMode = "track"
-                selectedTrackIndex = 0
+                selectedTrackIndex = -1  // Don't auto-select first track
+                trackListView.currentIndex = -1
             }
             // If no album is selected yet, do nothing
         } else if (navigationMode === "track") {
@@ -1854,6 +1878,11 @@ Item {
         } else if (navigationMode === "track") {
             if (selectedTrackIndex > 0) {
                 selectedTrackIndex--
+                trackListView.currentIndex = selectedTrackIndex
+            } else if (selectedTrackIndex === 0) {
+                // At first track, deselect to go back to no selection
+                selectedTrackIndex = -1
+                trackListView.currentIndex = -1
             }
         }
     }
@@ -1882,7 +1911,8 @@ Item {
             // Switch to track navigation
             if (rightPane.currentAlbumTracks.length > 0) {
                 navigationMode = "track"
-                selectedTrackIndex = 0
+                selectedTrackIndex = -1  // Don't auto-select first track
+                trackListView.currentIndex = -1
             }
         } else if (navigationMode === "track") {
             // Play the selected track

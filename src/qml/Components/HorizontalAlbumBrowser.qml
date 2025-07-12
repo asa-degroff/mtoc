@@ -358,6 +358,11 @@ Item {
             MouseArea {
                 anchors.fill: parent
                 propagateComposedEvents: true
+                onClicked: {
+                    // Take focus when clicked
+                    listView.forceActiveFocus()
+                    mouse.accepted = false  // Let the click propagate to album items
+                }
                 onWheel: function(wheel) {
                     // Different behavior for touchpad vs mouse wheel
                     if (wheel.pixelDelta.y !== 0 || wheel.pixelDelta.x !== 0) {
@@ -424,19 +429,41 @@ Item {
             }
             
             // Keyboard navigation
-            focus: true
             activeFocusOnTab: true
             
-            Keys.onLeftPressed: listView.decrementCurrentIndex()
-            Keys.onRightPressed: listView.incrementCurrentIndex()
+            // Only handle keyboard events when this component has active focus
+            Keys.enabled: activeFocus
+            Keys.onLeftPressed: {
+                if (activeFocus) {
+                    listView.decrementCurrentIndex()
+                    event.accepted = true
+                }
+            }
+            Keys.onRightPressed: {
+                if (activeFocus) {
+                    listView.incrementCurrentIndex()
+                    event.accepted = true
+                }
+            }
             Keys.onSpacePressed: {
-                if (selectedAlbum) {
+                if (activeFocus && selectedAlbum) {
                     root.albumClicked(selectedAlbum)
+                    event.accepted = true
                 }
             }
             Keys.onReturnPressed: {
-                if (selectedAlbum) {
+                if (activeFocus && selectedAlbum) {
                     root.albumClicked(selectedAlbum)
+                    event.accepted = true
+                }
+            }
+            Keys.onEscapePressed: {
+                if (activeFocus) {
+                    // Return focus to parent (library pane)
+                    if (parent && parent.parent) {
+                        parent.parent.forceActiveFocus()
+                    }
+                    event.accepted = true
                 }
             }
             
