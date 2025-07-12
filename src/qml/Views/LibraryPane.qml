@@ -1798,14 +1798,12 @@ Item {
             if (selectedAlbumIndex < albums.length - 1) {
                 selectedAlbumIndex++
                 selectedAlbumData = albums[selectedAlbumIndex]
-            } else if (selectedAlbumData) {
-                // At the end of albums, select the album and go to tracks
-                selectedAlbum = selectedAlbumData
-                if (rightPane.currentAlbumTracks.length > 0) {
-                    navigationMode = "track"
-                    selectedTrackIndex = 0
-                }
+            } else if (selectedAlbum && rightPane.currentAlbumTracks.length > 0) {
+                // At the end of albums, if an album is already selected, move to tracks
+                navigationMode = "track"
+                selectedTrackIndex = 0
             }
+            // If no album is selected yet, do nothing
         } else if (navigationMode === "track") {
             // Already at rightmost navigation level
         }
