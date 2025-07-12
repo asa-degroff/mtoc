@@ -210,8 +210,29 @@ Rectangle {
     // Allow clicking anywhere on the search bar to focus
     MouseArea {
         anchors.fill: parent
-        onClicked: {
-            textInput.forceActiveFocus()
+        propagateComposedEvents: true
+        
+        onClicked: function(mouse) {
+            // If the TextInput doesn't have focus, focus it
+            if (!textInput.activeFocus) {
+                textInput.forceActiveFocus()
+                mouse.accepted = true
+            } else {
+                // TextInput already has focus, let it handle the click
+                mouse.accepted = false
+            }
+        }
+        
+        onDoubleClicked: function(mouse) {
+            // Always let double-clicks propagate to the TextInput for word selection
+            mouse.accepted = false
+        }
+        
+        onPressed: function(mouse) {
+            // Let press events propagate if TextInput has focus
+            if (textInput.activeFocus) {
+                mouse.accepted = false
+            }
         }
     }
     
