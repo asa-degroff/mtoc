@@ -466,6 +466,24 @@ Item {
                     event.accepted = true
                 }
             }
+            Keys.onUpPressed: {
+                if (activeFocus) {
+                    // Transfer focus back to library pane and let it handle the up key
+                    if (parent && parent.parent) {
+                        parent.parent.forceActiveFocus()
+                    }
+                    event.accepted = false  // Let the event propagate to library pane
+                }
+            }
+            Keys.onDownPressed: {
+                if (activeFocus) {
+                    // Transfer focus back to library pane and let it handle the down key
+                    if (parent && parent.parent) {
+                        parent.parent.forceActiveFocus()
+                    }
+                    event.accepted = false  // Let the event propagate to library pane
+                }
+            }
             
             delegate: Item {
                 id: delegateItem
