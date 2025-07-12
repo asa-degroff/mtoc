@@ -802,6 +802,9 @@ void MediaPlayer::onTrackLoadedForRestore()
     
     if (m_targetRestorePosition > 0 && m_audioEngine && m_audioEngine->duration() > 0) {
         seek(m_targetRestorePosition);
+        // Pause the audio engine to ensure we're in PausedState, not StoppedState
+        // This fixes MPRIS play/pause not working on first press after app restart
+        m_audioEngine->pause();
     } else {
         qDebug() << "MediaPlayer: No position to restore or track not ready";
     }
