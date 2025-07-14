@@ -82,6 +82,15 @@ Item {
         easing.type: Easing.InOutQuad
     }
     
+    // Smooth scrolling animation for artist list (arrow key navigation)
+    NumberAnimation {
+        id: artistScrollAnimation
+        target: artistsListView
+        property: "contentY"
+        duration: 200  // Match track list duration for consistency
+        easing.type: Easing.InOutQuad
+    }
+    
     // Memory cleanup timer
     Timer {
         id: memoryCleanupTimer
@@ -1766,6 +1775,32 @@ Item {
         }
     }
     
+    // Helper function to ensure artist is visible with smooth scrolling (for arrow key navigation)
+    function ensureArtistVisible(index) {
+        if (!artistsListView || index < 0 || index >= LibraryManager.artistModel.length) return
+        
+        // Stop any ongoing animation to prevent stacking
+        artistScrollAnimation.running = false
+        
+        // Get current position
+        var currentPos = artistsListView.contentY
+        
+        // Use positionViewAtIndex to calculate where we need to scroll
+        artistsListView.positionViewAtIndex(index, ListView.Contain)
+        var destPos = artistsListView.contentY
+        
+        // Only animate if we need to scroll
+        if (Math.abs(destPos - currentPos) > 1) {
+            // Restore original position
+            artistsListView.contentY = currentPos
+            
+            // Animate to destination
+            artistScrollAnimation.from = currentPos
+            artistScrollAnimation.to = destPos
+            artistScrollAnimation.running = true
+        }
+    }
+    
     // Navigation functions
     function resetNavigation() {
         navigationMode = "none"
@@ -1851,7 +1886,7 @@ Item {
             if (selectedArtistIndex < LibraryManager.artistModel.length - 1) {
                 selectedArtistIndex++
                 selectedArtistName = LibraryManager.artistModel[selectedArtistIndex].name
-                scrollToArtistIndex(selectedArtistIndex, false)
+                ensureArtistVisible(selectedArtistIndex)
             }
         } else if (navigationMode === "album") {
             var albums = LibraryManager.getAlbumsForArtist(selectedArtistName)
@@ -1880,7 +1915,7 @@ Item {
                     selectedArtistName = LibraryManager.artistModel[selectedArtistIndex].name
                     selectedAlbumIndex = -1
                     selectedAlbumData = null
-                    scrollToArtistIndex(selectedArtistIndex, false)
+                    ensureArtistVisible(selectedArtistIndex)
                 }
             }
         } else if (navigationMode === "track") {
@@ -1957,7 +1992,7 @@ Item {
             if (selectedArtistIndex > 0) {
                 selectedArtistIndex--
                 selectedArtistName = LibraryManager.artistModel[selectedArtistIndex].name
-                scrollToArtistIndex(selectedArtistIndex, false)
+                ensureArtistVisible(selectedArtistIndex)
             }
         } else if (navigationMode === "album") {
             var albums = LibraryManager.getAlbumsForArtist(selectedArtistName)
@@ -1984,7 +2019,7 @@ Item {
                     selectedArtistName = LibraryManager.artistModel[selectedArtistIndex].name
                     selectedAlbumIndex = -1
                     selectedAlbumData = null
-                    scrollToArtistIndex(selectedArtistIndex, false)
+                    ensureArtistVisible(selectedArtistIndex)
                     
                     // Don't auto-expand - let user explicitly expand with Enter/Right
                 }
