@@ -64,6 +64,15 @@ Item {
     property string selectedArtistName: ""
     property var selectedAlbumData: null
     
+    // Smooth scrolling animation for artist list
+    NumberAnimation { 
+        id: scrollAnimation
+        target: artistsListView
+        property: "contentY"
+        duration: 300
+        easing.type: Easing.InOutQuad
+    }
+    
     // Memory cleanup timer
     Timer {
         id: memoryCleanupTimer
@@ -677,17 +686,6 @@ Item {
                         model: LibraryManager.artistModel
                         spacing: 2
                         
-                        // Property to control smooth scrolling
-                        property bool smoothScrollingEnabled: false
-                        
-                        // Smooth scrolling animation
-                        Behavior on contentY {
-                            enabled: artistsListView.smoothScrollingEnabled
-                            NumberAnimation {
-                                duration: 300
-                                easing.type: Easing.InOutQuad
-                            }
-                        }
                         
                         // Enable delegate recycling to prevent memory leaks
                         reuseItems: true  // Enable recycling for better performance
@@ -1650,26 +1648,43 @@ Item {
         var artists = LibraryManager.artistModel
         for (var i = 0; i < artists.length; i++) {
             if (artists[i].name === artistName) {
-                // Force the ListView to update its layout
-                artistsListView.forceLayout()
-                
-                // Use Qt.callLater to ensure delegates are ready
-                Qt.callLater(function() {
-                    // Enable smooth scrolling animation
-                    artistsListView.smoothScrollingEnabled = true
-                    
-                    // Use positionViewAtIndex which handles delegate recycling correctly
-                    // ListView.Beginning positions the item at the top of the view
-                    artistsListView.positionViewAtIndex(i, ListView.Beginning, -8) // -8 offset for visual padding
-                    
-                    // Disable smooth scrolling after animation completes
-                    Qt.callLater(function() {
-                        artistsListView.smoothScrollingEnabled = false
-                    })
-                })
-                
+                scrollToArtistIndex(i, true)
                 break
             }
+        }
+    }
+    
+    // Helper function to scroll to an artist index with optional smooth animation
+    function scrollToArtistIndex(index, smooth) {
+        if (index < 0 || index >= LibraryManager.artistModel.length) return
+        
+        // Force the ListView to update its layout
+        artistsListView.forceLayout()
+        
+        if (smooth) {
+            // Use Qt.callLater to ensure delegates are ready
+            Qt.callLater(function() {
+                // Stop any ongoing animation
+                scrollAnimation.running = false
+                
+                // Store current position
+                var currentPos = artistsListView.contentY
+                
+                // Calculate destination position using positionViewAtIndex
+                artistsListView.positionViewAtIndex(index, ListView.Beginning, -8)
+                var destPos = artistsListView.contentY
+                
+                // Restore original position to animate from there
+                artistsListView.contentY = currentPos
+                
+                // Animate to destination
+                scrollAnimation.from = currentPos
+                scrollAnimation.to = destPos
+                scrollAnimation.running = true
+            })
+        } else {
+            // Immediate positioning for keyboard navigation
+            artistsListView.positionViewAtIndex(index, ListView.Contain)
         }
     }
     
@@ -1703,9 +1718,8 @@ Item {
             if (artistIndex !== undefined) {
                 selectedArtistIndex = artistIndex
                 selectedArtistName = searchResults.bestMatch.name
-                // Position at top for better visibility
-                artistsListView.forceLayout()
-                artistsListView.positionViewAtIndex(artistIndex, ListView.Beginning, -8)
+                // Use smooth scrolling for search navigation
+                scrollToArtistIndex(artistIndex, true)
             }
         } else if (searchResults.bestMatch && searchResults.bestMatchType === "album") {
             // Start with the album's artist expanded and album selected
@@ -1715,9 +1729,8 @@ Item {
             if (artistIndex !== undefined) {
                 selectedArtistIndex = artistIndex
                 selectedArtistName = artistName
-                // Position at top for better visibility
-                artistsListView.forceLayout()
-                artistsListView.positionViewAtIndex(artistIndex, ListView.Beginning, -8)
+                // Use smooth scrolling for search navigation
+                scrollToArtistIndex(artistIndex, true)
                 
                 // Ensure artist is expanded
                 expandedArtistsCache[artistName] = true
@@ -1746,7 +1759,7 @@ Item {
             if (selectedArtistIndex < LibraryManager.artistModel.length - 1) {
                 selectedArtistIndex++
                 selectedArtistName = LibraryManager.artistModel[selectedArtistIndex].name
-                artistsListView.positionViewAtIndex(selectedArtistIndex, ListView.Contain)
+                scrollToArtistIndex(selectedArtistIndex, false)
             }
         } else if (navigationMode === "album") {
             var albums = LibraryManager.getAlbumsForArtist(selectedArtistName)
@@ -1775,7 +1788,7 @@ Item {
                     selectedArtistName = LibraryManager.artistModel[selectedArtistIndex].name
                     selectedAlbumIndex = -1
                     selectedAlbumData = null
-                    artistsListView.positionViewAtIndex(selectedArtistIndex, ListView.Contain)
+                    scrollToArtistIndex(selectedArtistIndex, false)
                 }
             }
         } else if (navigationMode === "track") {
@@ -1850,7 +1863,7 @@ Item {
             if (selectedArtistIndex > 0) {
                 selectedArtistIndex--
                 selectedArtistName = LibraryManager.artistModel[selectedArtistIndex].name
-                artistsListView.positionViewAtIndex(selectedArtistIndex, ListView.Contain)
+                scrollToArtistIndex(selectedArtistIndex, false)
             }
         } else if (navigationMode === "album") {
             var albums = LibraryManager.getAlbumsForArtist(selectedArtistName)
@@ -1877,7 +1890,7 @@ Item {
                     selectedArtistName = LibraryManager.artistModel[selectedArtistIndex].name
                     selectedAlbumIndex = -1
                     selectedAlbumData = null
-                    artistsListView.positionViewAtIndex(selectedArtistIndex, ListView.Contain)
+                    scrollToArtistIndex(selectedArtistIndex, false)
                     
                     // Don't auto-expand - let user explicitly expand with Enter/Right
                 }
@@ -1950,9 +1963,29 @@ Item {
             for (var i = 0; i < artists.length; i++) {
                 if (artists[i] && artists[i].name === artistName) {
                     if (artistsListView) {
-                        // Position at top for better visibility
+                        // Force layout update
                         artistsListView.forceLayout()
-                        artistsListView.positionViewAtIndex(i, ListView.Beginning, -8)
+                        
+                        // Use Qt.callLater to ensure delegates are ready
+                        Qt.callLater(function() {
+                            // Stop any ongoing animation
+                            scrollAnimation.running = false
+                            
+                            // Store current position
+                            var currentPos = artistsListView.contentY
+                            
+                            // Calculate destination position using positionViewAtIndex
+                            artistsListView.positionViewAtIndex(i, ListView.Beginning, -8)
+                            var destPos = artistsListView.contentY
+                            
+                            // Restore original position to animate from there
+                            artistsListView.contentY = currentPos
+                            
+                            // Animate to destination
+                            scrollAnimation.from = currentPos
+                            scrollAnimation.to = destPos
+                            scrollAnimation.running = true
+                        })
                     }
                     break
                 }
