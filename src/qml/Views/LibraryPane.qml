@@ -1650,35 +1650,22 @@ Item {
         var artists = LibraryManager.artistModel
         for (var i = 0; i < artists.length; i++) {
             if (artists[i].name === artistName) {
-                // Calculate the target position
-                var itemHeight = 40 // Height of artist item
-                var expandedHeight = 0
+                // Force the ListView to update its layout
+                artistsListView.forceLayout()
                 
-                // Account for expanded artists above this one
-                for (var j = 0; j < i; j++) {
-                    if (expandedArtists[artists[j].name] || expandedArtistsCache[artists[j].name]) {
-                        var albums = LibraryManager.getAlbumsForArtist(artists[j].name)
-                        if (albums.length > 0) {
-                            // Calculate grid rows: cellHeight = 140 + 10, cellWidth = 120 + 10
-                            var gridWidth = Math.floor((artistsListView.width - 24) / 130)
-                            var rows = Math.ceil(albums.length / gridWidth)
-                            expandedHeight += rows * 150 + 16 // grid height + padding
-                        }
-                    }
-                }
-                
-                // Target position with small offset
-                var targetY = i * (itemHeight + 2) + expandedHeight - 8
-                
-                // Enable smooth scrolling animation
-                artistsListView.smoothScrollingEnabled = true
-                
-                // Animate to target position
-                artistsListView.contentY = Math.max(0, targetY)
-                
-                // Disable smooth scrolling after animation completes
+                // Use Qt.callLater to ensure delegates are ready
                 Qt.callLater(function() {
-                    artistsListView.smoothScrollingEnabled = false
+                    // Enable smooth scrolling animation
+                    artistsListView.smoothScrollingEnabled = true
+                    
+                    // Use positionViewAtIndex which handles delegate recycling correctly
+                    // ListView.Beginning positions the item at the top of the view
+                    artistsListView.positionViewAtIndex(i, ListView.Beginning, -8) // -8 offset for visual padding
+                    
+                    // Disable smooth scrolling after animation completes
+                    Qt.callLater(function() {
+                        artistsListView.smoothScrollingEnabled = false
+                    })
                 })
                 
                 break
@@ -1702,13 +1689,8 @@ Item {
             navigationMode = "artist"
             selectedArtistIndex = 0
             selectedArtistName = LibraryManager.artistModel[0].name
-            artistsListView.positionViewAtIndex(0, ListView.Beginning)
-            // Add a small offset to ensure the artist is not right at the edge
-            Qt.callLater(function() {
-                if (artistsListView.contentY > 0) {
-                    artistsListView.contentY = Math.max(0, artistsListView.contentY - 8)
-                }
-            })
+            artistsListView.forceLayout()
+            artistsListView.positionViewAtIndex(0, ListView.Beginning, -8)
         }
     }
     
@@ -1722,13 +1704,8 @@ Item {
                 selectedArtistIndex = artistIndex
                 selectedArtistName = searchResults.bestMatch.name
                 // Position at top for better visibility
-                artistsListView.positionViewAtIndex(artistIndex, ListView.Beginning)
-                // Add a small offset to ensure the artist is not right at the edge
-                Qt.callLater(function() {
-                    if (artistsListView.contentY > 0) {
-                        artistsListView.contentY = Math.max(0, artistsListView.contentY - 8)
-                    }
-                })
+                artistsListView.forceLayout()
+                artistsListView.positionViewAtIndex(artistIndex, ListView.Beginning, -8)
             }
         } else if (searchResults.bestMatch && searchResults.bestMatchType === "album") {
             // Start with the album's artist expanded and album selected
@@ -1739,13 +1716,8 @@ Item {
                 selectedArtistIndex = artistIndex
                 selectedArtistName = artistName
                 // Position at top for better visibility
-                artistsListView.positionViewAtIndex(artistIndex, ListView.Beginning)
-                // Add a small offset to ensure the artist is not right at the edge
-                Qt.callLater(function() {
-                    if (artistsListView.contentY > 0) {
-                        artistsListView.contentY = Math.max(0, artistsListView.contentY - 8)
-                    }
-                })
+                artistsListView.forceLayout()
+                artistsListView.positionViewAtIndex(artistIndex, ListView.Beginning, -8)
                 
                 // Ensure artist is expanded
                 expandedArtistsCache[artistName] = true
@@ -1979,13 +1951,8 @@ Item {
                 if (artists[i] && artists[i].name === artistName) {
                     if (artistsListView) {
                         // Position at top for better visibility
-                        artistsListView.positionViewAtIndex(i, ListView.Beginning)
-                        // Add a small offset to ensure the artist is not right at the edge
-                        Qt.callLater(function() {
-                            if (artistsListView.contentY > 0) {
-                                artistsListView.contentY = Math.max(0, artistsListView.contentY - 8)
-                            }
-                        })
+                        artistsListView.forceLayout()
+                        artistsListView.positionViewAtIndex(i, ListView.Beginning, -8)
                     }
                     break
                 }
