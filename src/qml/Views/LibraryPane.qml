@@ -73,6 +73,15 @@ Item {
         easing.type: Easing.InOutQuad
     }
     
+    // Smooth scrolling animation for track list
+    NumberAnimation {
+        id: trackScrollAnimation
+        target: trackListView
+        property: "contentY"
+        duration: 200  // Faster for track list
+        easing.type: Easing.InOutQuad
+    }
+    
     // Memory cleanup timer
     Timer {
         id: memoryCleanupTimer
@@ -1731,6 +1740,32 @@ Item {
         }
     }
     
+    // Helper function to ensure track is visible with smooth scrolling
+    function ensureTrackVisible(index) {
+        if (!trackListView || index < 0 || index >= rightPane.currentAlbumTracks.length) return
+        
+        // Stop any ongoing animation to prevent stacking
+        trackScrollAnimation.running = false
+        
+        // Get current position
+        var currentPos = trackListView.contentY
+        
+        // Use positionViewAtIndex to calculate where we need to scroll
+        trackListView.positionViewAtIndex(index, ListView.Contain)
+        var destPos = trackListView.contentY
+        
+        // Only animate if we need to scroll
+        if (Math.abs(destPos - currentPos) > 1) {
+            // Restore original position
+            trackListView.contentY = currentPos
+            
+            // Animate to destination
+            trackScrollAnimation.from = currentPos
+            trackScrollAnimation.to = destPos
+            trackScrollAnimation.running = true
+        }
+    }
+    
     // Navigation functions
     function resetNavigation() {
         navigationMode = "none"
@@ -1853,9 +1888,11 @@ Item {
                 // First navigation down selects first track
                 selectedTrackIndex = 0
                 trackListView.currentIndex = 0
+                ensureTrackVisible(0)
             } else if (selectedTrackIndex < rightPane.currentAlbumTracks.length - 1) {
                 selectedTrackIndex++
                 trackListView.currentIndex = selectedTrackIndex
+                ensureTrackVisible(selectedTrackIndex)
             }
         }
     }
@@ -1956,11 +1993,9 @@ Item {
             if (selectedTrackIndex > 0) {
                 selectedTrackIndex--
                 trackListView.currentIndex = selectedTrackIndex
-            } else if (selectedTrackIndex === 0) {
-                // At first track, deselect to go back to no selection
-                selectedTrackIndex = -1
-                trackListView.currentIndex = -1
+                ensureTrackVisible(selectedTrackIndex)
             }
+            // Don't allow going to -1 with up arrow - stay at first track
         }
     }
     
