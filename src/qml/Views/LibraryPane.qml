@@ -1582,27 +1582,33 @@ Item {
     }
     
     function handleSearchResult(bestMatch, matchType) {
+        // Don't disrupt active navigation
+        var isNavigating = navigationMode !== "none"
+        
         if (matchType === "artist") {
             // Highlight the artist
             highlightedArtist = bestMatch.name
             
-            // Check if already expanded
-            if (expandedArtists[bestMatch.name]) {
-                // Already expanded, safe to scroll immediately
-                scrollToArtist(bestMatch.name)
-            } else {
-                // Expand the artist first
-                var updatedExpanded = Object.assign({}, expandedArtists)
-                updatedExpanded[bestMatch.name] = true
-                expandedArtists = updatedExpanded
-                
-                // Delay scrolling until after expansion
-                Qt.callLater(function() {
-                    artistsListView.forceLayout()
+            // Only scroll and expand if not actively navigating
+            if (!isNavigating) {
+                // Check if already expanded
+                if (expandedArtists[bestMatch.name]) {
+                    // Already expanded, safe to scroll immediately
+                    scrollToArtist(bestMatch.name)
+                } else {
+                    // Expand the artist first
+                    var updatedExpanded = Object.assign({}, expandedArtists)
+                    updatedExpanded[bestMatch.name] = true
+                    expandedArtists = updatedExpanded
+                    
+                    // Delay scrolling until after expansion
                     Qt.callLater(function() {
-                        scrollToArtist(bestMatch.name)
+                        artistsListView.forceLayout()
+                        Qt.callLater(function() {
+                            scrollToArtist(bestMatch.name)
+                        })
                     })
-                })
+                }
             }
         } else if (matchType === "album") {
             // Expand the artist to show the album and scroll to it
@@ -1613,26 +1619,29 @@ Item {
                 // Select the album
                 selectedAlbum = bestMatch
                 
-                // Check if already expanded
-                if (expandedArtists[artistName]) {
-                    // Already expanded, safe to scroll immediately
-                    scrollToArtist(artistName)
-                } else {
-                    // Expand the artist first
-                    expandedArtistsCache[artistName] = true
-                    Qt.callLater(function() {
-                    var updatedExpanded = Object.assign({}, expandedArtists)
-                    updatedExpanded[artistName] = true
-                    expandedArtists = updatedExpanded
-                    })
-                    
-                    // Delay scrolling until after expansion
-                    Qt.callLater(function() {
-                        artistsListView.forceLayout()
+                // Only scroll and expand if not actively navigating
+                if (!isNavigating) {
+                    // Check if already expanded
+                    if (expandedArtists[artistName]) {
+                        // Already expanded, safe to scroll immediately
+                        scrollToArtist(artistName)
+                    } else {
+                        // Expand the artist first
+                        expandedArtistsCache[artistName] = true
                         Qt.callLater(function() {
-                            scrollToArtist(artistName)
+                        var updatedExpanded = Object.assign({}, expandedArtists)
+                        updatedExpanded[artistName] = true
+                        expandedArtists = updatedExpanded
                         })
-                    })
+                        
+                        // Delay scrolling until after expansion
+                        Qt.callLater(function() {
+                            artistsListView.forceLayout()
+                            Qt.callLater(function() {
+                                scrollToArtist(artistName)
+                            })
+                        })
+                    }
                 }
             }
         } else if (matchType === "track") {
@@ -1649,26 +1658,29 @@ Item {
                     }
                 }
                 
-                // Check if already expanded
-                if (expandedArtists[bestMatch.artist]) {
-                    // Already expanded, safe to scroll immediately
-                    scrollToArtist(bestMatch.artist)
-                } else {
-                    // Expand the artist
-                    expandedArtistsCache[bestMatch.artist] = true
-                    Qt.callLater(function() {
-                    var updatedExpanded = Object.assign({}, expandedArtists)
-                    updatedExpanded[bestMatch.artist] = true
-                    expandedArtists = updatedExpanded
-                    })
-                    
-                    // Delay scrolling until after expansion
-                    Qt.callLater(function() {
-                        artistsListView.forceLayout()
+                // Only scroll and expand if not actively navigating
+                if (!isNavigating) {
+                    // Check if already expanded
+                    if (expandedArtists[bestMatch.artist]) {
+                        // Already expanded, safe to scroll immediately
+                        scrollToArtist(bestMatch.artist)
+                    } else {
+                        // Expand the artist
+                        expandedArtistsCache[bestMatch.artist] = true
                         Qt.callLater(function() {
-                            scrollToArtist(bestMatch.artist)
+                        var updatedExpanded = Object.assign({}, expandedArtists)
+                        updatedExpanded[bestMatch.artist] = true
+                        expandedArtists = updatedExpanded
                         })
-                    })
+                        
+                        // Delay scrolling until after expansion
+                        Qt.callLater(function() {
+                            artistsListView.forceLayout()
+                            Qt.callLater(function() {
+                                scrollToArtist(bestMatch.artist)
+                            })
+                        })
+                    }
                 }
             }
         }
@@ -1743,12 +1755,28 @@ Item {
     function setupNavigationFromSearch() {
         resetNavigation()
         if (searchResults.bestMatch && searchResults.bestMatchType === "artist") {
-            navigationMode = "artist"
             // Use O(1) lookup instead of O(n) linear search
             var artistIndex = artistNameToIndex[searchResults.bestMatch.name]
             if (artistIndex !== undefined) {
                 selectedArtistIndex = artistIndex
                 selectedArtistName = searchResults.bestMatch.name
+                
+                // Check if artist is expanded (it should be from handleSearchResult)
+                if (expandedArtists[selectedArtistName]) {
+                    // Artist is expanded, start in album navigation mode
+                    var albums = LibraryManager.getAlbumsForArtist(selectedArtistName)
+                    if (albums.length > 0) {
+                        navigationMode = "album"
+                        selectedAlbumIndex = 0
+                        selectedAlbumData = albums[0]
+                    } else {
+                        // No albums, stay in artist mode
+                        navigationMode = "artist"
+                    }
+                } else {
+                    // Not expanded yet, start in artist mode
+                    navigationMode = "artist"
+                }
                 // Don't scroll here - handleSearchResult already took care of it
             }
         } else if (searchResults.bestMatch && searchResults.bestMatchType === "album") {
