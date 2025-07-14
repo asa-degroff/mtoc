@@ -16,6 +16,7 @@
 #include <taglib/flacpicture.h>
 #include <taglib/vorbisfile.h>
 #include <taglib/xiphcomment.h>
+#include <taglib/opusfile.h>
 
 namespace Mtoc {
 
@@ -365,16 +366,16 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
         }
     }
     
-    // Special case for OGG Vorbis/Opus files
-    if (fileExt == "ogg" || fileExt == "oga" || fileExt == "opus") {
-        qDebug() << "MetadataExtractor: Using OGG-specific handling for" << filePath;
-        TagLib::Vorbis::File vorbisFile(filePathCStr);
+    // Special case for Opus files
+    if (fileExt == "opus") {
+        qDebug() << "MetadataExtractor: Using Opus-specific handling for" << filePath;
+        TagLib::Ogg::Opus::File opusFile(filePathCStr);
         
-        if (vorbisFile.isValid()) {
-            qDebug() << "MetadataExtractor: OGG file is valid";
+        if (opusFile.isValid()) {
+            qDebug() << "MetadataExtractor: Opus file is valid";
             // Get basic metadata from the tag
-            if (vorbisFile.tag()) {
-                TagLib::Tag* tag = vorbisFile.tag();
+            if (opusFile.tag()) {
+                TagLib::Tag* tag = opusFile.tag();
                 meta.title = QString::fromStdString(tag->title().to8Bit(true));
                 meta.artist = QString::fromStdString(tag->artist().to8Bit(true));
                 meta.album = QString::fromStdString(tag->album().to8Bit(true));
@@ -384,7 +385,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             }
             
             // Get additional metadata from Xiph comment
-            TagLib::Ogg::XiphComment* xiphComment = vorbisFile.tag();
+            TagLib::Ogg::XiphComment* xiphComment = opusFile.tag();
             if (xiphComment) {
                 // Get properties for album artist and disc number
                 TagLib::PropertyMap properties = xiphComment->properties();
@@ -437,7 +438,239 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                             }
                         }
                     } else {
-                        qDebug() << "MetadataExtractor: No pictures found in OGG file";
+                        qDebug() << "MetadataExtractor: No pictures found in Opus file pictureList, checking METADATA_BLOCK_PICTURE";
+                        
+                        // Fallback: Check for METADATA_BLOCK_PICTURE field
+                        if (properties.contains("METADATA_BLOCK_PICTURE")) {
+                            TagLib::StringList pictureFieldList = properties["METADATA_BLOCK_PICTURE"];
+                            if (!pictureFieldList.isEmpty()) {
+                                // Get the first METADATA_BLOCK_PICTURE
+                                TagLib::String base64Data = pictureFieldList.front();
+                                QByteArray encodedData = QByteArray::fromStdString(base64Data.to8Bit(false));
+                                QByteArray decodedData = QByteArray::fromBase64(encodedData);
+                                
+                                if (!decodedData.isEmpty()) {
+                                    // Parse the FLAC picture block structure
+                                    // The structure contains: picture type (4 bytes), MIME type length (4 bytes), 
+                                    // MIME type, description length (4 bytes), description, 
+                                    // width (4 bytes), height (4 bytes), color depth (4 bytes), 
+                                    // used colors (4 bytes), picture data length (4 bytes), picture data
+                                    
+                                    if (decodedData.size() > 32) { // Minimum size for header
+                                        const char* data = decodedData.constData();
+                                        int pos = 0;
+                                        
+                                        // Skip picture type (4 bytes)
+                                        pos += 4;
+                                        
+                                        // Read MIME type length (4 bytes, big-endian)
+                                        uint32_t mimeLength = (static_cast<uint8_t>(data[pos]) << 24) |
+                                                              (static_cast<uint8_t>(data[pos+1]) << 16) |
+                                                              (static_cast<uint8_t>(data[pos+2]) << 8) |
+                                                              static_cast<uint8_t>(data[pos+3]);
+                                        pos += 4;
+                                        
+                                        if (pos + mimeLength <= decodedData.size()) {
+                                            // Read MIME type
+                                            meta.albumArtMimeType = QString::fromUtf8(data + pos, mimeLength);
+                                            pos += mimeLength;
+                                            
+                                            // Read description length (4 bytes, big-endian)
+                                            uint32_t descLength = (static_cast<uint8_t>(data[pos]) << 24) |
+                                                                  (static_cast<uint8_t>(data[pos+1]) << 16) |
+                                                                  (static_cast<uint8_t>(data[pos+2]) << 8) |
+                                                                  static_cast<uint8_t>(data[pos+3]);
+                                            pos += 4;
+                                            
+                                            // Skip description
+                                            pos += descLength;
+                                            
+                                            // Skip width, height, color depth, used colors (16 bytes)
+                                            pos += 16;
+                                            
+                                            if (pos + 4 <= decodedData.size()) {
+                                                // Read picture data length (4 bytes, big-endian)
+                                                uint32_t pictureLength = (static_cast<uint8_t>(data[pos]) << 24) |
+                                                                         (static_cast<uint8_t>(data[pos+1]) << 16) |
+                                                                         (static_cast<uint8_t>(data[pos+2]) << 8) |
+                                                                         static_cast<uint8_t>(data[pos+3]);
+                                                pos += 4;
+                                                
+                                                if (pos + pictureLength <= decodedData.size()) {
+                                                    // Extract picture data
+                                                    meta.albumArtData = QByteArray(data + pos, pictureLength);
+                                                    qDebug() << "MetadataExtractor: Opus album art extracted from METADATA_BLOCK_PICTURE,"
+                                                             << "size:" << pictureLength << "MIME type:" << meta.albumArtMimeType;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Get audio properties
+            if (opusFile.audioProperties()) {
+                meta.duration = opusFile.audioProperties()->lengthInSeconds();
+            }
+            
+            // If album artist is still empty, fallback to artist
+            if (meta.albumArtist.isEmpty()) {
+                meta.albumArtist = meta.artist;
+            }
+            
+            qDebug() << "MetadataExtractor: Returning Opus metadata, has album art:" << !meta.albumArtData.isEmpty();
+            return meta;
+        } else {
+            qDebug() << "MetadataExtractor: Opus file is NOT valid";
+        }
+    }
+    
+    // Special case for OGG Vorbis files
+    if (fileExt == "ogg" || fileExt == "oga") {
+        qDebug() << "MetadataExtractor: Using OGG Vorbis-specific handling for" << filePath;
+        TagLib::Vorbis::File vorbisFile(filePathCStr);
+        
+        if (vorbisFile.isValid()) {
+            qDebug() << "MetadataExtractor: OGG Vorbis file is valid";
+            // Get basic metadata from the tag
+            if (vorbisFile.tag()) {
+                TagLib::Tag* tag = vorbisFile.tag();
+                meta.title = QString::fromStdString(tag->title().to8Bit(true));
+                meta.artist = QString::fromStdString(tag->artist().to8Bit(true));
+                meta.album = QString::fromStdString(tag->album().to8Bit(true));
+                meta.genre = QString::fromStdString(tag->genre().to8Bit(true));
+                meta.year = tag->year();
+                meta.trackNumber = tag->track();
+            }
+            
+            // Get additional metadata from Xiph comment
+            TagLib::Ogg::XiphComment* xiphComment = vorbisFile.tag();
+            if (xiphComment) {
+                // Get properties for album artist and disc number
+                TagLib::PropertyMap properties = xiphComment->properties();
+                
+                // Album Artist
+                try {
+                    TagLib::StringList albumArtistList = properties.value("ALBUMARTIST");
+                    if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
+                        meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                    }
+                } catch (const std::exception& e) {
+                    qDebug() << "MetadataExtractor: Exception accessing ALBUMARTIST property:" << e.what();
+                } catch (...) {
+                    qDebug() << "MetadataExtractor: Failed to access ALBUMARTIST property";
+                }
+                
+                // Disc Number
+                try {
+                    TagLib::StringList discList = properties.value("DISCNUMBER");
+                    if (!discList.isEmpty() && discList.size() > 0) {
+                        QString discStr = QString::fromStdString(discList.front().to8Bit(true));
+                        bool ok;
+                        meta.discNumber = discStr.split('/').first().toInt(&ok);
+                        if (!ok) meta.discNumber = 0;
+                    }
+                } catch (const std::exception& e) {
+                    qDebug() << "MetadataExtractor: Exception accessing DISCNUMBER property:" << e.what();
+                } catch (...) {
+                    qDebug() << "MetadataExtractor: Failed to access DISCNUMBER property";
+                }
+                
+                // Extract album art from Xiph comment
+                if (extractAlbumArt) {
+                    qDebug() << "MetadataExtractor: Attempting to extract album art from OGG Vorbis file";
+                    TagLib::List<TagLib::FLAC::Picture*> pictureList = xiphComment->pictureList();
+                    qDebug() << "MetadataExtractor: OGG Vorbis picture list size:" << pictureList.size();
+                    if (!pictureList.isEmpty()) {
+                        // Get the first picture
+                        TagLib::FLAC::Picture* picture = pictureList.front();
+                        if (picture) {
+                            TagLib::ByteVector pictureData = picture->data();
+                            qDebug() << "MetadataExtractor: OGG Vorbis picture data size:" << pictureData.size();
+                            if (!pictureData.isEmpty()) {
+                                meta.albumArtData = QByteArray(pictureData.data(), pictureData.size());
+                                
+                                // Get MIME type
+                                TagLib::String mimeType = picture->mimeType();
+                                meta.albumArtMimeType = QString::fromStdString(mimeType.to8Bit(true));
+                                qDebug() << "MetadataExtractor: OGG Vorbis album art extracted, MIME type:" << meta.albumArtMimeType;
+                            }
+                        }
+                    } else {
+                        qDebug() << "MetadataExtractor: No pictures found in OGG Vorbis file pictureList, checking METADATA_BLOCK_PICTURE";
+                        
+                        // Fallback: Check for METADATA_BLOCK_PICTURE field
+                        if (properties.contains("METADATA_BLOCK_PICTURE")) {
+                            TagLib::StringList pictureFieldList = properties["METADATA_BLOCK_PICTURE"];
+                            if (!pictureFieldList.isEmpty()) {
+                                // Get the first METADATA_BLOCK_PICTURE
+                                TagLib::String base64Data = pictureFieldList.front();
+                                QByteArray encodedData = QByteArray::fromStdString(base64Data.to8Bit(false));
+                                QByteArray decodedData = QByteArray::fromBase64(encodedData);
+                                
+                                if (!decodedData.isEmpty()) {
+                                    // Parse the FLAC picture block structure
+                                    // The structure contains: picture type (4 bytes), MIME type length (4 bytes), 
+                                    // MIME type, description length (4 bytes), description, 
+                                    // width (4 bytes), height (4 bytes), color depth (4 bytes), 
+                                    // used colors (4 bytes), picture data length (4 bytes), picture data
+                                    
+                                    if (decodedData.size() > 32) { // Minimum size for header
+                                        const char* data = decodedData.constData();
+                                        int pos = 0;
+                                        
+                                        // Skip picture type (4 bytes)
+                                        pos += 4;
+                                        
+                                        // Read MIME type length (4 bytes, big-endian)
+                                        uint32_t mimeLength = (static_cast<uint8_t>(data[pos]) << 24) |
+                                                              (static_cast<uint8_t>(data[pos+1]) << 16) |
+                                                              (static_cast<uint8_t>(data[pos+2]) << 8) |
+                                                              static_cast<uint8_t>(data[pos+3]);
+                                        pos += 4;
+                                        
+                                        if (pos + mimeLength <= decodedData.size()) {
+                                            // Read MIME type
+                                            meta.albumArtMimeType = QString::fromUtf8(data + pos, mimeLength);
+                                            pos += mimeLength;
+                                            
+                                            // Read description length (4 bytes, big-endian)
+                                            uint32_t descLength = (static_cast<uint8_t>(data[pos]) << 24) |
+                                                                  (static_cast<uint8_t>(data[pos+1]) << 16) |
+                                                                  (static_cast<uint8_t>(data[pos+2]) << 8) |
+                                                                  static_cast<uint8_t>(data[pos+3]);
+                                            pos += 4;
+                                            
+                                            // Skip description
+                                            pos += descLength;
+                                            
+                                            // Skip width, height, color depth, used colors (16 bytes)
+                                            pos += 16;
+                                            
+                                            if (pos + 4 <= decodedData.size()) {
+                                                // Read picture data length (4 bytes, big-endian)
+                                                uint32_t pictureLength = (static_cast<uint8_t>(data[pos]) << 24) |
+                                                                         (static_cast<uint8_t>(data[pos+1]) << 16) |
+                                                                         (static_cast<uint8_t>(data[pos+2]) << 8) |
+                                                                         static_cast<uint8_t>(data[pos+3]);
+                                                pos += 4;
+                                                
+                                                if (pos + pictureLength <= decodedData.size()) {
+                                                    // Extract picture data
+                                                    meta.albumArtData = QByteArray(data + pos, pictureLength);
+                                                    qDebug() << "MetadataExtractor: OGG Vorbis album art extracted from METADATA_BLOCK_PICTURE,"
+                                                             << "size:" << pictureLength << "MIME type:" << meta.albumArtMimeType;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -452,10 +685,10 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 meta.albumArtist = meta.artist;
             }
             
-            qDebug() << "MetadataExtractor: Returning OGG metadata, has album art:" << !meta.albumArtData.isEmpty();
+            qDebug() << "MetadataExtractor: Returning OGG Vorbis metadata, has album art:" << !meta.albumArtData.isEmpty();
             return meta;
         } else {
-            qDebug() << "MetadataExtractor: OGG file is NOT valid";
+            qDebug() << "MetadataExtractor: OGG Vorbis file is NOT valid";
         }
     }
     
