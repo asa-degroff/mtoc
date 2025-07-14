@@ -1583,48 +1583,62 @@ Item {
     
     function handleSearchResult(bestMatch, matchType) {
         if (matchType === "artist") {
-            // Scroll to and highlight the artist, then expand it
+            // Highlight the artist
             highlightedArtist = bestMatch.name
-            scrollToArtist(bestMatch.name)
             
-            // Expand the artist to show albums
-            var updatedExpanded = Object.assign({}, expandedArtists)
-            updatedExpanded[bestMatch.name] = true
-            expandedArtists = updatedExpanded
+            // Check if already expanded
+            if (expandedArtists[bestMatch.name]) {
+                // Already expanded, safe to scroll immediately
+                scrollToArtist(bestMatch.name)
+            } else {
+                // Expand the artist first
+                var updatedExpanded = Object.assign({}, expandedArtists)
+                updatedExpanded[bestMatch.name] = true
+                expandedArtists = updatedExpanded
+                
+                // Delay scrolling until after expansion
+                Qt.callLater(function() {
+                    artistsListView.forceLayout()
+                    Qt.callLater(function() {
+                        scrollToArtist(bestMatch.name)
+                    })
+                })
+            }
         } else if (matchType === "album") {
             // Expand the artist to show the album and scroll to it
             var artistName = bestMatch.albumArtist
             if (artistName) {
                 highlightedArtist = artistName
                 
-                // Expand the artist first
-                expandedArtistsCache[artistName] = true
-                Qt.callLater(function() {
-                var updatedExpanded = Object.assign({}, expandedArtists)
-                updatedExpanded[artistName] = true
-                expandedArtists = updatedExpanded
-                })
-                
                 // Select the album
                 selectedAlbum = bestMatch
                 
-                // Scroll to the artist after expansion to ensure artist stays at top
-                Qt.callLater(function() {
+                // Check if already expanded
+                if (expandedArtists[artistName]) {
+                    // Already expanded, safe to scroll immediately
                     scrollToArtist(artistName)
-                })
+                } else {
+                    // Expand the artist first
+                    expandedArtistsCache[artistName] = true
+                    Qt.callLater(function() {
+                    var updatedExpanded = Object.assign({}, expandedArtists)
+                    updatedExpanded[artistName] = true
+                    expandedArtists = updatedExpanded
+                    })
+                    
+                    // Delay scrolling until after expansion
+                    Qt.callLater(function() {
+                        artistsListView.forceLayout()
+                        Qt.callLater(function() {
+                            scrollToArtist(artistName)
+                        })
+                    })
+                }
             }
         } else if (matchType === "track") {
             // Find the album and artist for this track and expand
             if (bestMatch.album && bestMatch.artist) {
                 highlightedArtist = bestMatch.artist
-                
-                // Expand the artist
-                expandedArtistsCache[bestMatch.artist] = true
-                Qt.callLater(function() {
-                var updatedExpanded = Object.assign({}, expandedArtists)
-                updatedExpanded[bestMatch.artist] = true
-                expandedArtists = updatedExpanded
-                })
                 
                 // Try to find and select the album
                 var albums = LibraryManager.getAlbumsForArtist(bestMatch.artist)
@@ -1635,10 +1649,27 @@ Item {
                     }
                 }
                 
-                // Scroll to the artist after expansion and album selection
-                Qt.callLater(function() {
+                // Check if already expanded
+                if (expandedArtists[bestMatch.artist]) {
+                    // Already expanded, safe to scroll immediately
                     scrollToArtist(bestMatch.artist)
-                })
+                } else {
+                    // Expand the artist
+                    expandedArtistsCache[bestMatch.artist] = true
+                    Qt.callLater(function() {
+                    var updatedExpanded = Object.assign({}, expandedArtists)
+                    updatedExpanded[bestMatch.artist] = true
+                    expandedArtists = updatedExpanded
+                    })
+                    
+                    // Delay scrolling until after expansion
+                    Qt.callLater(function() {
+                        artistsListView.forceLayout()
+                        Qt.callLater(function() {
+                            scrollToArtist(bestMatch.artist)
+                        })
+                    })
+                }
             }
         }
     }
@@ -1718,8 +1749,7 @@ Item {
             if (artistIndex !== undefined) {
                 selectedArtistIndex = artistIndex
                 selectedArtistName = searchResults.bestMatch.name
-                // Use smooth scrolling for search navigation
-                scrollToArtistIndex(artistIndex, true)
+                // Don't scroll here - handleSearchResult already took care of it
             }
         } else if (searchResults.bestMatch && searchResults.bestMatchType === "album") {
             // Start with the album's artist expanded and album selected
@@ -1729,8 +1759,7 @@ Item {
             if (artistIndex !== undefined) {
                 selectedArtistIndex = artistIndex
                 selectedArtistName = artistName
-                // Use smooth scrolling for search navigation
-                scrollToArtistIndex(artistIndex, true)
+                // Don't scroll here - handleSearchResult already took care of it
                 
                 // Ensure artist is expanded
                 expandedArtistsCache[artistName] = true
@@ -1956,48 +1985,41 @@ Item {
             clearSearch()
             highlightedArtist = artistName
             
-            // Find and scroll to the artist
+            // Find the artist index
             var artists = LibraryManager.artistModel
             if (!artists) return
             
+            var artistIndex = -1
             for (var i = 0; i < artists.length; i++) {
                 if (artists[i] && artists[i].name === artistName) {
-                    if (artistsListView) {
-                        // Force layout update
-                        artistsListView.forceLayout()
-                        
-                        // Use Qt.callLater to ensure delegates are ready
-                        Qt.callLater(function() {
-                            // Stop any ongoing animation
-                            scrollAnimation.running = false
-                            
-                            // Store current position
-                            var currentPos = artistsListView.contentY
-                            
-                            // Calculate destination position using positionViewAtIndex
-                            artistsListView.positionViewAtIndex(i, ListView.Beginning, -8)
-                            var destPos = artistsListView.contentY
-                            
-                            // Restore original position to animate from there
-                            artistsListView.contentY = currentPos
-                            
-                            // Animate to destination
-                            scrollAnimation.from = currentPos
-                            scrollAnimation.to = destPos
-                            scrollAnimation.running = true
-                        })
-                    }
+                    artistIndex = i
                     break
                 }
             }
             
-            // Expand the artist to show albums
-            expandedArtistsCache[artistName] = true
-            Qt.callLater(function() {
-            var updatedExpanded = Object.assign({}, expandedArtists)
-            updatedExpanded[artistName] = true
-            expandedArtists = updatedExpanded
-            })
+            if (artistIndex === -1) return
+            
+            // Check if already expanded
+            if (expandedArtists[artistName]) {
+                // Already expanded, safe to scroll immediately
+                scrollToArtistIndex(artistIndex, true)
+            } else {
+                // Expand the artist first
+                expandedArtistsCache[artistName] = true
+                Qt.callLater(function() {
+                var updatedExpanded = Object.assign({}, expandedArtists)
+                updatedExpanded[artistName] = true
+                expandedArtists = updatedExpanded
+                })
+                
+                // Delay scrolling until after expansion
+                Qt.callLater(function() {
+                    artistsListView.forceLayout()
+                    Qt.callLater(function() {
+                        scrollToArtistIndex(artistIndex, true)
+                    })
+                })
+            }
         } catch (error) {
             console.warn("Error in jumpToArtist:", error)
         }
