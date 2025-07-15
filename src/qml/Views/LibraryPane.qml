@@ -905,7 +905,7 @@ Item {
                             states: State {
                                 when: artistMouseArea.containsMouse && artistsListView.currentIndex !== index
                                 PropertyChanges {
-                                    target: artistItemRect
+                                    target: artistHeader
                                     color: Qt.rgba(1, 1, 1, 0.06)
                                     border.color: Qt.rgba(1, 1, 1, 0.09)
                                 }
@@ -952,42 +952,17 @@ Item {
                                         cachedAlbums = LibraryManager.getAlbumsForArtist(artistData.name)
                                         // Update the album cache when artist is expanded
                                         root.updateAlbumCacheForArtist(artistData.name)
-                                        
-                                        // Start visibility timer when albums are loaded
-                                        if (cachedAlbums.length > 0) {
-                                            visibilityTimer.start()
-                                        }
                                     }
                                 } else {
                                     // Clear cache when not visible or no artist data
                                     cachedArtistName = ""
                                     cachedAlbums = []
-                                    visibilityTimer.stop()
                                 }
                             }
                             
                             onOpacityChanged: {
                                 if (opacity > 0) {
                                     refreshAlbumData()
-                                } else {
-                                    visibilityTimer.stop()
-                                }
-                            }
-                            
-                            // Timer to update visibility of album items periodically
-                            Timer {
-                                id: visibilityTimer
-                                interval: 250  // Update 4 times per second
-                                repeat: true
-                                running: false
-                                onTriggered: {
-                                    // Force update of all album delegate positions
-                                    for (var i = 0; i < albumsGrid.count; i++) {
-                                        var item = albumsGrid.itemAt(i)
-                                        if (item && item.updateGlobalPosition) {
-                                            item.updateGlobalPosition()
-                                        }
-                                    }
                                 }
                             }
                             
@@ -1038,6 +1013,16 @@ Item {
                                         target: artistsListView
                                         function onContentYChanged() {
                                             updateGlobalPosition()
+                                        }
+                                    }
+                                    
+                                    // Update when album becomes visible
+                                    Connections {
+                                        target: albumsContainer
+                                        function onOpacityChanged() {
+                                            if (albumsContainer.opacity > 0) {
+                                                updateGlobalPosition()
+                                            }
                                         }
                                     }
                                     
@@ -1803,7 +1788,7 @@ Item {
                 var currentPos = artistsListView.contentY
                 
                 // Calculate destination position using positionViewAtIndex
-                artistsListView.positionViewAtIndex(index, ListView.Beginning, -8)
+                artistsListView.positionViewAtIndex(index, ListView.Beginning)
                 var destPos = artistsListView.contentY
                 
                 // Restore original position to animate from there
