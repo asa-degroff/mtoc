@@ -1800,9 +1800,44 @@ Item {
         }
     }
     
+    // Helper function to calculate artist position manually
+    function calculateArtistPosition(index) {
+        if (index < 0 || index >= LibraryManager.artistModel.length) return -1
+        
+        var position = 0
+        var gridColumns = Math.floor((artistsListView.width - 24) / 130)
+        
+        for (var i = 0; i < index; i++) {
+            var artist = LibraryManager.artistModel[i]
+            if (artist) {
+                position += 40 // Artist header height
+                if (expandedArtists[artist.name] || expandedArtistsCache[artist.name]) {
+                    var albumCount = 0
+                    if (artistAlbumCache[artist.name]) {
+                        albumCount = Object.keys(artistAlbumCache[artist.name]).length
+                    } else {
+                        var albums = LibraryManager.getAlbumsForArtist(artist.name)
+                        albumCount = albums ? albums.length : 0
+                    }
+                    
+                    if (albumCount > 0) {
+                        var gridRows = Math.ceil(albumCount / gridColumns)
+                        position += gridRows * 150 + 20 // Grid height + padding
+                    }
+                }
+                position += 2 // Spacing between items
+            }
+        }
+        
+        return Math.max(0, position - 8) // Small margin at top
+    }
+    
     // Helper function to scroll to an artist index with optional smooth animation
     function scrollToArtistIndex(index, smooth) {
         if (index < 0 || index >= LibraryManager.artistModel.length) return
+        
+        // Update currentIndex to ensure synchronization
+        artistsListView.currentIndex = index
         
         // Force the ListView to update its layout
         artistsListView.forceLayout()
@@ -1819,6 +1854,19 @@ Item {
                 // Calculate destination position using positionViewAtIndex
                 artistsListView.positionViewAtIndex(index, ListView.Beginning)
                 var destPos = artistsListView.contentY
+                
+                // Check if positionViewAtIndex failed (destPos is 0 for index > 0)
+                if (destPos === 0 && index > 0) {
+                    // Fall back to manual calculation
+                    destPos = calculateArtistPosition(index)
+                    if (destPos < 0) {
+                        // If calculation failed, retry after a delay
+                        Qt.callLater(function() {
+                            scrollToArtistIndex(index, smooth)
+                        })
+                        return
+                    }
+                }
                 
                 // Restore original position to animate from there
                 artistsListView.contentY = currentPos
@@ -1963,6 +2011,7 @@ Item {
             navigationMode = "artist"
             selectedArtistIndex = 0
             selectedArtistName = LibraryManager.artistModel[0].name
+            artistsListView.currentIndex = 0  // Sync with ListView
             artistsListView.forceLayout()
             artistsListView.positionViewAtIndex(0, ListView.Beginning)
         }
@@ -1976,6 +2025,7 @@ Item {
             if (artistIndex !== undefined) {
                 selectedArtistIndex = artistIndex
                 selectedArtistName = searchResults.bestMatch.name
+                artistsListView.currentIndex = artistIndex  // Sync with ListView
                 
                 // Check if artist is expanded (it should be from handleSearchResult)
                 if (expandedArtists[selectedArtistName]) {
@@ -2003,6 +2053,7 @@ Item {
             if (artistIndex !== undefined) {
                 selectedArtistIndex = artistIndex
                 selectedArtistName = artistName
+                artistsListView.currentIndex = artistIndex  // Sync with ListView
                 // Don't scroll here - handleSearchResult already took care of it
                 
                 // Ensure artist is expanded
@@ -2032,6 +2083,7 @@ Item {
             if (selectedArtistIndex < LibraryManager.artistModel.length - 1) {
                 selectedArtistIndex++
                 selectedArtistName = LibraryManager.artistModel[selectedArtistIndex].name
+                artistsListView.currentIndex = selectedArtistIndex  // Sync with ListView
                 ensureArtistVisible(selectedArtistIndex)
             }
         } else if (navigationMode === "album") {
@@ -2059,6 +2111,7 @@ Item {
                     navigationMode = "artist"
                     selectedArtistIndex++
                     selectedArtistName = LibraryManager.artistModel[selectedArtistIndex].name
+                    artistsListView.currentIndex = selectedArtistIndex  // Sync with ListView
                     selectedAlbumIndex = -1
                     selectedAlbumData = null
                     ensureArtistVisible(selectedArtistIndex)
@@ -2138,6 +2191,7 @@ Item {
             if (selectedArtistIndex > 0) {
                 selectedArtistIndex--
                 selectedArtistName = LibraryManager.artistModel[selectedArtistIndex].name
+                artistsListView.currentIndex = selectedArtistIndex  // Sync with ListView
                 ensureArtistVisible(selectedArtistIndex)
             }
         } else if (navigationMode === "album") {
@@ -2163,6 +2217,7 @@ Item {
                     navigationMode = "artist"
                     selectedArtistIndex--
                     selectedArtistName = LibraryManager.artistModel[selectedArtistIndex].name
+                    artistsListView.currentIndex = selectedArtistIndex  // Sync with ListView
                     selectedAlbumIndex = -1
                     selectedAlbumData = null
                     ensureArtistVisible(selectedArtistIndex)
@@ -2242,6 +2297,11 @@ Item {
             }
             
             if (artistIndex === -1) return
+            
+            // Update navigation state to sync with jump
+            selectedArtistIndex = artistIndex
+            selectedArtistName = artistName
+            artistsListView.currentIndex = artistIndex
             
             // Check if already expanded
             if (expandedArtists[artistName]) {
