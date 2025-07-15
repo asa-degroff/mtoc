@@ -21,80 +21,37 @@
 #include "backend/playback/mediaplayer.h"
 #include "backend/system/mprismanager.h"
 
-// Message handler to redirect qDebug output to file and console
+// Message handler to show only QML console.log messages
 void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
-    // Filter out Qt internal event messages
-    if (type == QtDebugMsg) {
-        if (msg.contains("QEvent::") || 
-            msg.contains("QEventPoint") || 
-            msg.contains("localPos:") ||
-            msg.contains("scenePos:") ||
-            msg.contains("wasHovering") ||
-            msg.contains("isHovering") ||
-            msg.contains("QQuickRectangle") ||
-            msg.contains("geometry=") ||
-            msg.contains("considering signature") ||
-            msg.contains("QQuickItem::") ||
-            msg.contains("HorizontalAlbumBrowser_QMLTYPE")) {
-            return; // Skip Qt internal debug messages
-        }
-        
-        // Show messages from our components and test messages
-        if (!msg.contains("MetadataExtractor") && 
-            !msg.contains("DatabaseManager") &&
-            !msg.contains("LibraryManager") &&
-            !msg.contains("MediaPlayer") &&
-            !msg.contains("MPRIS") &&
-            !msg.contains("Main:") &&
-            !msg.contains("DEBUG TEST") && 
-            !msg.contains("STDOUT TEST") && 
-            !msg.contains("STDERR TEST") &&
-            !msg.contains("qml:") &&  // Include QML console.log messages
-            !msg.contains("Track") &&  // Include track-related messages
-            !msg.contains("Album")) {  // Include album-related messages
-            return; // Skip other unwanted debug messages
-        }
-    }
+    // Temporarily show all messages to debug console.log
+    // Check if it's a QML message
+    bool isQmlMessage = msg.startsWith("qml:") || (context.file && QString(context.file).endsWith(".qml"));
     
-    // Open a file for logging in the app data directory
-    QString dataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QDir().mkpath(dataPath); // Ensure the directory exists
-    QFile logFile(QDir(dataPath).filePath("debug_log.txt"));
-    // Try to open the file with writing and appending permissions
-    if (!logFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
-        fprintf(stderr, "Failed to open log file!\n");
-        return;
-    }
-    
-    QTextStream stream(&logFile);
-    QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
-    
-    // Format based on message type
-    QString txt;
+    // Format the output simply for console
     switch (type) {
         case QtDebugMsg:
-            txt = QString("[%1] Debug: %2").arg(timestamp).arg(msg);
+            if (isQmlMessage) {
+                fprintf(stderr, "[QML Debug] %s\n", qPrintable(msg));
+            } else if (msg.contains("jumpToArtist") || msg.contains("scrollToArtistIndex") || 
+                      msg.contains("calculateArtistPosition") || msg.contains("updateArtistIndexMapping")) {
+                // Also show our specific debug messages even if not properly prefixed
+                fprintf(stderr, "[Debug] %s\n", qPrintable(msg));
+            }
             break;
         case QtInfoMsg:
-            txt = QString("[%1] Info: %2").arg(timestamp).arg(msg);
+            fprintf(stderr, "Info: %s\n", qPrintable(msg));
             break;
         case QtWarningMsg:
-            txt = QString("[%1] Warning: %2").arg(timestamp).arg(msg);
+            // Always show warnings, they're important
+            fprintf(stderr, "[Warning] %s\n", qPrintable(msg));
             break;
         case QtCriticalMsg:
-            txt = QString("[%1] Critical: %2").arg(timestamp).arg(msg);
+            fprintf(stderr, "Critical: %s\n", qPrintable(msg));
             break;
         case QtFatalMsg:
-            txt = QString("[%1] Fatal: %2").arg(timestamp).arg(msg);
-            break;
+            fprintf(stderr, "Fatal: %s\n", qPrintable(msg));
+            abort();
     }
-    
-    // Write to file
-    stream << txt << "\n";
-    logFile.close();
-    
-    // Also output to console
-    fprintf(stderr, "%s\n", qPrintable(txt));
 }
 
 int main(int argc, char *argv[])

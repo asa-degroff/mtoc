@@ -243,12 +243,18 @@ Item {
     
     // Function to build artist name to index mapping for O(1) lookups
     function updateArtistIndexMapping() {
+        console.log("updateArtistIndexMapping called")
         var mapping = {}
         var artists = LibraryManager.artistModel
+        console.log("updateArtistIndexMapping: Total artists:", artists.length)
         for (var i = 0; i < artists.length; i++) {
-            mapping[artists[i].name] = i
+            if (artists[i] && artists[i].name) {
+                mapping[artists[i].name] = i
+            }
         }
         artistNameToIndex = mapping
+        console.log("updateArtistIndexMapping: Mapping complete, sample entries:", 
+                   Object.keys(mapping).slice(0, 3).map(function(k) { return k + ":" + mapping[k] }).join(", "))
     }
 
     onSelectedAlbumChanged: {
@@ -705,6 +711,14 @@ Item {
                         model: LibraryManager.artistModel
                         spacing: 2
                         interactive: !root.isScrollBarDragging  // Disable ListView interaction during scroll bar drag
+                        
+                        // Prevent negative contentY
+                        onContentYChanged: {
+                            if (contentY < 0 && !scrollAnimation.running) {
+                                console.log("ListView: Preventing negative contentY:", contentY)
+                                contentY = 0
+                            }
+                        }
                         
                         // Disable delegate recycling for stable list height
                         reuseItems: false  // Disabled to maintain consistent scroll positions
@@ -1765,16 +1779,20 @@ Item {
     
     // Helper function to calculate artist position manually
     function calculateArtistPosition(index) {
+        console.log("calculateArtistPosition called for index:", index)
         if (index < 0 || index >= LibraryManager.artistModel.length) return -1
         
         var position = 0
         var gridColumns = Math.floor((artistsListView.width - 24) / 130)
+        console.log("calculateArtistPosition: Grid columns:", gridColumns)
         
         for (var i = 0; i < index; i++) {
             var artist = LibraryManager.artistModel[i]
             if (artist) {
                 position += 40 // Artist header height
-                if (expandedArtists[artist.name]) {
+                var isExpanded = expandedArtists[artist.name] === true
+                if (isExpanded) {
+                    console.log("calculateArtistPosition: Artist", artist.name, "at index", i, "is expanded")
                     var albumCount = 0
                     if (artistAlbumCache[artist.name]) {
                         albumCount = Object.keys(artistAlbumCache[artist.name]).length
@@ -1794,21 +1812,43 @@ Item {
             }
         }
         
+        console.log("calculateArtistPosition: Final position for index", index, "is", position)
         return Math.max(0, position) // Return exact position
     }
     
     // Helper function to scroll to an artist index with optional smooth animation
     function scrollToArtistIndex(index, smooth) {
-        if (index < 0 || index >= LibraryManager.artistModel.length) return
+        console.log("scrollToArtistIndex called with index:", index, "smooth:", smooth)
+        if (index < 0 || index >= LibraryManager.artistModel.length) {
+            console.log("scrollToArtistIndex: Invalid index")
+            return
+        }
         
         // Stop any ongoing animation first
         scrollAnimation.running = false
+        
+        // Fix invalid contentY before doing anything
+        if (artistsListView.contentY < 0) {
+            console.log("scrollToArtistIndex: Fixing negative contentY:", artistsListView.contentY)
+            artistsListView.contentY = 0
+        }
+        
+        // Ensure contentY is within valid bounds
+        var maxContentY = Math.max(0, artistsListView.contentHeight - artistsListView.height)
+        if (artistsListView.contentY > maxContentY && maxContentY > 0) {
+            console.log("scrollToArtistIndex: Fixing contentY beyond max:", artistsListView.contentY, "max:", maxContentY)
+            artistsListView.contentY = maxContentY
+        }
         
         // Update currentIndex to ensure synchronization
         artistsListView.currentIndex = index
         
         // Force the ListView to update its layout
         artistsListView.forceLayout()
+        
+        console.log("scrollToArtistIndex: Before positioning - contentY:", artistsListView.contentY,
+                   "contentHeight:", artistsListView.contentHeight,
+                   "currentIndex:", artistsListView.currentIndex)
         
         if (smooth) {
             // Store current position before any changes
@@ -1818,32 +1858,53 @@ Item {
             artistsListView.positionViewAtIndex(index, ListView.Beginning)
             var destPos = artistsListView.contentY
             
-            // Validate the result
+            console.log("scrollToArtistIndex: positionViewAtIndex result - destPos:", destPos,
+                       "from currentPos:", currentPos)
+            
+            // Validate the result - check for negative or out of bounds positions
             var isValidPosition = true
-            if (index === 0) {
+            var maxScroll = Math.max(0, artistsListView.contentHeight - artistsListView.height)
+            
+            // Any negative position is invalid
+            if (destPos < 0) {
+                isValidPosition = false
+                console.log("scrollToArtistIndex: Negative position detected - destPos:", destPos)
+            } else if (index === 0) {
                 // First item should be at position 0 (or very close)
                 isValidPosition = destPos <= 10
+                console.log("scrollToArtistIndex: First item validation - destPos:", destPos, "valid:", isValidPosition)
             } else if (index === LibraryManager.artistModel.length - 1) {
-                // Last item check - contentY should be near max scroll
-                var maxScroll = Math.max(0, artistsListView.contentHeight - artistsListView.height)
+                // Last item check - contentY should be within valid range
                 isValidPosition = destPos >= 0 && destPos <= maxScroll
+                console.log("scrollToArtistIndex: Last item validation - destPos:", destPos, "maxScroll:", maxScroll, "valid:", isValidPosition)
             } else {
-                // Middle items - position should be reasonable
-                isValidPosition = destPos > 0 && destPos < artistsListView.contentHeight
+                // Middle items - position should be within valid range
+                isValidPosition = destPos >= 0 && destPos <= maxScroll
+                console.log("scrollToArtistIndex: Middle item validation - destPos:", destPos, "maxScroll:", maxScroll, "valid:", isValidPosition)
             }
             
             // If position seems invalid, calculate manually
             if (!isValidPosition) {
+                console.log("scrollToArtistIndex: Position invalid, calculating manually")
                 destPos = calculateArtistPosition(index)
+                console.log("scrollToArtistIndex: Manual calculation result:", destPos)
                 if (destPos < 0) {
                     // Calculation failed, just use immediate positioning
+                    console.log("scrollToArtistIndex: Manual calculation failed, using immediate positioning")
                     artistsListView.positionViewAtIndex(index, ListView.Beginning)
                     return
                 }
             }
             
-            // Only animate if we need to move
-            if (Math.abs(destPos - currentPos) > 1) {
+            // Ensure destPos is within valid bounds
+            destPos = Math.max(0, Math.min(destPos, maxScroll))
+            
+            // Only animate if we need to move significantly
+            var needsAnimation = Math.abs(destPos - currentPos) > 5  // Increased threshold
+            console.log("scrollToArtistIndex: Current:", currentPos, "Destination:", destPos, "Needs animation:", needsAnimation)
+            
+            if (needsAnimation) {
+                console.log("scrollToArtistIndex: Animating from", currentPos, "to", destPos)
                 // Restore original position for animation
                 artistsListView.contentY = currentPos
                 
@@ -1852,7 +1913,8 @@ Item {
                 scrollAnimation.to = destPos
                 scrollAnimation.running = true
             } else {
-                // Already at correct position
+                // Small adjustment or already at position
+                console.log("scrollToArtistIndex: Small adjustment or already at position, setting directly")
                 artistsListView.contentY = destPos
             }
         } else {
@@ -2254,10 +2316,14 @@ Item {
     // Functions for Now Playing Panel integration
     function jumpToArtist(artistName) {
         try {
+            console.log("jumpToArtist called with:", artistName)
             if (!artistName || typeof artistName !== "string") return
             
             // Prevent concurrent jump operations
-            if (isJumping) return
+            if (isJumping) {
+                console.log("jumpToArtist: Already jumping, ignoring request")
+                return
+            }
             isJumping = true
             
             // Clear search state and highlight the artist
@@ -2266,7 +2332,9 @@ Item {
             
             // Use O(1) lookup instead of O(n) search
             var artistIndex = artistNameToIndex[artistName]
+            console.log("jumpToArtist: Artist index from lookup:", artistIndex, "Total artists:", LibraryManager.artistModel.length)
             if (artistIndex === undefined) {
+                console.log("jumpToArtist: Artist not found in index mapping")
                 isJumping = false
                 return
             }
@@ -2277,27 +2345,40 @@ Item {
             artistsListView.currentIndex = artistIndex
             
             // Check if already expanded
-            if (expandedArtists[artistName]) {
+            var wasExpanded = expandedArtists[artistName] === true
+            console.log("jumpToArtist: Artist was expanded:", wasExpanded)
+            
+            if (wasExpanded) {
                 // Already expanded, safe to scroll immediately
+                console.log("jumpToArtist: Artist already expanded, scrolling immediately")
                 scrollToArtistIndex(artistIndex, true)
                 // Reset flag after a delay
                 Qt.callLater(function() { isJumping = false })
             } else {
                 // Expand the artist synchronously
+                console.log("jumpToArtist: Expanding artist")
                 var updatedExpanded = Object.assign({}, expandedArtists)
                 updatedExpanded[artistName] = true
                 expandedArtists = updatedExpanded
                 
                 // Force immediate layout update
+                console.log("jumpToArtist: Forcing layout update")
                 artistsListView.forceLayout()
+                
+                // Log current state
+                console.log("jumpToArtist: ListView contentHeight:", artistsListView.contentHeight, 
+                           "height:", artistsListView.height,
+                           "contentY:", artistsListView.contentY)
                 
                 // Wait for next frame then scroll
                 Qt.callLater(function() {
+                    console.log("jumpToArtist: After callLater - contentHeight:", artistsListView.contentHeight)
                     // Double-check layout is complete
                     if (artistsListView.contentHeight > 0) {
                         scrollToArtistIndex(artistIndex, true)
                     } else {
                         // Layout not ready, try once more
+                        console.log("jumpToArtist: Layout not ready, trying again")
                         artistsListView.forceLayout()
                         Qt.callLater(function() {
                             scrollToArtistIndex(artistIndex, true)
