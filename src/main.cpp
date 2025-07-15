@@ -160,8 +160,8 @@ int main(int argc, char *argv[])
         app.setWindowIcon(QIcon(":/resources/icons/mtoc-icon-512.png"));
     }
     
-    // pixmap cache size for album art (128MB)
-    QPixmapCache::setCacheLimit(128 * 1024);
+    // pixmap cache size for album art (256MB to support multiple image sizes)
+    QPixmapCache::setCacheLimit(256 * 1024);
 
     QQmlApplicationEngine engine;
 

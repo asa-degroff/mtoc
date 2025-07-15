@@ -655,7 +655,7 @@ Item {
                         Image {
                             id: albumImage
                             anchors.fill: parent
-                            source: (albumData && albumData.hasArt && albumData.id) ? "image://albumart/" + albumData.id + "/thumbnail" : ""
+                            source: (albumData && albumData.hasArt && albumData.id) ? "image://albumart/" + albumData.id + "/thumbnail/400" : ""
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
                             antialiasing: true

@@ -704,9 +704,9 @@ Item {
                         spacing: 2
                         
                         
-                        // Enable delegate recycling to prevent memory leaks
-                        reuseItems: true  // Enable recycling for better performance
-                        cacheBuffer: 600  // Increase cache for smoother scrolling
+                        // Disable delegate recycling for stable list height
+                        reuseItems: false  // Disabled to maintain consistent scroll positions
+                        cacheBuffer: 1200  // Increase cache for smoother scrolling without recycling
                     
                     // Increase scroll speed
                     flickDeceleration: 8000  // Default is 1500, can increase for faster stopping
@@ -736,10 +736,11 @@ Item {
                         }
                     }
 
-                    delegate: Column {
+                    delegate: Item {
+                        id: artistDelegate
                         width: ListView.view.width - 12  // Account for scrollbar space
-                        spacing: 2  // Match the ListView spacing for consistency
-                        // Height will be dynamic based on albumsVisible
+                        // Dynamic height based on expansion
+                        height: artistHeader.height + (albumsVisible ? albumsContainer.height + 2 : 0)
                         
                         // Store modelData for easier access in nested views/functions
                         property var artistData: modelData
@@ -756,7 +757,7 @@ Item {
                             }
                         }
                         
-                        // Reset delegate state when recycled by monitoring artistData changes
+                        // Update visibility when artist data changes
                         onArtistDataChanged: {
                             updateAlbumsVisibility()
                         }
@@ -773,12 +774,19 @@ Item {
                                 root.expandedArtistsCache[artistData.name] = isExpanded;
                                 albumsVisible = isExpanded;
                             }
-                        } 
+                        }
+                        
+                        // Smooth height animation
+                        Behavior on height {
+                            NumberAnimation {
+                                duration: 200
+                                easing.type: Easing.InOutQuad
+                            }
+                        }
 
                         Rectangle {
-                            id: artistItemRect
+                            id: artistHeader
                             width: parent.width
-                            x: 0
                             height: 40
                             color: {
                                 if (artistsListView.currentIndex === index) {
@@ -908,18 +916,25 @@ Item {
                             }
                         }
 
-                        // Albums GridView - visible based on albumsVisible
+                        // Albums GridView - positioned below artist header
                         Rectangle {
-                            id: artistAlbumsContainer
-                            width: artistItemRect.width
-                            x: 0
+                            id: albumsContainer
+                            anchors.top: artistHeader.bottom
+                            anchors.topMargin: 2
+                            width: parent.width
                             // Dynamic height based on content
                             height: albumsVisible ? (albumsGrid.contentHeight + (albumsGrid.count > 0 ? 16 : 0)) : 0 // Add padding if albums exist
                             color: Qt.rgba(1, 1, 1, 0.04) // Very subtle frosted background
                             radius: 6
-                            visible: albumsVisible
+                            opacity: albumsVisible ? 1 : 0
                             clip: true
-                            Behavior on height { NumberAnimation { duration: 200; easing.type: Easing.InOutQuad } } // Smooth expand/collapse
+                            
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: 200
+                                    easing.type: Easing.InOutQuad
+                                }
+                            }
                             
                             // Subtle inset shadow
                             border.width: 1
@@ -931,25 +946,52 @@ Item {
                             
                             // Function to refresh album data
                             function refreshAlbumData() {
-                                if (visible && artistData && artistData.name) {
+                                if (opacity > 0 && artistData && artistData.name) {
                                     if (cachedArtistName !== artistData.name) {
                                         cachedArtistName = artistData.name
                                         cachedAlbums = LibraryManager.getAlbumsForArtist(artistData.name)
                                         // Update the album cache when artist is expanded
                                         root.updateAlbumCacheForArtist(artistData.name)
+                                        
+                                        // Start visibility timer when albums are loaded
+                                        if (cachedAlbums.length > 0) {
+                                            visibilityTimer.start()
+                                        }
                                     }
                                 } else {
                                     // Clear cache when not visible or no artist data
                                     cachedArtistName = ""
                                     cachedAlbums = []
+                                    visibilityTimer.stop()
                                 }
                             }
                             
-                            onVisibleChanged: {
-                                refreshAlbumData()
+                            onOpacityChanged: {
+                                if (opacity > 0) {
+                                    refreshAlbumData()
+                                } else {
+                                    visibilityTimer.stop()
+                                }
                             }
                             
-                            // Also refresh when parent's artistData changes (delegate recycled)
+                            // Timer to update visibility of album items periodically
+                            Timer {
+                                id: visibilityTimer
+                                interval: 250  // Update 4 times per second
+                                repeat: true
+                                running: false
+                                onTriggered: {
+                                    // Force update of all album delegate positions
+                                    for (var i = 0; i < albumsGrid.count; i++) {
+                                        var item = albumsGrid.itemAt(i)
+                                        if (item && item.updateGlobalPosition) {
+                                            item.updateGlobalPosition()
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Refresh when parent's artistData changes
                             property var artistDataWatcher: parent.artistData
                             onArtistDataWatcherChanged: {
                                 refreshAlbumData()
@@ -964,15 +1006,44 @@ Item {
                                 cellHeight: 140 + 10 // Thumbnail + title + padding
                                 interactive: false // Parent ListView handles scrolling primarily
                                 
-                                // Enable delegate recycling for albums too
-                                reuseItems: true  // Enable recycling for better performance
-                                cacheBuffer: 300  // Reasonable cache for album grid
+                                // Disable delegate recycling for stable rendering
+                                reuseItems: false  // Disabled to prevent issues with expand/collapse
+                                cacheBuffer: 600  // Increased cache for album grid
 
-                                model: artistAlbumsContainer.cachedAlbums
+                                model: albumsContainer.cachedAlbums
 
                                 delegate: Item { 
                                     width: albumsGrid.cellWidth - 10
                                     height: albumsGrid.cellHeight - 10
+                                    
+                                    // Viewport visibility detection for lazy loading
+                                    property bool isInViewport: false
+                                    property real globalY: 0
+                                    
+                                    // Calculate global position relative to the main ListView
+                                    function updateGlobalPosition() {
+                                        // Get position relative to artist container
+                                        var pos = mapToItem(artistsListView.contentItem, 0, 0)
+                                        if (pos) {
+                                            globalY = pos.y
+                                            // Check if in viewport with buffer zone
+                                            var viewportTop = artistsListView.contentY - 200  // 200px buffer above
+                                            var viewportBottom = artistsListView.contentY + artistsListView.height + 200  // 200px buffer below
+                                            isInViewport = globalY + height > viewportTop && globalY < viewportBottom
+                                        }
+                                    }
+                                    
+                                    // Update visibility when scroll position changes
+                                    Connections {
+                                        target: artistsListView
+                                        function onContentYChanged() {
+                                            updateGlobalPosition()
+                                        }
+                                    }
+                                    
+                                    Component.onCompleted: {
+                                        updateGlobalPosition()
+                                    }
 
                                     Item { 
                                         anchors.fill: parent
@@ -1004,7 +1075,8 @@ Item {
                                             Image {
                                                 id: albumImage
                                                 anchors.fill: parent
-                                                source: modelData.hasArt ? "image://albumart/" + modelData.id + "/thumbnail" : ""
+                                                // Only load image when in viewport for better memory usage
+                                                source: (modelData.hasArt && isInViewport) ? "image://albumart/" + modelData.id + "/thumbnail/220" : ""
                                                 fillMode: Image.PreserveAspectFit
                                                 clip: false
                                                 asynchronous: true
@@ -1137,7 +1209,7 @@ Item {
                                 ScrollIndicator.vertical: ScrollIndicator { }
                             }
                         }
-                    }
+                    }  // End of artistDelegate Item
                     
                     // Add right padding to content to make room for scrollbar
                     rightMargin: 12
@@ -1294,9 +1366,9 @@ Item {
                         visible: rightPane.currentAlbumTracks.length > 0
                         spacing: 1
                         
-                        // Enable delegate recycling for tracks
-                        reuseItems: true
-                        cacheBuffer: 400  // Limit cache for track list
+                        // Disable delegate recycling for consistent behavior
+                        reuseItems: false
+                        cacheBuffer: 800  // Increased cache without recycling
                         
                         // Cache multi-disc check for all tracks
                         property bool isMultiDiscAlbum: {

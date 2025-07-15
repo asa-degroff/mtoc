@@ -44,7 +44,7 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
         return QPixmap();
     }
     
-    // The id format is "albumId/type" or "artist/album/type" where type is "thumbnail" or "full"
+    // The id format is "albumId/type/size" or "artist/album/type/size" where type is "thumbnail" or "full" and size is optional
     QStringList parts = id.split('/');
     if (parts.isEmpty()) {
         qWarning() << "AlbumArtImageProvider: Invalid image id:" << id;
@@ -53,19 +53,28 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
     
     int albumId = 0;
     QString type = "thumbnail";
+    int targetSize = 0;  // 0 means use default or requested size
     
     // Try to parse as numeric album ID first
     bool ok;
     albumId = parts[0].toInt(&ok);
     if (ok && albumId > 0) {
-        // Numeric ID format: "albumId" or "albumId/type"
+        // Numeric ID format: "albumId" or "albumId/type" or "albumId/type/size"
         type = parts.size() > 1 ? parts[1] : "thumbnail";
+        if (parts.size() > 2) {
+            targetSize = parts[2].toInt(&ok);
+            if (!ok) targetSize = 0;
+        }
     } else {
-        // String format: "artist/album/type"
+        // String format: "artist/album/type" or "artist/album/type/size"
         if (parts.size() >= 2) {
             QString artist = QUrl::fromPercentEncoding(parts[0].toUtf8());
             QString album = QUrl::fromPercentEncoding(parts[1].toUtf8());
             type = parts.size() > 2 ? parts[2] : "thumbnail";
+            if (parts.size() > 3) {
+                targetSize = parts[3].toInt(&ok);
+                if (!ok) targetSize = 0;
+            }
             
             // Look up album ID from artist and album name
             albumId = databaseManager->getAlbumIdByArtistAndTitle(artist, album);
@@ -90,8 +99,14 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
         }
     }
     
-    // Check pixmap cache first
-    QString cacheKey = QString("album_%1_%2").arg(albumId).arg(type);
+    // Determine the actual size to use
+    int actualSize = targetSize > 0 ? targetSize : (requestedSize.isValid() ? qMax(requestedSize.width(), requestedSize.height()) : 0);
+    
+    // Check pixmap cache first - include size in cache key for size-specific caching
+    QString cacheKey = actualSize > 0 ? 
+        QString("album_%1_%2_%3").arg(albumId).arg(type).arg(actualSize) :
+        QString("album_%1_%2").arg(albumId).arg(type);
+    
     QPixmap pixmap;
     if (QPixmapCache::find(cacheKey, &pixmap)) {
         if (size) {
@@ -131,8 +146,10 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
                     return emptyPixmap;
                 }
                 
-                // Scale if requested size is different - use faster transformation
-                if (requestedSize.isValid() && requestedSize != pixmap.size()) {
+                // Scale if specific size is requested - use faster transformation for thumbnails
+                if (actualSize > 0 && (pixmap.width() > actualSize || pixmap.height() > actualSize)) {
+                    pixmap = pixmap.scaled(actualSize, actualSize, Qt::KeepAspectRatio, Qt::FastTransformation);
+                } else if (requestedSize.isValid() && requestedSize != pixmap.size()) {
                     pixmap = pixmap.scaled(requestedSize, Qt::KeepAspectRatio, Qt::FastTransformation);
                 }
                 
@@ -154,10 +171,12 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
             pixmap.load(imagePath);
             
             if (!pixmap.isNull()) {
-                // Scale if requested size is different - use faster transformation
-                if (requestedSize.isValid() && 
+                // Scale if specific size is requested - use smoother transformation for full images
+                if (actualSize > 0 && (pixmap.width() > actualSize || pixmap.height() > actualSize)) {
+                    pixmap = pixmap.scaled(actualSize, actualSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                } else if (requestedSize.isValid() && 
                     (requestedSize.width() < pixmap.width() || requestedSize.height() < pixmap.height())) {
-                    pixmap = pixmap.scaled(requestedSize, Qt::KeepAspectRatio, Qt::FastTransformation);
+                    pixmap = pixmap.scaled(requestedSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
                 }
                 
                 // Cache the pixmap
