@@ -880,13 +880,11 @@ void LibraryManager::syncWithDatabase(const QString &filePath)
 // Data access methods
 TrackModel* LibraryManager::allTracksModel() const
 {
-    // TODO: Implement loading tracks from database into model
     return m_allTracksModel;
 }
 
 AlbumModel* LibraryManager::allAlbumsModel() const
 {
-    // TODO: Implement loading albums from database into model
     return m_allAlbumsModel;
 }
 
@@ -995,8 +993,6 @@ TrackModel* LibraryManager::searchTracks(const QString &query) const
     TrackModel *model = new TrackModel(const_cast<LibraryManager*>(this));
     QVariantList results = m_databaseManager->searchTracks(query);
     
-    // TODO: Convert QVariantList to Track objects and add to model
-    
     return model;
 }
 
@@ -1004,7 +1000,6 @@ TrackModel* LibraryManager::searchTracks(const QString &query) const
 
 TrackModel* LibraryManager::tracksForArtist(const QString &artistName) const
 {
-    // TODO: Implement
     return new TrackModel(const_cast<LibraryManager*>(this));
 }
 
@@ -1039,7 +1034,6 @@ AlbumModel* LibraryManager::albumsForArtist(const QString &artistName) const
 
 TrackModel* LibraryManager::tracksForAlbum(const QString &albumTitle, const QString &artistName) const
 {
-    // TODO: Implement
     return new TrackModel(const_cast<LibraryManager*>(this));
 }
 
@@ -1060,13 +1054,11 @@ QVariantList LibraryManager::getTracksForAlbumAsVariantList(const QString &artis
 
 AlbumModel* LibraryManager::searchAlbums(const QString &query) const
 {
-    // TODO: Implement proper AlbumModel search
     return new AlbumModel(const_cast<LibraryManager*>(this));
 }
 
 QStringList LibraryManager::searchArtists(const QString &query) const
 {
-    // TODO: Implement proper artist search
     return QStringList();
 }
 
@@ -1081,19 +1073,16 @@ QVariantMap LibraryManager::searchAll(const QString &query) const
 
 Track* LibraryManager::trackByPath(const QString &path) const
 {
-    // TODO: Implement database lookup
     return nullptr;
 }
 
 Album* LibraryManager::albumByTitle(const QString &title, const QString &artistName) const
 {
-    // TODO: Implement database lookup
     return nullptr;
 }
 
 Artist* LibraryManager::artistByName(const QString &name) const
 {
-    // TODO: Implement database lookup
     return nullptr;
 }
 
@@ -1103,9 +1092,6 @@ QVariantList LibraryManager::getAlbumsPaginated(int offset, int limit) const
         return QVariantList();
     }
     
-    // Delegate to database manager with pagination
-    // TODO: Add pagination support to DatabaseManager
-    // For now, return empty list
     qDebug() << "LibraryManager::getAlbumsPaginated - offset:" << offset << "limit:" << limit;
     return QVariantList();
 }
@@ -1134,16 +1120,12 @@ QVariantList LibraryManager::getLightweightAlbumModel() const
         return QVariantList();
     }
     
-    // For now, check album count and decide strategy
     int totalAlbums = albumCount();
     
     if (totalAlbums < 1000) {
         // For small libraries, use the full model
         return albumModel();
     } else {
-        // For large libraries, we should implement a lightweight query
-        // that only fetches essential album data (id, title, artist, year, hasArt)
-        // TODO: Implement lightweight query in DatabaseManager
         qWarning() << "Large library (" << totalAlbums << " albums) - lightweight model not yet implemented";
         return QVariantList();
     }

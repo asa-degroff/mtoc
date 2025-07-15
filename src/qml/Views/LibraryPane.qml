@@ -55,7 +55,6 @@ Item {
     property var searchResultsCache: ({})  // Cache for search results
     property int cacheExpiryTime: 60000  // Cache expires after 1 minute
     
-    // TODO: fix keybaord navigation
     // Navigation state for keyboard controls
     property string navigationMode: "none"  // "none", "artist", "album", "track"
     property int selectedArtistIndex: -1
