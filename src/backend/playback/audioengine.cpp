@@ -111,6 +111,8 @@ void AudioEngine::play()
     if (gst_element_set_state(m_pipeline, GST_STATE_PLAYING) != GST_STATE_CHANGE_FAILURE) {
         setState(State::Playing);
         m_positionTimer->start();
+        // Clear any pending seek state when resuming playback
+        m_seekPending = false;
     }
 }
 
@@ -146,9 +148,33 @@ void AudioEngine::seek(qint64 position)
         return;
     }
     
+    // Track that we're seeking
+    m_seekPending = true;
+    m_seekTarget = position;
+    
     gst_element_seek_simple(m_pipeline, GST_FORMAT_TIME, 
                            static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT),
                            position * GST_MSECOND);
+    
+    // Emit target position immediately for UI responsiveness
+    emit positionChanged(position);
+    
+    // For paused state, also schedule a position query after a short delay
+    // This handles cases where ASYNC_DONE might not be received
+    if (m_state == State::Paused) {
+        QTimer::singleShot(100, this, [this, position]() {
+            // Only emit if we're still waiting for this seek to complete
+            if (m_seekPending && m_seekTarget == position) {
+                // Query actual position from GStreamer
+                qint64 actualPos = this->position();
+                // Only emit if position is reasonable (not 0 unless we're actually at the start)
+                if (actualPos > 0 || position < 1000) {
+                    emit positionChanged(actualPos);
+                    m_seekPending = false;
+                }
+            }
+        });
+    }
 }
 
 qint64 AudioEngine::position() const
@@ -249,6 +275,15 @@ gboolean AudioEngine::busCallback(GstBus *bus, GstMessage *message, gpointer dat
         }
         break;
     }
+    
+    case GST_MESSAGE_ASYNC_DONE:
+        // Async operation (like seek) completed
+        if (engine->m_seekPending) {
+            engine->m_seekPending = false;
+            // Query and emit the actual position after seek completes
+            emit engine->positionChanged(engine->position());
+        }
+        break;
     
     default:
         break;
