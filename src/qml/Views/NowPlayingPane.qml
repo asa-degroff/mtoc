@@ -174,10 +174,11 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (libraryPane && MediaPlayer.currentTrack) {
-                            // Use the track artist (not albumArtist) for artist navigation
-                            var artistName = MediaPlayer.currentTrack.artist
-                            if (artistName) {
-                                libraryPane.jumpToArtist(artistName)
+                            // Use album artist for navigation since library is organized by album artist
+                            // This ensures the artist exists in the library pane even for featured artists
+                            var albumArtist = MediaPlayer.currentTrack.albumArtist || MediaPlayer.currentTrack.artist
+                            if (albumArtist) {
+                                libraryPane.jumpToArtist(albumArtist)
                             }
                         }
                     }
