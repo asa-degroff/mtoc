@@ -475,6 +475,13 @@ void MediaPlayer::onEngineStateChanged(AudioEngine::State state)
     case AudioEngine::State::Paused:
         newState = PausedState;
         break;
+    case AudioEngine::State::Ready:
+        // When AudioEngine is Ready (track loaded but not playing), keep current state
+        // This prevents resetting to StoppedState during restoration
+        if (m_restoringState) {
+            return;
+        }
+        // Fall through to default for non-restoration cases
     default:
         newState = StoppedState;
         break;
@@ -801,15 +808,29 @@ void MediaPlayer::onTrackLoadedForRestore()
     // This slot is called when a track is successfully loaded during restoration
     
     if (m_targetRestorePosition > 0 && m_audioEngine && m_audioEngine->duration() > 0) {
+        // First seek to the saved position
         seek(m_targetRestorePosition);
-        // Pause the audio engine to ensure we're in PausedState, not StoppedState
-        // This fixes MPRIS play/pause not working on first press after app restart
-        m_audioEngine->pause();
+        
+        // Check if the AudioEngine is already playing (user clicked play during restoration)
+        if (m_audioEngine->state() == AudioEngine::State::Playing) {
+            m_state = PlayingState;
+            emit stateChanged(m_state);
+        } else {
+            // Otherwise set to paused - we want the track ready to play but not playing
+            m_state = PausedState;
+            emit stateChanged(m_state);
+        }
     } else {
-        qDebug() << "MediaPlayer: No position to restore or track not ready";
+        // No saved position, just sync with AudioEngine state
+        if (m_audioEngine && m_audioEngine->state() == AudioEngine::State::Playing) {
+            m_state = PlayingState;
+        } else {
+            m_state = StoppedState;
+        }
+        emit stateChanged(m_state);
     }
     
-    // Clear restoration state - UI will handle smooth transition
+    // Clear restoration state - this must be done after setting the state
     clearRestorationState();
 }
 
