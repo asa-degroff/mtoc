@@ -1838,19 +1838,78 @@ Item {
         // Stop any ongoing animation to prevent stacking
         artistScrollAnimation.running = false
         
-        // Get current position
+        // Get current position and viewport info
         var currentPos = artistsListView.contentY
+        var viewportHeight = artistsListView.height
         
-        // Use positionViewAtIndex to calculate where we need to scroll
-        artistsListView.positionViewAtIndex(index, ListView.Contain)
-        var destPos = artistsListView.contentY
+        // Calculate approximate position of the item
+        // We need to estimate based on delegate heights and expansion states
+        var itemY = 0
+        var itemHeight = 40 // Base artist header height
+        var gridColumns = Math.floor((artistsListView.width - 24) / 130) // Cache this calculation
+        
+        // Calculate cumulative height up to the target index
+        for (var i = 0; i < index; i++) {
+            var artist = LibraryManager.artistModel[i]
+            if (artist) {
+                itemY += 40 // Artist header height
+                if (expandedArtists[artist.name] || expandedArtistsCache[artist.name]) {
+                    // Add album grid height if expanded
+                    // Check if we have cached album count to avoid repeated queries
+                    var albumCount = 0
+                    if (artistAlbumCache[artist.name]) {
+                        albumCount = Object.keys(artistAlbumCache[artist.name]).length
+                    } else {
+                        var albums = LibraryManager.getAlbumsForArtist(artist.name)
+                        albumCount = albums ? albums.length : 0
+                    }
+                    
+                    if (albumCount > 0) {
+                        var gridRows = Math.ceil(albumCount / gridColumns)
+                        itemY += gridRows * 150 + 20 // Grid height + padding
+                    }
+                }
+                itemY += 2 // Spacing between items
+            }
+        }
+        
+        // Check if the selected artist is expanded to get its full height
+        var selectedArtist = LibraryManager.artistModel[index]
+        if (selectedArtist && (expandedArtists[selectedArtist.name] || expandedArtistsCache[selectedArtist.name])) {
+            // Use cached album count if available
+            var albumCount = 0
+            if (artistAlbumCache[selectedArtist.name]) {
+                albumCount = Object.keys(artistAlbumCache[selectedArtist.name]).length
+            } else {
+                var albums = LibraryManager.getAlbumsForArtist(selectedArtist.name)
+                albumCount = albums ? albums.length : 0
+            }
+            
+            if (albumCount > 0) {
+                var gridRows = Math.ceil(albumCount / gridColumns)
+                itemHeight += gridRows * 150 + 20 // Add grid height + padding
+            }
+        }
+        
+        // Calculate if scrolling is needed
+        var itemTop = itemY
+        var itemBottom = itemY + itemHeight
+        var viewportTop = currentPos
+        var viewportBottom = currentPos + viewportHeight
+        
+        var destPos = currentPos // Default to no change
+        
+        // Determine scroll direction and amount
+        if (itemTop < viewportTop) {
+            // Item is above viewport - scroll up to show it at top with small margin
+            destPos = Math.max(0, itemTop - 8)
+        } else if (itemBottom > viewportBottom) {
+            // Item is below viewport - scroll down to show it at bottom with small margin
+            destPos = Math.max(0, itemBottom - viewportHeight + 8)
+        }
         
         // Only animate if we need to scroll
         if (Math.abs(destPos - currentPos) > 1) {
-            // Restore original position
-            artistsListView.contentY = currentPos
-            
-            // Animate to destination
             artistScrollAnimation.from = currentPos
             artistScrollAnimation.to = destPos
             artistScrollAnimation.running = true
@@ -1874,7 +1933,7 @@ Item {
             selectedArtistIndex = 0
             selectedArtistName = LibraryManager.artistModel[0].name
             artistsListView.forceLayout()
-            artistsListView.positionViewAtIndex(0, ListView.Beginning, -8)
+            artistsListView.positionViewAtIndex(0, ListView.Beginning)
         }
     }
     
