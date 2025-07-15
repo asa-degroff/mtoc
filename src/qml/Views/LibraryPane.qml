@@ -55,6 +55,9 @@ Item {
     property var searchResultsCache: ({})  // Cache for search results
     property int cacheExpiryTime: 60000  // Cache expires after 1 minute
     
+    // Scroll bar state tracking
+    property bool isScrollBarDragging: false
+    
     // Navigation state for keyboard controls
     property string navigationMode: "none"  // "none", "artist", "album", "track"
     property int selectedArtistIndex: -1
@@ -702,15 +705,15 @@ Item {
                         clip: true
                         model: LibraryManager.artistModel
                         spacing: 2
-                        
+                        interactive: !root.isScrollBarDragging  // Disable ListView interaction during scroll bar drag
                         
                         // Disable delegate recycling for stable list height
                         reuseItems: false  // Disabled to maintain consistent scroll positions
                         cacheBuffer: 1200  // Increase cache for smoother scrolling without recycling
                     
-                    // Increase scroll speed
-                    flickDeceleration: 8000  // Default is 1500, can increase for faster stopping
-                    maximumFlickVelocity: 2750  // Default is 2500, increase for faster scrolling
+                    // Adaptive scroll speed - reduced when using scroll bar
+                    flickDeceleration: root.isScrollBarDragging ? 1500 : 8000
+                    maximumFlickVelocity: root.isScrollBarDragging ? 1000 : 2750
                     
                     // Smooth scrolling with bounds
                     boundsMovement: Flickable.StopAtBounds
@@ -720,6 +723,7 @@ Item {
                     // Smooth wheel scrolling with moderate speed
                     WheelHandler {
                         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                        enabled: !root.isScrollBarDragging  // Disable during scroll bar dragging
                         onWheel: function(event) {
                             var pixelDelta = 0;
                             
@@ -732,7 +736,9 @@ Item {
                                 pixelDelta = (event.angleDelta.y / 4) * 60; // Keep current behavior for mouse wheel
                             }
                             
-                            artistsListView.flick(0, pixelDelta);
+                            if (!root.isScrollBarDragging) {
+                                artistsListView.flick(0, pixelDelta);
+                            }
                         }
                     }
 
@@ -776,8 +782,9 @@ Item {
                             }
                         }
                         
-                        // Smooth height animation
+                        // Smooth height animation (disabled during scroll bar dragging)
                         Behavior on height {
+                            enabled: !root.isScrollBarDragging && !artistsListView.moving
                             NumberAnimation {
                                 duration: 200
                                 easing.type: Easing.InOutQuad
@@ -922,14 +929,15 @@ Item {
                             anchors.top: artistHeader.bottom
                             anchors.topMargin: 2
                             width: parent.width
-                            // Dynamic height based on content
-                            height: albumsVisible ? (albumsGrid.contentHeight + (albumsGrid.count > 0 ? 16 : 0)) : 0 // Add padding if albums exist
+                            // Calculate height based on album count to avoid dynamic contentHeight issues
+                            height: albumsVisible ? calculateAlbumContainerHeight() : 0
                             color: Qt.rgba(1, 1, 1, 0.04) // Very subtle frosted background
                             radius: 6
                             opacity: albumsVisible ? 1 : 0
                             clip: true
                             
                             Behavior on opacity {
+                                enabled: !root.isScrollBarDragging && !artistsListView.moving
                                 NumberAnimation {
                                     duration: 200
                                     easing.type: Easing.InOutQuad
@@ -943,6 +951,18 @@ Item {
                             // Cache albums data when artist changes or becomes visible
                             property var cachedAlbums: []
                             property string cachedArtistName: ""
+                            
+                            // Calculate fixed height for album container
+                            function calculateAlbumContainerHeight() {
+                                if (!cachedAlbums || cachedAlbums.length === 0) return 0
+                                
+                                var cellWidth = 130  // 120 + 10 spacing
+                                var cellHeight = 150  // 140 + 10 spacing
+                                var gridWidth = Math.floor((artistsListView.width - 24) / cellWidth)
+                                var rows = Math.ceil(cachedAlbums.length / gridWidth)
+                                
+                                return (rows * cellHeight) + 16  // Grid height + padding
+                            }
                             
                             // Function to refresh album data
                             function refreshAlbumData() {
@@ -1207,8 +1227,17 @@ Item {
                             snapMode: ScrollBar.NoSnap
                             interactive: true
                             
-                            // Increase step size for smoother scrolling
-                            stepSize: 0.02
+                            // Remove step size to prevent discrete jumps
+                            stepSize: 0
+                            
+                            // Track drag state
+                            onPressedChanged: {
+                                root.isScrollBarDragging = pressed
+                                if (!pressed) {
+                                    // Force a layout update when releasing to ensure proper positioning
+                                    artistsListView.forceLayout()
+                                }
+                            }
                             
                             // Default reduced opacity
                             opacity: scrollBarMouseArea.containsMouse || artistScrollBar.hovered || artistScrollBar.pressed ? 1.0 : 0.3
@@ -1849,6 +1878,8 @@ Item {
         var gridColumns = Math.floor((artistsListView.width - 24) / 130) // Cache this calculation
         
         // Calculate cumulative height up to the target index
+        // For loop is very inefficient
+        // TODO: investigate using a more efficient data structure icluding caching if possible
         for (var i = 0; i < index; i++) {
             var artist = LibraryManager.artistModel[i]
             if (artist) {
