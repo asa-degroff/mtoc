@@ -1,7 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import Qt.labs.platform 1.1
+import Qt.labs.platform 1.1 as Platform
 import QtQuick.Effects
 import Mtoc.Backend 1.0
 import "../Components"
@@ -55,6 +55,10 @@ Item {
     property string previousExpandedState: ""  // Store expanded state before search
     property var searchResultsCache: ({})  // Cache for search results
     property int cacheExpiryTime: 60000  // Cache expires after 1 minute
+    
+    // Track info panel state
+    property bool showTrackInfoPanel: false
+    property var selectedTrackForInfo: null
     
     // Scroll bar state tracking
     property bool isScrollBarDragging: false
@@ -336,10 +340,10 @@ Item {
     
     
     // Reference to the file dialog for selecting music folders
-    FolderDialog {
+    Platform.FolderDialog {
         id: folderDialog
         title: "Select Music Folder"
-        currentFolder: StandardPaths.standardLocations(StandardPaths.MusicLocation)[0]
+        currentFolder: Platform.StandardPaths.standardLocations(Platform.StandardPaths.MusicLocation)[0]
         
         onAccepted: {
             // Extract the local file path - safely handle potentially different property names
@@ -1355,7 +1359,8 @@ Item {
                     ListView {
                         id: trackListView
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
+                        Layout.fillHeight: !root.showTrackInfoPanel
+                        Layout.preferredHeight: root.showTrackInfoPanel ? parent.height - 60 - 180 - 24 : -1  // Album header - info panel - spacing
                         clip: true
                         model: rightPane.currentAlbumTracks
                         visible: rightPane.currentAlbumTracks.length > 0
@@ -1501,12 +1506,22 @@ Item {
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
+                                    acceptedButtons: Qt.LeftButton | Qt.RightButton
                                     
-                                    onClicked: {
-                                        trackListView.currentIndex = index;
-                                        // Sync keyboard navigation state
-                                        root.navigationMode = "track";
-                                        root.selectedTrackIndex = index;
+                                    onClicked: function(mouse) {
+                                        if (mouse.button === Qt.LeftButton) {
+                                            trackListView.currentIndex = index;
+                                            // Sync keyboard navigation state
+                                            root.navigationMode = "track";
+                                            root.selectedTrackIndex = index;
+                                            // Update track info panel if visible
+                                            if (root.showTrackInfoPanel) {
+                                                root.selectedTrackForInfo = modelData;
+                                            }
+                                        } else if (mouse.button === Qt.RightButton) {
+                                            // Show context menu
+                                            trackContextMenu.popup();
+                                        }
                                     }
                                     onDoubleClicked: {
                                         // If we have a selected album, play the album starting from this track
@@ -1516,6 +1531,20 @@ Item {
                                             // Otherwise create a single-track playlist
                                             // We'll need to add a method to play a single track from variant data
                                             MediaPlayer.playTrackFromData(modelData);
+                                        }
+                                    }
+                                    
+                                    Menu {
+                                        id: trackContextMenu
+                                        
+                                        MenuItem {
+                                            text: "Show info"
+                                            onTriggered: {
+                                                // Select the track first
+                                                trackListView.currentIndex = index;
+                                                root.selectedTrackForInfo = modelData;
+                                                root.showTrackInfoPanel = true;
+                                            }
                                         }
                                     }
                                 }
@@ -1536,6 +1565,331 @@ Item {
                             }
                         }
                         ScrollIndicator.vertical: ScrollIndicator { }
+                    }
+                    
+                    // Track info panel
+                    Rectangle {
+                        id: trackInfoPanel
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 180
+                        Layout.margins: 4
+                        visible: root.showTrackInfoPanel
+                        color: Qt.rgba(1, 1, 1, 0.07)
+                        radius: 6
+                        border.width: 1
+                        border.color: Qt.rgba(1, 1, 1, 0.13)
+                        clip: true
+                        
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            spacing: 4
+                            
+                            // Header with title and close button
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 24
+                                
+                                Label {
+                                    text: "Track Information"
+                                    color: "white"
+                                    font.pixelSize: 14
+                                    font.bold: true
+                                    Layout.fillWidth: true
+                                }
+                                
+                                // Close button
+                                Rectangle {
+                                    Layout.preferredWidth: 20
+                                    Layout.preferredHeight: 20
+                                    color: closeButtonMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.1) : "transparent"
+                                    radius: 3
+                                    
+                                    Label {
+                                        anchors.centerIn: parent
+                                        text: "✕"
+                                        color: "white"
+                                        font.pixelSize: 14
+                                    }
+                                    
+                                    MouseArea {
+                                        id: closeButtonMouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.showTrackInfoPanel = false
+                                    }
+                                }
+                            }
+                            
+                            // Separator line
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 1
+                                color: Qt.rgba(1, 1, 1, 0.1)
+                            }
+                            
+                            // Scrollable content area
+                            ScrollView {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                clip: true
+                                
+                                contentWidth: availableWidth
+                                
+                                ScrollBar.vertical: ScrollBar {
+                                    policy: ScrollBar.AsNeeded
+                                }
+                                
+                                ColumnLayout {
+                                    width: parent.width
+                                    spacing: 6
+                                    
+                                    // Title
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Label {
+                                            text: "Title:"
+                                            color: "#b0b0b0"
+                                            font.pixelSize: 12
+                                            Layout.preferredWidth: 80
+                                        }
+                                        Label {
+                                            text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.title || "Unknown") : ""
+                                            color: "white"
+                                            font.pixelSize: 12
+                                            Layout.fillWidth: true
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+                                    
+                                    // Artist
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Label {
+                                            text: "Artist:"
+                                            color: "#b0b0b0"
+                                            font.pixelSize: 12
+                                            Layout.preferredWidth: 80
+                                        }
+                                        Label {
+                                            text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.artist || "Unknown") : ""
+                                            color: "white"
+                                            font.pixelSize: 12
+                                            Layout.fillWidth: true
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+                                    
+                                    // Album
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Label {
+                                            text: "Album:"
+                                            color: "#b0b0b0"
+                                            font.pixelSize: 12
+                                            Layout.preferredWidth: 80
+                                        }
+                                        Label {
+                                            text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.album || "Unknown") : ""
+                                            color: "white"
+                                            font.pixelSize: 12
+                                            Layout.fillWidth: true
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+                                    
+                                    // Album Artist
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Label {
+                                            text: "Album Artist:"
+                                            color: "#b0b0b0"
+                                            font.pixelSize: 12
+                                            Layout.preferredWidth: 80
+                                        }
+                                        Label {
+                                            text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.albumArtist || root.selectedTrackForInfo.artist || "Unknown") : ""
+                                            color: "white"
+                                            font.pixelSize: 12
+                                            Layout.fillWidth: true
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+                                    
+                                    // Track Number
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Label {
+                                            text: "Track:"
+                                            color: "#b0b0b0"
+                                            font.pixelSize: 12
+                                            Layout.preferredWidth: 80
+                                        }
+                                        Label {
+                                            text: {
+                                                if (!root.selectedTrackForInfo) return ""
+                                                var trackNum = root.selectedTrackForInfo.trackNumber || 0
+                                                var discNum = root.selectedTrackForInfo.discNumber || 0
+                                                if (discNum > 1) {
+                                                    return trackNum + " (Disc " + discNum + ")"
+                                                } else if (trackNum > 0) {
+                                                    return String(trackNum)
+                                                } else {
+                                                    return "Unknown"
+                                                }
+                                            }
+                                            color: "white"
+                                            font.pixelSize: 12
+                                            Layout.fillWidth: true
+                                        }
+                                    }
+                                    
+                                    // Year
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        visible: root.selectedTrackForInfo && root.selectedTrackForInfo.year > 0
+                                        Label {
+                                            text: "Year:"
+                                            color: "#b0b0b0"
+                                            font.pixelSize: 12
+                                            Layout.preferredWidth: 80
+                                        }
+                                        Label {
+                                            text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.year || "") : ""
+                                            color: "white"
+                                            font.pixelSize: 12
+                                            Layout.fillWidth: true
+                                        }
+                                    }
+                                    
+                                    // Genre
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        visible: root.selectedTrackForInfo && root.selectedTrackForInfo.genre
+                                        Label {
+                                            text: "Genre:"
+                                            color: "#b0b0b0"
+                                            font.pixelSize: 12
+                                            Layout.preferredWidth: 80
+                                        }
+                                        Label {
+                                            text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.genre || "") : ""
+                                            color: "white"
+                                            font.pixelSize: 12
+                                            Layout.fillWidth: true
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+                                    
+                                    // Duration
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Label {
+                                            text: "Duration:"
+                                            color: "#b0b0b0"
+                                            font.pixelSize: 12
+                                            Layout.preferredWidth: 80
+                                        }
+                                        Label {
+                                            text: root.selectedTrackForInfo ? formatDuration(root.selectedTrackForInfo.duration || 0) : ""
+                                            color: "white"
+                                            font.pixelSize: 12
+                                            Layout.fillWidth: true
+                                        }
+                                    }
+                                    
+                                    // File format (from extension)
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Label {
+                                            text: "Format:"
+                                            color: "#b0b0b0"
+                                            font.pixelSize: 12
+                                            Layout.preferredWidth: 80
+                                        }
+                                        Label {
+                                            text: {
+                                                if (!root.selectedTrackForInfo || !root.selectedTrackForInfo.filePath) return ""
+                                                var path = root.selectedTrackForInfo.filePath
+                                                var lastDot = path.lastIndexOf('.')
+                                                if (lastDot > 0 && lastDot < path.length - 1) {
+                                                    return path.substring(lastDot + 1).toUpperCase()
+                                                }
+                                                return "Unknown"
+                                            }
+                                            color: "white"
+                                            font.pixelSize: 12
+                                            Layout.fillWidth: true
+                                        }
+                                    }
+                                    
+                                    // File size
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Label {
+                                            text: "File Size:"
+                                            color: "#b0b0b0"
+                                            font.pixelSize: 12
+                                            Layout.preferredWidth: 80
+                                        }
+                                        Label {
+                                            id: fileSizeLabel
+                                            text: ""
+                                            color: "white"
+                                            font.pixelSize: 12
+                                            Layout.fillWidth: true
+                                            
+                                            // Update file size when track changes
+                                            property var trackPath: root.selectedTrackForInfo ? root.selectedTrackForInfo.filePath : ""
+                                            onTrackPathChanged: {
+                                                if (trackPath) {
+                                                    updateFileSize()
+                                                }
+                                            }
+                                            
+                                            function updateFileSize() {
+                                                // We'll try to get file size using Qt's FileInfo
+                                                // This is a simplified approach since we can't directly access QFileInfo from QML
+                                                text = "N/A"  // Placeholder - would need backend support for actual file size
+                                            }
+                                        }
+                                    }
+                                    
+                                    // File path
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Label {
+                                            text: "File Path:"
+                                            color: "#b0b0b0"
+                                            font.pixelSize: 12
+                                            Layout.preferredWidth: 80
+                                        }
+                                        Label {
+                                            text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.filePath || "") : ""
+                                            color: "white"
+                                            font.pixelSize: 12
+                                            Layout.fillWidth: true
+                                            elide: Text.ElideMiddle
+                                            
+                                            // Tooltip for full path
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                ToolTip.visible: containsMouse && parent.truncated
+                                                ToolTip.text: parent.text
+                                                ToolTip.delay: 500
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Spacer at bottom
+                                    Item {
+                                        Layout.fillHeight: true
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     // Message for when no tracks are available or no album selected
@@ -2114,10 +2468,18 @@ Item {
                 selectedTrackIndex = 0
                 trackListView.currentIndex = 0
                 ensureTrackVisible(0)
+                // Update track info panel if visible
+                if (root.showTrackInfoPanel && rightPane.currentAlbumTracks[0]) {
+                    root.selectedTrackForInfo = rightPane.currentAlbumTracks[0]
+                }
             } else if (selectedTrackIndex < rightPane.currentAlbumTracks.length - 1) {
                 selectedTrackIndex++
                 trackListView.currentIndex = selectedTrackIndex
                 ensureTrackVisible(selectedTrackIndex)
+                // Update track info panel if visible
+                if (root.showTrackInfoPanel && rightPane.currentAlbumTracks[selectedTrackIndex]) {
+                    root.selectedTrackForInfo = rightPane.currentAlbumTracks[selectedTrackIndex]
+                }
             }
         }
     }
@@ -2221,6 +2583,10 @@ Item {
                 selectedTrackIndex--
                 trackListView.currentIndex = selectedTrackIndex
                 ensureTrackVisible(selectedTrackIndex)
+                // Update track info panel if visible
+                if (root.showTrackInfoPanel && rightPane.currentAlbumTracks[selectedTrackIndex]) {
+                    root.selectedTrackForInfo = rightPane.currentAlbumTracks[selectedTrackIndex]
+                }
             }
             // Don't allow going to -1 with up arrow - stay at first track
         }
