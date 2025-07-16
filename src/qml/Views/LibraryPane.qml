@@ -1605,11 +1605,15 @@ Item {
                                     color: closeButtonMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.1) : "transparent"
                                     radius: 3
                                     
-                                    Label {
+                                    Image {
                                         anchors.centerIn: parent
-                                        text: "✕"
-                                        color: "white"
-                                        font.pixelSize: 14
+                                        width: 12
+                                        height: 12
+                                        source: "qrc:/resources/icons/close-button.svg"
+                                        sourceSize.width: 24
+                                        sourceSize.height: 24
+                                        smooth: true
+                                        antialiasing: true
                                     }
                                     
                                     MouseArea {
@@ -1865,19 +1869,122 @@ Item {
                                             font.pixelSize: 12
                                             Layout.preferredWidth: 80
                                         }
-                                        Label {
-                                            text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.filePath || "") : ""
-                                            color: "white"
-                                            font.pixelSize: 12
+                                        
+                                        // Scrolling file path container
+                                        Item {
                                             Layout.fillWidth: true
-                                            elide: Text.ElideMiddle
+                                            Layout.preferredHeight: 20  // Increased height to prevent text clipping
+                                            clip: true
                                             
-                                            // Tooltip for full path
+                                            // Container for the label with opacity mask
+                                            Item {
+                                                id: labelContainer
+                                                anchors.fill: parent
+                                                
+                                                Label {
+                                                    id: filePathLabel
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.filePath || "") : ""
+                                                    color: "white"
+                                                    font.pixelSize: 12
+                                                    
+                                                    // Properties for scrolling
+                                                    property bool needsScrolling: contentWidth > parent.width
+                                                    property real scrollOffset: 0
+                                                    property real pauseDuration: 2000  // Pause at start/end in ms
+                                                    property real scrollDuration: 8000  // Time to scroll full width in ms
+                                                    
+                                                    // Position for scrolling
+                                                    x: needsScrolling ? -scrollOffset : 0
+                                                    
+                                                    // Update scrolling need when text changes
+                                                    onTextChanged: {
+                                                        scrollOffset = 0
+                                                        pathScrollAnimation.stop()
+                                                        if (needsScrolling) {
+                                                            pathScrollAnimation.start()
+                                                        }
+                                                    }
+                                                    
+                                                    onNeedsScrollingChanged: {
+                                                        scrollOffset = 0
+                                                        pathScrollAnimation.stop()
+                                                        if (needsScrolling) {
+                                                            pathScrollAnimation.start()
+                                                        }
+                                                    }
+                                                    
+                                                    // Scrolling animation sequence
+                                                    SequentialAnimation {
+                                                        id: pathScrollAnimation
+                                                        loops: Animation.Infinite
+                                                        
+                                                        // Pause at beginning
+                                                        PauseAnimation {
+                                                            duration: filePathLabel.pauseDuration
+                                                        }
+                                                        
+                                                        // Scroll to end
+                                                        NumberAnimation {
+                                                            target: filePathLabel
+                                                            property: "scrollOffset"
+                                                            from: 0
+                                                            to: Math.max(0, filePathLabel.contentWidth - filePathLabel.parent.width + 40)  // 40px padding for fade zones
+                                                            duration: filePathLabel.scrollDuration
+                                                            easing.type: Easing.InOutQuad
+                                                        }
+                                                        
+                                                        // Pause at end
+                                                        PauseAnimation {
+                                                            duration: filePathLabel.pauseDuration
+                                                        }
+                                                        
+                                                        // Scroll back to beginning
+                                                        NumberAnimation {
+                                                            target: filePathLabel
+                                                            property: "scrollOffset"
+                                                            from: Math.max(0, filePathLabel.contentWidth - filePathLabel.parent.width + 40)
+                                                            to: 0
+                                                            duration: filePathLabel.scrollDuration
+                                                            easing.type: Easing.InOutQuad
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                // // Apply opacity mask to fade the text at edges (disabled for now)
+                                                // layer.enabled: filePathLabel.needsScrolling
+                                                // layer.effect: MultiEffect {
+                                                //     maskEnabled: true
+                                                //     maskSource: ShaderEffectSource {
+                                                //         sourceItem: Rectangle {
+                                                //             width: labelContainer.width
+                                                //             height: labelContainer.height
+                                                //             gradient: Gradient {
+                                                //                 orientation: Gradient.Horizontal
+                                                //                 GradientStop { position: 0.0; color: "transparent" }
+                                                //                 GradientStop { position: 0.1; color: "white" }
+                                                //                 GradientStop { position: 0.9; color: "white" }
+                                                //                 GradientStop { position: 1.0; color: "transparent" }
+                                                //             }
+                                                //         }
+                                                //     }
+                                                // }
+                                            }
+                                            
+                                            // Hover to pause scrolling
                                             MouseArea {
                                                 anchors.fill: parent
                                                 hoverEnabled: true
-                                                ToolTip.visible: containsMouse && parent.truncated
-                                                ToolTip.text: parent.text
+                                                onEntered: pathScrollAnimation.pause()
+                                                onExited: {
+                                                    if (filePathLabel.needsScrolling) {
+                                                        pathScrollAnimation.resume()
+                                                    }
+                                                }
+                                                
+                                                // Tooltip for full path
+                                                ToolTip.visible: containsMouse
+                                                ToolTip.text: filePathLabel.text
                                                 ToolTip.delay: 500
                                             }
                                         }

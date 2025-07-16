@@ -30,5 +30,6 @@
         <file>resources/icons/skip-button-pressed.svg</file>
         <file>resources/icons/drag-handle-normal.svg</file>
         <file>resources/icons/drag-handle-pressed.svg</file>
+        <file>resources/icons/close-button.svg</file>
     </qresource>
 </RCC>
