@@ -1588,20 +1588,21 @@ Item {
                             // Header with title and close button
                             RowLayout {
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 24
+                                Layout.preferredHeight: 16
                                 
+                                // Use track title as header
                                 Label {
-                                    text: "Track Information"
+                                    text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.title || "Unknown") : ""
                                     color: "white"
-                                    font.pixelSize: 14
+                                    font.pixelSize: 12
                                     font.bold: true
                                     Layout.fillWidth: true
                                 }
                                 
                                 // Close button
                                 Rectangle {
-                                    Layout.preferredWidth: 20
-                                    Layout.preferredHeight: 20
+                                    Layout.preferredWidth: 16
+                                    Layout.preferredHeight: 16
                                     color: closeButtonMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.1) : "transparent"
                                     radius: 3
                                     
@@ -1644,214 +1645,240 @@ Item {
                                 ScrollBar.vertical: ScrollBar {
                                     policy: ScrollBar.AsNeeded
                                 }
-                                
                                 ColumnLayout {
                                     width: parent.width
-                                    spacing: 6
+                                    spacing: 2
                                     
-                                    // Title
-                                    RowLayout {
+                                    // Full-width section for Artist, Album, Album Artist
+                                    ColumnLayout {
                                         Layout.fillWidth: true
-                                        Label {
-                                            text: "Title:"
-                                            color: "#b0b0b0"
-                                            font.pixelSize: 12
-                                            Layout.preferredWidth: 80
-                                        }
-                                        Label {
-                                            text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.title || "Unknown") : ""
-                                            color: "white"
-                                            font.pixelSize: 12
+                                        spacing: 2
+                                        
+                                        // Artist
+                                        RowLayout {
                                             Layout.fillWidth: true
-                                            elide: Text.ElideRight
+                                            Label {
+                                                text: "Artist:"
+                                                color: "#b0b0b0"
+                                                font.pixelSize: 10
+                                                Layout.preferredWidth: 80
+                                            }
+                                            Label {
+                                                text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.artist || "Unknown") : ""
+                                                color: "white"
+                                                font.pixelSize: 10
+                                                Layout.fillWidth: true
+                                                elide: Text.ElideRight
+                                            }
+                                        }
+                                        
+                                        // Album
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            Label {
+                                                text: "Album:"
+                                                color: "#b0b0b0"
+                                                font.pixelSize: 10
+                                                Layout.preferredWidth: 80
+                                            }
+                                            Label {
+                                                text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.album || "Unknown") : ""
+                                                color: "white"
+                                                font.pixelSize: 10
+                                                Layout.fillWidth: true
+                                                elide: Text.ElideRight
+                                            }
+                                        }
+                                        
+                                        // Album Artist
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            Label {
+                                                text: "Album Artist:"
+                                                color: "#b0b0b0"
+                                                font.pixelSize: 10
+                                                Layout.preferredWidth: 80
+                                            }
+                                            Label {
+                                                text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.albumArtist || root.selectedTrackForInfo.artist || "Unknown") : ""
+                                                color: "white"
+                                                font.pixelSize: 10
+                                                Layout.fillWidth: true
+                                                elide: Text.ElideRight
+                                            }
                                         }
                                     }
                                     
-                                    // Artist
-                                    RowLayout {
+                                    // Separator between full-width and two-column sections
+                                    Rectangle {
                                         Layout.fillWidth: true
-                                        Label {
-                                            text: "Artist:"
-                                            color: "#b0b0b0"
-                                            font.pixelSize: 12
-                                            Layout.preferredWidth: 80
-                                        }
-                                        Label {
-                                            text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.artist || "Unknown") : ""
-                                            color: "white"
-                                            font.pixelSize: 12
-                                            Layout.fillWidth: true
-                                            elide: Text.ElideRight
-                                        }
+                                        Layout.preferredHeight: 1
+                                        Layout.topMargin: 4
+                                        Layout.bottomMargin: 4
+                                        color: Qt.rgba(1, 1, 1, 0.08)
                                     }
                                     
-                                    // Album
+                                    // Two-column section
                                     RowLayout {
                                         Layout.fillWidth: true
-                                        Label {
-                                            text: "Album:"
-                                            color: "#b0b0b0"
-                                            font.pixelSize: 12
-                                            Layout.preferredWidth: 80
-                                        }
-                                        Label {
-                                            text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.album || "Unknown") : ""
-                                            color: "white"
-                                            font.pixelSize: 12
+                                        spacing: 16
+                                        
+                                        // Left column: Track, Year, Genre
+                                        ColumnLayout {
                                             Layout.fillWidth: true
-                                            elide: Text.ElideRight
-                                        }
-                                    }
-                                    
-                                    // Album Artist
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        Label {
-                                            text: "Album Artist:"
-                                            color: "#b0b0b0"
-                                            font.pixelSize: 12
-                                            Layout.preferredWidth: 80
-                                        }
-                                        Label {
-                                            text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.albumArtist || root.selectedTrackForInfo.artist || "Unknown") : ""
-                                            color: "white"
-                                            font.pixelSize: 12
-                                            Layout.fillWidth: true
-                                            elide: Text.ElideRight
-                                        }
-                                    }
-                                    
-                                    // Track Number
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        Label {
-                                            text: "Track:"
-                                            color: "#b0b0b0"
-                                            font.pixelSize: 12
-                                            Layout.preferredWidth: 80
-                                        }
-                                        Label {
-                                            text: {
-                                                if (!root.selectedTrackForInfo) return ""
-                                                var trackNum = root.selectedTrackForInfo.trackNumber || 0
-                                                var discNum = root.selectedTrackForInfo.discNumber || 0
-                                                if (discNum > 1) {
-                                                    return trackNum + " (Disc " + discNum + ")"
-                                                } else if (trackNum > 0) {
-                                                    return String(trackNum)
-                                                } else {
-                                                    return "Unknown"
+                                            Layout.preferredWidth: parent.width / 2
+                                            spacing: 2
+                                            
+                                            // Track Number
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                Label {
+                                                    text: "Track:"
+                                                    color: "#b0b0b0"
+                                                    font.pixelSize: 10
+                                                    Layout.preferredWidth: 50
+                                                }
+                                                Label {
+                                                    text: {
+                                                        if (!root.selectedTrackForInfo) return ""
+                                                        var trackNum = root.selectedTrackForInfo.trackNumber || 0
+                                                        var discNum = root.selectedTrackForInfo.discNumber || 0
+                                                        if (discNum > 1) {
+                                                            return trackNum + " (Disc " + discNum + ")"
+                                                        } else if (trackNum > 0) {
+                                                            return String(trackNum)
+                                                        } else {
+                                                            return "Unknown"
+                                                        }
+                                                    }
+                                                    color: "white"
+                                                    font.pixelSize: 10
+                                                    Layout.fillWidth: true
+                                                    elide: Text.ElideRight
                                                 }
                                             }
-                                            color: "white"
-                                            font.pixelSize: 12
-                                            Layout.fillWidth: true
-                                        }
-                                    }
-                                    
-                                    // Year
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        visible: root.selectedTrackForInfo && root.selectedTrackForInfo.year > 0
-                                        Label {
-                                            text: "Year:"
-                                            color: "#b0b0b0"
-                                            font.pixelSize: 12
-                                            Layout.preferredWidth: 80
-                                        }
-                                        Label {
-                                            text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.year || "") : ""
-                                            color: "white"
-                                            font.pixelSize: 12
-                                            Layout.fillWidth: true
-                                        }
-                                    }
-                                    
-                                    // Genre
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        visible: root.selectedTrackForInfo && root.selectedTrackForInfo.genre
-                                        Label {
-                                            text: "Genre:"
-                                            color: "#b0b0b0"
-                                            font.pixelSize: 12
-                                            Layout.preferredWidth: 80
-                                        }
-                                        Label {
-                                            text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.genre || "") : ""
-                                            color: "white"
-                                            font.pixelSize: 12
-                                            Layout.fillWidth: true
-                                            elide: Text.ElideRight
-                                        }
-                                    }
-                                    
-                                    // Duration
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        Label {
-                                            text: "Duration:"
-                                            color: "#b0b0b0"
-                                            font.pixelSize: 12
-                                            Layout.preferredWidth: 80
-                                        }
-                                        Label {
-                                            text: root.selectedTrackForInfo ? formatDuration(root.selectedTrackForInfo.duration || 0) : ""
-                                            color: "white"
-                                            font.pixelSize: 12
-                                            Layout.fillWidth: true
-                                        }
-                                    }
-                                    
-                                    // File format (from extension)
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        Label {
-                                            text: "Format:"
-                                            color: "#b0b0b0"
-                                            font.pixelSize: 12
-                                            Layout.preferredWidth: 80
-                                        }
-                                        Label {
-                                            text: {
-                                                if (!root.selectedTrackForInfo || !root.selectedTrackForInfo.filePath) return ""
-                                                var path = root.selectedTrackForInfo.filePath
-                                                var lastDot = path.lastIndexOf('.')
-                                                if (lastDot > 0 && lastDot < path.length - 1) {
-                                                    return path.substring(lastDot + 1).toUpperCase()
+                                            
+                                            // Year
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                visible: root.selectedTrackForInfo && root.selectedTrackForInfo.year > 0
+                                                Label {
+                                                    text: "Year:"
+                                                    color: "#b0b0b0"
+                                                    font.pixelSize: 10
+                                                    Layout.preferredWidth: 50
                                                 }
-                                                return "Unknown"
+                                                Label {
+                                                    text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.year || "") : ""
+                                                    color: "white"
+                                                    font.pixelSize: 10
+                                                    Layout.fillWidth: true
+                                                }
                                             }
-                                            color: "white"
-                                            font.pixelSize: 12
+                                            
+                                            // Genre
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                visible: root.selectedTrackForInfo && root.selectedTrackForInfo.genre
+                                                Label {
+                                                    text: "Genre:"
+                                                    color: "#b0b0b0"
+                                                    font.pixelSize: 10
+                                                    Layout.preferredWidth: 50
+                                                }
+                                                Label {
+                                                    text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.genre || "") : ""
+                                                    color: "white"
+                                                    font.pixelSize: 10
+                                                    Layout.fillWidth: true
+                                                    elide: Text.ElideRight
+                                                }
+                                            }
+                                        }
+                                        
+                                        // Right column: Duration, Format, File Size
+                                        ColumnLayout {
                                             Layout.fillWidth: true
+                                            Layout.preferredWidth: parent.width / 2
+                                            spacing: 2
+                                            
+                                            // Duration
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                Label {
+                                                    text: "Duration:"
+                                                    color: "#b0b0b0"
+                                                    font.pixelSize: 10
+                                                    Layout.preferredWidth: 60
+                                                }
+                                                Label {
+                                                    text: root.selectedTrackForInfo ? formatDuration(root.selectedTrackForInfo.duration || 0) : ""
+                                                    color: "white"
+                                                    font.pixelSize: 10
+                                                    Layout.fillWidth: true
+                                                }
+                                            }
+                                            
+                                            // File format (from extension)
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                Label {
+                                                    text: "Format:"
+                                                    color: "#b0b0b0"
+                                                    font.pixelSize: 10
+                                                    Layout.preferredWidth: 60
+                                                }
+                                                Label {
+                                                    text: {
+                                                        if (!root.selectedTrackForInfo || !root.selectedTrackForInfo.filePath) return ""
+                                                        var path = root.selectedTrackForInfo.filePath
+                                                        var lastDot = path.lastIndexOf('.')
+                                                        if (lastDot > 0 && lastDot < path.length - 1) {
+                                                            return path.substring(lastDot + 1).toUpperCase()
+                                                        }
+                                                        return "Unknown"
+                                                    }
+                                                    color: "white"
+                                                    font.pixelSize: 10
+                                                    Layout.fillWidth: true
+                                                }
+                                            }
+                                            
+                                            // File size
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                Label {
+                                                    text: "File Size:"
+                                                    color: "#b0b0b0"
+                                                    font.pixelSize: 10
+                                                    Layout.preferredWidth: 60
+                                                }
+                                                Label {
+                                                    text: root.selectedTrackForInfo ? formatFileSize(root.selectedTrackForInfo.fileSize || 0) : ""
+                                                    color: "white"
+                                                    font.pixelSize: 10
+                                                    Layout.fillWidth: true
+                                                }
+                                            }
                                         }
                                     }
                                     
-                                    // File size
-                                    RowLayout {
+                                    // Separator before file path
+                                    Rectangle {
                                         Layout.fillWidth: true
-                                        Label {
-                                            text: "File Size:"
-                                            color: "#b0b0b0"
-                                            font.pixelSize: 12
-                                            Layout.preferredWidth: 80
-                                        }
-                                        Label {
-                                            text: root.selectedTrackForInfo ? formatFileSize(root.selectedTrackForInfo.fileSize || 0) : ""
-                                            color: "white"
-                                            font.pixelSize: 12
-                                            Layout.fillWidth: true
-                                        }
+                                        Layout.preferredHeight: 1
+                                        Layout.topMargin: 4
+                                        Layout.bottomMargin: 4
+                                        color: Qt.rgba(1, 1, 1, 0.08)
                                     }
                                     
-                                    // File path
+                                    // Full-width file path section
                                     RowLayout {
                                         Layout.fillWidth: true
                                         Label {
                                             text: "File Path:"
                                             color: "#b0b0b0"
-                                            font.pixelSize: 12
+                                            font.pixelSize: 10
                                             Layout.preferredWidth: 80
                                         }
                                         
@@ -1871,7 +1898,7 @@ Item {
                                                     anchors.verticalCenter: parent.verticalCenter
                                                     text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.filePath || "") : ""
                                                     color: "white"
-                                                    font.pixelSize: 12
+                                                    font.pixelSize: 10
                                                     
                                                     // Properties for scrolling
                                                     property bool needsScrolling: contentWidth > parent.width
@@ -1935,25 +1962,6 @@ Item {
                                                         }
                                                     }
                                                 }
-                                                
-                                                // // Apply opacity mask to fade the text at edges (disabled for now)
-                                                // layer.enabled: filePathLabel.needsScrolling
-                                                // layer.effect: MultiEffect {
-                                                //     maskEnabled: true
-                                                //     maskSource: ShaderEffectSource {
-                                                //         sourceItem: Rectangle {
-                                                //             width: labelContainer.width
-                                                //             height: labelContainer.height
-                                                //             gradient: Gradient {
-                                                //                 orientation: Gradient.Horizontal
-                                                //                 GradientStop { position: 0.0; color: "transparent" }
-                                                //                 GradientStop { position: 0.1; color: "white" }
-                                                //                 GradientStop { position: 0.9; color: "white" }
-                                                //                 GradientStop { position: 1.0; color: "transparent" }
-                                                //             }
-                                                //         }
-                                                //     }
-                                                // }
                                             }
                                             
                                             // Hover to pause scrolling
