@@ -1867,27 +1867,36 @@ Item {
                 var destPos = artistsListView.contentY
                 
                 console.log("scrollToArtistIndex: Current:", currentPos, "Destination:", destPos)
+
+                // Simplified animation logic
+                scrollAnimation.from = currentPos
+                scrollAnimation.to = destPos
+                scrollAnimation.running = true
                 
-                // Only animate if we need to move significantly
-                var needsAnimation = Math.abs(destPos - currentPos) > 5
+                // // Only animate if we need to move significantly (unnecessary)
+                // var needsAnimation = Math.abs(destPos - currentPos) > 5
                 
-                if (needsAnimation && destPos >= 0) {
-                    // Restore current position for animation
-                    artistsListView.contentY = currentPos
+                // if (needsAnimation && destPos >= 0) {
+                //     // Restore current position for animation
+                //     artistsListView.contentY = currentPos
                     
-                    // Animate to destination
-                    scrollAnimation.from = currentPos
-                    scrollAnimation.to = destPos
-                    scrollAnimation.running = true
-                } else if (destPos < 0) {
-                    // If we get a negative position, just position directly
-                    console.log("scrollToArtistIndex: Got negative position, using direct positioning")
-                    artistsListView.contentY = currentPos
-                    artistsListView.positionViewAtIndex(index, ListView.Beginning)
-                } else {
-                    // Already at the right position
-                    console.log("scrollToArtistIndex: Already at position")
-                }
+                //     // Animate to destination
+                //     scrollAnimation.from = currentPos
+                //     scrollAnimation.to = destPos
+                //     scrollAnimation.running = true
+                // } else if (destPos < 0) {
+                //     // If we get a negative position, just position directly
+                //     console.log("scrollToArtistIndex: Got negative position, using direct positioning")
+                //     artistsListView.contentY = currentPos
+                //     artistsListView.positionViewAtIndex(index, ListView.Beginning)
+
+                //     scrollAnimation.from = currentPos
+                //     scrollAnimation.to = destPos
+                //     scrollAnimation.running = true
+                // } else {
+                //     // Already at the right position
+                //     console.log("scrollToArtistIndex: Already at position")
+                // }
             })
         } else {
             // Immediate positioning for keyboard navigation
