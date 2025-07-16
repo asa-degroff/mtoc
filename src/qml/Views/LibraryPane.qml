@@ -59,6 +59,8 @@ Item {
     // Track info panel state
     property bool showTrackInfoPanel: false
     property var selectedTrackForInfo: null
+    property real trackInfoPanelY: 184  // Start off-screen (below)
+    property bool trackInfoPanelAnimating: false
     
     // Scroll bar state tracking
     property bool isScrollBarDragging: false
@@ -225,6 +227,8 @@ Item {
         }
         // Build initial artist index mapping
         updateArtistIndexMapping()
+        // Initialize track info panel as hidden
+        trackInfoPanelY = 184  // Start off-screen
     }
     
     Component.onDestruction: {
@@ -1359,14 +1363,23 @@ Item {
                     ListView {
                         id: trackListView
                         Layout.fillWidth: true
-                        Layout.fillHeight: !root.showTrackInfoPanel
-                        Layout.preferredHeight: root.showTrackInfoPanel ? parent.height - 60 - 180 - 24 : -1  // Album header - info panel - spacing
+                        Layout.fillHeight: !root.showTrackInfoPanel || root.trackInfoPanelY > 10
+                        Layout.preferredHeight: root.showTrackInfoPanel && root.trackInfoPanelY < 10 ? parent.height - 60 - 180 - 24 : -1  // Album header - info panel - spacing
                         clip: true
                         model: rightPane.currentAlbumTracks
                         visible: rightPane.currentAlbumTracks.length > 0
                         spacing: 1
                         reuseItems: false
                         cacheBuffer: 800  // Increased cache without recycling
+                        
+                        // Smooth height animation synchronized with panel slide
+                        Behavior on Layout.preferredHeight {
+                            enabled: !root.trackInfoPanelAnimating
+                            NumberAnimation {
+                                duration: 300
+                                easing.type: Easing.OutCubic
+                            }
+                        }
                         
                         // Cache multi-disc check for all tracks
                         property bool isMultiDiscAlbum: {
@@ -1571,14 +1584,83 @@ Item {
                     Rectangle {
                         id: trackInfoPanel
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 180
-                        Layout.margins: 4
-                        visible: root.showTrackInfoPanel
+                        Layout.preferredHeight: root.showTrackInfoPanel && root.trackInfoPanelY < 10 ? 180 : 0
+                        Layout.topMargin: root.showTrackInfoPanel && root.trackInfoPanelY < 10 ? 4 : 0
+                        Layout.leftMargin: root.showTrackInfoPanel && root.trackInfoPanelY < 10 ? 4 : 0
+                        Layout.rightMargin: root.showTrackInfoPanel && root.trackInfoPanelY < 10 ? 4 : 0
+                        Layout.bottomMargin: root.showTrackInfoPanel && root.trackInfoPanelY < 10 ? 4 : 0
                         color: Qt.rgba(1, 1, 1, 0.07)
                         radius: 6
                         border.width: 1
                         border.color: Qt.rgba(1, 1, 1, 0.13)
                         clip: true
+                        visible: root.showTrackInfoPanel || root.trackInfoPanelAnimating
+                        opacity: root.showTrackInfoPanel && root.trackInfoPanelY < 10 ? 1 : 0
+                        
+                        // Transform for slide animation
+                        transform: Translate {
+                            y: root.trackInfoPanelY
+                        }
+                        
+                        // Smooth transitions for layout changes
+                        Behavior on Layout.preferredHeight {
+                            enabled: !root.trackInfoPanelAnimating
+                            NumberAnimation {
+                                duration: 300
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+                        
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: 200
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+                        
+                        // States for shown/hidden
+                        states: [
+                            State {
+                                name: "shown"
+                                when: root.showTrackInfoPanel
+                                PropertyChanges {
+                                    target: root
+                                    trackInfoPanelY: 0
+                                }
+                            },
+                            State {
+                                name: "hidden"
+                                when: !root.showTrackInfoPanel
+                                PropertyChanges {
+                                    target: root
+                                    trackInfoPanelY: 184  // Full height + margins to hide below
+                                }
+                            }
+                        ]
+                        
+                        // Smooth transition between states
+                        transitions: Transition {
+                            from: "*"
+                            to: "*"
+                            SequentialAnimation {
+                                PropertyAction {
+                                    target: root
+                                    property: "trackInfoPanelAnimating"
+                                    value: true
+                                }
+                                NumberAnimation {
+                                    target: root
+                                    property: "trackInfoPanelY"
+                                    duration: 300
+                                    easing.type: Easing.OutCubic
+                                }
+                                PropertyAction {
+                                    target: root
+                                    property: "trackInfoPanelAnimating"
+                                    value: false
+                                }
+                            }
+                        }
                         
                         ColumnLayout {
                             anchors.fill: parent
