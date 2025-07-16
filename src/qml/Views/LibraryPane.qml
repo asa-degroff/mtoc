@@ -721,8 +721,6 @@ Item {
                         model: LibraryManager.artistModel
                         spacing: 2
                         interactive: !root.isScrollBarDragging  // Disable ListView interaction during scroll bar drag
-                        
-                        // Disable delegate recycling for stable list height
                         reuseItems: false  // Disabled to maintain consistent scroll positions
                         cacheBuffer: 1200  // Increase cache for smoother scrolling without recycling
                     
@@ -985,8 +983,6 @@ Item {
                                 cellWidth: 120 + 10 // Thumbnail size + padding
                                 cellHeight: 140 + 10 // Thumbnail + title + padding
                                 interactive: false // Parent ListView handles scrolling primarily
-                                
-                                // Disable delegate recycling for stable rendering
                                 reuseItems: false  // Disabled to prevent issues with expand/collapse
                                 cacheBuffer: 600  // Increased cache for album grid
 
@@ -1364,8 +1360,6 @@ Item {
                         model: rightPane.currentAlbumTracks
                         visible: rightPane.currentAlbumTracks.length > 0
                         spacing: 1
-                        
-                        // Disable delegate recycling for consistent behavior
                         reuseItems: false
                         cacheBuffer: 800  // Increased cache without recycling
                         
@@ -1872,31 +1866,6 @@ Item {
                 scrollAnimation.from = currentPos
                 scrollAnimation.to = destPos
                 scrollAnimation.running = true
-                
-                // // Only animate if we need to move significantly (unnecessary)
-                // var needsAnimation = Math.abs(destPos - currentPos) > 5
-                
-                // if (needsAnimation && destPos >= 0) {
-                //     // Restore current position for animation
-                //     artistsListView.contentY = currentPos
-                    
-                //     // Animate to destination
-                //     scrollAnimation.from = currentPos
-                //     scrollAnimation.to = destPos
-                //     scrollAnimation.running = true
-                // } else if (destPos < 0) {
-                //     // If we get a negative position, just position directly
-                //     console.log("scrollToArtistIndex: Got negative position, using direct positioning")
-                //     artistsListView.contentY = currentPos
-                //     artistsListView.positionViewAtIndex(index, ListView.Beginning)
-
-                //     scrollAnimation.from = currentPos
-                //     scrollAnimation.to = destPos
-                //     scrollAnimation.running = true
-                // } else {
-                //     // Already at the right position
-                //     console.log("scrollToArtistIndex: Already at position")
-                // }
             })
         } else {
             // Immediate positioning for keyboard navigation
