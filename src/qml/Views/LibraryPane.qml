@@ -37,6 +37,7 @@ Item {
     property var expandedArtists: ({})  // Object to store expansion state by artist name
     property string highlightedArtist: ""  // Track which artist to highlight
     property bool isJumping: false  // Flag to prevent concurrent jump operations
+    property bool isProgrammaticScrolling: false  // Flag to disable animations during programmatic scrolling
     property url thumbnailUrl: ""
     property url pendingThumbnailUrl: ""  // Buffer for thumbnail URL changes
     property var artistNameToIndex: ({})  // Cache for artist name to index mapping
@@ -73,6 +74,15 @@ Item {
         property: "contentY"
         duration: 300
         easing.type: Easing.InOutQuad
+        
+        onRunningChanged: {
+            if (!running && root.isProgrammaticScrolling) {
+                // Reset the flag when animation completes
+                Qt.callLater(function() {
+                    root.isProgrammaticScrolling = false
+                })
+            }
+        }
     }
     
     // Smooth scrolling animation for track list
@@ -712,14 +722,6 @@ Item {
                         spacing: 2
                         interactive: !root.isScrollBarDragging  // Disable ListView interaction during scroll bar drag
                         
-                        // Prevent negative contentY
-                        onContentYChanged: {
-                            if (contentY < 0 && !scrollAnimation.running) {
-                                console.log("ListView: Preventing negative contentY:", contentY)
-                                contentY = 0
-                            }
-                        }
-                        
                         // Disable delegate recycling for stable list height
                         reuseItems: false  // Disabled to maintain consistent scroll positions
                         cacheBuffer: 1200  // Increase cache for smoother scrolling without recycling
@@ -800,9 +802,9 @@ Item {
                             }
                         }
                         
-                        // Smooth height animation (disabled during scroll bar dragging)
+                        // Smooth height animation (disabled during scroll bar dragging and programmatic scrolling)
                         Behavior on height {
-                            enabled: !root.isScrollBarDragging && !artistsListView.moving
+                            enabled: !root.isScrollBarDragging && !artistsListView.moving && !root.isProgrammaticScrolling
                             NumberAnimation {
                                 duration: 200
                                 easing.type: Easing.InOutQuad
@@ -1682,16 +1684,23 @@ Item {
                     // Already expanded, safe to scroll immediately
                     scrollToArtist(bestMatch.name)
                 } else {
+                    // Disable animations for expansion
+                    isProgrammaticScrolling = true
+                    
                     // Expand the artist first
                     var updatedExpanded = Object.assign({}, expandedArtists)
                     updatedExpanded[bestMatch.name] = true
                     expandedArtists = updatedExpanded
                     
-                    // Delay scrolling until after expansion
+                    // Force immediate layout update
+                    artistsListView.forceLayout()
+                    
+                    // Scroll after expansion
                     Qt.callLater(function() {
-                        artistsListView.forceLayout()
+                        scrollToArtist(bestMatch.name)
+                        // Reset flag after animation
                         Qt.callLater(function() {
-                            scrollToArtist(bestMatch.name)
+                            isProgrammaticScrolling = false
                         })
                     })
                 }
@@ -1712,16 +1721,23 @@ Item {
                         // Already expanded, safe to scroll immediately
                         scrollToArtist(artistName)
                     } else {
+                        // Disable animations for expansion
+                        isProgrammaticScrolling = true
+                        
                         // Expand the artist first
                         var updatedExpanded = Object.assign({}, expandedArtists)
                         updatedExpanded[artistName] = true
                         expandedArtists = updatedExpanded
                         
-                        // Delay scrolling until after expansion
+                        // Force immediate layout update
+                        artistsListView.forceLayout()
+                        
+                        // Scroll after expansion
                         Qt.callLater(function() {
-                            artistsListView.forceLayout()
+                            scrollToArtist(artistName)
+                            // Reset flag after animation
                             Qt.callLater(function() {
-                                scrollToArtist(artistName)
+                                isProgrammaticScrolling = false
                             })
                         })
                     }
@@ -1748,16 +1764,23 @@ Item {
                         // Already expanded, safe to scroll immediately
                         scrollToArtist(bestMatch.artist)
                     } else {
+                        // Disable animations for expansion
+                        isProgrammaticScrolling = true
+                        
                         // Expand the artist
                         var updatedExpanded = Object.assign({}, expandedArtists)
                         updatedExpanded[bestMatch.artist] = true
                         expandedArtists = updatedExpanded
                         
-                        // Delay scrolling until after expansion
+                        // Force immediate layout update
+                        artistsListView.forceLayout()
+                        
+                        // Scroll after expansion
                         Qt.callLater(function() {
-                            artistsListView.forceLayout()
+                            scrollToArtist(bestMatch.artist)
+                            // Reset flag after animation
                             Qt.callLater(function() {
-                                scrollToArtist(bestMatch.artist)
+                                isProgrammaticScrolling = false
                             })
                         })
                     }
@@ -1827,95 +1850,39 @@ Item {
         // Stop any ongoing animation first
         scrollAnimation.running = false
         
-        // Fix invalid contentY before doing anything
-        if (artistsListView.contentY < 0) {
-            console.log("scrollToArtistIndex: Fixing negative contentY:", artistsListView.contentY)
-            artistsListView.contentY = 0
-        }
-        
-        // Ensure contentY is within valid bounds
-        var maxContentY = Math.max(0, artistsListView.contentHeight - artistsListView.height)
-        if (artistsListView.contentY > maxContentY && maxContentY > 0) {
-            console.log("scrollToArtistIndex: Fixing contentY beyond max:", artistsListView.contentY, "max:", maxContentY)
-            artistsListView.contentY = maxContentY
-        }
-        
         // Update currentIndex to ensure synchronization
         artistsListView.currentIndex = index
         
-        // Force the ListView to update its layout
-        artistsListView.forceLayout()
-        
-        console.log("scrollToArtistIndex: Before positioning - contentY:", artistsListView.contentY,
-                   "contentHeight:", artistsListView.contentHeight,
-                   "currentIndex:", artistsListView.currentIndex)
-        
         if (smooth) {
-            // Store current position before any changes
+            // Store current position
             var currentPos = artistsListView.contentY
             
-            // Try positionViewAtIndex first
-            artistsListView.positionViewAtIndex(index, ListView.Beginning)
-            var destPos = artistsListView.contentY
-            
-            console.log("scrollToArtistIndex: positionViewAtIndex result - destPos:", destPos,
-                       "from currentPos:", currentPos)
-            
-            // Validate the result - check for negative or out of bounds positions
-            var isValidPosition = true
-            var maxScroll = Math.max(0, artistsListView.contentHeight - artistsListView.height)
-            
-            // Any negative position is invalid
+            // Calculate destination position without side effects
+            var destPos = calculateArtistPosition(index)
             if (destPos < 0) {
-                isValidPosition = false
-                console.log("scrollToArtistIndex: Negative position detected - destPos:", destPos)
-            } else if (index === 0) {
-                // First item should be at position 0 (or very close)
-                isValidPosition = destPos <= 10
-                console.log("scrollToArtistIndex: First item validation - destPos:", destPos, "valid:", isValidPosition)
-            } else if (index === LibraryManager.artistModel.length - 1) {
-                // Last item check - contentY should be within valid range
-                isValidPosition = destPos >= 0 && destPos <= maxScroll
-                console.log("scrollToArtistIndex: Last item validation - destPos:", destPos, "maxScroll:", maxScroll, "valid:", isValidPosition)
-            } else {
-                // Middle items - position should be within valid range
-                isValidPosition = destPos >= 0 && destPos <= maxScroll
-                console.log("scrollToArtistIndex: Middle item validation - destPos:", destPos, "maxScroll:", maxScroll, "valid:", isValidPosition)
+                console.log("scrollToArtistIndex: Failed to calculate position, using direct positioning")
+                artistsListView.positionViewAtIndex(index, ListView.Beginning)
+                return
             }
             
-            // If position seems invalid, calculate manually
-            if (!isValidPosition) {
-                console.log("scrollToArtistIndex: Position invalid, calculating manually")
-                destPos = calculateArtistPosition(index)
-                console.log("scrollToArtistIndex: Manual calculation result:", destPos)
-                if (destPos < 0) {
-                    // Calculation failed, just use immediate positioning
-                    console.log("scrollToArtistIndex: Manual calculation failed, using immediate positioning")
-                    artistsListView.positionViewAtIndex(index, ListView.Beginning)
-                    return
-                }
-            }
+            // Ensure destination is within valid bounds
+            var maxContentY = Math.max(0, artistsListView.contentHeight - artistsListView.height)
+            var boundedDestPos = Math.max(0, Math.min(destPos, maxContentY))
             
-            // Ensure destPos is within valid bounds
-            destPos = Math.max(0, Math.min(destPos, maxScroll))
+            console.log("scrollToArtistIndex: Animating from", currentPos, "to", boundedDestPos, 
+                       "(calculated:", destPos, "max:", maxContentY, ")")
             
             // Only animate if we need to move significantly
-            var needsAnimation = Math.abs(destPos - currentPos) > 5  // Increased threshold
-            console.log("scrollToArtistIndex: Current:", currentPos, "Destination:", destPos, "Needs animation:", needsAnimation)
+            var needsAnimation = Math.abs(boundedDestPos - currentPos) > 5
             
             if (needsAnimation) {
-                console.log("scrollToArtistIndex: Animating from", currentPos, "to", destPos)
-                // Restore original position for animation
-                artistsListView.contentY = currentPos
-                
                 // Animate to destination
                 scrollAnimation.from = currentPos
-                scrollAnimation.to = destPos
+                scrollAnimation.to = boundedDestPos
                 scrollAnimation.running = true
             } else {
-                // Small adjustment or already at position
-                console.log("scrollToArtistIndex: Small adjustment or already at position, setting directly")
-                artistsListView.contentY = destPos
+                // Already close to the position
+                console.log("scrollToArtistIndex: Already at or near position")
             }
         } else {
             // Immediate positioning for keyboard navigation
@@ -2351,10 +2318,17 @@ Item {
             if (wasExpanded) {
                 // Already expanded, safe to scroll immediately
                 console.log("jumpToArtist: Artist already expanded, scrolling immediately")
+                isProgrammaticScrolling = true
                 scrollToArtistIndex(artistIndex, true)
-                // Reset flag after a delay
-                Qt.callLater(function() { isJumping = false })
+                // Reset flags after animation completes
+                Qt.callLater(function() { 
+                    isJumping = false
+                    isProgrammaticScrolling = false
+                })
             } else {
+                // Disable animations for expansion
+                isProgrammaticScrolling = true
+                
                 // Expand the artist synchronously
                 console.log("jumpToArtist: Expanding artist")
                 var updatedExpanded = Object.assign({}, expandedArtists)
@@ -2362,30 +2336,18 @@ Item {
                 expandedArtists = updatedExpanded
                 
                 // Force immediate layout update
-                console.log("jumpToArtist: Forcing layout update")
                 artistsListView.forceLayout()
                 
-                // Log current state
-                console.log("jumpToArtist: ListView contentHeight:", artistsListView.contentHeight, 
-                           "height:", artistsListView.height,
-                           "contentY:", artistsListView.contentY)
-                
-                // Wait for next frame then scroll
+                // Scroll immediately after expansion (no animation delay)
                 Qt.callLater(function() {
-                    console.log("jumpToArtist: After callLater - contentHeight:", artistsListView.contentHeight)
-                    // Double-check layout is complete
-                    if (artistsListView.contentHeight > 0) {
-                        scrollToArtistIndex(artistIndex, true)
-                    } else {
-                        // Layout not ready, try once more
-                        console.log("jumpToArtist: Layout not ready, trying again")
-                        artistsListView.forceLayout()
-                        Qt.callLater(function() {
-                            scrollToArtistIndex(artistIndex, true)
-                        })
-                    }
-                    // Reset flag
-                    Qt.callLater(function() { isJumping = false })
+                    console.log("jumpToArtist: Scrolling after expansion - contentHeight:", artistsListView.contentHeight)
+                    scrollToArtistIndex(artistIndex, true)
+                    
+                    // Reset flags after animation completes
+                    Qt.callLater(function() {
+                        isJumping = false
+                        isProgrammaticScrolling = false
+                    })
                 })
             }
         } catch (error) {
