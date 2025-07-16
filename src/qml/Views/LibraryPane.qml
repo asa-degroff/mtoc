@@ -1893,24 +1893,24 @@ Item {
                                                 id: labelContainer
                                                 anchors.fill: parent
                                                 
-                                                Label {
-                                                    id: filePathLabel
+                                                // Row containing duplicated text for seamless scrolling
+                                                Row {
+                                                    id: filePathRow
                                                     anchors.verticalCenter: parent.verticalCenter
-                                                    text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.filePath || "") : ""
-                                                    color: "white"
-                                                    font.pixelSize: 10
+                                                    spacing: 60  // Gap between duplicates
                                                     
                                                     // Properties for scrolling
-                                                    property bool needsScrolling: contentWidth > parent.width
+                                                    property string pathText: root.selectedTrackForInfo ? (root.selectedTrackForInfo.filePath || "") : ""
+                                                    property bool needsScrolling: filePathLabel1.contentWidth > labelContainer.width
                                                     property real scrollOffset: 0
-                                                    property real pauseDuration: 2000  // Pause at start/end in ms
-                                                    property real scrollDuration: 8000  // Time to scroll full width in ms
+                                                    property real pauseDuration: 1500  // Pause at end in ms
+                                                    property real scrollDuration: 10000  // Time to scroll full width in ms
                                                     
                                                     // Position for scrolling
                                                     x: needsScrolling ? -scrollOffset : 0
                                                     
-                                                    // Update scrolling need when text changes
-                                                    onTextChanged: {
+                                                    // Update scrolling when text changes
+                                                    onPathTextChanged: {
                                                         scrollOffset = 0
                                                         pathScrollAnimation.stop()
                                                         if (needsScrolling) {
@@ -1926,39 +1926,47 @@ Item {
                                                         }
                                                     }
                                                     
-                                                    // Scrolling animation sequence
+                                                    // First copy of the text
+                                                    Label {
+                                                        id: filePathLabel1
+                                                        text: parent.pathText
+                                                        color: "white"
+                                                        font.pixelSize: 10
+                                                    }
+                                                    
+                                                    // Second copy for seamless wrap-around (only visible when scrolling)
+                                                    Label {
+                                                        text: parent.pathText
+                                                        color: "white"
+                                                        font.pixelSize: 10
+                                                        visible: parent.needsScrolling
+                                                    }
+                                                    
+                                                    // Continuous scrolling animation
                                                     SequentialAnimation {
                                                         id: pathScrollAnimation
                                                         loops: Animation.Infinite
                                                         
-                                                        // Pause at beginning
-                                                        PauseAnimation {
-                                                            duration: filePathLabel.pauseDuration
-                                                        }
-                                                        
-                                                        // Scroll to end
+                                                        // Scroll continuously to show second copy
                                                         NumberAnimation {
-                                                            target: filePathLabel
+                                                            target: filePathRow
                                                             property: "scrollOffset"
                                                             from: 0
-                                                            to: Math.max(0, filePathLabel.contentWidth - filePathLabel.parent.width + 40)  // 40px padding for fade zones
-                                                            duration: filePathLabel.scrollDuration
+                                                            to: filePathLabel1.contentWidth + filePathRow.spacing  // Scroll one full text width + gap
+                                                            duration: filePathRow.scrollDuration
                                                             easing.type: Easing.InOutQuad
                                                         }
                                                         
-                                                        // Pause at end
+                                                        // Brief pause at the wrap point
                                                         PauseAnimation {
-                                                            duration: filePathLabel.pauseDuration
+                                                            duration: filePathRow.pauseDuration
                                                         }
                                                         
-                                                        // Scroll back to beginning
-                                                        NumberAnimation {
-                                                            target: filePathLabel
+                                                        // Instant reset to beginning (seamless wrap)
+                                                        PropertyAction {
+                                                            target: filePathRow
                                                             property: "scrollOffset"
-                                                            from: Math.max(0, filePathLabel.contentWidth - filePathLabel.parent.width + 40)
-                                                            to: 0
-                                                            duration: filePathLabel.scrollDuration
-                                                            easing.type: Easing.InOutQuad
+                                                            value: 0
                                                         }
                                                     }
                                                 }
@@ -1970,14 +1978,14 @@ Item {
                                                 hoverEnabled: true
                                                 onEntered: pathScrollAnimation.pause()
                                                 onExited: {
-                                                    if (filePathLabel.needsScrolling) {
+                                                    if (filePathRow.needsScrolling) {
                                                         pathScrollAnimation.resume()
                                                     }
                                                 }
                                                 
                                                 // Tooltip for full path
                                                 ToolTip.visible: containsMouse
-                                                ToolTip.text: filePathLabel.text
+                                                ToolTip.text: filePathRow.pathText
                                                 ToolTip.delay: 500
                                             }
                                         }
