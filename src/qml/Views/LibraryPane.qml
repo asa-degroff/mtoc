@@ -1853,37 +1853,42 @@ Item {
         // Update currentIndex to ensure synchronization
         artistsListView.currentIndex = index
         
+        // Ensure the ListView has updated its internal state
+        artistsListView.forceLayout()
+        
         if (smooth) {
-            // Store current position
-            var currentPos = artistsListView.contentY
-            
-            // Calculate destination position without side effects
-            var destPos = calculateArtistPosition(index)
-            if (destPos < 0) {
-                console.log("scrollToArtistIndex: Failed to calculate position, using direct positioning")
+            // Wait for the next frame to ensure layout is complete
+            Qt.callLater(function() {
+                // Store current position
+                var currentPos = artistsListView.contentY
+                
+                // Use positionViewAtIndex to position the artist at the top
                 artistsListView.positionViewAtIndex(index, ListView.Beginning)
-                return
-            }
-            
-            // Ensure destination is within valid bounds
-            var maxContentY = Math.max(0, artistsListView.contentHeight - artistsListView.height)
-            var boundedDestPos = Math.max(0, Math.min(destPos, maxContentY))
-            
-            console.log("scrollToArtistIndex: Animating from", currentPos, "to", boundedDestPos, 
-                       "(calculated:", destPos, "max:", maxContentY, ")")
-            
-            // Only animate if we need to move significantly
-            var needsAnimation = Math.abs(boundedDestPos - currentPos) > 5
-            
-            if (needsAnimation) {
-                // Animate to destination
-                scrollAnimation.from = currentPos
-                scrollAnimation.to = boundedDestPos
-                scrollAnimation.running = true
-            } else {
-                // Already close to the position
-                console.log("scrollToArtistIndex: Already at or near position")
-            }
+                var destPos = artistsListView.contentY
+                
+                console.log("scrollToArtistIndex: Current:", currentPos, "Destination:", destPos)
+                
+                // Only animate if we need to move significantly
+                var needsAnimation = Math.abs(destPos - currentPos) > 5
+                
+                if (needsAnimation && destPos >= 0) {
+                    // Restore current position for animation
+                    artistsListView.contentY = currentPos
+                    
+                    // Animate to destination
+                    scrollAnimation.from = currentPos
+                    scrollAnimation.to = destPos
+                    scrollAnimation.running = true
+                } else if (destPos < 0) {
+                    // If we get a negative position, just position directly
+                    console.log("scrollToArtistIndex: Got negative position, using direct positioning")
+                    artistsListView.contentY = currentPos
+                    artistsListView.positionViewAtIndex(index, ListView.Beginning)
+                } else {
+                    // Already at the right position
+                    console.log("scrollToArtistIndex: Already at position")
+                }
+            })
         } else {
             // Immediate positioning for keyboard navigation
             artistsListView.positionViewAtIndex(index, ListView.Contain)
@@ -2338,15 +2343,21 @@ Item {
                 // Force immediate layout update
                 artistsListView.forceLayout()
                 
-                // Scroll immediately after expansion (no animation delay)
+                // Wait a frame for the expansion to take effect
                 Qt.callLater(function() {
-                    console.log("jumpToArtist: Scrolling after expansion - contentHeight:", artistsListView.contentHeight)
-                    scrollToArtistIndex(artistIndex, true)
+                    // Force another layout update to ensure heights are correct
+                    artistsListView.forceLayout()
                     
-                    // Reset flags after animation completes
+                    // Now scroll to the artist
                     Qt.callLater(function() {
-                        isJumping = false
-                        isProgrammaticScrolling = false
+                        console.log("jumpToArtist: Scrolling after expansion - contentHeight:", artistsListView.contentHeight)
+                        scrollToArtistIndex(artistIndex, true)
+                        
+                        // Reset flags after animation completes
+                        Qt.callLater(function() {
+                            isJumping = false
+                            isProgrammaticScrolling = false
+                        })
                     })
                 })
             }
