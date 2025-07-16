@@ -556,6 +556,7 @@ QVariantList DatabaseManager::getTracksByAlbumAndArtist(const QString& albumTitl
             track["trackNumber"] = query.value("track_number");
             track["discNumber"] = query.value("disc_number");
             track["duration"] = query.value("duration");
+            track["fileSize"] = query.value("file_size");
             tracks.append(track);
         }
     } else {

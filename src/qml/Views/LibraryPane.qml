@@ -1838,25 +1838,10 @@ Item {
                                             Layout.preferredWidth: 80
                                         }
                                         Label {
-                                            id: fileSizeLabel
-                                            text: ""
+                                            text: root.selectedTrackForInfo ? formatFileSize(root.selectedTrackForInfo.fileSize || 0) : ""
                                             color: "white"
                                             font.pixelSize: 12
                                             Layout.fillWidth: true
-                                            
-                                            // Update file size when track changes
-                                            property var trackPath: root.selectedTrackForInfo ? root.selectedTrackForInfo.filePath : ""
-                                            onTrackPathChanged: {
-                                                if (trackPath) {
-                                                    updateFileSize()
-                                                }
-                                            }
-                                            
-                                            function updateFileSize() {
-                                                // We'll try to get file size using Qt's FileInfo
-                                                // This is a simplified approach since we can't directly access QFileInfo from QML
-                                                text = "N/A"  // Placeholder - would need backend support for actual file size
-                                            }
                                         }
                                     }
                                     
@@ -2021,6 +2006,18 @@ Item {
         var min = Math.floor(seconds / 60);
         var sec = Math.floor(seconds % 60);
         return min + ":" + (sec < 10 ? "0" : "") + sec;
+    }
+    
+    function formatFileSize(bytes) {
+        if (!bytes || bytes === 0) return "0 B";
+        var units = ['B', 'KB', 'MB', 'GB'];
+        var index = 0;
+        var size = bytes;
+        while (size >= 1024 && index < units.length - 1) {
+            size /= 1024;
+            index++;
+        }
+        return size.toFixed(index === 0 ? 0 : 1) + " " + units[index];
     }
     
     // Cache for album duration calculations
