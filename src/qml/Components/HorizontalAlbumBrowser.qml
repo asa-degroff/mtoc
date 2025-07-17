@@ -433,31 +433,31 @@ Item {
             
             // Only handle keyboard events when this component has active focus
             Keys.enabled: activeFocus
-            Keys.onLeftPressed: {
+            Keys.onLeftPressed: function(event) {
                 if (activeFocus) {
                     listView.decrementCurrentIndex()
                     event.accepted = true
                 }
             }
-            Keys.onRightPressed: {
+            Keys.onRightPressed: function(event) {
                 if (activeFocus) {
                     listView.incrementCurrentIndex()
                     event.accepted = true
                 }
             }
-            Keys.onSpacePressed: {
+            Keys.onSpacePressed: function(event) {
                 if (activeFocus && selectedAlbum) {
                     root.albumClicked(selectedAlbum)
                     event.accepted = true
                 }
             }
-            Keys.onReturnPressed: {
+            Keys.onReturnPressed: function(event) {
                 if (activeFocus && selectedAlbum) {
                     root.albumClicked(selectedAlbum)
                     event.accepted = true
                 }
             }
-            Keys.onEscapePressed: {
+            Keys.onEscapePressed: function(event) {
                 if (activeFocus) {
                     // Return focus to parent (library pane)
                     if (parent && parent.parent) {
@@ -466,7 +466,7 @@ Item {
                     event.accepted = true
                 }
             }
-            Keys.onUpPressed: {
+            Keys.onUpPressed: function(event) {
                 if (activeFocus) {
                     // Transfer focus back to library pane and let it handle the up key
                     if (parent && parent.parent) {
@@ -475,7 +475,7 @@ Item {
                     event.accepted = false  // Let the event propagate to library pane
                 }
             }
-            Keys.onDownPressed: {
+            Keys.onDownPressed: function(event) {
                 if (activeFocus) {
                     // Transfer focus back to library pane and let it handle the down key
                     if (parent && parent.parent) {

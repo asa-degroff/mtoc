@@ -277,6 +277,9 @@ Item {
 
     onSelectedAlbumChanged: {
         try {
+            // Sync navigation data when album changes
+            root.selectedAlbumData = selectedAlbum
+            
             // Clear track selection immediately when album changes
             if (trackListView) {
                 trackListView.currentIndex = -1;
@@ -544,6 +547,7 @@ Item {
                 
                 onAlbumClicked: function(album) {
                     root.selectedAlbum = album
+                    root.selectedAlbumData = album  // Keep navigation data in sync
                     
                     // Highlight the album's artist
                     root.highlightedArtist = album.albumArtist
@@ -1077,9 +1081,6 @@ Item {
                                                 sourceSize.width: 220  // Limit to 2x the display size for retina
                                                 sourceSize.height: 220
                                                 
-                                                // Disable layer effect for better performance
-                                                // Rounded corners handled by container clipping
-                                                
                                                 // Custom positioning based on aspect ratio
                                                 onStatusChanged: {
                                                     if (status === Image.Ready && sourceSize.width > 0 && sourceSize.height > 0) {
@@ -1393,12 +1394,6 @@ Item {
                             return false
                         }
                         
-                        // Track list model updates automatically
-                        
-                        // Layer effect removed to fix rendering artifact.
-                        // Parent container handles corner clipping.
-                        
-                        // Increase scroll speed to match artist list
                         flickDeceleration: 8000
                         maximumFlickVelocity: 2750
                         
