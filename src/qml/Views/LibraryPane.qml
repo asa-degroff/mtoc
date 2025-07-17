@@ -266,6 +266,18 @@ Item {
                 event.accepted = true
             }
         }
+        
+        // Ctrl+I to toggle track info panel (works in any navigation mode)
+        if (event.key === Qt.Key_I && event.modifiers & Qt.ControlModifier) {
+            // Only toggle if we have a track selected
+            if (navigationMode === "track" && selectedTrackIndex >= 0 && rightPane.currentAlbumTracks.length > selectedTrackIndex) {
+                root.showTrackInfoPanel = !root.showTrackInfoPanel
+                if (root.showTrackInfoPanel) {
+                    root.selectedTrackForInfo = rightPane.currentAlbumTracks[selectedTrackIndex]
+                }
+                event.accepted = true
+            }
+        }
         // Allow Tab/Shift+Tab to work normally for focus traversal
     }
     
