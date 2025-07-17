@@ -7,6 +7,9 @@ Item {
     property url source: ""
     property real blurRadius: 256
     property real backgroundOpacity: 0.3
+    property int currentImageIndex: 0
+    property url image1Source: ""
+    property url image2Source: ""
     
     // Base black rectangle as fallback
     Rectangle {
@@ -15,77 +18,179 @@ Item {
         z: 0
     }
     
+    // Handle source changes and trigger crossfade
+    onSourceChanged: {
+        if (source != "") {
+            // Update the non-visible layer with the new source
+            if (currentImageIndex === 0) {
+                // Layer 1 is visible, update layer 2
+                image2Source = source
+            } else {
+                // Layer 2 is visible, update layer 1
+                image1Source = source
+            }
+            // Toggle to the layer with the new image
+            currentImageIndex = 1 - currentImageIndex
+        }
+    }
+    
+    // Initialize first image
+    Component.onCompleted: {
+        if (source != "") {
+            image1Source = source
+            currentImageIndex = 0
+        }
+    }
+    
     // Only create the image and blur effect if we have a valid source
     Loader {
         id: imageLoader
         anchors.fill: parent
-        active: root.source != ""
+        active: root.source != "" || root.image1Source != "" || root.image2Source != ""
         z: 1
-        
-        // Active state changes when source URL is set
         
         sourceComponent: Item {
             anchors.fill: parent
             clip: true  // Clip the overflowing content
             
-            // Composition layer with black padding
+            // Image layer 1
             Item {
-                id: compositionLayer
-                // Make it larger than parent to push black border outside visible area
-                anchors.centerIn: parent
-                width: parent.width + 80  // Extend beyond parent bounds
-                height: parent.height + 80
-                visible: false
+                id: imageLayer1
+                anchors.fill: parent
                 
-                // Full black background
-                Rectangle {
-                    anchors.fill: parent
-                    color: "black"
+                // Composition layer with black padding
+                Item {
+                    id: compositionLayer1
+                    anchors.centerIn: parent
+                    width: parent.width + 80
+                    height: parent.height + 80
+                    visible: false
+                    
+                    Rectangle {
+                        anchors.fill: parent
+                        color: "black"
+                    }
+                    
+                    Image {
+                        id: sourceImage1
+                        anchors.fill: parent
+                        anchors.margins: 40
+                        fillMode: Image.PreserveAspectCrop
+                        cache: true
+                        asynchronous: true
+                        source: root.image1Source
+                        sourceSize.width: 48
+                        sourceSize.height: 48
+                        
+                        onStatusChanged: {
+                            if (status === Image.Error) {
+                                console.warn("BlurredBackground: Failed to load image:", source);
+                            }
+                        }
+                    }
                 }
                 
-                // Image inset from edges to create black border
-                Image {
-                    id: sourceImage
-                    anchors.fill: parent
-                    anchors.margins: 40  // This creates the black border width
-                    fillMode: Image.PreserveAspectCrop
-                    cache: true
-                    asynchronous: true
-                    source: root.source
-                    sourceSize.width: 48  // Tiny size looks good when blurred heavily
-                    sourceSize.height: 48
+                ShaderEffectSource {
+                    id: textureSource1
+                    anchors.centerIn: parent
+                    width: compositionLayer1.width
+                    height: compositionLayer1.height
+                    sourceItem: compositionLayer1
+                    visible: false
+                    live: true
+                    hideSource: true
+                }
+                
+                MultiEffect {
+                    id: effect1
+                    anchors.centerIn: parent
+                    width: textureSource1.width
+                    height: textureSource1.height
+                    source: textureSource1
+                    blurEnabled: true
+                    blur: Math.min(1.0, root.blurRadius / 256.0)
+                    blurMax: 64
+                    visible: sourceImage1.status === Image.Ready || sourceImage1.status === Image.Loading
+                    opacity: root.currentImageIndex === 0 ? root.backgroundOpacity : 0
+                    autoPaddingEnabled: false
                     
-                    onStatusChanged: {
-                        if (status === Image.Error) {
-                            console.warn("BlurredBackground: Failed to load image:", source);
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: 300
+                            easing.type: Easing.InOutQuad
                         }
                     }
                 }
             }
             
-            // Capture the composition into a texture
-            ShaderEffectSource {
-                id: textureSource
-                anchors.centerIn: parent
-                width: compositionLayer.width
-                height: compositionLayer.height
-                sourceItem: compositionLayer
-                visible: false
-                live: true
-                hideSource: true
-            }
-            
-            MultiEffect {
-                anchors.centerIn: parent
-                width: textureSource.width
-                height: textureSource.height
-                source: textureSource
-                blurEnabled: true
-                blur: Math.min(1.0, root.blurRadius / 256.0)  // MultiEffect uses 0.0 to 1.0 range
-                blurMax: 64  // Reduce for better performance
-                visible: sourceImage.status === Image.Ready
-                opacity: root.backgroundOpacity
-                autoPaddingEnabled: false
+            // Image layer 2
+            Item {
+                id: imageLayer2
+                anchors.fill: parent
+                
+                // Composition layer with black padding
+                Item {
+                    id: compositionLayer2
+                    anchors.centerIn: parent
+                    width: parent.width + 80
+                    height: parent.height + 80
+                    visible: false
+                    
+                    Rectangle {
+                        anchors.fill: parent
+                        color: "black"
+                    }
+                    
+                    Image {
+                        id: sourceImage2
+                        anchors.fill: parent
+                        anchors.margins: 40
+                        fillMode: Image.PreserveAspectCrop
+                        cache: true
+                        asynchronous: true
+                        source: root.image2Source
+                        sourceSize.width: 48
+                        sourceSize.height: 48
+                        
+                        onStatusChanged: {
+                            if (status === Image.Error) {
+                                console.warn("BlurredBackground: Failed to load image:", source);
+                            }
+                        }
+                    }
+                }
+                
+                ShaderEffectSource {
+                    id: textureSource2
+                    anchors.centerIn: parent
+                    width: compositionLayer2.width
+                    height: compositionLayer2.height
+                    sourceItem: compositionLayer2
+                    visible: false
+                    live: true
+                    hideSource: true
+                }
+                
+                MultiEffect {
+                    id: effect2
+                    anchors.centerIn: parent
+                    width: textureSource2.width
+                    height: textureSource2.height
+                    source: textureSource2
+                    blurEnabled: true
+                    blur: Math.min(1.0, root.blurRadius / 256.0)
+                    blurMax: 64
+                    visible: sourceImage2.status === Image.Ready || sourceImage2.status === Image.Loading
+                    opacity: root.currentImageIndex === 1 ? root.backgroundOpacity : 0
+                    autoPaddingEnabled: false
+                    
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: 300
+                            easing.type: Easing.InOutQuad
+                        }
+                    }
+                }
             }
         }
     }
