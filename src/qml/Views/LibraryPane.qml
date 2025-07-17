@@ -38,6 +38,8 @@ Item {
     property string highlightedArtist: ""  // Track which artist to highlight
     property bool isJumping: false  // Flag to prevent concurrent jump operations
     property bool isProgrammaticScrolling: false  // Flag to disable animations during programmatic scrolling
+    property real previousContentHeight: 0  // Track contentHeight for layout stabilization
+    property int stableFrameCount: 0  // Count consecutive frames with stable height
     property url thumbnailUrl: ""
     property url pendingThumbnailUrl: ""  // Buffer for thumbnail URL changes
     property var artistNameToIndex: ({})  // Cache for artist name to index mapping
@@ -117,6 +119,55 @@ Item {
         repeat: true
         onTriggered: {
             cleanupUnusedMemory()
+        }
+    }
+    
+    // Layout stabilization timer for dynamic scrolling
+    Timer {
+        id: layoutStabilizationTimer
+        interval: 16  // ~60fps frame monitoring
+        repeat: true
+        running: false
+        
+        property int targetIndex: -1
+        property int timeoutCount: 0
+        property int maxTimeoutCount: 20  // 320ms maximum wait (20 * 16ms)
+        
+        onTriggered: {
+            // Check for timeout
+            timeoutCount++
+            if (timeoutCount >= maxTimeoutCount) {
+                console.log("Layout stabilization timeout reached, proceeding with scroll")
+                stop()
+                root.stableFrameCount = 0
+                scrollToArtistIndex(targetIndex, true)
+                return
+            }
+            
+            // Monitor contentHeight changes
+            var currentHeight = artistsListView.contentHeight
+            if (Math.abs(currentHeight - root.previousContentHeight) < 0.1) {
+                root.stableFrameCount++
+                if (root.stableFrameCount >= 2) { // Stable for 2 consecutive frames
+                    console.log("Layout stabilized after", timeoutCount * 16, "ms")
+                    stop()
+                    root.stableFrameCount = 0
+                    scrollToArtistIndex(targetIndex, true)
+                }
+            } else {
+                // Height changed, reset stability counter
+                root.stableFrameCount = 0
+                root.previousContentHeight = currentHeight
+            }
+        }
+        
+        onRunningChanged: {
+            if (running) {
+                // Reset counters when starting
+                timeoutCount = 0
+                root.stableFrameCount = 0
+                root.previousContentHeight = artistsListView.contentHeight
+            }
         }
     }
     
@@ -2405,62 +2456,48 @@ Item {
             // Store the target index for position verification
             var targetIndex = index
             
-            // Wait longer to ensure all animations have completed
-            // This accounts for the 200ms height animations
-            var stabilizationDelay = isProgrammaticScrolling ? 250 : 50
+            // Force layout update to ensure everything is current
+            artistsListView.forceLayout()
             
-            var scrollTimer = Qt.createQmlObject('import QtQuick 2.15; Timer {}', root)
-            scrollTimer.interval = stabilizationDelay
-            scrollTimer.repeat = false
-            scrollTimer.triggered.connect(function() {
-                // Force layout update again to ensure everything is stable
-                artistsListView.forceLayout()
-                
-                // Store current position
-                var currentPos = artistsListView.contentY
-                
-                // Use positionViewAtIndex to position the artist at the top
-                artistsListView.positionViewAtIndex(targetIndex, ListView.Beginning)
-                var destPos = artistsListView.contentY
-                
-                console.log("scrollToArtistIndex: Current:", currentPos, "Destination:", destPos)
+            // Store current position
+            var currentPos = artistsListView.contentY
+            
+            // Use positionViewAtIndex to position the artist at the top
+            artistsListView.positionViewAtIndex(targetIndex, ListView.Beginning)
+            var destPos = artistsListView.contentY
+            
+            console.log("scrollToArtistIndex: Current:", currentPos, "Destination:", destPos)
 
-                // Only animate if we need to move
-                if (Math.abs(destPos - currentPos) > 1) {
-                    // Restore the current position before animating
-                    artistsListView.contentY = currentPos
-                    
-                    // Configure and start animation
-                    scrollAnimation.from = currentPos
-                    scrollAnimation.to = destPos
-                    scrollAnimation.running = true
-                    
-                    // Verify position after animation completes
-                    scrollAnimation.onRunningChanged.connect(function() {
-                        if (!scrollAnimation.running) {
-                            // Disconnect this handler
-                            scrollAnimation.onRunningChanged.disconnect(arguments.callee)
-                            
-                            // Verify we're at the correct position after a short delay
-                            Qt.callLater(function() {
-                                artistsListView.positionViewAtIndex(targetIndex, ListView.Beginning)
-                                var finalPos = artistsListView.contentY
-                                
-                                // If position has drifted, correct it
-                                if (Math.abs(artistsListView.contentY - finalPos) > 5) {
-                                    console.log("scrollToArtistIndex: Position drift detected, correcting from", artistsListView.contentY, "to", finalPos)
-                                    artistsListView.contentY = finalPos
-                                }
-                            })
-                        }
-                    })
-                }
+            // Only animate if we need to move
+            if (Math.abs(destPos - currentPos) > 1) {
+                // Restore the current position before animating
+                artistsListView.contentY = currentPos
                 
-                // Clean up timer
-                scrollTimer.destroy()
-            })
-            
-            scrollTimer.start()
+                // Configure and start animation
+                scrollAnimation.from = currentPos
+                scrollAnimation.to = destPos
+                scrollAnimation.running = true
+                
+                // Verify position after animation completes
+                scrollAnimation.onRunningChanged.connect(function() {
+                    if (!scrollAnimation.running) {
+                        // Disconnect this handler
+                        scrollAnimation.onRunningChanged.disconnect(arguments.callee)
+                        
+                        // Verify we're at the correct position after a short delay
+                        Qt.callLater(function() {
+                            artistsListView.positionViewAtIndex(targetIndex, ListView.Beginning)
+                            var finalPos = artistsListView.contentY
+                            
+                            // If position has drifted, correct it
+                            if (Math.abs(artistsListView.contentY - finalPos) > 5) {
+                                console.log("scrollToArtistIndex: Position drift detected, correcting from", artistsListView.contentY, "to", finalPos)
+                                artistsListView.contentY = finalPos
+                            }
+                        })
+                    }
+                })
+            }
         } else {
             // Immediate positioning for keyboard navigation
             artistsListView.positionViewAtIndex(index, ListView.Contain)
@@ -2927,23 +2964,22 @@ Item {
                 // Force immediate layout update
                 artistsListView.forceLayout()
                 
-                // Wait a frame for the expansion to take effect
-                Qt.callLater(function() {
-                    // Force another layout update to ensure heights are correct
-                    artistsListView.forceLayout()
-                    
-                    // Now scroll to the artist
-                    Qt.callLater(function() {
-                        console.log("jumpToArtist: Scrolling after expansion - contentHeight:", artistsListView.contentHeight)
-                        scrollToArtistIndex(artistIndex, true)
-                        
-                        // Reset flags after animation completes
+                // Use dynamic layout stabilization instead of fixed delays
+                layoutStabilizationTimer.targetIndex = artistIndex
+                layoutStabilizationTimer.start()
+                
+                // Connect to stop signal to reset flags
+                function onTimerStopped() {
+                    if (!layoutStabilizationTimer.running) {
+                        layoutStabilizationTimer.runningChanged.disconnect(onTimerStopped)
+                        // Reset flags after scroll completes
                         Qt.callLater(function() {
                             isJumping = false
                             isProgrammaticScrolling = false
                         })
-                    })
-                })
+                    }
+                }
+                layoutStabilizationTimer.runningChanged.connect(onTimerStopped)
             }
         } catch (error) {
             console.warn("Error in jumpToArtist:", error)
