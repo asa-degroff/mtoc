@@ -280,6 +280,8 @@ Item {
         updateArtistIndexMapping()
         // Initialize track info panel as hidden
         trackInfoPanelY = 184  // Start off-screen
+        // Auto-select currently playing track if album is already loaded
+        Qt.callLater(autoSelectCurrentTrack)
     }
     
     Component.onDestruction: {
@@ -307,6 +309,14 @@ Item {
             searchResultsCache = {}
             albumDurationCache = {}
             artistAlbumCache = {}
+        }
+    }
+    
+    // Auto-select currently playing track
+    Connections {
+        target: MediaPlayer
+        function onCurrentTrackChanged() {
+            autoSelectCurrentTrack()
         }
     }
     
@@ -359,6 +369,9 @@ Item {
                     rightPane.currentAlbumTracks = tracks || [];
                     rightPane.albumTitleText = selectedAlbum.albumArtist + " - " + selectedAlbum.title;
                 }
+                
+                // Auto-select currently playing track if it's in this album
+                Qt.callLater(autoSelectCurrentTrack)
                 
                 // Update the thumbnail URL for the background when an album is selected
                 if (selectedAlbum.hasArt === true) {
@@ -2501,6 +2514,35 @@ Item {
         } else {
             // Immediate positioning for keyboard navigation
             artistsListView.positionViewAtIndex(index, ListView.Contain)
+        }
+    }
+    
+    // Function to auto-select the currently playing track
+    function autoSelectCurrentTrack() {
+        if (!MediaPlayer.currentTrack || !rightPane || !rightPane.currentAlbumTracks) return
+        
+        var currentTrack = MediaPlayer.currentTrack
+        var tracks = rightPane.currentAlbumTracks
+        
+        // Find the index of the currently playing track in the track list
+        for (var i = 0; i < tracks.length; i++) {
+            if (tracks[i] && tracks[i].filePath === currentTrack.filePath) {
+                console.log("Auto-selecting track at index:", i)
+                
+                // Update selection
+                selectedTrackIndex = i
+                if (trackListView) {
+                    trackListView.currentIndex = i
+                    ensureTrackVisible(i)
+                }
+                
+                // Update track info panel if visible
+                if (root.showTrackInfoPanel) {
+                    root.selectedTrackForInfo = tracks[i]
+                }
+                
+                break
+            }
         }
     }
     
