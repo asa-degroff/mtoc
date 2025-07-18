@@ -202,10 +202,10 @@ Item {
                             
                             // Clear queue button
                             Rectangle {
-                                Layout.preferredWidth: 32
-                                Layout.preferredHeight: 32
+                                Layout.preferredWidth: 30
+                                Layout.preferredHeight: 30
                                 radius: 4
-                                color: clearQueueMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(1, 1, 1, 0.12)
+                                color: clearQueueMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(1, 1, 1, 0.05)
                                 border.width: 1
                                 border.color: Qt.rgba(1, 1, 1, 0.3)
                                 visible: MediaPlayer.queueLength > 0
@@ -216,12 +216,12 @@ Item {
                                 
                                 Image {
                                     anchors.centerIn: parent
-                                    width: 16
-                                    height: 16
+                                    width: 18
+                                    height: 18
                                     source: "qrc:/resources/icons/bomb.svg"
                                     sourceSize.width: 40
                                     sourceSize.height: 40
-                                    opacity: clearQueueMouseArea.containsMouse ? 0.6 : 0.3
+                                    opacity: clearQueueMouseArea.containsMouse ? 0.7 : 1.0
                                     
                                     Behavior on opacity {
                                         NumberAnimation { duration: 150 }

@@ -89,11 +89,11 @@ Item {
             
             // Repeat/Shuffle pill container
             Rectangle {
-                Layout.preferredWidth: 90
-                Layout.preferredHeight: 37.5
+                Layout.preferredWidth: 75
+                Layout.preferredHeight: 31
                 Layout.alignment: Qt.AlignVCenter
                 radius: 25
-                color: Qt.rgba(1, 1, 1, 0.1)
+                color: Qt.rgba(1, 1, 1, 0.05)
                 border.color: Qt.rgba(1, 1, 1, 0.2)
                 border.width: 1
                 
@@ -120,8 +120,8 @@ Item {
                         
                         IconButton {
                             anchors.centerIn: parent
-                            width: 24
-                            height: 24
+                            width: 18
+                            height: 18
                             iconSource: "qrc:/resources/icons/repeat.svg"
                             opacity: root.repeatEnabled ? 1.0 : 0.6
                             onClicked: root.repeatToggled()
@@ -159,8 +159,8 @@ Item {
                         
                         IconButton {
                             anchors.centerIn: parent
-                            width: 24
-                            height: 24
+                            width: 20
+                            height: 20
                             iconSource: "qrc:/resources/icons/shuffle.svg"
                             opacity: root.shuffleEnabled ? 1.0 : 0.6
                             onClicked: root.shuffleToggled()
@@ -212,8 +212,8 @@ Item {
             
             // Queue button container (matching repeat/shuffle width)
             Item {
-                Layout.preferredWidth: 90
-                Layout.preferredHeight: 37.5
+                Layout.preferredWidth: 75
+                Layout.preferredHeight: 31
                 Layout.alignment: Qt.AlignVCenter
                 
                 // Queue button

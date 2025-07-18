@@ -19,6 +19,24 @@ Item {
     
     signal albumClicked(var album)
     
+    // Queue action dialog
+    QueueActionDialog {
+        id: queueActionDialog
+        parent: Overlay.overlay
+        
+        onReplaceQueue: {
+            MediaPlayer.playAlbumByName(albumArtist, albumTitle, startIndex)
+        }
+        
+        onPlayNext: {
+            MediaPlayer.playAlbumNext(albumArtist, albumTitle)
+        }
+        
+        onPlayLast: {
+            MediaPlayer.playAlbumLast(albumArtist, albumTitle)
+        }
+    }
+    
     Component.onCompleted: {
         updateSortedIndices()
         // Restore carousel position after indices are sorted
@@ -697,9 +715,22 @@ Item {
                                 listView.currentIndex = index
                                 root.albumClicked(albumData)
                             }
-                            onDoubleClicked: {
+                            onDoubleClicked: function(mouse) {
                                 // Play the album on double-click
-                                MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, 0)
+                                if (MediaPlayer.isQueueModified) {
+                                    queueActionDialog.albumArtist = albumData.albumArtist
+                                    queueActionDialog.albumTitle = albumData.title
+                                    queueActionDialog.startIndex = 0
+                                    
+                                    // Position dialog at album center
+                                    var globalPos = parent.mapToGlobal(parent.width / 2, parent.height / 2)
+                                    queueActionDialog.x = globalPos.x - queueActionDialog.width / 2
+                                    queueActionDialog.y = globalPos.y - queueActionDialog.height / 2
+                                    
+                                    queueActionDialog.open()
+                                } else {
+                                    MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, 0)
+                                }
                             }
                         }
                     }

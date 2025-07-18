@@ -58,6 +58,24 @@ Item {
     property var searchResultsCache: ({})  // Cache for search results
     property int cacheExpiryTime: 60000  // Cache expires after 1 minute
     
+    // Queue action dialog
+    QueueActionDialog {
+        id: queueActionDialog
+        parent: Overlay.overlay
+        
+        onReplaceQueue: {
+            MediaPlayer.playAlbumByName(albumArtist, albumTitle, startIndex)
+        }
+        
+        onPlayNext: {
+            MediaPlayer.playAlbumNext(albumArtist, albumTitle)
+        }
+        
+        onPlayLast: {
+            MediaPlayer.playAlbumLast(albumArtist, albumTitle)
+        }
+    }
+    
     // Track info panel state
     property bool showTrackInfoPanel: false
     property var selectedTrackForInfo: null
@@ -1266,6 +1284,7 @@ Item {
                                         }
                                     }
                                     MouseArea { 
+                                        id: artistAlbumMouseArea
                                         anchors.fill: parent
                                         acceptedButtons: Qt.LeftButton | Qt.RightButton
                                         onClicked: function(mouse) {
@@ -1276,9 +1295,10 @@ Item {
                                                 albumContextMenu.popup();
                                             }
                                         }
-                                        onDoubleClicked: {
+                                        onDoubleClicked: function(mouse) {
                                             // Play the album on double-click
-                                            MediaPlayer.playAlbumByName(modelData.albumArtist, modelData.title, 0);
+                                            var globalPos = parent.mapToGlobal(mouse.x, mouse.y);
+                                            root.playAlbumWithQueueCheck(modelData.albumArtist, modelData.title, 0, globalPos.x, globalPos.y);
                                         }
                                     }
                                     
@@ -1288,7 +1308,8 @@ Item {
                                         MenuItem {
                                             text: "Play"
                                             onTriggered: {
-                                                MediaPlayer.playAlbumByName(modelData.albumArtist, modelData.title, 0);
+                                                var globalPos = artistAlbumMouseArea.parent.mapToGlobal(artistAlbumMouseArea.width / 2, artistAlbumMouseArea.height / 2);
+                                                root.playAlbumWithQueueCheck(modelData.albumArtist, modelData.title, 0, globalPos.x, globalPos.y);
                                             }
                                         }
                                         
@@ -1637,10 +1658,12 @@ Item {
                                             trackContextMenu.popup();
                                         }
                                     }
-                                    onDoubleClicked: {
+                                    onDoubleClicked: function(mouse) {
                                         // If we have a selected album, play the album starting from this track
                                         if (root.selectedAlbum) {
-                                            MediaPlayer.playAlbumByName(root.selectedAlbum.albumArtist, root.selectedAlbum.title, index);
+                                            var globalPos = trackDelegate.mapToGlobal(mouse.x, mouse.y);
+                                            root.playAlbumWithQueueCheck(root.selectedAlbum.albumArtist, root.selectedAlbum.title, index, 
+                                                                        globalPos.x, globalPos.y);
                                         } else {
                                             // Otherwise create a single-track playlist
                                             // We'll need to add a method to play a single track from variant data
@@ -3001,7 +3024,14 @@ Item {
         } else if (navigationMode === "track") {
             // Play the selected track
             if (selectedAlbumData && selectedTrackIndex >= 0) {
-                MediaPlayer.playAlbumByName(selectedAlbumData.albumArtist, selectedAlbumData.title, selectedTrackIndex)
+                // For keyboard navigation, position dialog at the selected track
+                var trackItem = trackListView.itemAtIndex(selectedTrackIndex);
+                if (trackItem) {
+                    var globalPos = trackItem.mapToGlobal(trackItem.width / 2, trackItem.height / 2);
+                    root.playAlbumWithQueueCheck(selectedAlbumData.albumArtist, selectedAlbumData.title, selectedTrackIndex, globalPos.x, globalPos.y);
+                } else {
+                    root.playAlbumWithQueueCheck(selectedAlbumData.albumArtist, selectedAlbumData.title, selectedTrackIndex);
+                }
             }
         }
     }
@@ -3134,5 +3164,24 @@ Item {
     // Public function to focus the search bar
     function focusSearchBar() {
         searchBar.forceActiveFocus()
+    }
+    
+    // Helper function to handle album play with queue check
+    function playAlbumWithQueueCheck(artist, title, startIndex, mouseX, mouseY) {
+        if (MediaPlayer.isQueueModified) {
+            queueActionDialog.albumArtist = artist
+            queueActionDialog.albumTitle = title
+            queueActionDialog.startIndex = startIndex || 0
+            
+            // Position dialog at cursor location
+            if (mouseX !== undefined && mouseY !== undefined) {
+                queueActionDialog.x = mouseX - queueActionDialog.width / 2
+                queueActionDialog.y = mouseY - queueActionDialog.height / 2
+            }
+            
+            queueActionDialog.open()
+        } else {
+            MediaPlayer.playAlbumByName(artist, title, startIndex || 0)
+        }
     }
 }

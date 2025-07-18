@@ -356,6 +356,9 @@ void MediaPlayer::removeTrackAt(int index)
     
     qDebug() << "MediaPlayer::removeTrackAt called with index:" << index;
     
+    // Mark queue as modified when removing tracks
+    setQueueModified(true);
+    
     // Get the track to remove
     Mtoc::Track* trackToRemove = m_playbackQueue[index];
     
@@ -438,6 +441,7 @@ void MediaPlayer::clearQueue()
     }
     m_playbackQueue.clear();
     m_currentQueueIndex = -1;
+    setQueueModified(false);
     emit playbackQueueChanged();
 }
 
@@ -574,6 +578,9 @@ void MediaPlayer::playTrackNext(const QVariant& trackData)
     int insertIndex = (m_currentQueueIndex >= 0) ? m_currentQueueIndex + 1 : 0;
     m_playbackQueue.insert(insertIndex, track);
     
+    // Mark queue as modified when adding individual tracks
+    setQueueModified(true);
+    
     emit playbackQueueChanged();
     
     // If nothing is playing, start playback
@@ -608,6 +615,9 @@ void MediaPlayer::playTrackLast(const QVariant& trackData)
     
     // Append to end of queue
     m_playbackQueue.append(track);
+    
+    // Mark queue as modified when adding individual tracks
+    setQueueModified(true);
     
     emit playbackQueueChanged();
     
@@ -661,6 +671,9 @@ void MediaPlayer::playAlbumNext(const QString& artist, const QString& title)
         m_playbackQueue.insert(insertIndex++, track);
     }
     
+    // Mark queue as modified when adding albums to existing queue
+    setQueueModified(true);
+    
     emit playbackQueueChanged();
     
     // If nothing is playing, start playback
@@ -709,6 +722,9 @@ void MediaPlayer::playAlbumLast(const QString& artist, const QString& title)
         
         m_playbackQueue.append(track);
     }
+    
+    // Mark queue as modified when adding albums to existing queue
+    setQueueModified(true);
     
     emit playbackQueueChanged();
     
@@ -1126,4 +1142,12 @@ void MediaPlayer::onTrackLoadTimeout()
 {
     qWarning() << "MediaPlayer: Track load timeout during restoration";
     clearRestorationState();
+}
+
+void MediaPlayer::setQueueModified(bool modified)
+{
+    if (m_isQueueModified != modified) {
+        m_isQueueModified = modified;
+        emit queueModifiedChanged(modified);
+    }
 }

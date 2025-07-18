@@ -32,6 +32,7 @@ class MediaPlayer : public QObject
     Q_PROPERTY(int queueLength READ queueLength NOTIFY playbackQueueChanged)
     Q_PROPERTY(int currentQueueIndex READ currentQueueIndex NOTIFY playbackQueueChanged)
     Q_PROPERTY(int totalQueueDuration READ totalQueueDuration NOTIFY playbackQueueChanged)
+    Q_PROPERTY(bool isQueueModified READ isQueueModified NOTIFY queueModifiedChanged)
 
 public:
     enum State {
@@ -61,6 +62,7 @@ public:
     int queueLength() const { return m_playbackQueue.size(); }
     int currentQueueIndex() const { return m_currentQueueIndex; }
     int totalQueueDuration() const;
+    bool isQueueModified() const { return m_isQueueModified; }
 
 public slots:
     void play();
@@ -100,6 +102,7 @@ signals:
     void restoringStateChanged(bool restoring);
     void savedPositionChanged(qint64 position);
     void readyChanged(bool ready);
+    void queueModifiedChanged(bool modified);
 
 private slots:
     void periodicStateSave();
@@ -120,6 +123,7 @@ private:
     void clearSavedPosition();
     void checkPositionSync();
     void setReady(bool ready);
+    void setQueueModified(bool modified);
     
     std::unique_ptr<AudioEngine> m_audioEngine;
     Mtoc::Track* m_currentTrack = nullptr;
@@ -135,6 +139,7 @@ private:
     qint64 m_targetRestorePosition = 0;
     bool m_isReady = false;
     QMetaObject::Connection m_restoreConnection;
+    bool m_isQueueModified = false;
 };
 
 #endif // MEDIAPLAYER_H

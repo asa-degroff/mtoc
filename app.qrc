@@ -5,6 +5,7 @@
         <file>src/qml/Components/HorizontalAlbumBrowser.qml</file>
         <file>src/qml/Components/PlaybackControls.qml</file>
         <file>src/qml/Components/QueueListView.qml</file>
+        <file>src/qml/Components/QueueActionDialog.qml</file>
         <file>src/qml/Components/ResizeHandler.qml</file>
         <file>src/qml/Components/SearchBar.qml</file>
         <file>src/qml/Components/ThumbnailGridDelegate.qml</file>
