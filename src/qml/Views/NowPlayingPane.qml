@@ -205,7 +205,9 @@ Item {
                                 Layout.preferredWidth: 32
                                 Layout.preferredHeight: 32
                                 radius: 4
-                                color: clearQueueMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(1, 1, 1, 0.08)
+                                color: clearQueueMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(1, 1, 1, 0.12)
+                                border.width: 1
+                                border.color: Qt.rgba(1, 1, 1, 0.3)
                                 visible: MediaPlayer.queueLength > 0
                                 
                                 Behavior on color {
