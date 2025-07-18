@@ -158,46 +158,83 @@ ListView {
                 Layout.fillWidth: true
             }
             
-            // Now playing indicator
-            Image {
-                source: "qrc:/resources/icons/speaker.svg"
+            // Now playing indicator (fixed width to prevent shifting)
+            Item {
                 Layout.preferredWidth: 16
                 Layout.preferredHeight: 16
-                sourceSize.width: 32
-                sourceSize.height: 32
-                visible: index === root.currentPlayingIndex && MediaPlayer.state === MediaPlayer.PlayingState
-                opacity: 0.9
+                
+                Image {
+                    anchors.fill: parent
+                    source: "qrc:/resources/icons/speaker.svg"
+                    sourceSize.width: 32
+                    sourceSize.height: 32
+                    visible: index === root.currentPlayingIndex && MediaPlayer.state === MediaPlayer.PlayingState
+                    opacity: 0.9
+                }
             }
             
-            // Duration
+            // Duration (fixed width)
             Label {
                 text: modelData.duration ? formatDuration(modelData.duration) : "0:00"
                 color: "#aaaaaa"
                 font.pixelSize: 12
-                Layout.preferredWidth: 40
+                Layout.preferredWidth: 45
+                horizontalAlignment: Text.AlignRight
             }
             
-            // Remove button
+            // Remove button (fixed width, always present but only visible on hover)
             Item {
-                Layout.preferredWidth: 20
-                Layout.preferredHeight: 20
-                visible: queueItemMouseArea.containsMouse
+                Layout.preferredWidth: 24
+                Layout.preferredHeight: 24
                 
                 Rectangle {
+                    id: removeButtonBackground
                     anchors.fill: parent
-                    radius: 10
-                    color: Qt.rgba(1, 1, 1, 0.1)
+                    radius: 4
+                    color: removeButtonMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(1, 1, 1, 0.08)
+                    visible: queueItemMouseArea.containsMouse || removeButtonMouseArea.containsMouse
                     
-                    Label {
+                    Behavior on color {
+                        ColorAnimation { duration: 150 }
+                    }
+                    
+                    Image {
+                        id: removeButton
                         anchors.centerIn: parent
-                        text: "×"
-                        color: "white"
-                        font.pixelSize: 16
-                        font.bold: true
+                        width: 16
+                        height: 16
+                        source: "qrc:/resources/icons/trash-can-closed-lid.svg"
+                        sourceSize.width: 32
+                        sourceSize.height: 32
+                        
+                        states: [
+                            State {
+                                name: "hovered"
+                                when: removeButtonMouseArea.containsMouse
+                                PropertyChanges {
+                                    target: removeButton
+                                    source: "qrc:/resources/icons/trash-can-open-lid.svg"
+                                    opacity: 1.0
+                                }
+                            },
+                            State {
+                                name: ""
+                                PropertyChanges {
+                                    target: removeButton
+                                    opacity: 0.7
+                                }
+                            }
+                        ]
+                        
+                        transitions: Transition {
+                            NumberAnimation { properties: "opacity"; duration: 150 }
+                        }
                     }
                     
                     MouseArea {
+                        id: removeButtonMouseArea
                         anchors.fill: parent
+                        hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: root.removeTrackRequested(index)
                     }
