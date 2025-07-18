@@ -96,7 +96,7 @@ ListView {
     delegate: Rectangle {
         id: queueItemDelegate
         width: root.width
-        height: 45
+        height: isRemoving ? 0 : 45
         color: {
             if (index === root.currentPlayingIndex) {
                 return Qt.rgba(0.25, 0.32, 0.71, 0.25)  // Currently playing
@@ -109,6 +109,29 @@ ListView {
         radius: 4
         border.width: 1
         border.color: Qt.rgba(1, 1, 1, 0.04)
+        clip: true
+        
+        // Animation properties
+        property bool isRemoving: false
+        property real slideX: 0
+        
+        transform: Translate {
+            x: slideX
+        }
+        
+        Behavior on height {
+            NumberAnimation { 
+                duration: 200
+                easing.type: Easing.InOutQuad
+            }
+        }
+        
+        Behavior on slideX {
+            NumberAnimation { 
+                duration: 300
+                easing.type: Easing.InOutQuad
+            }
+        }
         
         // Drag and drop properties
         property int dragIndex: index
@@ -236,7 +259,14 @@ ListView {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: root.removeTrackRequested(index)
+                        onClicked: {
+                            // Start removal animation
+                            queueItemDelegate.isRemoving = true
+                            queueItemDelegate.slideX = root.width
+                            
+                            // Delay actual removal until animation completes
+                            removalTimer.start()
+                        }
                     }
                 }
             }
@@ -254,6 +284,16 @@ ListView {
         
         Behavior on color {
             ColorAnimation { duration: 150 }
+        }
+        
+        // Timer to delay removal until after animation
+        Timer {
+            id: removalTimer
+            interval: 350  // Slightly longer than slide animation
+            repeat: false
+            onTriggered: {
+                root.removeTrackRequested(index)
+            }
         }
     }
     
