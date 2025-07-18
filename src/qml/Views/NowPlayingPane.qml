@@ -199,6 +199,49 @@ Item {
                                 font.pixelSize: 12
                                 color: "#808080"
                             }
+                            
+                            // Clear queue button
+                            Rectangle {
+                                Layout.preferredWidth: 32
+                                Layout.preferredHeight: 32
+                                radius: 4
+                                color: clearQueueMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(1, 1, 1, 0.08)
+                                visible: MediaPlayer.queueLength > 0
+                                
+                                Behavior on color {
+                                    ColorAnimation { duration: 150 }
+                                }
+                                
+                                Image {
+                                    anchors.centerIn: parent
+                                    width: 20
+                                    height: 20
+                                    source: "qrc:/resources/icons/bomb.svg"
+                                    sourceSize.width: 40
+                                    sourceSize.height: 40
+                                    opacity: clearQueueMouseArea.containsMouse ? 1.0 : 0.7
+                                    
+                                    Behavior on opacity {
+                                        NumberAnimation { duration: 150 }
+                                    }
+                                }
+                                
+                                MouseArea {
+                                    id: clearQueueMouseArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        queueListView.clearAllTracks();
+                                    }
+                                }
+                                
+                                ToolTip {
+                                    visible: clearQueueMouseArea.containsMouse
+                                    text: "Clear queue"
+                                    delay: 500
+                                }
+                            }
                         }
                         
                         // Queue list

@@ -38,5 +38,6 @@
         <file>resources/icons/list-drag-handle.svg</file>
         <file>resources/icons/trash-can-closed-lid.svg</file>
         <file>resources/icons/trash-can-open-lid.svg</file>
+        <file>resources/icons/bomb.svg</file>
     </qresource>
 </RCC>

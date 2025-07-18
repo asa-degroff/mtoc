@@ -13,6 +13,48 @@ ListView {
     signal trackDoubleClicked(int index)
     signal removeTrackRequested(int index)
     
+    function clearAllTracks() {
+        // Calculate animation duration based on track count
+        // Cap total animation time at 2 seconds
+        var trackCount = count;
+        if (trackCount === 0) return;
+        
+        var animationDuration = Math.min(300, 2000 / trackCount);
+        var staggerDelay = Math.min(50, 500 / trackCount);
+        
+        // Trigger removal animation for all items with cascading effect
+        for (var i = 0; i < trackCount; i++) {
+            var item = itemAtIndex(i);
+            if (item) {
+                (function(delegate, index) {
+                    var timer = Qt.createQmlObject('import QtQuick; Timer {}', root);
+                    timer.interval = index * staggerDelay;
+                    timer.repeat = false;
+                    timer.triggered.connect(function() {
+                        if (delegate && !delegate.isRemoving) {
+                            delegate.isRemoving = true;
+                            delegate.slideX = root.width;
+                        }
+                        timer.destroy();
+                    });
+                    timer.start();
+                })(item, i);
+            }
+        }
+        
+        // Clear the queue after all animations complete
+        clearQueueTimer.interval = (trackCount * staggerDelay) + animationDuration + 100;
+        clearQueueTimer.start();
+    }
+    
+    Timer {
+        id: clearQueueTimer
+        repeat: false
+        onTriggered: {
+            MediaPlayer.clearQueue();
+        }
+    }
+    
     function formatDuration(milliseconds) {
         if (isNaN(milliseconds) || milliseconds < 0) {
             return "0:00"
