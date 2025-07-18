@@ -22,7 +22,6 @@ Item {
     // Queue action dialog
     QueueActionDialog {
         id: queueActionDialog
-        parent: Overlay.overlay
         
         onReplaceQueue: {
             MediaPlayer.playAlbumByName(albumArtist, albumTitle, startIndex)

@@ -14,14 +14,19 @@ Popup {
     signal playLast()
     
     width: 280
-    height: 200
+    height: 240
     modal: true
     focus: true
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     
-    // Semi-transparent background overlay
+    // Semi-transparent background overlay with click handler
     Overlay.modal: Rectangle {
         color: "#80000000"
+        
+        MouseArea {
+            anchors.fill: parent
+            onClicked: root.close()
+        }
     }
     
     background: Rectangle {
@@ -127,6 +132,35 @@ Popup {
                 
                 onClicked: {
                     root.playLast()
+                    root.close()
+                }
+            }
+            
+            Item {
+                Layout.preferredHeight: 4
+            }
+            
+            Button {
+                Layout.fillWidth: true
+                text: "Cancel"
+                font.pixelSize: 14
+                
+                background: Rectangle {
+                    color: parent.hovered ? "#3a3a3a" : "#2a2a2a"
+                    radius: 4
+                    border.width: 1
+                    border.color: "#505050"
+                }
+                
+                contentItem: Text {
+                    text: parent.text
+                    font: parent.font
+                    color: "#cccccc"
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                
+                onClicked: {
                     root.close()
                 }
             }

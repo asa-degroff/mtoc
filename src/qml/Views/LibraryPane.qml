@@ -3,6 +3,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import Qt.labs.platform 1.1 as Platform
 import QtQuick.Effects
+import QtQuick.Window 2.15
 import Mtoc.Backend 1.0
 import "../Components"
 import "."
@@ -61,7 +62,6 @@ Item {
     // Queue action dialog
     QueueActionDialog {
         id: queueActionDialog
-        parent: Overlay.overlay
         
         onReplaceQueue: {
             MediaPlayer.playAlbumByName(albumArtist, albumTitle, startIndex)
@@ -3173,10 +3173,21 @@ Item {
             queueActionDialog.albumTitle = title
             queueActionDialog.startIndex = startIndex || 0
             
-            // Position dialog at cursor location
+            // Position dialog at cursor location with bounds checking
             if (mouseX !== undefined && mouseY !== undefined) {
-                queueActionDialog.x = mouseX - queueActionDialog.width / 2
-                queueActionDialog.y = mouseY - queueActionDialog.height / 2
+                var dialogX = mouseX - queueActionDialog.width / 2
+                var dialogY = mouseY - queueActionDialog.height / 2
+                
+                // Get window dimensions
+                var windowWidth = root.Window.window ? root.Window.window.width : root.width
+                var windowHeight = root.Window.window ? root.Window.window.height : root.height
+                
+                // Keep dialog within window bounds with 10px margin
+                dialogX = Math.max(10, Math.min(dialogX, windowWidth - queueActionDialog.width - 10))
+                dialogY = Math.max(10, Math.min(dialogY, windowHeight - queueActionDialog.height - 10))
+                
+                queueActionDialog.x = dialogX
+                queueActionDialog.y = dialogY
             }
             
             queueActionDialog.open()
