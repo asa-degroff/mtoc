@@ -51,6 +51,7 @@ ListView {
         id: clearQueueTimer
         repeat: false
         onTriggered: {
+            MediaPlayer.stop();
             MediaPlayer.clearQueue();
         }
     }

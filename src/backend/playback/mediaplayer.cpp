@@ -195,6 +195,7 @@ void MediaPlayer::stop()
 {
     m_audioEngine->stop();
     m_currentQueueIndex = -1;
+    updateCurrentTrack(nullptr);
     clearQueue();
 }
 
