@@ -72,13 +72,14 @@ Item {
             
             RowLayout {
                 anchors.fill: parent
-                spacing: 16
+                spacing: queueVisible ? 16 : 0
                 
                 // Album art container
                 Item {
                     id: albumArtContainer
-                    Layout.preferredWidth: queueVisible ? parent.width * 0.3 : parent.width * 0.9
+                    Layout.preferredWidth: queueVisible ? parent.width * 0.3 : parent.width
                     Layout.fillHeight: true
+                    Layout.alignment: Qt.AlignHCenter
                     
                     Behavior on Layout.preferredWidth {
                         NumberAnimation { 
@@ -90,7 +91,7 @@ Item {
                     Image {
                         id: albumArt
                         anchors.centerIn: parent
-                        width: parent.width * 0.9
+                        width: parent.width
                         height: parent.height
                         source: albumArtUrl
                         fillMode: Image.PreserveAspectFit
@@ -127,6 +128,7 @@ Item {
                     id: queueContainer
                     Layout.preferredWidth: queueVisible ? parent.width * 0.7 - 16 : 0
                     Layout.fillHeight: true
+                    visible: queueVisible || Layout.preferredWidth > 0
                     clip: true
                     
                     Behavior on Layout.preferredWidth {
