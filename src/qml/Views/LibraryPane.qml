@@ -1267,13 +1267,43 @@ Item {
                                     }
                                     MouseArea { 
                                         anchors.fill: parent
-                                        onClicked: {
-                                            root.selectedAlbum = modelData; // Update the root's selectedAlbum property
-                                            albumBrowser.jumpToAlbum(modelData); // Jump to album in carousel
+                                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                        onClicked: function(mouse) {
+                                            if (mouse.button === Qt.LeftButton) {
+                                                root.selectedAlbum = modelData; // Update the root's selectedAlbum property
+                                                albumBrowser.jumpToAlbum(modelData); // Jump to album in carousel
+                                            } else if (mouse.button === Qt.RightButton) {
+                                                albumContextMenu.popup();
+                                            }
                                         }
                                         onDoubleClicked: {
                                             // Play the album on double-click
                                             MediaPlayer.playAlbumByName(modelData.albumArtist, modelData.title, 0);
+                                        }
+                                    }
+                                    
+                                    Menu {
+                                        id: albumContextMenu
+                                        
+                                        MenuItem {
+                                            text: "Play"
+                                            onTriggered: {
+                                                MediaPlayer.playAlbumByName(modelData.albumArtist, modelData.title, 0);
+                                            }
+                                        }
+                                        
+                                        MenuItem {
+                                            text: "Play Next"
+                                            onTriggered: {
+                                                MediaPlayer.playAlbumNext(modelData.albumArtist, modelData.title);
+                                            }
+                                        }
+                                        
+                                        MenuItem {
+                                            text: "Play Last"
+                                            onTriggered: {
+                                                MediaPlayer.playAlbumLast(modelData.albumArtist, modelData.title);
+                                            }
                                         }
                                     }
                                 }
@@ -1620,6 +1650,22 @@ Item {
                                     
                                     Menu {
                                         id: trackContextMenu
+                                        
+                                        MenuItem {
+                                            text: "Play Next"
+                                            onTriggered: {
+                                                MediaPlayer.playTrackNext(modelData);
+                                            }
+                                        }
+                                        
+                                        MenuItem {
+                                            text: "Play Last"
+                                            onTriggered: {
+                                                MediaPlayer.playTrackLast(modelData);
+                                            }
+                                        }
+                                        
+                                        MenuSeparator { }
                                         
                                         MenuItem {
                                             text: "Show info"

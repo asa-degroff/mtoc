@@ -461,6 +461,178 @@ void MediaPlayer::playTrackFromData(const QVariant& trackData)
     emit playbackQueueChanged();
 }
 
+void MediaPlayer::playTrackNext(const QVariant& trackData)
+{
+    auto trackMap = trackData.toMap();
+    QString title = trackMap.value("title").toString();
+    QString filePath = trackMap.value("filePath").toString();
+    
+    qDebug() << "MediaPlayer::playTrackNext called with track:" << title;
+    
+    if (filePath.isEmpty()) {
+        qWarning() << "Empty filePath for track:" << title;
+        return;
+    }
+    
+    // Create a new Track object from the data
+    Mtoc::Track* track = new Mtoc::Track(this);
+    track->setTitle(title);
+    track->setArtist(trackMap.value("artist").toString());
+    track->setAlbum(trackMap.value("album").toString());
+    track->setAlbumArtist(trackMap.value("albumArtist").toString());
+    track->setTrackNumber(trackMap.value("trackNumber").toInt());
+    track->setDuration(trackMap.value("duration").toInt());
+    track->setFileUrl(QUrl::fromLocalFile(filePath));
+    
+    // Insert after current track, or at beginning if nothing is playing
+    int insertIndex = (m_currentQueueIndex >= 0) ? m_currentQueueIndex + 1 : 0;
+    m_playbackQueue.insert(insertIndex, track);
+    
+    emit playbackQueueChanged();
+    
+    // If nothing is playing, start playback
+    if (m_currentQueueIndex < 0 && !m_playbackQueue.isEmpty()) {
+        m_currentQueueIndex = 0;
+        playTrack(m_playbackQueue[0]);
+    }
+}
+
+void MediaPlayer::playTrackLast(const QVariant& trackData)
+{
+    auto trackMap = trackData.toMap();
+    QString title = trackMap.value("title").toString();
+    QString filePath = trackMap.value("filePath").toString();
+    
+    qDebug() << "MediaPlayer::playTrackLast called with track:" << title;
+    
+    if (filePath.isEmpty()) {
+        qWarning() << "Empty filePath for track:" << title;
+        return;
+    }
+    
+    // Create a new Track object from the data
+    Mtoc::Track* track = new Mtoc::Track(this);
+    track->setTitle(title);
+    track->setArtist(trackMap.value("artist").toString());
+    track->setAlbum(trackMap.value("album").toString());
+    track->setAlbumArtist(trackMap.value("albumArtist").toString());
+    track->setTrackNumber(trackMap.value("trackNumber").toInt());
+    track->setDuration(trackMap.value("duration").toInt());
+    track->setFileUrl(QUrl::fromLocalFile(filePath));
+    
+    // Append to end of queue
+    m_playbackQueue.append(track);
+    
+    emit playbackQueueChanged();
+    
+    // If nothing is playing, start playback
+    if (m_currentQueueIndex < 0 && !m_playbackQueue.isEmpty()) {
+        m_currentQueueIndex = 0;
+        playTrack(m_playbackQueue[0]);
+    }
+}
+
+void MediaPlayer::playAlbumNext(const QString& artist, const QString& title)
+{
+    qDebug() << "MediaPlayer::playAlbumNext called with artist:" << artist << "title:" << title;
+    
+    if (!m_libraryManager) {
+        qWarning() << "LibraryManager not set on MediaPlayer";
+        return;
+    }
+    
+    auto trackList = m_libraryManager->getTracksForAlbumAsVariantList(artist, title);
+    qDebug() << "Found" << trackList.size() << "tracks for album";
+    
+    if (trackList.isEmpty()) {
+        qWarning() << "No tracks found for album:" << artist << "-" << title;
+        return;
+    }
+    
+    // Insert position: after current track, or at beginning if nothing is playing
+    int insertIndex = (m_currentQueueIndex >= 0) ? m_currentQueueIndex + 1 : 0;
+    
+    // Build tracks from data and insert into queue
+    for (const auto& trackData : trackList) {
+        auto trackMap = trackData.toMap();
+        QString trackTitle = trackMap.value("title").toString();
+        QString filePath = trackMap.value("filePath").toString();
+        
+        if (filePath.isEmpty()) {
+            qWarning() << "Empty filePath for track:" << trackTitle;
+            continue;
+        }
+        
+        Mtoc::Track* track = new Mtoc::Track(this);
+        track->setTitle(trackTitle);
+        track->setArtist(trackMap.value("artist").toString());
+        track->setAlbum(trackMap.value("album").toString());
+        track->setAlbumArtist(trackMap.value("albumArtist").toString());
+        track->setTrackNumber(trackMap.value("trackNumber").toInt());
+        track->setDuration(trackMap.value("duration").toInt());
+        track->setFileUrl(QUrl::fromLocalFile(filePath));
+        
+        m_playbackQueue.insert(insertIndex++, track);
+    }
+    
+    emit playbackQueueChanged();
+    
+    // If nothing is playing, start playback
+    if (m_currentQueueIndex < 0 && !m_playbackQueue.isEmpty()) {
+        m_currentQueueIndex = 0;
+        playTrack(m_playbackQueue[0]);
+    }
+}
+
+void MediaPlayer::playAlbumLast(const QString& artist, const QString& title)
+{
+    qDebug() << "MediaPlayer::playAlbumLast called with artist:" << artist << "title:" << title;
+    
+    if (!m_libraryManager) {
+        qWarning() << "LibraryManager not set on MediaPlayer";
+        return;
+    }
+    
+    auto trackList = m_libraryManager->getTracksForAlbumAsVariantList(artist, title);
+    qDebug() << "Found" << trackList.size() << "tracks for album";
+    
+    if (trackList.isEmpty()) {
+        qWarning() << "No tracks found for album:" << artist << "-" << title;
+        return;
+    }
+    
+    // Build tracks from data and append to queue
+    for (const auto& trackData : trackList) {
+        auto trackMap = trackData.toMap();
+        QString trackTitle = trackMap.value("title").toString();
+        QString filePath = trackMap.value("filePath").toString();
+        
+        if (filePath.isEmpty()) {
+            qWarning() << "Empty filePath for track:" << trackTitle;
+            continue;
+        }
+        
+        Mtoc::Track* track = new Mtoc::Track(this);
+        track->setTitle(trackTitle);
+        track->setArtist(trackMap.value("artist").toString());
+        track->setAlbum(trackMap.value("album").toString());
+        track->setAlbumArtist(trackMap.value("albumArtist").toString());
+        track->setTrackNumber(trackMap.value("trackNumber").toInt());
+        track->setDuration(trackMap.value("duration").toInt());
+        track->setFileUrl(QUrl::fromLocalFile(filePath));
+        
+        m_playbackQueue.append(track);
+    }
+    
+    emit playbackQueueChanged();
+    
+    // If nothing is playing, start playback
+    if (m_currentQueueIndex < 0 && !m_playbackQueue.isEmpty()) {
+        m_currentQueueIndex = 0;
+        playTrack(m_playbackQueue[0]);
+    }
+}
+
 void MediaPlayer::updateCurrentTrack(Mtoc::Track* track)
 {
     if (m_currentTrack != track) {
