@@ -2,6 +2,7 @@
 #include "backend/library/track.h"
 #include "backend/library/album.h"
 #include "backend/library/librarymanager.h"
+#include "backend/settings/settingsmanager.h"
 #include <QDebug>
 #include <QFile>
 #include <QDateTime>
@@ -59,6 +60,11 @@ void MediaPlayer::setLibraryManager(Mtoc::LibraryManager* manager)
     
     // Once we have a library manager, we're ready
     setReady(true);
+}
+
+void MediaPlayer::setSettingsManager(SettingsManager* settingsManager)
+{
+    m_settingsManager = settingsManager;
 }
 
 void MediaPlayer::setupConnections()
@@ -851,6 +857,12 @@ void MediaPlayer::saveState()
 
 void MediaPlayer::restoreState()
 {
+    // Check if restoration is enabled in settings
+    if (m_settingsManager && !m_settingsManager->restorePlaybackPosition()) {
+        qDebug() << "MediaPlayer::restoreState - playback restoration disabled in settings";
+        return;
+    }
+    
     // Prevent multiple restoration attempts
     if (m_restoringState) {
         qDebug() << "MediaPlayer::restoreState - restoration already in progress";

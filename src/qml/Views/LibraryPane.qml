@@ -77,7 +77,7 @@ Item {
     }
     
     // Track info panel state
-    property bool showTrackInfoPanel: false
+    property bool showTrackInfoPanel: SettingsManager.showTrackInfoByDefault
     property var selectedTrackForInfo: null
     property real trackInfoPanelY: 184  // Start off-screen (below)
     property bool trackInfoPanelAnimating: false
@@ -483,10 +483,19 @@ Item {
     // Library editor window instance
     property var libraryEditorWindow: null
     
+    // Settings window instance
+    property var settingsWindow: null
+    
     // Component definition for the library editor window
     Component {
         id: libraryEditorWindowComponent
         LibraryEditorWindow {}
+    }
+    
+    // Component definition for the settings window
+    Component {
+        id: settingsWindowComponent
+        SettingsWindow {}
     }
     
     // Blurred background
@@ -605,6 +614,65 @@ Item {
                             // Bring existing window to front
                             libraryEditorWindow.raise();
                             libraryEditorWindow.requestActivate();
+                        }
+                    }
+                }
+                
+                // Settings button
+                Button {
+                    text: "Settings"
+                    implicitHeight: 28  // Same height as Edit Library
+                    implicitWidth: 80   // Slightly smaller width
+                    
+                    background: Rectangle {
+                        id: settingsButtonRect
+                        color: Qt.rgba(1, 1, 1, 0.03)  // Subtle background like Edit Library button
+                        radius: 4  // Same radius
+                        
+                        //light border
+                        border.width: 1
+                        border.color: Qt.rgba(1, 1, 1, 0.06)  // Subtle top highlight
+                    }
+                    
+                    contentItem: Text {
+                        text: parent.text
+                        color: "white"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        font.pixelSize: 12  // Same font size
+                    }
+                    
+                    // Add mouse area for hover effects
+                    MouseArea {
+                        id: settingsButtonMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        
+                        onClicked: parent.clicked()
+                    }
+                    
+                    // Hover effect matching Edit Library button
+                    states: State {
+                        when: settingsButtonMouseArea.containsMouse
+                        PropertyChanges {
+                            target: settingsButtonRect
+                            color: Qt.rgba(1, 1, 1, 0.05)
+                        }
+                    }
+                    
+                    transitions: Transition {
+                        ColorAnimation { duration: 150 }
+                    }
+                    onClicked: {
+                        // Create floating window if it doesn't exist or was closed
+                        if (!settingsWindow || !settingsWindow.visible) {
+                            settingsWindow = settingsWindowComponent.createObject(null);
+                            settingsWindow.show();
+                        } else {
+                            // Bring existing window to front
+                            settingsWindow.raise();
+                            settingsWindow.requestActivate();
                         }
                     }
                 }
@@ -3168,6 +3236,23 @@ Item {
     
     // Helper function to handle album play with queue check
     function playAlbumWithQueueCheck(artist, title, startIndex, mouseX, mouseY) {
+        // Check settings for default action
+        if (SettingsManager.queueActionDefault !== SettingsManager.Ask && MediaPlayer.isQueueModified) {
+            // Apply default action without showing dialog
+            switch (SettingsManager.queueActionDefault) {
+                case SettingsManager.Replace:
+                    MediaPlayer.playAlbumByName(artist, title, startIndex || 0);
+                    break;
+                case SettingsManager.Insert:
+                    MediaPlayer.playAlbumNext(artist, title);
+                    break;
+                case SettingsManager.Append:
+                    MediaPlayer.playAlbumLast(artist, title);
+                    break;
+            }
+            return;
+        }
+        
         if (MediaPlayer.isQueueModified) {
             queueActionDialog.albumArtist = artist
             queueActionDialog.albumTitle = title

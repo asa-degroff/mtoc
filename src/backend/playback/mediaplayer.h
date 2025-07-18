@@ -46,6 +46,7 @@ public:
     ~MediaPlayer();
     
     void setLibraryManager(Mtoc::LibraryManager* manager);
+    void setSettingsManager(class SettingsManager* settingsManager);
 
     State state() const;
     qint64 position() const;
@@ -132,6 +133,7 @@ private:
     int m_currentQueueIndex = -1;
     State m_state = StoppedState;
     Mtoc::LibraryManager* m_libraryManager = nullptr;
+    SettingsManager* m_settingsManager = nullptr;
     QTimer* m_saveStateTimer = nullptr;
     QTimer* m_loadTimeoutTimer = nullptr;
     bool m_restoringState = false;

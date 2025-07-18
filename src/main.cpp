@@ -20,6 +20,7 @@
 #include "backend/library/album.h"
 #include "backend/playback/mediaplayer.h"
 #include "backend/system/mprismanager.h"
+#include "backend/settings/settingsmanager.h"
 
 // Message handler to show only QML console.log messages
 void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
@@ -153,10 +154,17 @@ int main(int argc, char *argv[])
     Mtoc::MetadataExtractor *metadataExtractor = new Mtoc::MetadataExtractor();
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MetadataExtractor", metadataExtractor);
     
+    // Register SettingsManager singleton
+    qDebug() << "Main: Registering SettingsManager...";
+    SettingsManager *settingsManager = SettingsManager::instance();
+    qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "SettingsManager", settingsManager);
+    qDebug() << "Main: SettingsManager registered";
+    
     // Create and register MediaPlayer
     qDebug() << "Main: Creating MediaPlayer...";
     MediaPlayer *mediaPlayer = new MediaPlayer();
     mediaPlayer->setLibraryManager(libraryManager);
+    mediaPlayer->setSettingsManager(settingsManager);
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MediaPlayer", mediaPlayer);
     qDebug() << "Main: MediaPlayer registered";
     
@@ -219,6 +227,8 @@ int main(int argc, char *argv[])
         
         delete metadataExtractor;
         metadataExtractor = nullptr;
+        
+        // SettingsManager is a singleton, don't delete it
         
         delete systemInfo;
         systemInfo = nullptr;
