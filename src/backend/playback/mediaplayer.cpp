@@ -307,6 +307,10 @@ void MediaPlayer::loadTrack(Mtoc::Track* track, bool autoPlay)
     m_audioEngine->loadTrack(filePath);
     if (autoPlay) {
         m_audioEngine->play();
+    } else {
+        // Ensure we maintain paused state when not auto-playing
+        m_state = PausedState;
+        emit stateChanged(m_state);
     }
 }
 
@@ -358,6 +362,9 @@ void MediaPlayer::removeTrackAt(int index)
     // Handle removal based on position relative to current track
     if (index == m_currentQueueIndex) {
         // Removing the currently playing track
+        // Remember if we were paused
+        bool wasPaused = (m_state == PausedState);
+        
         if (hasNext()) {
             // Play next track (index stays the same after removal)
             m_playbackQueue.removeAt(index);
@@ -365,7 +372,9 @@ void MediaPlayer::removeTrackAt(int index)
                 trackToRemove->deleteLater();
             }
             emit playbackQueueChanged();
-            playTrack(m_playbackQueue[m_currentQueueIndex]);
+            
+            // Load the track but don't auto-play if we were paused
+            loadTrack(m_playbackQueue[m_currentQueueIndex], !wasPaused);
         } else if (m_currentQueueIndex > 0) {
             // No next track, play previous
             m_playbackQueue.removeAt(index);
@@ -374,7 +383,9 @@ void MediaPlayer::removeTrackAt(int index)
             }
             m_currentQueueIndex--;
             emit playbackQueueChanged();
-            playTrack(m_playbackQueue[m_currentQueueIndex]);
+            
+            // Load the track but don't auto-play if we were paused
+            loadTrack(m_playbackQueue[m_currentQueueIndex], !wasPaused);
         } else {
             // No other tracks, stop playback
             m_playbackQueue.removeAt(index);

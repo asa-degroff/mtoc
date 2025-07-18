@@ -216,12 +216,12 @@ Item {
                                 
                                 Image {
                                     anchors.centerIn: parent
-                                    width: 20
-                                    height: 20
+                                    width: 16
+                                    height: 16
                                     source: "qrc:/resources/icons/bomb.svg"
                                     sourceSize.width: 40
                                     sourceSize.height: 40
-                                    opacity: clearQueueMouseArea.containsMouse ? 1.0 : 0.7
+                                    opacity: clearQueueMouseArea.containsMouse ? 0.6 : 0.3
                                     
                                     Behavior on opacity {
                                         NumberAnimation { duration: 150 }
