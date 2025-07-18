@@ -14,6 +14,21 @@ Item {
     property var libraryPane: null
     property bool queueVisible: false
     
+    function formatQueueDuration(totalSeconds) {
+        if (isNaN(totalSeconds) || totalSeconds < 0) {
+            return "0:00"
+        }
+        
+        var hours = Math.floor(totalSeconds / 3600)
+        var minutes = Math.floor((totalSeconds % 3600) / 60)
+        var seconds = totalSeconds % 60
+        
+        if (hours > 0) {
+            return hours + ":" + (minutes < 10 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds
+        } else {
+            return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
+        }
+    }
     
     // Temporary debug rectangle
     Rectangle {
@@ -180,7 +195,7 @@ Item {
                             Item { Layout.fillWidth: true }
                             
                             Label {
-                                text: "0 tracks" // TODO: Update with actual queue count
+                                text: MediaPlayer.queueLength + " track" + (MediaPlayer.queueLength !== 1 ? "s" : "") + ", " + formatQueueDuration(MediaPlayer.totalQueueDuration)
                                 font.pixelSize: 12
                                 color: "#808080"
                             }
@@ -191,8 +206,8 @@ Item {
                             id: queueListView
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            // TODO: Connect to actual queue model
-                            queueModel: []
+                            queueModel: MediaPlayer.queue
+                            currentPlayingIndex: MediaPlayer.currentQueueIndex
                             
                             onTrackDoubleClicked: function(index) {
                                 // TODO: Play track at index

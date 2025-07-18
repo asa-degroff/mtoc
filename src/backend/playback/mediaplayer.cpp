@@ -10,6 +10,8 @@
 #include <QDir>
 #include <QTimer>
 #include <QFileInfo>
+#include <QVariantList>
+#include <QVariantMap>
 
 QString MediaPlayer::getDebugLogPath()
 {
@@ -142,6 +144,34 @@ bool MediaPlayer::hasPrevious() const
     // Only return true if we can actually go to a previous track
     // (i.e., we're not on the first track)
     return m_currentQueueIndex > 0 && m_playbackQueue.size() > 0;
+}
+
+QVariantList MediaPlayer::queue() const
+{
+    QVariantList queueList;
+    for (Mtoc::Track* track : m_playbackQueue) {
+        if (track) {
+            QVariantMap trackMap;
+            trackMap["title"] = track->title();
+            trackMap["artist"] = track->artist();
+            trackMap["album"] = track->album();
+            trackMap["duration"] = track->duration() * 1000; // Convert seconds to milliseconds
+            trackMap["filePath"] = track->filePath();
+            queueList.append(trackMap);
+        }
+    }
+    return queueList;
+}
+
+int MediaPlayer::totalQueueDuration() const
+{
+    int totalSeconds = 0;
+    for (Mtoc::Track* track : m_playbackQueue) {
+        if (track) {
+            totalSeconds += track->duration();
+        }
+    }
+    return totalSeconds;
 }
 
 void MediaPlayer::play()

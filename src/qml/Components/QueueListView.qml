@@ -31,7 +31,7 @@ ListView {
     
     delegate: Rectangle {
         id: queueItemDelegate
-        width: parent.width
+        width: root.width
         height: 45
         color: {
             if (index === root.currentPlayingIndex) {

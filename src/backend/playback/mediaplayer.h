@@ -28,6 +28,10 @@ class MediaPlayer : public QObject
     Q_PROPERTY(bool restoringState READ isRestoringState NOTIFY restoringStateChanged)
     Q_PROPERTY(qint64 savedPosition READ savedPosition NOTIFY savedPositionChanged)
     Q_PROPERTY(bool isReady READ isReady NOTIFY readyChanged)
+    Q_PROPERTY(QVariantList queue READ queue NOTIFY playbackQueueChanged)
+    Q_PROPERTY(int queueLength READ queueLength NOTIFY playbackQueueChanged)
+    Q_PROPERTY(int currentQueueIndex READ currentQueueIndex NOTIFY playbackQueueChanged)
+    Q_PROPERTY(int totalQueueDuration READ totalQueueDuration NOTIFY playbackQueueChanged)
 
 public:
     enum State {
@@ -53,6 +57,10 @@ public:
     bool isRestoringState() const { return m_restoringState; }
     qint64 savedPosition() const { return m_savedPosition; }
     bool isReady() const { return m_isReady; }
+    QVariantList queue() const;
+    int queueLength() const { return m_playbackQueue.size(); }
+    int currentQueueIndex() const { return m_currentQueueIndex; }
+    int totalQueueDuration() const;
 
 public slots:
     void play();
