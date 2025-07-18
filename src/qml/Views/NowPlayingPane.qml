@@ -210,11 +210,11 @@ Item {
                             currentPlayingIndex: MediaPlayer.currentQueueIndex
                             
                             onTrackDoubleClicked: function(index) {
-                                // TODO: Play track at index
+                                MediaPlayer.playTrackAt(index);
                             }
                             
                             onRemoveTrackRequested: function(index) {
-                                // TODO: Remove track from queue
+                                MediaPlayer.removeTrackAt(index);
                             }
                         }
                     }

@@ -342,6 +342,80 @@ void MediaPlayer::playAlbum(Mtoc::Album* album, int startIndex)
     }
 }
 
+void MediaPlayer::removeTrackAt(int index)
+{
+    if (index < 0 || index >= m_playbackQueue.size()) {
+        qWarning() << "removeTrackAt: Invalid index" << index;
+        return;
+    }
+    
+    qDebug() << "MediaPlayer::removeTrackAt called with index:" << index;
+    
+    // Get the track to remove
+    Mtoc::Track* trackToRemove = m_playbackQueue[index];
+    
+    // Handle removal based on position relative to current track
+    if (index == m_currentQueueIndex) {
+        // Removing the currently playing track
+        if (hasNext()) {
+            // Play next track (index stays the same after removal)
+            m_playbackQueue.removeAt(index);
+            if (trackToRemove && trackToRemove->parent() == this) {
+                trackToRemove->deleteLater();
+            }
+            emit playbackQueueChanged();
+            playTrack(m_playbackQueue[m_currentQueueIndex]);
+        } else if (m_currentQueueIndex > 0) {
+            // No next track, play previous
+            m_playbackQueue.removeAt(index);
+            if (trackToRemove && trackToRemove->parent() == this) {
+                trackToRemove->deleteLater();
+            }
+            m_currentQueueIndex--;
+            emit playbackQueueChanged();
+            playTrack(m_playbackQueue[m_currentQueueIndex]);
+        } else {
+            // No other tracks, stop playback
+            m_playbackQueue.removeAt(index);
+            if (trackToRemove && trackToRemove->parent() == this) {
+                trackToRemove->deleteLater();
+            }
+            m_currentQueueIndex = -1;
+            emit playbackQueueChanged();
+            stop();
+        }
+    } else if (index < m_currentQueueIndex) {
+        // Removing a track before the current one
+        m_playbackQueue.removeAt(index);
+        if (trackToRemove && trackToRemove->parent() == this) {
+            trackToRemove->deleteLater();
+        }
+        m_currentQueueIndex--;
+        emit playbackQueueChanged();
+    } else {
+        // Removing a track after the current one
+        m_playbackQueue.removeAt(index);
+        if (trackToRemove && trackToRemove->parent() == this) {
+            trackToRemove->deleteLater();
+        }
+        emit playbackQueueChanged();
+    }
+}
+
+void MediaPlayer::playTrackAt(int index)
+{
+    if (index < 0 || index >= m_playbackQueue.size()) {
+        qWarning() << "playTrackAt: Invalid index" << index;
+        return;
+    }
+    
+    qDebug() << "MediaPlayer::playTrackAt called with index:" << index;
+    
+    m_currentQueueIndex = index;
+    emit playbackQueueChanged();
+    playTrack(m_playbackQueue[index]);
+}
+
 void MediaPlayer::clearQueue()
 {
     // Clean up any tracks we created

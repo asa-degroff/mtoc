@@ -80,6 +80,8 @@ public slots:
     Q_INVOKABLE void playTrackLast(const QVariant& trackData);
     Q_INVOKABLE void playAlbumNext(const QString& artist, const QString& title);
     Q_INVOKABLE void playAlbumLast(const QString& artist, const QString& title);
+    Q_INVOKABLE void removeTrackAt(int index);
+    Q_INVOKABLE void playTrackAt(int index);
     void clearQueue();
     
     // State persistence
