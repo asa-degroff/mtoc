@@ -4,6 +4,7 @@
         <file>src/qml/Components/BlurredBackground.qml</file>
         <file>src/qml/Components/HorizontalAlbumBrowser.qml</file>
         <file>src/qml/Components/PlaybackControls.qml</file>
+        <file>src/qml/Components/QueueListView.qml</file>
         <file>src/qml/Components/ResizeHandler.qml</file>
         <file>src/qml/Components/SearchBar.qml</file>
         <file>src/qml/Components/ThumbnailGridDelegate.qml</file>
@@ -31,5 +32,9 @@
         <file>resources/icons/drag-handle-normal.svg</file>
         <file>resources/icons/drag-handle-pressed.svg</file>
         <file>resources/icons/close-button.svg</file>
+        <file>resources/icons/queue.svg</file>
+        <file>resources/icons/shuffle.svg</file>
+        <file>resources/icons/repeat.svg</file>
+        <file>resources/icons/list-drag-handle.svg</file>
     </qresource>
 </RCC>

@@ -12,6 +12,7 @@ Item {
     property url albumArtUrl: ""
     property url thumbnailUrl: ""
     property var libraryPane: null
+    property bool queueVisible: false
     
     
     // Temporary debug rectangle
@@ -64,41 +65,142 @@ Item {
         anchors.margins: Math.max(16, parent.height * 0.04)  // Dynamic margins: 4% of height, min 16px
         spacing: Math.max(8, parent.height * 0.02)  // Dynamic spacing: 2% of height, min 8px
         
-        // Album art
+        // Album art and queue container
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             
-            Image {
-                id: albumArt
-                anchors.centerIn: parent
-                width: parent.width * 0.9
-                height: parent.height
-                source: albumArtUrl
-                fillMode: Image.PreserveAspectFit
-                cache: true
+            RowLayout {
+                anchors.fill: parent
+                spacing: 16
                 
-                // Drop shadow effect using MultiEffect
-                layer.enabled: true
-                layer.effect: MultiEffect {
-                    shadowEnabled: true
-                    shadowHorizontalOffset: 0
-                    shadowVerticalOffset: 4
-                    shadowBlur: 0.5
-                    shadowColor: "#80000000"
+                // Album art container
+                Item {
+                    id: albumArtContainer
+                    Layout.preferredWidth: queueVisible ? parent.width * 0.3 : parent.width * 0.9
+                    Layout.fillHeight: true
+                    
+                    Behavior on Layout.preferredWidth {
+                        NumberAnimation { 
+                            duration: 300
+                            easing.type: Easing.InOutCubic
+                        }
+                    }
+                    
+                    Image {
+                        id: albumArt
+                        anchors.centerIn: parent
+                        width: parent.width * 0.9
+                        height: parent.height
+                        source: albumArtUrl
+                        fillMode: Image.PreserveAspectFit
+                        cache: true
+                        
+                        // Drop shadow effect using MultiEffect
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            shadowEnabled: true
+                            shadowHorizontalOffset: 0
+                            shadowVerticalOffset: 4
+                            shadowBlur: 0.5
+                            shadowColor: "#80000000"
+                        }
+                        
+                        // Placeholder when no album art
+                        Rectangle {
+                            anchors.fill: parent
+                            color: "#202020"
+                            visible: albumArt.status !== Image.Ready || !albumArtUrl
+                            
+                            Text {
+                                anchors.centerIn: parent
+                                text: "♪"
+                                font.pixelSize: parent.width * 0.3
+                                color: "#404040"
+                            }
+                        }
+                    }
                 }
                 
-                // Placeholder when no album art
-                Rectangle {
-                    anchors.fill: parent
-                    color: "#202020"
-                    visible: albumArt.status !== Image.Ready || !albumArtUrl
+                // Queue list view
+                Item {
+                    id: queueContainer
+                    Layout.preferredWidth: queueVisible ? parent.width * 0.7 - 16 : 0
+                    Layout.fillHeight: true
+                    clip: true
                     
-                    Text {
-                        anchors.centerIn: parent
-                        text: "♪"
-                        font.pixelSize: parent.width * 0.3
-                        color: "#404040"
+                    Behavior on Layout.preferredWidth {
+                        NumberAnimation { 
+                            duration: 300
+                            easing.type: Easing.InOutCubic
+                        }
+                    }
+                    
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.leftMargin: queueVisible ? 0 : -width
+                        color: Qt.rgba(0, 0, 0, 0.3)
+                        radius: 8
+                        border.width: 1
+                        border.color: Qt.rgba(1, 1, 1, 0.1)
+                        opacity: queueVisible ? 1.0 : 0.0
+                        
+                        Behavior on opacity {
+                            NumberAnimation { 
+                                duration: 300
+                                easing.type: Easing.InOutCubic
+                            }
+                        }
+                        
+                        Behavior on anchors.leftMargin {
+                            NumberAnimation { 
+                                duration: 300
+                                easing.type: Easing.InOutCubic
+                            }
+                        }
+                    
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 12
+                        spacing: 8
+                        
+                        // Queue header
+                        RowLayout {
+                            Layout.fillWidth: true
+                            
+                            Label {
+                                text: "Queue"
+                                font.pixelSize: 16
+                                font.weight: Font.DemiBold
+                                color: "white"
+                            }
+                            
+                            Item { Layout.fillWidth: true }
+                            
+                            Label {
+                                text: "0 tracks" // TODO: Update with actual queue count
+                                font.pixelSize: 12
+                                color: "#808080"
+                            }
+                        }
+                        
+                        // Queue list
+                        QueueListView {
+                            id: queueListView
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            // TODO: Connect to actual queue model
+                            queueModel: []
+                            
+                            onTrackDoubleClicked: function(index) {
+                                // TODO: Play track at index
+                            }
+                            
+                            onRemoveTrackRequested: function(index) {
+                                // TODO: Remove track from queue
+                            }
+                        }
+                    }
                     }
                 }
             }
@@ -228,11 +330,22 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: Math.max(80, parent.height * 0.06)  // Dynamic height: 12% of parent, min 80px
             
+            queueVisible: root.queueVisible
+            
             onPlayPauseClicked: MediaPlayer.togglePlayPause()
             onPreviousClicked: MediaPlayer.previous()
             onNextClicked: MediaPlayer.next()
             onSeekRequested: function(position) {
                 MediaPlayer.seek(position)
+            }
+            onQueueToggled: root.queueVisible = !root.queueVisible
+            onRepeatToggled: {
+                // TODO: Implement repeat functionality
+                console.log("Repeat toggled")
+            }
+            onShuffleToggled: {
+                // TODO: Implement shuffle functionality
+                console.log("Shuffle toggled")
             }
         }
         

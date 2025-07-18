@@ -17,6 +17,13 @@ Item {
     signal previousClicked()
     signal nextClicked()
     signal seekRequested(real position)
+    signal queueToggled()
+    signal repeatToggled()
+    signal shuffleToggled()
+    
+    property bool queueVisible: false
+    property bool repeatEnabled: false
+    property bool shuffleEnabled: false
     
     function formatTime(milliseconds) {
         if (isNaN(milliseconds) || milliseconds < 0) {
@@ -80,6 +87,92 @@ Item {
             Layout.rightMargin: 0
             spacing: Math.max(12, parent.width * 0.02)  // Dynamic spacing: 2% of width, min 12px
             
+            // Repeat/Shuffle pill container
+            Rectangle {
+                Layout.preferredWidth: 120
+                Layout.preferredHeight: 50
+                Layout.alignment: Qt.AlignVCenter
+                radius: 25
+                color: Qt.rgba(1, 1, 1, 0.1)
+                border.color: Qt.rgba(1, 1, 1, 0.2)
+                border.width: 1
+                
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 2
+                    spacing: 0
+                    
+                    // Repeat button
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 2
+                            radius: parent.height / 2
+                            color: root.repeatEnabled ? Qt.rgba(1, 1, 1, 0.2) : "transparent"
+                            
+                            Behavior on color {
+                                ColorAnimation { duration: 200 }
+                            }
+                        }
+                        
+                        IconButton {
+                            anchors.centerIn: parent
+                            width: 30
+                            height: 30
+                            iconSource: "qrc:/resources/icons/repeat.svg"
+                            opacity: root.repeatEnabled ? 1.0 : 0.6
+                            onClicked: root.repeatToggled()
+                            
+                            Behavior on opacity {
+                                NumberAnimation { duration: 200 }
+                            }
+                        }
+                    }
+                    
+                    // Divider
+                    Rectangle {
+                        Layout.preferredWidth: 1
+                        Layout.fillHeight: true
+                        Layout.topMargin: 8
+                        Layout.bottomMargin: 8
+                        color: Qt.rgba(1, 1, 1, 0.2)
+                    }
+                    
+                    // Shuffle button
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 2
+                            radius: parent.height / 2
+                            color: root.shuffleEnabled ? Qt.rgba(1, 1, 1, 0.2) : "transparent"
+                            
+                            Behavior on color {
+                                ColorAnimation { duration: 200 }
+                            }
+                        }
+                        
+                        IconButton {
+                            anchors.centerIn: parent
+                            width: 30
+                            height: 30
+                            iconSource: "qrc:/resources/icons/shuffle.svg"
+                            opacity: root.shuffleEnabled ? 1.0 : 0.6
+                            onClicked: root.shuffleToggled()
+                            
+                            Behavior on opacity {
+                                NumberAnimation { duration: 200 }
+                            }
+                        }
+                    }
+                }
+            }
+            
             Item { Layout.fillWidth: true }
             
             IconButton {
@@ -116,6 +209,21 @@ Item {
             }
             
             Item { Layout.fillWidth: true }
+            
+            // Queue button
+            IconButton {
+                id: queueButton
+                Layout.preferredWidth: 50
+                Layout.preferredHeight: 50
+                Layout.alignment: Qt.AlignVCenter
+                iconSource: "qrc:/resources/icons/queue.svg"
+                opacity: root.queueVisible ? 1.0 : 0.6
+                onClicked: root.queueToggled()
+                
+                Behavior on opacity {
+                    NumberAnimation { duration: 200 }
+                }
+            }
         }
         
         // Progress bar with time labels
