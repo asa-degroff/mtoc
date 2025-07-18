@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Effects
 
 Popup {
     id: root
@@ -21,7 +22,7 @@ Popup {
     
     // Semi-transparent background overlay with click handler
     Overlay.modal: Rectangle {
-        color: "#80000000"
+        color: Qt.rgba(0, 0, 0, 0.3)  // Dark overlay for better contrast
         
         MouseArea {
             anchors.fill: parent
@@ -30,10 +31,26 @@ Popup {
     }
     
     background: Rectangle {
-        color: "#2a2a2a"
-        radius: 8
+        color: Qt.rgba(0.12, 0.12, 0.12, 0.5)
+        radius: 12
         border.width: 1
-        border.color: "#404040"
+        border.color: Qt.rgba(1, 1, 1, 0.15)
+        
+        // Add a subtle gradient
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: Qt.rgba(0.14, 0.14, 0.14, 0.95) }
+            GradientStop { position: 1.0; color: Qt.rgba(0.10, 0.10, 0.10, 0.95) }
+        }
+        
+        // Drop shadow effect
+        layer.enabled: true
+        layer.effect: MultiEffect {
+            shadowEnabled: true
+            shadowHorizontalOffset: 0
+            shadowVerticalOffset: 4
+            shadowBlur: 0.8
+            shadowColor: Qt.rgba(0, 0, 0, 0.6)
+        }
     }
     
     contentItem: ColumnLayout {
@@ -70,8 +87,10 @@ Popup {
                 font.pixelSize: 14
                 
                 background: Rectangle {
-                    color: parent.hovered ? "#3a4a8a" : "#2a3a7a"
+                    color: parent.hovered ? Qt.rgba(0.23, 0.29, 0.54, 0.9) : Qt.rgba(0.16, 0.23, 0.48, 0.8)
                     radius: 4
+                    border.width: 1
+                    border.color: Qt.rgba(1, 1, 1, 0.15)
                 }
                 
                 contentItem: Text {
@@ -94,8 +113,10 @@ Popup {
                 font.pixelSize: 14
                 
                 background: Rectangle {
-                    color: parent.hovered ? "#404040" : "#333333"
+                    color: parent.hovered ? Qt.rgba(0.25, 0.25, 0.25, 0.8) : Qt.rgba(0.2, 0.2, 0.2, 0.7)
                     radius: 4
+                    border.width: 1
+                    border.color: Qt.rgba(1, 1, 1, 0.1)
                 }
                 
                 contentItem: Text {
@@ -118,8 +139,10 @@ Popup {
                 font.pixelSize: 14
                 
                 background: Rectangle {
-                    color: parent.hovered ? "#404040" : "#333333"
+                    color: parent.hovered ? Qt.rgba(0.25, 0.25, 0.25, 0.8) : Qt.rgba(0.2, 0.2, 0.2, 0.7)
                     radius: 4
+                    border.width: 1
+                    border.color: Qt.rgba(1, 1, 1, 0.1)
                 }
                 
                 contentItem: Text {
@@ -146,10 +169,10 @@ Popup {
                 font.pixelSize: 14
                 
                 background: Rectangle {
-                    color: parent.hovered ? "#3a3a3a" : "#2a2a2a"
+                    color: parent.hovered ? Qt.rgba(0.23, 0.23, 0.23, 0.6) : Qt.rgba(0.16, 0.16, 0.16, 0.5)
                     radius: 4
                     border.width: 1
-                    border.color: "#505050"
+                    border.color: Qt.rgba(1, 1, 1, 0.2)
                 }
                 
                 contentItem: Text {
