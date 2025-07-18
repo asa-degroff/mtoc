@@ -8,6 +8,7 @@ ListView {
     
     property var queueModel: []
     property int currentPlayingIndex: -1
+    property bool isProgrammaticScrolling: false
     
     signal trackDoubleClicked(int index)
     signal removeTrackRequested(int index)
@@ -22,6 +23,69 @@ ListView {
         var seconds = totalSeconds % 60
         
         return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
+    }
+    
+    function scrollToCurrentTrack() {
+        if (currentPlayingIndex < 0 || currentPlayingIndex >= count) {
+            return;
+        }
+        
+        // Calculate the position of the current track
+        var itemY = currentPlayingIndex * (45 + spacing); // 45 is delegate height
+        var visibleHeight = height;
+        var currentY = contentY;
+        
+        // Check if the item is fully visible
+        var itemTop = itemY;
+        var itemBottom = itemY + 45;
+        var viewTop = currentY;
+        var viewBottom = currentY + visibleHeight;
+        
+        var targetY = -1;
+        
+        // If item is above the visible area, scroll to show it at the top with some margin
+        if (itemTop < viewTop) {
+            targetY = Math.max(0, itemTop - 10);
+        }
+        // If item is below the visible area, scroll to show it at the bottom with some margin
+        else if (itemBottom > viewBottom) {
+            targetY = itemBottom - visibleHeight + 10;
+        }
+        
+        // Only scroll if needed
+        if (targetY >= 0) {
+            isProgrammaticScrolling = true;
+            scrollAnimation.to = targetY;
+            scrollAnimation.start();
+        }
+    }
+    
+    // Smooth scrolling animation
+    NumberAnimation {
+        id: scrollAnimation
+        target: root
+        property: "contentY"
+        duration: 300
+        easing.type: Easing.InOutQuad
+        
+        onRunningChanged: {
+            if (!running && root.isProgrammaticScrolling) {
+                Qt.callLater(function() {
+                    root.isProgrammaticScrolling = false;
+                });
+            }
+        }
+    }
+    
+    // Watch for changes to the current playing index
+    onCurrentPlayingIndexChanged: {
+        // Delay the scroll slightly to ensure the list has updated
+        Qt.callLater(scrollToCurrentTrack);
+    }
+    
+    // Also scroll when the model changes (e.g., when queue is first loaded)
+    onModelChanged: {
+        Qt.callLater(scrollToCurrentTrack);
     }
     
     clip: true
