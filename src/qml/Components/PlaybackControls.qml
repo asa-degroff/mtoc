@@ -89,8 +89,8 @@ Item {
             
             // Repeat/Shuffle pill container
             Rectangle {
-                Layout.preferredWidth: 120
-                Layout.preferredHeight: 50
+                Layout.preferredWidth: 90
+                Layout.preferredHeight: 37.5
                 Layout.alignment: Qt.AlignVCenter
                 radius: 25
                 color: Qt.rgba(1, 1, 1, 0.1)
@@ -120,8 +120,8 @@ Item {
                         
                         IconButton {
                             anchors.centerIn: parent
-                            width: 30
-                            height: 30
+                            width: 24
+                            height: 24
                             iconSource: "qrc:/resources/icons/repeat.svg"
                             opacity: root.repeatEnabled ? 1.0 : 0.6
                             onClicked: root.repeatToggled()
@@ -159,8 +159,8 @@ Item {
                         
                         IconButton {
                             anchors.centerIn: parent
-                            width: 30
-                            height: 30
+                            width: 24
+                            height: 24
                             iconSource: "qrc:/resources/icons/shuffle.svg"
                             opacity: root.shuffleEnabled ? 1.0 : 0.6
                             onClicked: root.shuffleToggled()
@@ -210,18 +210,25 @@ Item {
             
             Item { Layout.fillWidth: true }
             
-            // Queue button
-            IconButton {
-                id: queueButton
-                Layout.preferredWidth: 50
-                Layout.preferredHeight: 50
+            // Queue button container (matching repeat/shuffle width)
+            Item {
+                Layout.preferredWidth: 90
+                Layout.preferredHeight: 37.5
                 Layout.alignment: Qt.AlignVCenter
-                iconSource: "qrc:/resources/icons/queue.svg"
-                opacity: root.queueVisible ? 1.0 : 0.6
-                onClicked: root.queueToggled()
                 
-                Behavior on opacity {
-                    NumberAnimation { duration: 200 }
+                // Queue button
+                IconButton {
+                    id: queueButton
+                    anchors.centerIn: parent
+                    width: 30
+                    height: 30
+                    iconSource: "qrc:/resources/icons/queue.svg"
+                    opacity: root.queueVisible ? 1.0 : 0.6
+                    onClicked: root.queueToggled()
+                    
+                    Behavior on opacity {
+                        NumberAnimation { duration: 200 }
+                    }
                 }
             }
         }
