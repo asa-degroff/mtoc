@@ -442,6 +442,36 @@ bool PlaylistManager::renamePlaylist(const QString& oldName, const QString& newN
     return false;
 }
 
+bool PlaylistManager::updatePlaylist(const QString& name, const QVariantList& tracks)
+{
+    if (name.isEmpty()) {
+        emit error("Playlist name cannot be empty");
+        return false;
+    }
+    
+    if (m_playlistsDirectory.isEmpty()) {
+        emit error("Playlists directory not configured");
+        return false;
+    }
+    
+    QString filename = name + ".m3u";
+    QString filepath = QDir(m_playlistsDirectory).absoluteFilePath(filename);
+    
+    // Check if playlist exists
+    if (!QFile::exists(filepath)) {
+        emit error("Playlist does not exist");
+        return false;
+    }
+    
+    // Write the updated playlist
+    if (writeM3UFile(filepath, tracks)) {
+        emit playlistSaved(name);
+        return true;
+    }
+    
+    return false;
+}
+
 QVariantList PlaylistManager::getPlaylistTracks(const QString& name)
 {
     return loadPlaylist(name);
