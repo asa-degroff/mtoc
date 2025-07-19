@@ -59,6 +59,10 @@ Item {
     property var editedPlaylistTracks: []
     property string editingPlaylistName: ""
     
+    // Multi-selection state
+    property var selectedTrackIndices: []
+    property int lastSelectedIndex: -1
+    
     // Search state
     property string currentSearchTerm: ""
     property var searchResults: ({})
@@ -400,6 +404,10 @@ Item {
             if (trackListView) {
                 trackListView.currentIndex = -1;
             }
+            
+            // Clear multi-selection
+            root.selectedTrackIndices = [];
+            root.lastSelectedIndex = -1;
             
             // Exit edit mode when switching albums/playlists
             if (root.playlistEditMode) {
@@ -1944,8 +1952,10 @@ Item {
                                 width: parent.width
                                 height: 45
                                 color: {
-                                    if (trackListView.currentIndex === index) {
+                                    if (root.selectedTrackIndices.indexOf(index) !== -1) {
                                         return Qt.rgba(0.25, 0.32, 0.71, 0.25)  // Selected track
+                                    } else if (trackListView.currentIndex === index) {
+                                        return Qt.rgba(0.25, 0.32, 0.71, 0.15)  // Current track (lighter)
                                     } else {
                                         return Qt.rgba(1, 1, 1, 0.02)  // Default background
                                     }
@@ -2153,15 +2163,48 @@ Item {
                                     
                                     onClicked: function(mouse) {
                                         if (mouse.button === Qt.LeftButton) {
+                                            if (mouse.modifiers & Qt.ControlModifier) {
+                                                // Ctrl+Click: Toggle selection
+                                                var idx = root.selectedTrackIndices.indexOf(index);
+                                                if (idx !== -1) {
+                                                    // Remove from selection
+                                                    root.selectedTrackIndices.splice(idx, 1);
+                                                } else {
+                                                    // Add to selection
+                                                    root.selectedTrackIndices.push(index);
+                                                }
+                                                root.selectedTrackIndices = root.selectedTrackIndices.slice(); // Force update
+                                                root.lastSelectedIndex = index;
+                                            } else if (mouse.modifiers & Qt.ShiftModifier && root.lastSelectedIndex !== -1) {
+                                                // Shift+Click: Select range
+                                                root.selectedTrackIndices = [];
+                                                var start = Math.min(root.lastSelectedIndex, index);
+                                                var end = Math.max(root.lastSelectedIndex, index);
+                                                for (var i = start; i <= end; i++) {
+                                                    root.selectedTrackIndices.push(i);
+                                                }
+                                                root.selectedTrackIndices = root.selectedTrackIndices.slice(); // Force update
+                                            } else {
+                                                // Regular click: Select only this track
+                                                root.selectedTrackIndices = [index];
+                                                root.lastSelectedIndex = index;
+                                            }
+                                            
                                             trackListView.currentIndex = index;
                                             // Sync keyboard navigation state
                                             root.navigationMode = "track";
                                             root.selectedTrackIndex = index;
                                             // Update track info panel if visible
-                                            if (root.showTrackInfoPanel) {
+                                            if (root.showTrackInfoPanel && root.selectedTrackIndices.length === 1) {
                                                 root.selectedTrackForInfo = modelData;
                                             }
                                         } else if (mouse.button === Qt.RightButton) {
+                                            // If right-clicking on an unselected track, select it first
+                                            if (root.selectedTrackIndices.indexOf(index) === -1) {
+                                                root.selectedTrackIndices = [index];
+                                                root.lastSelectedIndex = index;
+                                                trackListView.currentIndex = index;
+                                            }
                                             // Show context menu
                                             trackContextMenu.popup();
                                         }
@@ -2198,23 +2241,48 @@ Item {
                                         id: trackContextMenu
                                         
                                         MenuItem {
-                                            text: "Play Next"
+                                            text: root.selectedTrackIndices.length > 1 ? 
+                                                  "Play " + root.selectedTrackIndices.length + " Tracks Next" : 
+                                                  "Play Next"
                                             onTriggered: {
-                                                MediaPlayer.playTrackNext(modelData);
+                                                if (root.selectedTrackIndices.length > 1) {
+                                                    // Add all selected tracks in order
+                                                    var indices = root.selectedTrackIndices.slice().sort(function(a, b) { return a - b; });
+                                                    for (var i = 0; i < indices.length; i++) {
+                                                        MediaPlayer.playTrackNext(rightPane.currentAlbumTracks[indices[i]]);
+                                                    }
+                                                } else {
+                                                    MediaPlayer.playTrackNext(modelData);
+                                                }
                                             }
                                         }
                                         
                                         MenuItem {
-                                            text: "Play Last"
+                                            text: root.selectedTrackIndices.length > 1 ? 
+                                                  "Play " + root.selectedTrackIndices.length + " Tracks Last" : 
+                                                  "Play Last"
                                             onTriggered: {
-                                                MediaPlayer.playTrackLast(modelData);
+                                                if (root.selectedTrackIndices.length > 1) {
+                                                    // Add all selected tracks in order
+                                                    var indices = root.selectedTrackIndices.slice().sort(function(a, b) { return a - b; });
+                                                    for (var i = 0; i < indices.length; i++) {
+                                                        MediaPlayer.playTrackLast(rightPane.currentAlbumTracks[indices[i]]);
+                                                    }
+                                                } else {
+                                                    MediaPlayer.playTrackLast(modelData);
+                                                }
                                             }
                                         }
                                         
-                                        MenuSeparator { }
+                                        MenuSeparator { 
+                                            visible: root.selectedTrackIndices.length === 1
+                                            height: visible ? implicitHeight : 0
+                                        }
                                         
                                         MenuItem {
                                             text: "Show info"
+                                            visible: root.selectedTrackIndices.length === 1
+                                            height: visible ? implicitHeight : 0
                                             onTriggered: {
                                                 // Select the track first
                                                 trackListView.currentIndex = index;
@@ -2227,7 +2295,7 @@ Item {
                                 
                                 // Hover effect
                                 states: State {
-                                    when: trackMouseArea.containsMouse && trackListView.currentIndex !== index
+                                    when: trackMouseArea.containsMouse && trackListView.currentIndex !== index && root.selectedTrackIndices.indexOf(index) === -1
                                     PropertyChanges {
                                         target: trackDelegate
                                         color: Qt.rgba(1, 1, 1, 0.04)
