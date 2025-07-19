@@ -107,36 +107,6 @@ Item {
                 Row {
                     spacing: 4
                     
-                    // Play button
-                    Rectangle {
-                        width: 28
-                        height: 28
-                        radius: 4
-                        color: playMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.1) : Qt.rgba(1, 1, 1, 0.05)
-                        border.width: 1
-                        border.color: Qt.rgba(1, 1, 1, 0.2)
-                        visible: mouseArea.containsMouse
-                        
-                        Image {
-                            anchors.centerIn: parent
-                            width: 16
-                            height: 16
-                            source: "qrc:/resources/icons/play-button-normal.svg"
-                            sourceSize.width: 32
-                            sourceSize.height: 32
-                        }
-                        
-                        MouseArea {
-                            id: playMouseArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                root.playlistDoubleClicked(modelData)
-                            }
-                        }
-                    }
-                    
                     // Delete button
                     Rectangle {
                         width: 28

@@ -1742,7 +1742,7 @@ Item {
                                 }
                             }
                             
-                            // Edit/Save/Cancel buttons for playlists (moved to right side)
+                            // Edit/Save/Cancel buttons for playlists
                             Row {
                                 spacing: 4
                                 visible: root.selectedAlbum && root.selectedAlbum.isPlaylist === true
@@ -1754,8 +1754,6 @@ Item {
                                     height: 32
                                     radius: 4
                                     color: editMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.1) : Qt.rgba(1, 1, 1, 0.05)
-                                    border.width: 1
-                                    border.color: Qt.rgba(1, 1, 1, 0.2)
                                     visible: !root.playlistEditMode
                                     
                                     // Animate color transition on hover
@@ -1792,8 +1790,6 @@ Item {
                                     height: 32
                                     radius: 4
                                     color: saveMouseArea.containsMouse ? Qt.rgba(0, 1, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
-                                    border.width: 1
-                                    border.color: Qt.rgba(1, 1, 1, 0.2)
                                     visible: root.playlistEditMode
                                     
                                     // Animate color transition on hover
@@ -1831,8 +1827,6 @@ Item {
                                     height: 32
                                     radius: 4
                                     color: cancelMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
-                                    border.width: 1
-                                    border.color: Qt.rgba(1, 1, 1, 0.2)
                                     visible: root.playlistEditMode
                                     
                                     // Animate color transition on hover
