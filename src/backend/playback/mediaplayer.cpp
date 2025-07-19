@@ -1253,6 +1253,21 @@ void MediaPlayer::restoreState()
             // Set the current queue index
             if (trackIndex >= 0 && trackIndex < m_playbackQueue.size()) {
                 m_currentQueueIndex = trackIndex;
+                
+                // Generate shuffle order if shuffle is enabled
+                if (m_shuffleEnabled) {
+                    generateShuffleOrder();
+                    
+                    // After generating shuffle order, we need to find where our current track ended up
+                    // and update m_shuffleIndex to that position
+                    if (!m_shuffleOrder.isEmpty() && m_currentQueueIndex >= 0) {
+                        int shufflePos = m_shuffleOrder.indexOf(m_currentQueueIndex);
+                        if (shufflePos >= 0) {
+                            m_shuffleIndex = shufflePos;
+                        }
+                    }
+                }
+                
                 emit playbackQueueChanged();
                 
                 // Set up connection to handle when track is loaded
@@ -1340,6 +1355,21 @@ void MediaPlayer::restoreAlbumByName(const QString& artist, const QString& title
         
         if (!m_playbackQueue.isEmpty() && trackIndex < m_playbackQueue.size()) {
             m_currentQueueIndex = trackIndex;
+            
+            // Generate shuffle order if shuffle is enabled
+            if (m_shuffleEnabled) {
+                generateShuffleOrder();
+                
+                // After generating shuffle order, we need to find where our current track ended up
+                // and update m_shuffleIndex to that position
+                if (!m_shuffleOrder.isEmpty() && m_currentQueueIndex >= 0) {
+                    int shufflePos = m_shuffleOrder.indexOf(m_currentQueueIndex);
+                    if (shufflePos >= 0) {
+                        m_shuffleIndex = shufflePos;
+                    }
+                }
+            }
+            
             emit playbackQueueChanged();
             
             // Set up connection to handle when track is loaded
@@ -1392,6 +1422,13 @@ void MediaPlayer::restoreTrackFromData(const QString& filePath, qint64 position,
     // Add to queue so it gets cleaned up properly
     m_playbackQueue.append(track);
     m_currentQueueIndex = 0;
+    
+    // Generate shuffle order if shuffle is enabled (even for single track)
+    if (m_shuffleEnabled) {
+        generateShuffleOrder();
+        // For a single track, shuffle index will be 0
+        m_shuffleIndex = 0;
+    }
     
     // Set up connection to handle when track is loaded
     if (m_restoreConnection) {
