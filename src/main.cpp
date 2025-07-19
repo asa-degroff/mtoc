@@ -21,6 +21,7 @@
 #include "backend/playback/mediaplayer.h"
 #include "backend/system/mprismanager.h"
 #include "backend/settings/settingsmanager.h"
+#include "backend/playlist/playlistmanager.h"
 
 // Message handler to show only QML console.log messages
 void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
@@ -167,6 +168,14 @@ int main(int argc, char *argv[])
     mediaPlayer->setSettingsManager(settingsManager);
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MediaPlayer", mediaPlayer);
     qDebug() << "Main: MediaPlayer registered";
+    
+    // Register PlaylistManager singleton
+    qDebug() << "Main: Creating PlaylistManager...";
+    PlaylistManager *playlistManager = PlaylistManager::instance();
+    playlistManager->setLibraryManager(libraryManager);
+    playlistManager->setMediaPlayer(mediaPlayer);
+    qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "PlaylistManager", playlistManager);
+    qDebug() << "Main: PlaylistManager registered";
     
     // Create and initialize MPRIS manager for system media control integration
     qDebug() << "Main: Creating MPRIS manager...";

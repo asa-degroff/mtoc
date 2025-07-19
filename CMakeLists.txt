@@ -58,6 +58,8 @@ set(PROJECT_SOURCES
         src/backend/playback/audioengine.cpp
         src/backend/playback/mediaplayer.h
         src/backend/playback/mediaplayer.cpp
+        src/backend/playlist/playlistmanager.h
+        src/backend/playlist/playlistmanager.cpp
         src/backend/settings/settingsmanager.h
         src/backend/settings/settingsmanager.cpp
         src/backend/system/mprismanager.h

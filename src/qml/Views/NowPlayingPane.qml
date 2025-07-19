@@ -362,6 +362,53 @@ Item {
                                 color: "#808080"
                             }
                             
+                            // Save queue button
+                            Rectangle {
+                                Layout.preferredWidth: 30
+                                Layout.preferredHeight: 30
+                                radius: 4
+                                color: saveQueueMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(1, 1, 1, 0.05)
+                                border.width: 1
+                                border.color: Qt.rgba(1, 1, 1, 0.3)
+                                visible: MediaPlayer.queueLength > 0
+                                
+                                Behavior on color {
+                                    ColorAnimation { duration: 150 }
+                                }
+                                
+                                Image {
+                                    anchors.centerIn: parent
+                                    width: 18
+                                    height: 18
+                                    source: "qrc:/resources/icons/save.svg"
+                                    sourceSize.width: 40
+                                    sourceSize.height: 40
+                                    opacity: saveQueueMouseArea.containsMouse ? 0.7 : 1.0
+                                    
+                                    Behavior on opacity {
+                                        NumberAnimation { duration: 150 }
+                                    }
+                                }
+                                
+                                MouseArea {
+                                    id: saveQueueMouseArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (PlaylistManager.saveQueueAsPlaylist()) {
+                                            console.log("Queue saved as playlist");
+                                        }
+                                    }
+                                }
+                                
+                                ToolTip {
+                                    visible: saveQueueMouseArea.containsMouse
+                                    text: "Save queue as playlist"
+                                    delay: 500
+                                }
+                            }
+                            
                             // Clear queue button
                             Rectangle {
                                 Layout.preferredWidth: 30

@@ -6,7 +6,7 @@ import "../"
 
 Rectangle {
     id: root
-    height: 36
+    implicitHeight: 36
     color: Qt.rgba(0.1, 0.1, 0.1, 0.42)
     radius: 6
     border.width: 1

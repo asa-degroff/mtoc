@@ -51,6 +51,9 @@ Item {
     property string pendingExpandCollapseArtist: ""  // Artist pending expansion/collapse
     property bool pendingExpandCollapseState: false  // State to apply after debounce
     
+    // Tab state
+    property int currentTab: 0  // 0 = Artists, 1 = Playlists
+    
     // Search state
     property string currentSearchTerm: ""
     property var searchResults: ({})
@@ -556,7 +559,7 @@ Item {
         anchors.margins: 8
         spacing: 8
         
-        // Header section - minimal design
+        // Header section with tabs
         Item {
             Layout.fillWidth: true
             height: 24  // Reduced height
@@ -566,11 +569,79 @@ Item {
                 anchors.leftMargin: 4
                 anchors.rightMargin: 4
                 
-                Label {
-                    text: "Music Library"
-                    font.pixelSize: 18  // Slightly smaller
-                    font.bold: true
-                    color: "white"
+                // Tab bar for Artists/Playlists
+                TabBar {
+                    id: tabBar
+                    Layout.preferredWidth: 200
+                    Layout.preferredHeight: parent.height
+                    currentIndex: root.currentTab
+                    
+                    background: Rectangle {
+                        color: Qt.rgba(1, 1, 1, 0.03)
+                        radius: 4
+                        border.width: 1
+                        border.color: Qt.rgba(1, 1, 1, 0.06)
+                    }
+                    
+                    TabButton {
+                        text: "Artists"
+                        font.pixelSize: 12
+                        
+                        background: Rectangle {
+                            color: tabBar.currentIndex === 0 ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
+                            radius: 3
+                            
+                            Behavior on color {
+                                ColorAnimation { duration: 150 }
+                            }
+                        }
+                        
+                        contentItem: Text {
+                            text: parent.text
+                            font: parent.font
+                            color: tabBar.currentIndex === 0 ? "white" : "#808080"
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            
+                            Behavior on color {
+                                ColorAnimation { duration: 150 }
+                            }
+                        }
+                    }
+                    
+                    TabButton {
+                        text: "Playlists"
+                        font.pixelSize: 12
+                        
+                        background: Rectangle {
+                            color: tabBar.currentIndex === 1 ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
+                            radius: 3
+                            
+                            Behavior on color {
+                                ColorAnimation { duration: 150 }
+                            }
+                        }
+                        
+                        contentItem: Text {
+                            text: parent.text
+                            font: parent.font
+                            color: tabBar.currentIndex === 1 ? "white" : "#808080"
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            
+                            Behavior on color {
+                                ColorAnimation { duration: 150 }
+                            }
+                        }
+                    }
+                    
+                    onCurrentIndexChanged: {
+                        root.currentTab = currentIndex
+                        if (currentIndex === 0) {
+                            // Reset navigation when switching to Artists tab
+                            resetNavigation()
+                        }
+                    }
                 }
                 
                 Item { Layout.fillWidth: true } // Spacer
@@ -848,18 +919,18 @@ Item {
                     border.color: Qt.rgba(0, 0, 0, 0.25)
                 }
 
-                // Container for SearchBar, ListView and ScrollBar
+                // Container for SearchBar and tab content
                 Item {
                     anchors.fill: parent
                     anchors.margins: 4
                     
-                    // Search bar at the top
+                    // Search bar at the top (smaller size)
                     SearchBar {
                         id: searchBar
                         anchors.top: parent.top
                         anchors.left: parent.left
                         anchors.right: parent.right
-                        placeholderText: "Search library..."
+                        placeholderText: root.currentTab === 0 ? "Search artists..." : "Search playlists..."
                         z: 1
                         
                         onSearchRequested: function(searchTerm) {
@@ -901,19 +972,24 @@ Item {
                         }
                     }
                     
-                    ListView {
-                        id: artistsListView
+                    // StackLayout to switch between Artists and Playlists
+                    StackLayout {
                         anchors.top: searchBar.bottom
                         anchors.topMargin: 8
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
-                        clip: true
-                        model: LibraryManager.artistModel
-                        spacing: 2
-                        interactive: !root.isScrollBarDragging  // Disable ListView interaction during scroll bar drag
-                        reuseItems: false  // Disabled to maintain consistent scroll positions
-                        cacheBuffer: 1200  // Increase cache for smoother scrolling without recycling
+                        currentIndex: root.currentTab
+                        
+                        // Artists view
+                        ListView {
+                            id: artistsListView
+                            clip: true
+                            model: LibraryManager.artistModel
+                            spacing: 2
+                            interactive: !root.isScrollBarDragging  // Disable ListView interaction during scroll bar drag
+                            reuseItems: false  // Disabled to maintain consistent scroll positions
+                            cacheBuffer: 1200  // Increase cache for smoother scrolling without recycling
                     
                     // Adaptive scroll speed - reduced when using scroll bar
                     flickDeceleration: root.isScrollBarDragging ? 1500 : 8000
@@ -1487,6 +1563,43 @@ Item {
                             acceptedButtons: Qt.NoButton  // Just for hover detection
                         }
                     }
+                        
+                        // Playlists view
+                        PlaylistView {
+                            id: playlistView
+                            
+                            onPlaylistSelected: function(playlistName) {
+                                // Load and display playlist tracks
+                                var tracks = PlaylistManager.loadPlaylist(playlistName)
+                                if (tracks.length > 0) {
+                                    // Create a pseudo-album for the playlist
+                                    root.selectedAlbum = {
+                                        title: playlistName,
+                                        albumArtist: "Playlist",
+                                        hasArt: false,
+                                        isPlaylist: true
+                                    }
+                                    rightPane.currentAlbumTracks = tracks
+                                    rightPane.albumTitleText = "Playlist - " + playlistName
+                                }
+                            }
+                            
+                            onPlaylistDoubleClicked: function(playlistName) {
+                                // Play the playlist directly
+                                var tracks = PlaylistManager.loadPlaylist(playlistName)
+                                if (tracks.length > 0) {
+                                    // Clear queue and play all tracks
+                                    MediaPlayer.clearQueue()
+                                    // Play the first track
+                                    MediaPlayer.playTrackFromData(tracks[0])
+                                    // Add the rest to the queue
+                                    for (var i = 1; i < tracks.length; i++) {
+                                        MediaPlayer.playTrackLast(tracks[i])
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -1744,14 +1857,27 @@ Item {
                                         }
                                     }
                                     onDoubleClicked: function(mouse) {
-                                        // If we have a selected album, play the album starting from this track
-                                        if (root.selectedAlbum) {
+                                        // Check if this is a playlist or regular album
+                                        if (root.selectedAlbum && root.selectedAlbum.isPlaylist) {
+                                            // For playlists, clear queue and play all tracks starting from this one
+                                            MediaPlayer.clearQueue()
+                                            // Play this track first
+                                            MediaPlayer.playTrackFromData(modelData)
+                                            // Add remaining tracks after this one
+                                            for (var i = index + 1; i < rightPane.currentAlbumTracks.length; i++) {
+                                                MediaPlayer.playTrackLast(rightPane.currentAlbumTracks[i])
+                                            }
+                                            // Add tracks before this one to the end
+                                            for (var j = 0; j < index; j++) {
+                                                MediaPlayer.playTrackLast(rightPane.currentAlbumTracks[j])
+                                            }
+                                        } else if (root.selectedAlbum) {
+                                            // Regular album - use the existing method
                                             var globalPos = trackDelegate.mapToGlobal(mouse.x, mouse.y);
                                             root.playAlbumWithQueueCheck(root.selectedAlbum.albumArtist, root.selectedAlbum.title, index, 
                                                                         globalPos.x, globalPos.y);
                                         } else {
-                                            // Otherwise create a single-track playlist
-                                            // We'll need to add a method to play a single track from variant data
+                                            // Single track
                                             MediaPlayer.playTrackFromData(modelData);
                                         }
                                     }
