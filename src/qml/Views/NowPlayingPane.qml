@@ -168,18 +168,11 @@ Item {
                     Column {
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.horizontalCenter: parent.horizontalCenter
-                        width: parent.width * (queueVisible ? 0.8 : 1.0)
+                        width: parent.width * 0.8
                         height: parent.height
                         spacing: queueVisible ? 10 : 0
                         opacity: (queueVisible && uniqueAlbumCovers.length > 0) ? 1.0 : 0.0
                         visible: opacity > 0
-                        
-                        Behavior on width {
-                            NumberAnimation {
-                                duration: 300
-                                easing.type: Easing.InOutCubic
-                            }
-                        }
                         
                         Behavior on spacing {
                             NumberAnimation {
