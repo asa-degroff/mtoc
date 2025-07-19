@@ -871,7 +871,7 @@ Item {
                             Layout.fillWidth: false
                             Layout.preferredWidth: parent.width * 0.48  // Slightly less than 50% to account for spacing
                             Layout.preferredHeight: parent.height
-                            placeholderText: root.currentTab === 0 ? "Search artists..." : "Search playlists..."
+                            placeholderText: "Search library..."
                             z: 1
                         
                         onSearchRequested: function(searchTerm) {
@@ -2546,6 +2546,11 @@ Item {
         if (searchTerm.trim().length === 0) {
             clearSearch()
             return
+        }
+        
+        // Switch to Artists tab when searching (search is not supported for playlists)
+        if (currentTab === 1) {
+            currentTab = 0
         }
         
         currentSearchTerm = searchTerm
