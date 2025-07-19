@@ -401,6 +401,13 @@ Item {
                 trackListView.currentIndex = -1;
             }
             
+            // Exit edit mode when switching albums/playlists
+            if (root.playlistEditMode) {
+                root.playlistEditMode = false;
+                root.editingPlaylistName = "";
+                root.editedPlaylistTracks = [];
+            }
+            
             // Validate selectedAlbum is a valid object with required string properties
             if (selectedAlbum && 
                 typeof selectedAlbum === "object" &&
@@ -414,7 +421,18 @@ Item {
                 // Use albumArtist instead of artist
                 var tracks;
                 try {
-                    tracks = LibraryManager.getTracksForAlbumAsVariantList(selectedAlbum.albumArtist, selectedAlbum.title);
+                    // Check if this is a playlist or regular album
+                    if (selectedAlbum.isPlaylist === true) {
+                        tracks = PlaylistManager.loadPlaylist(selectedAlbum.title);
+                        if (rightPane) {
+                            rightPane.albumTitleText = "Playlist - " + selectedAlbum.title;
+                        }
+                    } else {
+                        tracks = LibraryManager.getTracksForAlbumAsVariantList(selectedAlbum.albumArtist, selectedAlbum.title);
+                        if (rightPane) {
+                            rightPane.albumTitleText = selectedAlbum.albumArtist + " - " + selectedAlbum.title;
+                        }
+                    }
                 } catch (tracksError) {
                     console.warn("Error getting tracks for album:", tracksError);
                     tracks = [];
@@ -422,7 +440,6 @@ Item {
                 
                 if (rightPane) {
                     rightPane.currentAlbumTracks = tracks || [];
-                    rightPane.albumTitleText = selectedAlbum.albumArtist + " - " + selectedAlbum.title;
                 }
                 
                 // Auto-select currently playing track if it's in this album
@@ -1665,157 +1682,163 @@ Item {
                         border.width: 1
                         border.color: Qt.rgba(1, 1, 1, 0.13)
                         
-                        ColumnLayout {
+                        RowLayout {
                             anchors.fill: parent
                             anchors.margins: 8
-                            spacing: 2
+                            spacing: 12
                             
-                            Label {
-                                id: trackListHeader
+                            ColumnLayout {
                                 Layout.fillWidth: true
-                                text: rightPane.albumTitleText
-                                color: "white"
-                                font.pixelSize: 16
-                                font.bold: true
-                                elide: Text.ElideRight
-                                wrapMode: Text.NoWrap
+                                spacing: 2
+                                
+                                Label {
+                                    id: trackListHeader
+                                    Layout.fillWidth: true
+                                    text: rightPane.albumTitleText
+                                    color: "white"
+                                    font.pixelSize: 16
+                                    font.bold: true
+                                    elide: Text.ElideRight
+                                    wrapMode: Text.NoWrap
+                                }
+                                
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 12
+                                    
+                                    Label {
+                                        text: root.selectedAlbum && root.selectedAlbum.year ? root.selectedAlbum.year : ""
+                                        color: "#b0b0b0"
+                                        font.pixelSize: 12
+                                        visible: text !== ""
+                                    }
+                                    
+                                    Label {
+                                        text: rightPane.currentAlbumTracks.length > 0 ? 
+                                              (rightPane.currentAlbumTracks.length === 1 ? "1 track" : rightPane.currentAlbumTracks.length + " tracks") : ""
+                                        color: "#b0b0b0"
+                                        font.pixelSize: 12
+                                        visible: text !== ""
+                                    }
+                                    
+                                    Label {
+                                        text: rightPane.currentAlbumTracks.length > 0 ? formatAlbumDuration() : ""
+                                        color: "#b0b0b0"
+                                        font.pixelSize: 12
+                                        visible: text !== ""
+                                    }
+                                    
+                                    Item { Layout.fillWidth: true } // Spacer
+                                }
                             }
                             
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 12
+                            // Edit/Save/Cancel buttons for playlists (moved to right side)
+                            Row {
+                                spacing: 4
+                                visible: root.selectedAlbum && root.selectedAlbum.isPlaylist === true
+                                Layout.alignment: Qt.AlignVCenter
                                 
-                                Label {
-                                    text: root.selectedAlbum && root.selectedAlbum.year ? root.selectedAlbum.year : ""
-                                    color: "#b0b0b0"
-                                    font.pixelSize: 12
-                                    visible: text !== ""
-                                }
-                                
-                                Label {
-                                    text: rightPane.currentAlbumTracks.length > 0 ? 
-                                          (rightPane.currentAlbumTracks.length === 1 ? "1 track" : rightPane.currentAlbumTracks.length + " tracks") : ""
-                                    color: "#b0b0b0"
-                                    font.pixelSize: 12
-                                    visible: text !== ""
-                                }
-                                
-                                Label {
-                                    text: rightPane.currentAlbumTracks.length > 0 ? formatAlbumDuration() : ""
-                                    color: "#b0b0b0"
-                                    font.pixelSize: 12
-                                    visible: text !== ""
-                                }
-                                
-                                Item { Layout.fillWidth: true } // Spacer
-                                
-                                // Edit/Save/Cancel buttons for playlists
-                                Row {
-                                    spacing: 4
-                                    visible: root.selectedAlbum && root.selectedAlbum.isPlaylist
+                                // Edit button (shown when not in edit mode)
+                                Rectangle {
+                                    width: 32
+                                    height: 32
+                                    radius: 4
+                                    color: editMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.1) : Qt.rgba(1, 1, 1, 0.05)
+                                    border.width: 1
+                                    border.color: Qt.rgba(1, 1, 1, 0.2)
+                                    visible: !root.playlistEditMode
                                     
-                                    // Edit button (shown when not in edit mode)
-                                    Rectangle {
-                                        width: 32
-                                        height: 32
-                                        radius: 4
-                                        color: editMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.1) : Qt.rgba(1, 1, 1, 0.05)
-                                        border.width: 1
-                                        border.color: Qt.rgba(1, 1, 1, 0.2)
-                                        visible: !root.playlistEditMode
-                                        
-                                        Image {
-                                            anchors.centerIn: parent
-                                            width: 18
-                                            height: 18
-                                            source: "qrc:/resources/icons/edit.svg"
-                                            sourceSize.width: 36
-                                            sourceSize.height: 36
-                                        }
-                                        
-                                        MouseArea {
-                                            id: editMouseArea
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                // Enter edit mode
-                                                root.playlistEditMode = true
-                                                root.editingPlaylistName = root.selectedAlbum.title
-                                                root.editedPlaylistTracks = rightPane.currentAlbumTracks.slice() // Make a copy
-                                            }
-                                        }
+                                    Image {
+                                        anchors.centerIn: parent
+                                        width: 18
+                                        height: 18
+                                        source: "qrc:/resources/icons/edit.svg"
+                                        sourceSize.width: 36
+                                        sourceSize.height: 36
                                     }
                                     
-                                    // Save button (shown in edit mode)
-                                    Rectangle {
-                                        width: 32
-                                        height: 32
-                                        radius: 4
-                                        color: saveMouseArea.containsMouse ? Qt.rgba(0, 1, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
-                                        border.width: 1
-                                        border.color: Qt.rgba(1, 1, 1, 0.2)
-                                        visible: root.playlistEditMode
-                                        
-                                        Image {
-                                            anchors.centerIn: parent
-                                            width: 18
-                                            height: 18
-                                            source: "qrc:/resources/icons/save.svg"
-                                            sourceSize.width: 36
-                                            sourceSize.height: 36
-                                        }
-                                        
-                                        MouseArea {
-                                            id: saveMouseArea
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                // Save the edited playlist
-                                                PlaylistManager.updatePlaylist(root.editingPlaylistName, root.editedPlaylistTracks)
-                                                root.playlistEditMode = false
-                                                // Update the current view with edited tracks
-                                                rightPane.currentAlbumTracks = root.editedPlaylistTracks.slice()
-                                            }
+                                    MouseArea {
+                                        id: editMouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            // Enter edit mode
+                                            root.playlistEditMode = true
+                                            root.editingPlaylistName = root.selectedAlbum.title
+                                            root.editedPlaylistTracks = rightPane.currentAlbumTracks.slice() // Make a copy
                                         }
                                     }
+                                }
+                                
+                                // Save button (shown in edit mode)
+                                Rectangle {
+                                    width: 32
+                                    height: 32
+                                    radius: 4
+                                    color: saveMouseArea.containsMouse ? Qt.rgba(0, 1, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
+                                    border.width: 1
+                                    border.color: Qt.rgba(1, 1, 1, 0.2)
+                                    visible: root.playlistEditMode
                                     
-                                    // Cancel button (shown in edit mode)
-                                    Rectangle {
-                                        width: 32
-                                        height: 32
-                                        radius: 4
-                                        color: cancelMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
-                                        border.width: 1
-                                        border.color: Qt.rgba(1, 1, 1, 0.2)
-                                        visible: root.playlistEditMode
-                                        
-                                        Image {
-                                            anchors.centerIn: parent
-                                            width: 18
-                                            height: 18
-                                            source: "qrc:/resources/icons/cancel.svg"
-                                            sourceSize.width: 36
-                                            sourceSize.height: 36
+                                    Image {
+                                        anchors.centerIn: parent
+                                        width: 18
+                                        height: 18
+                                        source: "qrc:/resources/icons/save.svg"
+                                        sourceSize.width: 36
+                                        sourceSize.height: 36
+                                    }
+                                    
+                                    MouseArea {
+                                        id: saveMouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            // Save the edited playlist
+                                            PlaylistManager.updatePlaylist(root.editingPlaylistName, root.editedPlaylistTracks)
+                                            root.playlistEditMode = false
+                                            // Update the current view with edited tracks
+                                            rightPane.currentAlbumTracks = root.editedPlaylistTracks.slice()
                                         }
-                                        
-                                        MouseArea {
-                                            id: cancelMouseArea
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                // Cancel edit mode and restore original tracks
-                                                root.playlistEditMode = false
-                                                root.editingPlaylistName = ""
-                                                
-                                                // Reload the original playlist tracks
-                                                if (root.selectedAlbum && root.selectedAlbum.isPlaylist) {
-                                                    var originalTracks = PlaylistManager.loadPlaylist(root.selectedAlbum.title)
-                                                    rightPane.currentAlbumTracks = originalTracks
-                                                    root.editedPlaylistTracks = []
-                                                }
+                                    }
+                                }
+                                
+                                // Cancel button (shown in edit mode)
+                                Rectangle {
+                                    width: 32
+                                    height: 32
+                                    radius: 4
+                                    color: cancelMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
+                                    border.width: 1
+                                    border.color: Qt.rgba(1, 1, 1, 0.2)
+                                    visible: root.playlistEditMode
+                                    
+                                    Image {
+                                        anchors.centerIn: parent
+                                        width: 18
+                                        height: 18
+                                        source: "qrc:/resources/icons/cancel.svg"
+                                        sourceSize.width: 36
+                                        sourceSize.height: 36
+                                    }
+                                    
+                                    MouseArea {
+                                        id: cancelMouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            // Cancel edit mode and restore original tracks
+                                            root.playlistEditMode = false
+                                            root.editingPlaylistName = ""
+                                            
+                                            // Reload the original playlist tracks
+                                            if (root.selectedAlbum && root.selectedAlbum.isPlaylist) {
+                                                var originalTracks = PlaylistManager.loadPlaylist(root.selectedAlbum.title)
+                                                rightPane.currentAlbumTracks = originalTracks
+                                                root.editedPlaylistTracks = []
                                             }
                                         }
                                     }
