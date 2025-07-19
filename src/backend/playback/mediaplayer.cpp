@@ -13,6 +13,8 @@
 #include <QFileInfo>
 #include <QVariantList>
 #include <QVariantMap>
+#include <algorithm>
+#include <random>
 
 QString MediaPlayer::getDebugLogPath()
 {
@@ -65,6 +67,18 @@ void MediaPlayer::setLibraryManager(Mtoc::LibraryManager* manager)
 void MediaPlayer::setSettingsManager(SettingsManager* settingsManager)
 {
     m_settingsManager = settingsManager;
+    
+    // Load initial repeat/shuffle states from settings
+    if (m_settingsManager) {
+        setRepeatEnabled(m_settingsManager->repeatEnabled());
+        setShuffleEnabled(m_settingsManager->shuffleEnabled());
+        
+        // Sync settings when they change
+        connect(this, &MediaPlayer::repeatEnabledChanged,
+                m_settingsManager, &SettingsManager::setRepeatEnabled);
+        connect(this, &MediaPlayer::shuffleEnabledChanged,
+                m_settingsManager, &SettingsManager::setShuffleEnabled);
+    }
 }
 
 void MediaPlayer::setupConnections()
@@ -140,8 +154,49 @@ void MediaPlayer::setVolume(float volume)
     emit volumeChanged(volume);
 }
 
+void MediaPlayer::setRepeatEnabled(bool enabled)
+{
+    if (m_repeatEnabled != enabled) {
+        m_repeatEnabled = enabled;
+        emit repeatEnabledChanged(enabled);
+        emit playbackQueueChanged(); // Update hasNext status
+        saveState();
+    }
+}
+
+void MediaPlayer::setShuffleEnabled(bool enabled)
+{
+    if (m_shuffleEnabled != enabled) {
+        m_shuffleEnabled = enabled;
+        
+        if (enabled) {
+            generateShuffleOrder();
+        } else {
+            // Clear shuffle state
+            m_shuffleOrder.clear();
+            m_shuffleIndex = -1;
+        }
+        
+        emit shuffleEnabledChanged(enabled);
+        emit playbackQueueChanged(); // Update hasNext status
+        saveState();
+    }
+}
+
 bool MediaPlayer::hasNext() const
 {
+    if (m_playbackQueue.isEmpty()) {
+        return false;
+    }
+    
+    if (m_repeatEnabled) {
+        return true; // Always has next with repeat enabled
+    }
+    
+    if (m_shuffleEnabled) {
+        return m_shuffleIndex < m_shuffleOrder.size() - 1;
+    }
+    
     return m_currentQueueIndex >= 0 && m_currentQueueIndex < m_playbackQueue.size() - 1;
 }
 
@@ -222,8 +277,39 @@ void MediaPlayer::togglePlayPause()
 
 void MediaPlayer::next()
 {
-    if (hasNext()) {
-        m_currentQueueIndex++;
+    if (!hasNext()) {
+        return;
+    }
+    
+    if (m_shuffleEnabled) {
+        int nextShuffleIdx = getNextShuffleIndex();
+        
+        // Check if we need to re-shuffle for repeat
+        if (nextShuffleIdx == 0 && m_shuffleIndex == m_shuffleOrder.size() - 1) {
+            // We're looping with repeat, re-shuffle
+            generateShuffleOrder();
+            m_shuffleIndex = 0;
+        } else {
+            m_shuffleIndex = nextShuffleIdx;
+        }
+        
+        if (m_shuffleIndex >= 0 && m_shuffleIndex < m_shuffleOrder.size()) {
+            m_currentQueueIndex = m_shuffleOrder[m_shuffleIndex];
+        }
+    } else {
+        // Sequential playback
+        if (m_currentQueueIndex >= m_playbackQueue.size() - 1) {
+            if (m_repeatEnabled) {
+                m_currentQueueIndex = 0; // Loop to beginning
+            } else {
+                return; // Should not happen due to hasNext() check
+            }
+        } else {
+            m_currentQueueIndex++;
+        }
+    }
+    
+    if (m_currentQueueIndex >= 0 && m_currentQueueIndex < m_playbackQueue.size()) {
         Mtoc::Track* nextTrack = m_playbackQueue[m_currentQueueIndex];
         playTrack(nextTrack);
         emit playbackQueueChanged();
@@ -234,6 +320,20 @@ void MediaPlayer::previous()
 {
     if (position() > 3000) {
         seek(0);
+        return;
+    }
+    
+    if (m_shuffleEnabled) {
+        int prevShuffleIdx = getPreviousShuffleIndex();
+        if (prevShuffleIdx >= 0) {
+            m_shuffleIndex = prevShuffleIdx;
+            m_currentQueueIndex = m_shuffleOrder[m_shuffleIndex];
+            Mtoc::Track* prevTrack = m_playbackQueue[m_currentQueueIndex];
+            playTrack(prevTrack);
+            emit playbackQueueChanged();
+        } else {
+            seek(0);
+        }
     } else if (hasPrevious()) {
         m_currentQueueIndex--;
         Mtoc::Track* prevTrack = m_playbackQueue[m_currentQueueIndex];
@@ -355,6 +455,11 @@ void MediaPlayer::playAlbum(Mtoc::Album* album, int startIndex)
     // Clear the queue modified flag when playing a full album
     setQueueModified(false);
     
+    // Generate shuffle order if shuffle is enabled
+    if (m_shuffleEnabled) {
+        generateShuffleOrder();
+    }
+    
     emit playbackQueueChanged();
     
     if (!m_playbackQueue.isEmpty()) {
@@ -456,6 +561,11 @@ void MediaPlayer::clearQueue()
     }
     m_playbackQueue.clear();
     m_currentQueueIndex = -1;
+    
+    // Clear shuffle state
+    m_shuffleOrder.clear();
+    m_shuffleIndex = -1;
+    
     setQueueModified(false);
     
     // Also clear undo queue
@@ -674,6 +784,23 @@ void MediaPlayer::playTrackNext(const QVariant& trackData)
     // Mark queue as modified when adding individual tracks
     setQueueModified(true);
     
+    // Update shuffle order if enabled
+    if (m_shuffleEnabled && !m_playbackQueue.isEmpty()) {
+        // Add the new track index to shuffle order after current position
+        int newTrackIndex = insertIndex;
+        if (m_shuffleIndex >= 0 && m_shuffleIndex < m_shuffleOrder.size() - 1) {
+            m_shuffleOrder.insert(m_shuffleIndex + 1, newTrackIndex);
+            // Adjust indices after insertion
+            for (int i = m_shuffleIndex + 2; i < m_shuffleOrder.size(); ++i) {
+                if (m_shuffleOrder[i] >= newTrackIndex) {
+                    m_shuffleOrder[i]++;
+                }
+            }
+        } else {
+            m_shuffleOrder.append(newTrackIndex);
+        }
+    }
+    
     emit playbackQueueChanged();
     
     // If nothing is playing, start playback
@@ -865,6 +992,7 @@ void MediaPlayer::handleTrackFinished()
     if (hasNext()) {
         next();
     } else {
+        // No more tracks and repeat is off
         m_state = StoppedState;
         emit stateChanged(m_state);
     }
@@ -1336,4 +1464,77 @@ void MediaPlayer::setQueueModified(bool modified)
         m_isQueueModified = modified;
         emit queueModifiedChanged(modified);
     }
+}
+
+void MediaPlayer::generateShuffleOrder()
+{
+    m_shuffleOrder.clear();
+    
+    if (m_playbackQueue.isEmpty()) {
+        m_shuffleIndex = -1;
+        return;
+    }
+    
+    // Create list of all indices
+    for (int i = 0; i < m_playbackQueue.size(); ++i) {
+        m_shuffleOrder.append(i);
+    }
+    
+    // If we have a current track, remove it from the list temporarily
+    if (m_currentQueueIndex >= 0 && m_currentQueueIndex < m_playbackQueue.size()) {
+        m_shuffleOrder.removeOne(m_currentQueueIndex);
+    }
+    
+    // Shuffle the remaining indices using modern C++ random
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::shuffle(m_shuffleOrder.begin(), m_shuffleOrder.end(), gen);
+    
+    // Put current track at the beginning if we have one
+    if (m_currentQueueIndex >= 0 && m_currentQueueIndex < m_playbackQueue.size()) {
+        m_shuffleOrder.prepend(m_currentQueueIndex);
+        m_shuffleIndex = 0;
+    } else {
+        m_shuffleIndex = -1;
+    }
+}
+
+int MediaPlayer::getNextShuffleIndex() const
+{
+    if (!m_shuffleEnabled || m_shuffleOrder.isEmpty()) {
+        return -1;
+    }
+    
+    int nextIndex = m_shuffleIndex + 1;
+    
+    // Check if we need to loop with repeat
+    if (nextIndex >= m_shuffleOrder.size()) {
+        if (m_repeatEnabled) {
+            return 0; // Loop to beginning
+        } else {
+            return -1; // No more tracks
+        }
+    }
+    
+    return nextIndex;
+}
+
+int MediaPlayer::getPreviousShuffleIndex() const
+{
+    if (!m_shuffleEnabled || m_shuffleOrder.isEmpty()) {
+        return -1;
+    }
+    
+    int prevIndex = m_shuffleIndex - 1;
+    
+    // Check if we need to loop with repeat
+    if (prevIndex < 0) {
+        if (m_repeatEnabled) {
+            return m_shuffleOrder.size() - 1; // Loop to end
+        } else {
+            return -1; // No previous track
+        }
+    }
+    
+    return prevIndex;
 }

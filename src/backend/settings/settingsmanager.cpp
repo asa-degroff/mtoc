@@ -50,6 +50,24 @@ void SettingsManager::setRestorePlaybackPosition(bool restore)
     }
 }
 
+void SettingsManager::setRepeatEnabled(bool enabled)
+{
+    if (m_repeatEnabled != enabled) {
+        m_repeatEnabled = enabled;
+        emit repeatEnabledChanged(enabled);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setShuffleEnabled(bool enabled)
+{
+    if (m_shuffleEnabled != enabled) {
+        m_shuffleEnabled = enabled;
+        emit shuffleEnabledChanged(enabled);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -62,11 +80,15 @@ void SettingsManager::loadSettings()
     
     m_settings.beginGroup("Playback");
     m_restorePlaybackPosition = m_settings.value("restorePosition", true).toBool();
+    m_repeatEnabled = m_settings.value("repeatEnabled", false).toBool();
+    m_shuffleEnabled = m_settings.value("shuffleEnabled", false).toBool();
     m_settings.endGroup();
     
     qDebug() << "SettingsManager: Loaded settings - Queue action:" << m_queueActionDefault 
              << "Show track info:" << m_showTrackInfoByDefault 
-             << "Restore position:" << m_restorePlaybackPosition;
+             << "Restore position:" << m_restorePlaybackPosition
+             << "Repeat:" << m_repeatEnabled
+             << "Shuffle:" << m_shuffleEnabled;
 }
 
 void SettingsManager::saveSettings()
@@ -81,6 +103,8 @@ void SettingsManager::saveSettings()
     
     m_settings.beginGroup("Playback");
     m_settings.setValue("restorePosition", m_restorePlaybackPosition);
+    m_settings.setValue("repeatEnabled", m_repeatEnabled);
+    m_settings.setValue("shuffleEnabled", m_shuffleEnabled);
     m_settings.endGroup();
     
     m_settings.sync();

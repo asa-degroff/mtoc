@@ -34,6 +34,8 @@ class MediaPlayer : public QObject
     Q_PROPERTY(int totalQueueDuration READ totalQueueDuration NOTIFY playbackQueueChanged)
     Q_PROPERTY(bool isQueueModified READ isQueueModified NOTIFY queueModifiedChanged)
     Q_PROPERTY(bool canUndoClear READ canUndoClear NOTIFY canUndoClearChanged)
+    Q_PROPERTY(bool repeatEnabled READ repeatEnabled WRITE setRepeatEnabled NOTIFY repeatEnabledChanged)
+    Q_PROPERTY(bool shuffleEnabled READ shuffleEnabled WRITE setShuffleEnabled NOTIFY shuffleEnabledChanged)
 
 public:
     enum State {
@@ -66,6 +68,8 @@ public:
     int totalQueueDuration() const;
     bool isQueueModified() const { return m_isQueueModified; }
     bool canUndoClear() const { return !m_undoQueue.isEmpty(); }
+    bool repeatEnabled() const { return m_repeatEnabled; }
+    bool shuffleEnabled() const { return m_shuffleEnabled; }
 
 public slots:
     void play();
@@ -91,6 +95,9 @@ public slots:
     Q_INVOKABLE void clearQueueForUndo();
     Q_INVOKABLE void undoClearQueue();
     
+    void setRepeatEnabled(bool enabled);
+    void setShuffleEnabled(bool enabled);
+    
     // State persistence
     void saveState();
     void restoreState();
@@ -109,6 +116,8 @@ signals:
     void readyChanged(bool ready);
     void queueModifiedChanged(bool modified);
     void canUndoClearChanged(bool canUndo);
+    void repeatEnabledChanged(bool enabled);
+    void shuffleEnabledChanged(bool enabled);
 
 private slots:
     void periodicStateSave();
@@ -154,6 +163,16 @@ private:
     int m_undoQueueIndex = -1;
     Mtoc::Track* m_undoCurrentTrack = nullptr;
     bool m_undoQueueModified = false;
+    
+    // Repeat and shuffle
+    bool m_repeatEnabled = false;
+    bool m_shuffleEnabled = false;
+    QList<int> m_shuffleOrder;  // Randomized indices
+    int m_shuffleIndex = -1;     // Current position in shuffle order
+    
+    void generateShuffleOrder();
+    int getNextShuffleIndex() const;
+    int getPreviousShuffleIndex() const;
 };
 
 #endif // MEDIAPLAYER_H

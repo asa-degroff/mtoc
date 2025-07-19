@@ -22,8 +22,8 @@ Item {
     signal shuffleToggled()
     
     property bool queueVisible: false
-    property bool repeatEnabled: false
-    property bool shuffleEnabled: false
+    property bool repeatEnabled: MediaPlayer.repeatEnabled
+    property bool shuffleEnabled: MediaPlayer.shuffleEnabled
     
     function formatTime(milliseconds) {
         if (isNaN(milliseconds) || milliseconds < 0) {

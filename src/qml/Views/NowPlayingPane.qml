@@ -581,12 +581,10 @@ Item {
             }
             onQueueToggled: root.queueVisible = !root.queueVisible
             onRepeatToggled: {
-                // TODO: Implement repeat functionality
-                console.log("Repeat toggled")
+                MediaPlayer.repeatEnabled = !MediaPlayer.repeatEnabled
             }
             onShuffleToggled: {
-                // TODO: Implement shuffle functionality
-                console.log("Shuffle toggled")
+                MediaPlayer.shuffleEnabled = !MediaPlayer.shuffleEnabled
             }
         }
         
