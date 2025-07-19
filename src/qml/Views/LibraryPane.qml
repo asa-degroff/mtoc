@@ -895,11 +895,11 @@ Item {
                         height: 38  // Close to list item height (40px) with some breathing room
                         spacing: 8
                         
-                        // Search bar at 50% width
+                        // Search bar at 60% width
                         SearchBar {
                             id: searchBar
                             Layout.fillWidth: false
-                            Layout.preferredWidth: parent.width * 0.48  // Slightly less than 50% to account for spacing
+                            Layout.preferredWidth: parent.width * 0.58  // Slightly less than 60% to account for spacing
                             Layout.preferredHeight: parent.height
                             placeholderText: "Search library..."
                             z: 1
