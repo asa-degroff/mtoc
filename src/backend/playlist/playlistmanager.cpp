@@ -179,7 +179,7 @@ bool PlaylistManager::writeM3UFile(const QString& filepath, const QVariantList& 
         // Write extended info if available
         QString title = track.value("title").toString();
         QString artist = track.value("artist").toString();
-        int duration = track.value("duration").toInt() / 1000; // Convert to seconds
+        int duration = track.value("duration").toInt(); // Already in seconds
         
         if (!title.isEmpty()) {
             stream << "#EXTINF:" << duration << ",";
@@ -268,7 +268,7 @@ QVariantList PlaylistManager::readM3UFile(const QString& filepath)
             QString info = line.mid(8); // Skip "#EXTINF:"
             int commaPos = info.indexOf(',');
             if (commaPos > 0) {
-                currentDuration = info.left(commaPos).toInt() * 1000; // Convert to ms
+                currentDuration = info.left(commaPos).toInt(); // Already in seconds
                 QString titleInfo = info.mid(commaPos + 1);
                 
                 // Try to split artist - title
