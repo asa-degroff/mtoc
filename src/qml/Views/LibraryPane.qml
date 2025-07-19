@@ -2021,21 +2021,21 @@ Item {
                                                 var newIndex = trackListView.dropIndex
                                                 var draggedIdx = trackListView.draggedTrackIndex
                                                 
-                                                // Reset drag state first to stop animations
-                                                trackListView.draggedTrackIndex = -1
-                                                trackListView.dropIndex = -1
+                                                // Keep track of whether we're actually moving
+                                                var isMoving = newIndex !== draggedIdx && draggedIdx >= 0
                                                 
                                                 // Reset visual properties
                                                 trackDelegate.z = 0
                                                 trackDelegate.opacity = 1.0
                                                 trackDelegate.y = dragArea.originalY
                                                 
-                                                // Perform the reorder if needed
-                                                if (newIndex !== draggedIdx && draggedIdx >= 0) {
-                                                    // Force immediate layout update
-                                                    trackListView.forceLayout()
-                                                    
-                                                    // Reorder the tracks with a small delay to ensure visual update
+                                                // Reset drag state to remove all visual offsets
+                                                trackListView.draggedTrackIndex = -1
+                                                trackListView.dropIndex = -1
+                                                
+                                                // Perform the reorder after a brief delay to allow visual reset
+                                                if (isMoving) {
+                                                    // Use a timer to ensure visual updates complete first
                                                     Qt.callLater(function() {
                                                         var movedTrack = root.editedPlaylistTracks.splice(draggedIdx, 1)[0]
                                                         root.editedPlaylistTracks.splice(newIndex, 0, movedTrack)
