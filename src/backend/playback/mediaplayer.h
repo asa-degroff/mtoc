@@ -171,6 +171,7 @@ private:
     int m_shuffleIndex = -1;     // Current position in shuffle order
     
     void generateShuffleOrder();
+    void generateShuffleOrder(bool putCurrentTrackFirst);
     int getNextShuffleIndex() const;
     int getPreviousShuffleIndex() const;
 };
