@@ -1836,6 +1836,10 @@ Item {
                         reuseItems: false
                         cacheBuffer: 800  // Increased cache without recycling
                         
+                        // Drag and drop state
+                        property int draggedTrackIndex: -1
+                        property int dropIndex: -1
+                        
                         // Smooth height animation synchronized with panel slide
                         Behavior on Layout.preferredHeight {
                             enabled: !root.trackInfoPanelAnimating
@@ -1928,6 +1932,53 @@ Item {
                                 //border
                                 border.width: 1
                                 border.color: Qt.rgba(1, 1, 1, 0.04)
+                                
+                                // Animated vertical offset for drag feedback
+                                transform: Translate {
+                                    y: trackDelegate.verticalOffset
+                                    Behavior on y {
+                                        enabled: root.playlistEditMode && trackListView.draggedTrackIndex !== -1
+                                        NumberAnimation {
+                                            duration: 200
+                                            easing.type: Easing.InOutQuad
+                                        }
+                                    }
+                                }
+                                
+                                property real verticalOffset: {
+                                    if (!root.playlistEditMode || trackListView.draggedTrackIndex === -1) return 0
+                                    
+                                    var dragIdx = trackListView.draggedTrackIndex
+                                    var dropIdx = trackListView.dropIndex
+                                    
+                                    if (dragIdx === index || dropIdx === -1) return 0  // Don't offset the dragged item
+                                    
+                                    if (dragIdx < dropIdx) {
+                                        // Dragging down
+                                        if (index > dragIdx && index <= dropIdx) return -trackDelegate.height - trackListView.spacing
+                                    } else if (dragIdx > dropIdx) {
+                                        // Dragging up
+                                        if (index >= dropIdx && index < dragIdx) return trackDelegate.height + trackListView.spacing
+                                    }
+                                    
+                                    return 0
+                                }
+                                
+                                // Update drop position in real-time while dragging
+                                onYChanged: {
+                                    if (dragArea.drag.active && trackListView.draggedTrackIndex === index) {
+                                        // Calculate potential drop position based on current Y
+                                        var dragDistance = y - dragArea.originalY
+                                        var itemsMoved = Math.round(dragDistance / (height + trackListView.spacing))
+                                        var potentialIndex = trackListView.draggedTrackIndex + itemsMoved
+                                        potentialIndex = Math.max(0, Math.min(potentialIndex, trackListView.count - 1))
+                                        
+                                        // Update drop index if it changed
+                                        if (potentialIndex !== trackListView.dropIndex) {
+                                            trackListView.dropIndex = potentialIndex
+                                        }
+                                    }
+                                }
 
 
 
@@ -1955,38 +2006,44 @@ Item {
                                             drag.target: trackDelegate
                                             drag.axis: Drag.YAxis
                                             
-                                            property int draggedIndex: -1
                                             property int originalY: 0
                                             
                                             onPressed: {
-                                                draggedIndex = index
+                                                trackListView.draggedTrackIndex = index
+                                                trackListView.dropIndex = index
                                                 originalY = trackDelegate.y
                                                 trackDelegate.z = 1000
                                                 trackDelegate.opacity = 0.8
                                             }
                                             
                                             onReleased: {
+                                                // Use the pre-calculated drop index
+                                                var newIndex = trackListView.dropIndex
+                                                var draggedIdx = trackListView.draggedTrackIndex
+                                                
+                                                // Reset drag state first to stop animations
+                                                trackListView.draggedTrackIndex = -1
+                                                trackListView.dropIndex = -1
+                                                
+                                                // Reset visual properties
                                                 trackDelegate.z = 0
                                                 trackDelegate.opacity = 1.0
+                                                trackDelegate.y = dragArea.originalY
                                                 
-                                                // Calculate drop position based on the drag distance
-                                                var dragDistance = trackDelegate.y - originalY
-                                                var itemsMoved = Math.round(dragDistance / trackDelegate.height)
-                                                var newIndex = draggedIndex + itemsMoved
-                                                newIndex = Math.max(0, Math.min(newIndex, trackListView.count - 1))
-                                                
-                                                if (newIndex !== draggedIndex && draggedIndex >= 0) {
-                                                    // Reorder the tracks
-                                                    var movedTrack = root.editedPlaylistTracks.splice(draggedIndex, 1)[0]
-                                                    root.editedPlaylistTracks.splice(newIndex, 0, movedTrack)
+                                                // Perform the reorder if needed
+                                                if (newIndex !== draggedIdx && draggedIdx >= 0) {
+                                                    // Force immediate layout update
+                                                    trackListView.forceLayout()
                                                     
-                                                    // Update the view
-                                                    rightPane.currentAlbumTracks = root.editedPlaylistTracks.slice()
+                                                    // Reorder the tracks with a small delay to ensure visual update
+                                                    Qt.callLater(function() {
+                                                        var movedTrack = root.editedPlaylistTracks.splice(draggedIdx, 1)[0]
+                                                        root.editedPlaylistTracks.splice(newIndex, 0, movedTrack)
+                                                        
+                                                        // Update the view
+                                                        rightPane.currentAlbumTracks = root.editedPlaylistTracks.slice()
+                                                    })
                                                 }
-                                                
-                                                // Reset position
-                                                trackDelegate.y = originalY
-                                                draggedIndex = -1
                                             }
                                         }
                                     }
