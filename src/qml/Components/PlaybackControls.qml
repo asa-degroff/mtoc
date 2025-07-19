@@ -336,7 +336,7 @@ Item {
                     height: implicitHeight
                     radius: 5
                     color: "white"
-                    opacity: 0.1
+                    opacity: 0.2
                     
                     Rectangle {
                         width: progressSlider.visualPosition * parent.width

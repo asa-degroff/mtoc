@@ -1758,6 +1758,11 @@ Item {
                                     border.color: Qt.rgba(1, 1, 1, 0.2)
                                     visible: !root.playlistEditMode
                                     
+                                    // Animate color transition on hover
+                                    Behavior on color {
+                                        ColorAnimation { duration: 150 }
+                                    }
+                                    
                                     Image {
                                         anchors.centerIn: parent
                                         width: 18
@@ -1790,6 +1795,11 @@ Item {
                                     border.width: 1
                                     border.color: Qt.rgba(1, 1, 1, 0.2)
                                     visible: root.playlistEditMode
+                                    
+                                    // Animate color transition on hover
+                                    Behavior on color {
+                                        ColorAnimation { duration: 150 }
+                                    }
                                     
                                     Image {
                                         anchors.centerIn: parent
@@ -1824,6 +1834,11 @@ Item {
                                     border.width: 1
                                     border.color: Qt.rgba(1, 1, 1, 0.2)
                                     visible: root.playlistEditMode
+                                    
+                                    // Animate color transition on hover
+                                    Behavior on color {
+                                        ColorAnimation { duration: 150 }
+                                    }
                                     
                                     Image {
                                         anchors.centerIn: parent
@@ -2138,8 +2153,6 @@ Item {
                                         height: 28
                                         radius: 4
                                         color: deleteTrackMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
-                                        border.width: 1
-                                        border.color: Qt.rgba(1, 1, 1, 0.2)
                                         visible: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist
                                         
                                         Image {

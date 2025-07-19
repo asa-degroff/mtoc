@@ -324,43 +324,46 @@ ListView {
                     id: removeButtonBackground
                     anchors.fill: parent
                     radius: 4
-                    color: removeButtonMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(1, 1, 1, 0.08)
-                    visible: queueItemMouseArea.containsMouse || removeButtonMouseArea.containsMouse
+                    color: removeButtonMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Qt.rgba(1, 1, 1, 0.08)
+                    opacity: (queueItemMouseArea.containsMouse || removeButtonMouseArea.containsMouse) ? 1.0 : 0.0
                     
                     Behavior on color {
                         ColorAnimation { duration: 150 }
                     }
                     
-                    Image {
-                        id: removeButton
+                    Behavior on opacity {
+                        NumberAnimation { duration: 150 }
+                    }
+                    
+                    Item {
                         anchors.centerIn: parent
                         width: 16
                         height: 16
-                        source: "qrc:/resources/icons/trash-can-closed-lid.svg"
-                        sourceSize.width: 32
-                        sourceSize.height: 32
                         
-                        states: [
-                            State {
-                                name: "hovered"
-                                when: removeButtonMouseArea.containsMouse
-                                PropertyChanges {
-                                    target: removeButton
-                                    source: "qrc:/resources/icons/trash-can-open-lid.svg"
-                                    opacity: 1.0
-                                }
-                            },
-                            State {
-                                name: ""
-                                PropertyChanges {
-                                    target: removeButton
-                                    opacity: 0.7
-                                }
+                        Image {
+                            id: closedLidIcon
+                            anchors.fill: parent
+                            source: "qrc:/resources/icons/trash-can-closed-lid.svg"
+                            sourceSize.width: 32
+                            sourceSize.height: 32
+                            opacity: removeButtonMouseArea.containsMouse ? 0 : 1
+                            
+                            Behavior on opacity {
+                                NumberAnimation { duration: 150 }
                             }
-                        ]
+                        }
                         
-                        transitions: Transition {
-                            NumberAnimation { properties: "opacity"; duration: 150 }
+                        Image {
+                            id: openLidIcon
+                            anchors.fill: parent
+                            source: "qrc:/resources/icons/trash-can-open-lid.svg"
+                            sourceSize.width: 32
+                            sourceSize.height: 32
+                            opacity: removeButtonMouseArea.containsMouse ? 1 : 0
+                            
+                            Behavior on opacity {
+                                NumberAnimation { duration: 150 }
+                            }
                         }
                     }
                     
@@ -385,9 +388,9 @@ ListView {
         MouseArea {
             id: queueItemMouseArea
             anchors.fill: parent
+            anchors.rightMargin: 24  // Leave space for the remove button
             hoverEnabled: true
             acceptedButtons: Qt.LeftButton
-            propagateComposedEvents: true
             
             onDoubleClicked: root.trackDoubleClicked(index)
         }

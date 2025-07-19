@@ -143,8 +143,6 @@ Item {
                         height: 28
                         radius: 4
                         color: deleteMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
-                        border.width: 1
-                        border.color: Qt.rgba(1, 1, 1, 0.2)
                         visible: mouseArea.containsMouse
                         
                         Image {
