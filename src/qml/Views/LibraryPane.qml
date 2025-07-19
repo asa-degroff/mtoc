@@ -129,6 +129,20 @@ Item {
         easing.type: Easing.InOutQuad
     }
     
+    // Navigation initialization timer to start keyboard navigation
+    Timer {
+        id: navigationInitTimer
+        interval: 100 // lets all components intialize before starting navigation
+        running: false
+        repeat: false
+        onTriggered: {
+            if (LibraryManager.artistModel.length > 0) {
+                root.forceActiveFocus()
+                startArtistNavigation()
+            }
+        }
+    }
+    
     // Memory cleanup timer
     Timer {
         id: memoryCleanupTimer
@@ -312,6 +326,9 @@ Item {
         trackInfoPanelY = 184  // Start off-screen
         // Auto-select currently playing track if album is already loaded
         Qt.callLater(autoSelectCurrentTrack)
+        
+        // Initialize keyboard navigation after a small delay to ensure everything is ready
+        navigationInitTimer.start()
     }
     
     Component.onDestruction: {

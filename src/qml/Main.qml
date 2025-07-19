@@ -119,6 +119,10 @@ ApplicationWindow {
     // Restore playback state when application is fully loaded
     Component.onCompleted: {
         console.log("Main.qml: Window loaded");
+        
+        // Give focus to library pane for keyboard navigation
+        libraryPane.forceActiveFocus();
+        
         // Wait for MediaPlayer to be ready before restoring state
         if (MediaPlayer.isReady) {
             console.log("Main.qml: MediaPlayer is ready, restoring playback state");
