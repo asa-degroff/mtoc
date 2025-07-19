@@ -13,42 +13,69 @@ ListView {
     signal trackDoubleClicked(int index)
     signal removeTrackRequested(int index)
     
+    property var clearingItems: []
+    property int clearAnimationIndex: 0
+    
     function clearAllTracks() {
-        // Calculate animation duration based on track count
-        // Cap total animation time at 2 seconds
         var trackCount = count;
         if (trackCount === 0) return;
         
-        var animationDuration = Math.min(300, 2000 / trackCount);
-        var staggerDelay = Math.min(50, 500 / trackCount);
-        
-        // Trigger removal animation for all items with cascading effect
+        // Store all indices to be cleared
+        clearingItems = [];
         for (var i = 0; i < trackCount; i++) {
-            var item = itemAtIndex(i);
-            if (item) {
-                (function(delegate, index) {
-                    var timer = Qt.createQmlObject('import QtQuick; Timer {}', root);
-                    timer.interval = index * staggerDelay;
-                    timer.repeat = false;
-                    timer.triggered.connect(function() {
-                        if (delegate && !delegate.isRemoving) {
-                            delegate.isRemoving = true;
-                            delegate.slideX = root.width;
-                        }
-                        timer.destroy();
-                    });
-                    timer.start();
-                })(item, i);
-            }
+            clearingItems.push(i);
         }
         
-        // Clear the queue after all animations complete
-        clearQueueTimer.interval = (trackCount * staggerDelay) + animationDuration + 100;
-        clearQueueTimer.start();
+        // Start the clearing animation
+        clearAnimationIndex = 0;
+        clearAnimationTimer.start();
+    }
+    
+    Timer {
+        id: clearAnimationTimer
+        interval: 30  // Process items quickly
+        repeat: true
+        onTriggered: {
+            if (clearAnimationIndex >= clearingItems.length) {
+                // All items have been animated, stop the timer and clear the queue
+                stop();
+                clearQueueTimer.start();
+                return;
+            }
+            
+            // Get the current item to animate
+            var currentIndex = clearingItems[clearAnimationIndex];
+            var item = itemAtIndex(currentIndex);
+            
+            // If item is visible, animate it
+            if (item && !item.isRemoving) {
+                item.isRemoving = true;
+                item.slideX = root.width;
+            } else if (!item) {
+                // Item is not visible, ensure it's in view first
+                positionViewAtIndex(currentIndex, ListView.Center);
+                // Try again on next timer tick
+                return;
+            }
+            
+            clearAnimationIndex++;
+            
+            // Auto-scroll to keep animated items visible
+            if (clearAnimationIndex < clearingItems.length) {
+                var nextIndex = clearingItems[clearAnimationIndex];
+                // Check if next item is visible
+                var nextItem = itemAtIndex(nextIndex);
+                if (!nextItem) {
+                    // Scroll to make it visible
+                    positionViewAtIndex(nextIndex, ListView.Center);
+                }
+            }
+        }
     }
     
     Timer {
         id: clearQueueTimer
+        interval: 400  // Wait for slide animations to complete
         repeat: false
         onTriggered: {
             MediaPlayer.stop();
