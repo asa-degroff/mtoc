@@ -2070,6 +2070,10 @@ Item {
                                                 
                                                 // Perform the reorder after a brief delay to allow visual reset
                                                 if (isMoving) {
+                                                    // Save the current scroll position before the delayed call
+                                                    var savedContentY = trackListView.contentY
+                                                    var listView = trackListView
+                                                    
                                                     // Use a timer to ensure visual updates complete first
                                                     Qt.callLater(function() {
                                                         var movedTrack = root.editedPlaylistTracks.splice(draggedIdx, 1)[0]
@@ -2077,6 +2081,11 @@ Item {
                                                         
                                                         // Update the view
                                                         rightPane.currentAlbumTracks = root.editedPlaylistTracks.slice()
+                                                        
+                                                        // Restore the scroll position after model update
+                                                        Qt.callLater(function() {
+                                                            listView.contentY = savedContentY
+                                                        })
                                                     })
                                                 }
                                             }
@@ -2147,10 +2156,19 @@ Item {
                                             hoverEnabled: true
                                             cursorShape: Qt.PointingHandCursor
                                             onClicked: {
+                                                // Save the current scroll position and reference to ListView
+                                                var savedContentY = trackListView.contentY
+                                                var listView = trackListView
+                                                
                                                 // Remove track from edited list
                                                 root.editedPlaylistTracks.splice(index, 1)
                                                 // Update the view
                                                 rightPane.currentAlbumTracks = root.editedPlaylistTracks.slice()
+                                                
+                                                // Restore the scroll position after model update
+                                                Qt.callLater(function() {
+                                                    listView.contentY = savedContentY
+                                                })
                                             }
                                         }
                                     }
