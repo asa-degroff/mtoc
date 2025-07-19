@@ -15,6 +15,14 @@ Item {
     property bool queueVisible: false
     property var uniqueAlbumCovers: []
     
+    // Debounce timer for album cover updates
+    Timer {
+        id: albumCoverUpdateTimer
+        interval: 300
+        repeat: false
+        onTriggered: updateUniqueAlbumCovers()
+    }
+    
     Component.onCompleted: {
         updateUniqueAlbumCovers()
     }
@@ -104,11 +112,13 @@ Item {
                 albumArtUrl = ""
                 thumbnailUrl = ""
             }
-            updateUniqueAlbumCovers()
+            // Use debounced update for performance
+            albumCoverUpdateTimer.restart()
         }
         
         function onPlaybackQueueChanged() {
-            updateUniqueAlbumCovers()
+            // Use debounced update for performance
+            albumCoverUpdateTimer.restart()
         }
     }
     

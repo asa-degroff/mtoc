@@ -9,9 +9,23 @@ ListView {
     property var queueModel: []
     property int currentPlayingIndex: -1
     property bool isProgrammaticScrolling: false
+    property bool isRapidSkipping: false
+    property int lastSkipTime: 0
+    property int rapidSkipThreshold: 500 // milliseconds
     
     signal trackDoubleClicked(int index)
     signal removeTrackRequested(int index)
+    
+    // Timer to ensure final scroll position after rapid skipping
+    Timer {
+        id: finalPositionTimer
+        interval: 300
+        repeat: false
+        onTriggered: {
+            isRapidSkipping = false;
+            scrollToCurrentTrack();
+        }
+    }
     
     property var clearingItems: []
     property int clearAnimationIndex: 0
@@ -124,8 +138,20 @@ ListView {
         // Only scroll if needed
         if (targetY >= 0) {
             isProgrammaticScrolling = true;
-            scrollAnimation.to = targetY;
-            scrollAnimation.start();
+            
+            // During rapid skipping, use immediate positioning
+            if (isRapidSkipping) {
+                scrollAnimation.stop();
+                contentY = targetY;
+                isProgrammaticScrolling = false;
+            } else {
+                // Stop any existing animation first
+                if (scrollAnimation.running) {
+                    scrollAnimation.stop();
+                }
+                scrollAnimation.to = targetY;
+                scrollAnimation.start();
+            }
         }
     }
     
@@ -148,6 +174,19 @@ ListView {
     
     // Watch for changes to the current playing index
     onCurrentPlayingIndexChanged: {
+        var currentTime = Date.now();
+        var timeSinceLastSkip = currentTime - lastSkipTime;
+        
+        // Detect rapid skipping
+        if (timeSinceLastSkip < rapidSkipThreshold) {
+            isRapidSkipping = true;
+            finalPositionTimer.restart();
+        } else {
+            isRapidSkipping = false;
+        }
+        
+        lastSkipTime = currentTime;
+        
         // Delay the scroll slightly to ensure the list has updated
         Qt.callLater(scrollToCurrentTrack);
     }
@@ -189,6 +228,7 @@ ListView {
         }
         
         Behavior on height {
+            enabled: !root.isRapidSkipping
             NumberAnimation { 
                 duration: 200
                 easing.type: Easing.InOutQuad
@@ -196,6 +236,7 @@ ListView {
         }
         
         Behavior on slideX {
+            enabled: !root.isRapidSkipping
             NumberAnimation { 
                 duration: 300
                 easing.type: Easing.InOutQuad
@@ -352,6 +393,7 @@ ListView {
         }
         
         Behavior on color {
+            enabled: !root.isRapidSkipping
             ColorAnimation { duration: 150 }
         }
         
