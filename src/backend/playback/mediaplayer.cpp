@@ -203,6 +203,11 @@ void MediaPlayer::stop()
     m_currentQueueIndex = -1;
     updateCurrentTrack(nullptr);
     clearQueue();
+    
+    // Clear the saved playback state when stopping
+    if (m_libraryManager) {
+        m_libraryManager->clearPlaybackState();
+    }
 }
 
 void MediaPlayer::togglePlayPause()
@@ -345,6 +350,9 @@ void MediaPlayer::playAlbum(Mtoc::Album* album, int startIndex)
     
     m_playbackQueue = album->tracks();
     m_currentQueueIndex = qBound(0, startIndex, m_playbackQueue.size() - 1);
+    
+    // Clear the queue modified flag when playing a full album
+    setQueueModified(false);
     
     emit playbackQueueChanged();
     
@@ -847,12 +855,33 @@ void MediaPlayer::saveState()
     // Get the duration
     qint64 trackDuration = duration(); // This already handles both track and engine duration
     
+    // Prepare queue data if queue is modified
+    QVariantList queueData;
+    if (m_isQueueModified && !m_playbackQueue.isEmpty()) {
+        for (Mtoc::Track* track : m_playbackQueue) {
+            if (track) {
+                QVariantMap trackMap;
+                trackMap["filePath"] = track->filePath();
+                trackMap["title"] = track->title();
+                trackMap["artist"] = track->artist();
+                trackMap["album"] = track->album();
+                trackMap["albumArtist"] = track->albumArtist();
+                trackMap["trackNumber"] = track->trackNumber();
+                trackMap["duration"] = track->duration();
+                queueData.append(trackMap);
+            }
+        }
+    }
+    
     // Save the state
     m_libraryManager->savePlaybackState(filePath, currentPosition, 
-                                        albumArtist, albumTitle, trackIndex, trackDuration);
+                                        albumArtist, albumTitle, trackIndex, trackDuration,
+                                        m_isQueueModified, queueData);
     
     // qDebug() << "MediaPlayer::saveState - saved state for track:" << m_currentTrack->title()
-    //         << "position:" << currentPosition << "ms";
+    //         << "position:" << currentPosition << "ms"
+    //         << "queueModified:" << m_isQueueModified
+    //         << "queueSize:" << queueData.size();
 }
 
 void MediaPlayer::restoreState()
@@ -899,11 +928,15 @@ void MediaPlayer::restoreState()
     QString albumArtist = state["albumArtist"].toString();
     QString albumTitle = state["albumTitle"].toString();
     int trackIndex = state["trackIndex"].toInt();
+    bool queueModified = state["queueModified"].toBool();
+    QVariantList queueData = state["queue"].toList();
     
     // qDebug() << "MediaPlayer::restoreState - restoring track:" << filePath
     //          << "position:" << savedPosition << "ms"
     //          << "album:" << albumArtist << "-" << albumTitle
-    //          << "index:" << trackIndex;
+    //          << "index:" << trackIndex
+    //          << "queueModified:" << queueModified
+    //          << "queueSize:" << queueData.size();
     
     // Validate file exists before attempting restoration
     QFileInfo fileInfo(filePath);
@@ -921,8 +954,61 @@ void MediaPlayer::restoreState()
     emit savedPositionChanged(m_savedPosition);
     
     try {
-        // If we have album info, try to restore the album queue
-        if (!albumArtist.isEmpty() && !albumTitle.isEmpty()) {
+        // If we have a modified queue, restore it
+        if (queueModified && !queueData.isEmpty()) {
+            // Clear current queue and restore from saved data
+            clearQueue();
+            
+            // Build the queue from saved data
+            for (const auto& trackData : queueData) {
+                auto trackMap = trackData.toMap();
+                QString title = trackMap.value("title").toString();
+                QString filePath = trackMap.value("filePath").toString();
+                
+                if (filePath.isEmpty()) {
+                    qWarning() << "Empty filePath for track:" << title;
+                    continue;
+                }
+                
+                // Create a new Track object from the data
+                Mtoc::Track* track = new Mtoc::Track(this);
+                track->setTitle(title);
+                track->setArtist(trackMap.value("artist").toString());
+                track->setAlbum(trackMap.value("album").toString());
+                track->setAlbumArtist(trackMap.value("albumArtist").toString());
+                track->setTrackNumber(trackMap.value("trackNumber").toInt());
+                track->setDuration(trackMap.value("duration").toInt());
+                track->setFileUrl(QUrl::fromLocalFile(filePath));
+                
+                m_playbackQueue.append(track);
+            }
+            
+            // Restore the modified flag
+            setQueueModified(true);
+            
+            // Set the current queue index
+            if (trackIndex >= 0 && trackIndex < m_playbackQueue.size()) {
+                m_currentQueueIndex = trackIndex;
+                emit playbackQueueChanged();
+                
+                // Set up connection to handle when track is loaded
+                if (m_restoreConnection) {
+                    disconnect(m_restoreConnection);
+                }
+                
+                m_restoreConnection = connect(m_audioEngine.get(), &AudioEngine::durationChanged, this, [this]() {
+                    if (m_audioEngine->duration() > 0) {
+                        // Track is loaded, disconnect and handle restoration
+                        disconnect(m_restoreConnection);
+                        m_restoreConnection = QMetaObject::Connection();
+                        onTrackLoadedForRestore();
+                    }
+                });
+                
+                // Load track without auto-playing
+                loadTrack(m_playbackQueue[trackIndex], false);
+            }
+        } else if (!albumArtist.isEmpty() && !albumTitle.isEmpty()) {
             // Load the album without auto-playing
             restoreAlbumByName(albumArtist, albumTitle, trackIndex, savedPosition);
         } else {

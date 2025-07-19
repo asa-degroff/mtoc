@@ -1148,7 +1148,8 @@ int LibraryManager::loadCarouselPosition() const
 
 void LibraryManager::savePlaybackState(const QString &filePath, qint64 position, 
                                        const QString &albumArtist, const QString &albumTitle, 
-                                       int trackIndex, qint64 duration)
+                                       int trackIndex, qint64 duration,
+                                       bool queueModified, const QVariantList &queue)
 {
     QSettings settings;
     settings.beginGroup("playbackState");
@@ -1162,6 +1163,27 @@ void LibraryManager::savePlaybackState(const QString &filePath, qint64 position,
     settings.setValue("trackIndex", trackIndex);
     settings.setValue("savedTime", QDateTime::currentDateTime());
     
+    // Save queue info if modified
+    settings.setValue("queueModified", queueModified);
+    if (queueModified && !queue.isEmpty()) {
+        settings.beginWriteArray("queue");
+        for (int i = 0; i < queue.size(); ++i) {
+            settings.setArrayIndex(i);
+            QVariantMap trackData = queue[i].toMap();
+            settings.setValue("filePath", trackData["filePath"]);
+            settings.setValue("title", trackData["title"]);
+            settings.setValue("artist", trackData["artist"]);
+            settings.setValue("album", trackData["album"]);
+            settings.setValue("albumArtist", trackData["albumArtist"]);
+            settings.setValue("trackNumber", trackData["trackNumber"]);
+            settings.setValue("duration", trackData["duration"]);
+        }
+        settings.endArray();
+    } else {
+        // Clear any existing queue data if queue is not modified
+        settings.remove("queue");
+    }
+    
     settings.endGroup();
     settings.sync(); // Force immediate write to disk
     
@@ -1169,7 +1191,9 @@ void LibraryManager::savePlaybackState(const QString &filePath, qint64 position,
     //          << "position:" << position << "ms"
     //          << "duration:" << duration << "ms"
     //          << "album:" << albumArtist << "-" << albumTitle 
-    //          << "track:" << trackIndex;
+    //          << "track:" << trackIndex
+    //          << "queueModified:" << queueModified
+    //          << "queueSize:" << queue.size();
 }
 
 QVariantMap LibraryManager::loadPlaybackState() const
@@ -1192,8 +1216,37 @@ QVariantMap LibraryManager::loadPlaybackState() const
             state["trackIndex"] = settings.value("trackIndex", -1).toInt();
             state["savedTime"] = settings.value("savedTime").toDateTime();
             
+            // Load queue info
+            state["queueModified"] = settings.value("queueModified", false).toBool();
+            
+            if (state["queueModified"].toBool()) {
+                QVariantList queue;
+                int queueSize = settings.beginReadArray("queue");
+                for (int i = 0; i < queueSize; ++i) {
+                    settings.setArrayIndex(i);
+                    QVariantMap trackData;
+                    trackData["filePath"] = settings.value("filePath").toString();
+                    trackData["title"] = settings.value("title").toString();
+                    trackData["artist"] = settings.value("artist").toString();
+                    trackData["album"] = settings.value("album").toString();
+                    trackData["albumArtist"] = settings.value("albumArtist").toString();
+                    trackData["trackNumber"] = settings.value("trackNumber").toInt();
+                    trackData["duration"] = settings.value("duration").toInt();
+                    
+                    // Only add to queue if file still exists
+                    QFileInfo trackFile(trackData["filePath"].toString());
+                    if (trackFile.exists()) {
+                        queue.append(trackData);
+                    }
+                }
+                settings.endArray();
+                state["queue"] = queue;
+            }
+            
             //qDebug() << "LibraryManager: Loaded playback state - file:" << filePath
-            //         << "position:" << state["position"].toLongLong() << "ms";
+            //         << "position:" << state["position"].toLongLong() << "ms"
+            //         << "queueModified:" << state["queueModified"].toBool()
+            //         << "queueSize:" << state["queue"].toList().size();
         } else {
             qDebug() << "LibraryManager: Saved track no longer exists:" << filePath;
             // Clear the invalid saved state
@@ -1206,6 +1259,17 @@ QVariantMap LibraryManager::loadPlaybackState() const
     settings.endGroup();
     
     return state;
+}
+
+void LibraryManager::clearPlaybackState()
+{
+    QSettings settings;
+    settings.beginGroup("playbackState");
+    settings.remove(""); // Removes all keys in this group
+    settings.endGroup();
+    settings.sync();
+    
+    qDebug() << "LibraryManager: Cleared playback state";
 }
 
 void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& metadata)
