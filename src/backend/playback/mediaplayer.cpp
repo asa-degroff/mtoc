@@ -456,7 +456,66 @@ void MediaPlayer::clearQueue()
     m_playbackQueue.clear();
     m_currentQueueIndex = -1;
     setQueueModified(false);
+    
+    // Also clear undo queue
+    clearUndoQueue();
+    
     emit playbackQueueChanged();
+}
+
+void MediaPlayer::clearQueueForUndo()
+{
+    // Save current queue state for undo
+    m_undoQueue = m_playbackQueue;
+    m_undoQueueIndex = m_currentQueueIndex;
+    m_undoCurrentTrack = m_currentTrack;
+    m_undoQueueModified = m_isQueueModified;
+    
+    // Stop audio playback without clearing the queue
+    m_audioEngine->stop();
+    
+    // Clear the current queue without deleting tracks
+    m_playbackQueue.clear();
+    m_currentQueueIndex = -1;
+    updateCurrentTrack(nullptr);
+    setQueueModified(false);
+    
+    emit playbackQueueChanged();
+    emit canUndoClearChanged(true);
+    
+    // Clear the saved playback state
+    if (m_libraryManager) {
+        m_libraryManager->clearPlaybackState();
+    }
+}
+
+void MediaPlayer::undoClearQueue()
+{
+    if (m_undoQueue.isEmpty()) {
+        return;
+    }
+    
+    // Restore the queue
+    m_playbackQueue = m_undoQueue;
+    m_currentQueueIndex = m_undoQueueIndex;
+    m_currentTrack = m_undoCurrentTrack;
+    setQueueModified(m_undoQueueModified);
+    
+    // Clear undo state
+    m_undoQueue.clear();
+    m_undoQueueIndex = -1;
+    m_undoCurrentTrack = nullptr;
+    m_undoQueueModified = false;
+    
+    // Emit signals
+    emit playbackQueueChanged();
+    emit currentTrackChanged(m_currentTrack);
+    emit canUndoClearChanged(false);
+    
+    // If we have a current track, ensure it's loaded but paused
+    if (m_currentTrack) {
+        loadTrack(m_currentTrack, false);
+    }
 }
 
 void MediaPlayer::playAlbumByName(const QString& artist, const QString& title, int startIndex)
@@ -565,8 +624,27 @@ void MediaPlayer::playTrackFromData(const QVariant& trackData)
     emit playbackQueueChanged();
 }
 
+void MediaPlayer::clearUndoQueue()
+{
+    if (!m_undoQueue.isEmpty()) {
+        for (auto track : m_undoQueue) {
+            if (track && track->parent() == this) {
+                track->deleteLater();
+            }
+        }
+        m_undoQueue.clear();
+        m_undoQueueIndex = -1;
+        m_undoCurrentTrack = nullptr;
+        m_undoQueueModified = false;
+        emit canUndoClearChanged(false);
+    }
+}
+
 void MediaPlayer::playTrackNext(const QVariant& trackData)
 {
+    // Clear undo queue when adding new items
+    clearUndoQueue();
+    
     auto trackMap = trackData.toMap();
     QString title = trackMap.value("title").toString();
     QString filePath = trackMap.value("filePath").toString();
@@ -606,6 +684,9 @@ void MediaPlayer::playTrackNext(const QVariant& trackData)
 
 void MediaPlayer::playTrackLast(const QVariant& trackData)
 {
+    // Clear undo queue when adding new items
+    clearUndoQueue();
+    
     auto trackMap = trackData.toMap();
     QString title = trackMap.value("title").toString();
     QString filePath = trackMap.value("filePath").toString();
@@ -644,6 +725,9 @@ void MediaPlayer::playTrackLast(const QVariant& trackData)
 
 void MediaPlayer::playAlbumNext(const QString& artist, const QString& title)
 {
+    // Clear undo queue when adding new items
+    clearUndoQueue();
+    
     qDebug() << "MediaPlayer::playAlbumNext called with artist:" << artist << "title:" << title;
     
     if (!m_libraryManager) {
@@ -699,6 +783,9 @@ void MediaPlayer::playAlbumNext(const QString& artist, const QString& title)
 
 void MediaPlayer::playAlbumLast(const QString& artist, const QString& title)
 {
+    // Clear undo queue when adding new items
+    clearUndoQueue();
+    
     qDebug() << "MediaPlayer::playAlbumLast called with artist:" << artist << "title:" << title;
     
     if (!m_libraryManager) {

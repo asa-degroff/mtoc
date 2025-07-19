@@ -41,5 +41,6 @@
         <file>resources/icons/trash-can-closed-lid.svg</file>
         <file>resources/icons/trash-can-open-lid.svg</file>
         <file>resources/icons/bomb.svg</file>
+        <file>resources/icons/undo.svg</file>
     </qresource>
 </RCC>

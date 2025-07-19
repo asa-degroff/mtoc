@@ -33,6 +33,7 @@ class MediaPlayer : public QObject
     Q_PROPERTY(int currentQueueIndex READ currentQueueIndex NOTIFY playbackQueueChanged)
     Q_PROPERTY(int totalQueueDuration READ totalQueueDuration NOTIFY playbackQueueChanged)
     Q_PROPERTY(bool isQueueModified READ isQueueModified NOTIFY queueModifiedChanged)
+    Q_PROPERTY(bool canUndoClear READ canUndoClear NOTIFY canUndoClearChanged)
 
 public:
     enum State {
@@ -64,6 +65,7 @@ public:
     int currentQueueIndex() const { return m_currentQueueIndex; }
     int totalQueueDuration() const;
     bool isQueueModified() const { return m_isQueueModified; }
+    bool canUndoClear() const { return !m_undoQueue.isEmpty(); }
 
 public slots:
     void play();
@@ -86,6 +88,8 @@ public slots:
     Q_INVOKABLE void removeTrackAt(int index);
     Q_INVOKABLE void playTrackAt(int index);
     void clearQueue();
+    Q_INVOKABLE void clearQueueForUndo();
+    Q_INVOKABLE void undoClearQueue();
     
     // State persistence
     void saveState();
@@ -104,6 +108,7 @@ signals:
     void savedPositionChanged(qint64 position);
     void readyChanged(bool ready);
     void queueModifiedChanged(bool modified);
+    void canUndoClearChanged(bool canUndo);
 
 private slots:
     void periodicStateSave();
@@ -125,6 +130,7 @@ private:
     void checkPositionSync();
     void setReady(bool ready);
     void setQueueModified(bool modified);
+    void clearUndoQueue();
     
     std::unique_ptr<AudioEngine> m_audioEngine;
     Mtoc::Track* m_currentTrack = nullptr;
@@ -142,6 +148,12 @@ private:
     bool m_isReady = false;
     QMetaObject::Connection m_restoreConnection;
     bool m_isQueueModified = false;
+    
+    // Undo functionality
+    QList<Mtoc::Track*> m_undoQueue;
+    int m_undoQueueIndex = -1;
+    Mtoc::Track* m_undoCurrentTrack = nullptr;
+    bool m_undoQueueModified = false;
 };
 
 #endif // MEDIAPLAYER_H

@@ -78,8 +78,7 @@ ListView {
         interval: 400  // Wait for slide animations to complete
         repeat: false
         onTriggered: {
-            MediaPlayer.stop();
-            MediaPlayer.clearQueue();
+            MediaPlayer.clearQueueForUndo();
         }
     }
     

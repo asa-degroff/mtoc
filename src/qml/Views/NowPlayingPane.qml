@@ -220,7 +220,7 @@ Item {
                                 color: clearQueueMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(1, 1, 1, 0.05)
                                 border.width: 1
                                 border.color: Qt.rgba(1, 1, 1, 0.3)
-                                visible: MediaPlayer.queueLength > 0
+                                visible: MediaPlayer.queueLength > 0 || MediaPlayer.canUndoClear
                                 
                                 Behavior on color {
                                     ColorAnimation { duration: 150 }
@@ -230,7 +230,7 @@ Item {
                                     anchors.centerIn: parent
                                     width: 18
                                     height: 18
-                                    source: "qrc:/resources/icons/bomb.svg"
+                                    source: MediaPlayer.canUndoClear ? "qrc:/resources/icons/undo.svg" : "qrc:/resources/icons/bomb.svg"
                                     sourceSize.width: 40
                                     sourceSize.height: 40
                                     opacity: clearQueueMouseArea.containsMouse ? 0.7 : 1.0
@@ -246,13 +246,17 @@ Item {
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        queueListView.clearAllTracks();
+                                        if (MediaPlayer.canUndoClear) {
+                                            MediaPlayer.undoClearQueue();
+                                        } else {
+                                            queueListView.clearAllTracks();
+                                        }
                                     }
                                 }
                                 
                                 ToolTip {
                                     visible: clearQueueMouseArea.containsMouse
-                                    text: "Clear queue"
+                                    text: MediaPlayer.canUndoClear ? "Undo clear queue" : "Clear queue"
                                     delay: 500
                                 }
                             }
