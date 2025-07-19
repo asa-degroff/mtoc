@@ -38,9 +38,12 @@ Item {
             }
         }
         
-        // Then, go through the queue to find other unique albums
+        // Then, go through the queue starting from current position to find upcoming unique albums
         var queue = MediaPlayer.queue
-        for (var i = 0; i < queue.length && covers.length < 3; i++) {
+        var startIndex = Math.max(0, MediaPlayer.currentQueueIndex)
+        
+        // Look for unique albums from current position onwards
+        for (var i = startIndex; i < queue.length && covers.length < 3; i++) {
             var track = queue[i]
             if (track.albumArtist && track.album) {
                 var albumKey = track.albumArtist + "||" + track.album
