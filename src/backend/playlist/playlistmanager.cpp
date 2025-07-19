@@ -113,10 +113,56 @@ void PlaylistManager::refreshPlaylists()
     emit playlistsChanged();
 }
 
-QString PlaylistManager::generatePlaylistName() const
+QString PlaylistManager::generatePlaylistName(const QVariantList& tracks) const
 {
-    QDateTime now = QDateTime::currentDateTime();
-    return now.toString("yyyy-MM-dd_HH-mm-ss");
+    if (tracks.isEmpty()) {
+        // Fallback to date-based name if no tracks
+        QDateTime now = QDateTime::currentDateTime();
+        return now.toString("yyyy-MM-dd_HH-mm-ss");
+    }
+    
+    // Get the first track's title
+    QVariantMap firstTrack = tracks.first().toMap();
+    QString firstTitle = firstTrack.value("title").toString();
+    
+    if (firstTitle.isEmpty()) {
+        // Fallback to date-based name if no title
+        QDateTime now = QDateTime::currentDateTime();
+        return now.toString("yyyy-MM-dd_HH-mm-ss");
+    }
+    
+    // Sanitize the title to remove characters not allowed in filenames
+    QString sanitizedTitle = firstTitle;
+    // Remove or replace problematic characters
+    sanitizedTitle.replace("/", "-");
+    sanitizedTitle.replace("\\", "-");
+    sanitizedTitle.replace(":", "-");
+    sanitizedTitle.replace("*", "-");
+    sanitizedTitle.replace("?", "-");
+    sanitizedTitle.replace("\"", "'");
+    sanitizedTitle.replace("<", "-");
+    sanitizedTitle.replace(">", "-");
+    sanitizedTitle.replace("|", "-");
+    sanitizedTitle.remove(QChar('\0')); // Remove null characters
+    
+    // Trim whitespace and limit length
+    sanitizedTitle = sanitizedTitle.trimmed();
+    if (sanitizedTitle.length() > 50) {
+        sanitizedTitle = sanitizedTitle.left(50).trimmed();
+    }
+    
+    // Calculate number of additional tracks
+    int additionalTracks = tracks.size() - 1;
+    
+    // Generate the name
+    QString playlistName;
+    if (additionalTracks > 0) {
+        playlistName = QString("%1 +%2").arg(sanitizedTitle).arg(additionalTracks);
+    } else {
+        playlistName = sanitizedTitle;
+    }
+    
+    return playlistName;
 }
 
 bool PlaylistManager::saveQueueAsPlaylist()
@@ -132,7 +178,7 @@ bool PlaylistManager::saveQueueAsPlaylist()
         return false;
     }
     
-    QString name = generatePlaylistName();
+    QString name = generatePlaylistName(queue);
     return savePlaylist(queue, name);
 }
 
@@ -143,7 +189,7 @@ bool PlaylistManager::savePlaylist(const QVariantList& tracks, const QString& na
         return false;
     }
     
-    QString playlistName = name.isEmpty() ? generatePlaylistName() : name;
+    QString playlistName = name.isEmpty() ? generatePlaylistName(tracks) : name;
     QString filename = playlistName + ".m3u";
     QString filepath = QDir(m_playlistsDirectory).absoluteFilePath(filename);
     

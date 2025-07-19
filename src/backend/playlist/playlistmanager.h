@@ -61,7 +61,7 @@ private:
     ~PlaylistManager();
     
     void ensurePlaylistsDirectory();
-    QString generatePlaylistName() const;
+    QString generatePlaylistName(const QVariantList& tracks) const;
     bool writeM3UFile(const QString& filepath, const QVariantList& tracks);
     QVariantList readM3UFile(const QString& filepath);
     QString makeRelativePath(const QString& filePath) const;
