@@ -710,25 +710,77 @@ Item {
                         
                         MouseArea {
                             anchors.fill: parent
-                            onClicked: {
-                                listView.currentIndex = index
-                                root.albumClicked(albumData)
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            onClicked: function(mouse) {
+                                if (mouse.button === Qt.LeftButton) {
+                                    listView.currentIndex = index
+                                    root.albumClicked(albumData)
+                                } else if (mouse.button === Qt.RightButton) {
+                                    // Show context menu
+                                    albumContextMenu.popup()
+                                }
                             }
                             onDoubleClicked: function(mouse) {
-                                // Play the album on double-click
-                                if (MediaPlayer.isQueueModified) {
-                                    queueActionDialog.albumArtist = albumData.albumArtist
-                                    queueActionDialog.albumTitle = albumData.title
-                                    queueActionDialog.startIndex = 0
-                                    
-                                    // Position dialog at album center
-                                    var globalPos = parent.mapToGlobal(parent.width / 2, parent.height / 2)
-                                    queueActionDialog.x = globalPos.x - queueActionDialog.width / 2
-                                    queueActionDialog.y = globalPos.y - queueActionDialog.height / 2
-                                    
-                                    queueActionDialog.open()
-                                } else {
-                                    MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, 0)
+                                if (mouse.button === Qt.LeftButton) {
+                                    // Play the album on double-click
+                                    if (MediaPlayer.isQueueModified) {
+                                        queueActionDialog.albumArtist = albumData.albumArtist
+                                        queueActionDialog.albumTitle = albumData.title
+                                        queueActionDialog.startIndex = 0
+                                        
+                                        // Position dialog at album center
+                                        var globalPos = parent.mapToGlobal(parent.width / 2, parent.height / 2)
+                                        queueActionDialog.x = globalPos.x - queueActionDialog.width / 2
+                                        queueActionDialog.y = globalPos.y - queueActionDialog.height / 2
+                                        
+                                        queueActionDialog.open()
+                                    } else {
+                                        MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, 0)
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Menu {
+                            id: albumContextMenu
+                            
+                            MenuItem {
+                                text: "Play"
+                                onTriggered: {
+                                    if (albumData) {
+                                        if (MediaPlayer.isQueueModified) {
+                                            queueActionDialog.albumArtist = albumData.albumArtist
+                                            queueActionDialog.albumTitle = albumData.title
+                                            queueActionDialog.startIndex = 0
+                                            
+                                            // Position dialog at album center
+                                            var globalPos = albumContainer.mapToGlobal(albumContainer.width / 2, albumContainer.height / 2)
+                                            queueActionDialog.x = globalPos.x - queueActionDialog.width / 2
+                                            queueActionDialog.y = globalPos.y - queueActionDialog.height / 2
+                                            
+                                            queueActionDialog.open()
+                                        } else {
+                                            MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, 0)
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            MenuItem {
+                                text: "Play Next"
+                                onTriggered: {
+                                    if (albumData) {
+                                        MediaPlayer.playAlbumNext(albumData.albumArtist, albumData.title)
+                                    }
+                                }
+                            }
+                            
+                            MenuItem {
+                                text: "Play Last"
+                                onTriggered: {
+                                    if (albumData) {
+                                        MediaPlayer.playAlbumLast(albumData.albumArtist, albumData.title)
+                                    }
                                 }
                             }
                         }
