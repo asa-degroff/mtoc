@@ -179,7 +179,8 @@ bool PlaylistManager::writeM3UFile(const QString& filepath, const QVariantList& 
         // Write extended info if available
         QString title = track.value("title").toString();
         QString artist = track.value("artist").toString();
-        int duration = track.value("duration").toInt(); // Already in seconds
+        // MediaPlayer returns duration in milliseconds, but M3U expects seconds
+        int duration = track.value("duration").toInt() / 1000;
         
         if (!title.isEmpty()) {
             stream << "#EXTINF:" << duration << ",";
@@ -254,6 +255,8 @@ QVariantList PlaylistManager::readM3UFile(const QString& filepath)
     QString line;
     QString currentTitle;
     QString currentArtist;
+    QString currentAlbum;
+    QString currentAlbumArtist;
     int currentDuration = 0;
     
     while (!stream.atEnd()) {
@@ -308,6 +311,8 @@ QVariantList PlaylistManager::readM3UFile(const QString& filepath)
                 trackMap["filePath"] = resolvedPath;
                 trackMap["title"] = currentTitle.isEmpty() ? QFileInfo(resolvedPath).baseName() : currentTitle;
                 trackMap["artist"] = currentArtist;
+                trackMap["album"] = currentAlbum;
+                trackMap["albumArtist"] = currentAlbumArtist.isEmpty() ? currentArtist : currentAlbumArtist;
                 trackMap["duration"] = currentDuration;
                 tracks.append(trackMap);
             }
@@ -315,6 +320,8 @@ QVariantList PlaylistManager::readM3UFile(const QString& filepath)
             // Reset for next track
             currentTitle.clear();
             currentArtist.clear();
+            currentAlbum.clear();
+            currentAlbumArtist.clear();
             currentDuration = 0;
         }
     }

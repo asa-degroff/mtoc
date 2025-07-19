@@ -736,6 +736,7 @@ void MediaPlayer::playTrackFromData(const QVariant& trackData)
     QString filePath = trackMap.value("filePath").toString();
     
     qDebug() << "MediaPlayer::playTrackFromData called with track:" << title << "path:" << filePath;
+    qDebug() << "  Album:" << trackMap.value("album").toString() << "AlbumArtist:" << trackMap.value("albumArtist").toString();
     
     if (filePath.isEmpty()) {
         qWarning() << "Empty filePath for track:" << title;
@@ -756,7 +757,13 @@ void MediaPlayer::playTrackFromData(const QVariant& trackData)
     track->setAlbum(trackMap.value("album").toString());
     track->setAlbumArtist(trackMap.value("albumArtist").toString());
     track->setTrackNumber(trackMap.value("trackNumber").toInt());
-    track->setDuration(trackMap.value("duration").toInt());
+    // Duration from playlist is already in seconds (from library) or milliseconds (from queue)
+    // We need to handle both cases - tracks store duration in seconds
+    int duration = trackMap.value("duration").toInt();
+    if (duration > 10000) { // Likely in milliseconds if > 10000
+        duration = duration / 1000;
+    }
+    track->setDuration(duration);
     track->setFileUrl(QUrl::fromLocalFile(filePath));
     
     // Add to queue so it gets cleaned up properly
