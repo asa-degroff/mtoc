@@ -722,8 +722,9 @@ Item {
                             }
                             onDoubleClicked: function(mouse) {
                                 if (mouse.button === Qt.LeftButton) {
-                                    // Play the album on double-click
-                                    if (MediaPlayer.isQueueModified) {
+                                    // Check if we should show the dialog
+                                    if (SettingsManager.queueActionDefault === SettingsManager.Ask && MediaPlayer.isQueueModified) {
+                                        // Show dialog for "Ask every time" setting when queue is modified
                                         queueActionDialog.albumArtist = albumData.albumArtist
                                         queueActionDialog.albumTitle = albumData.title
                                         queueActionDialog.startIndex = 0
@@ -735,7 +736,22 @@ Item {
                                         
                                         queueActionDialog.open()
                                     } else {
-                                        MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, 0)
+                                        // Apply the configured action
+                                        switch (SettingsManager.queueActionDefault) {
+                                            case SettingsManager.Replace:
+                                                MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, 0);
+                                                break;
+                                            case SettingsManager.Insert:
+                                                MediaPlayer.playAlbumNext(albumData.albumArtist, albumData.title);
+                                                break;
+                                            case SettingsManager.Append:
+                                                MediaPlayer.playAlbumLast(albumData.albumArtist, albumData.title);
+                                                break;
+                                            case SettingsManager.Ask:
+                                                // If Ask but queue not modified, default to replace
+                                                MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, 0);
+                                                break;
+                                        }
                                     }
                                 }
                             }
@@ -748,7 +764,9 @@ Item {
                                 text: "Play"
                                 onTriggered: {
                                     if (albumData) {
-                                        if (MediaPlayer.isQueueModified) {
+                                        // Check if we should show the dialog
+                                        if (SettingsManager.queueActionDefault === SettingsManager.Ask && MediaPlayer.isQueueModified) {
+                                            // Show dialog for "Ask every time" setting when queue is modified
                                             queueActionDialog.albumArtist = albumData.albumArtist
                                             queueActionDialog.albumTitle = albumData.title
                                             queueActionDialog.startIndex = 0
@@ -760,7 +778,22 @@ Item {
                                             
                                             queueActionDialog.open()
                                         } else {
-                                            MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, 0)
+                                            // Apply the configured action
+                                            switch (SettingsManager.queueActionDefault) {
+                                                case SettingsManager.Replace:
+                                                    MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, 0);
+                                                    break;
+                                                case SettingsManager.Insert:
+                                                    MediaPlayer.playAlbumNext(albumData.albumArtist, albumData.title);
+                                                    break;
+                                                case SettingsManager.Append:
+                                                    MediaPlayer.playAlbumLast(albumData.albumArtist, albumData.title);
+                                                    break;
+                                                case SettingsManager.Ask:
+                                                    // If Ask but queue not modified, default to replace
+                                                    MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, 0);
+                                                    break;
+                                            }
                                         }
                                     }
                                 }

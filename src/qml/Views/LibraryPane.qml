@@ -3253,24 +3253,9 @@ Item {
     
     // Helper function to handle album play with queue check
     function playAlbumWithQueueCheck(artist, title, startIndex, mouseX, mouseY) {
-        // Check settings for default action
-        if (SettingsManager.queueActionDefault !== SettingsManager.Ask && MediaPlayer.isQueueModified) {
-            // Apply default action without showing dialog
-            switch (SettingsManager.queueActionDefault) {
-                case SettingsManager.Replace:
-                    MediaPlayer.playAlbumByName(artist, title, startIndex || 0);
-                    break;
-                case SettingsManager.Insert:
-                    MediaPlayer.playAlbumNext(artist, title);
-                    break;
-                case SettingsManager.Append:
-                    MediaPlayer.playAlbumLast(artist, title);
-                    break;
-            }
-            return;
-        }
-        
-        if (MediaPlayer.isQueueModified) {
+        // Check if we should show the dialog
+        if (SettingsManager.queueActionDefault === SettingsManager.Ask && MediaPlayer.isQueueModified) {
+            // Show dialog for "Ask every time" setting when queue is modified
             queueActionDialog.albumArtist = artist
             queueActionDialog.albumTitle = title
             queueActionDialog.startIndex = startIndex || 0
@@ -3294,7 +3279,22 @@ Item {
             
             queueActionDialog.open()
         } else {
-            MediaPlayer.playAlbumByName(artist, title, startIndex || 0)
+            // Apply the configured action
+            switch (SettingsManager.queueActionDefault) {
+                case SettingsManager.Replace:
+                    MediaPlayer.playAlbumByName(artist, title, startIndex || 0);
+                    break;
+                case SettingsManager.Insert:
+                    MediaPlayer.playAlbumNext(artist, title);
+                    break;
+                case SettingsManager.Append:
+                    MediaPlayer.playAlbumLast(artist, title);
+                    break;
+                case SettingsManager.Ask:
+                    // If Ask but queue not modified, default to replace
+                    MediaPlayer.playAlbumByName(artist, title, startIndex || 0);
+                    break;
+            }
         }
     }
 }
