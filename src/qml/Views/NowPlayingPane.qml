@@ -138,12 +138,24 @@ Item {
                 anchors.fill: parent
                 spacing: queueVisible ? 16 : 0
                 
+                // Left spacer for centering when queue is hidden
+                Item {
+                    Layout.preferredWidth: queueVisible ? 0 : parent.width * 0.05
+                    Layout.fillHeight: true
+                    
+                    Behavior on Layout.preferredWidth {
+                        NumberAnimation { 
+                            duration: 300
+                            easing.type: Easing.InOutCubic
+                        }
+                    }
+                }
+                
                 // Album art container
                 Item {
                     id: albumArtContainer
                     Layout.preferredWidth: queueVisible ? parent.width * 0.3 : parent.width * 0.9
                     Layout.fillHeight: true
-                    Layout.alignment: Qt.AlignHCenter
                     
                     Behavior on Layout.preferredWidth {
                         NumberAnimation { 
@@ -154,11 +166,34 @@ Item {
                     
                     // Column to show multiple album covers when queue is visible
                     Column {
-                        anchors.centerIn: parent
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.horizontalCenter: parent.horizontalCenter
                         width: parent.width * (queueVisible ? 0.8 : 1.0)
                         height: parent.height
                         spacing: queueVisible ? 10 : 0
-                        visible: queueVisible && uniqueAlbumCovers.length > 0
+                        opacity: (queueVisible && uniqueAlbumCovers.length > 0) ? 1.0 : 0.0
+                        visible: opacity > 0
+                        
+                        Behavior on width {
+                            NumberAnimation {
+                                duration: 300
+                                easing.type: Easing.InOutCubic
+                            }
+                        }
+                        
+                        Behavior on spacing {
+                            NumberAnimation {
+                                duration: 300
+                                easing.type: Easing.InOutCubic
+                            }
+                        }
+                        
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: 300
+                                easing.type: Easing.InOutCubic
+                            }
+                        }
                         
                         Repeater {
                             model: uniqueAlbumCovers
@@ -216,13 +251,22 @@ Item {
                     // Single album art when queue is hidden
                     Image {
                         id: albumArt
-                        anchors.centerIn: parent
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.horizontalCenter: parent.horizontalCenter
                         width: parent.width
                         height: parent.height
                         source: albumArtUrl
                         fillMode: Image.PreserveAspectFit
                         cache: true
-                        visible: !queueVisible || uniqueAlbumCovers.length === 0
+                        opacity: (!queueVisible || uniqueAlbumCovers.length === 0) ? 1.0 : 0.0
+                        visible: opacity > 0
+                        
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: 300
+                                easing.type: Easing.InOutCubic
+                            }
+                        }
                         
                         // Drop shadow effect using MultiEffect
                         layer.enabled: true
@@ -379,6 +423,19 @@ Item {
                             }
                         }
                     }
+                    }
+                }
+                
+                // Right spacer for centering when queue is hidden
+                Item {
+                    Layout.preferredWidth: queueVisible ? 0 : parent.width * 0.05
+                    Layout.fillHeight: true
+                    
+                    Behavior on Layout.preferredWidth {
+                        NumberAnimation { 
+                            duration: 300
+                            easing.type: Easing.InOutCubic
+                        }
                     }
                 }
             }
