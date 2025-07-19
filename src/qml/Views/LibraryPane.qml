@@ -1514,7 +1514,7 @@ Item {
                                         }
                                     }
                                     
-                                    Menu {
+                                    StyledMenu {
                                         id: albumContextMenu
                                         
                                         MenuItem {
@@ -2237,7 +2237,7 @@ Item {
                                         }
                                     }
                                     
-                                    Menu {
+                                    StyledMenu {
                                         id: trackContextMenu
                                         
                                         MenuItem {
@@ -2274,7 +2274,7 @@ Item {
                                             }
                                         }
                                         
-                                        MenuSeparator { 
+                                        StyledMenuSeparator { 
                                             visible: root.selectedTrackIndices.length === 1
                                             height: visible ? implicitHeight : 0
                                         }

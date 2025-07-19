@@ -757,7 +757,7 @@ Item {
                             }
                         }
                         
-                        Menu {
+                        StyledMenu {
                             id: albumContextMenu
                             
                             MenuItem {
