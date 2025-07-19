@@ -161,6 +161,7 @@ QVariantList MediaPlayer::queue() const
             trackMap["title"] = track->title();
             trackMap["artist"] = track->artist();
             trackMap["album"] = track->album();
+            trackMap["albumArtist"] = track->albumArtist();
             trackMap["duration"] = track->duration() * 1000; // Convert seconds to milliseconds
             trackMap["filePath"] = track->filePath();
             queueList.append(trackMap);

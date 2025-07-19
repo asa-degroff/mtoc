@@ -13,6 +13,50 @@ Item {
     property url thumbnailUrl: ""
     property var libraryPane: null
     property bool queueVisible: false
+    property var uniqueAlbumCovers: []
+    
+    Component.onCompleted: {
+        updateUniqueAlbumCovers()
+    }
+    
+    // Get up to 3 unique album covers from the queue, starting with current track
+    function updateUniqueAlbumCovers() {
+        var covers = []
+        var seenAlbums = new Set()
+        
+        // First, add the current playing track's album if available
+        if (MediaPlayer.currentTrack && MediaPlayer.currentQueueIndex >= 0) {
+            var currentTrack = MediaPlayer.currentTrack
+            var albumKey = currentTrack.albumArtist + "||" + currentTrack.album
+            if (currentTrack.albumArtist && currentTrack.album && !seenAlbums.has(albumKey)) {
+                covers.push({
+                    albumArtist: currentTrack.albumArtist,
+                    album: currentTrack.album,
+                    isCurrent: true
+                })
+                seenAlbums.add(albumKey)
+            }
+        }
+        
+        // Then, go through the queue to find other unique albums
+        var queue = MediaPlayer.queue
+        for (var i = 0; i < queue.length && covers.length < 3; i++) {
+            var track = queue[i]
+            if (track.albumArtist && track.album) {
+                var albumKey = track.albumArtist + "||" + track.album
+                if (!seenAlbums.has(albumKey)) {
+                    covers.push({
+                        albumArtist: track.albumArtist,
+                        album: track.album,
+                        isCurrent: i === MediaPlayer.currentQueueIndex
+                    })
+                    seenAlbums.add(albumKey)
+                }
+            }
+        }
+        
+        uniqueAlbumCovers = covers
+    }
     
     function formatQueueDuration(totalSeconds) {
         if (isNaN(totalSeconds) || totalSeconds < 0) {
@@ -57,6 +101,11 @@ Item {
                 albumArtUrl = ""
                 thumbnailUrl = ""
             }
+            updateUniqueAlbumCovers()
+        }
+        
+        function onPlaybackQueueChanged() {
+            updateUniqueAlbumCovers()
         }
     }
     
@@ -92,7 +141,7 @@ Item {
                 // Album art container
                 Item {
                     id: albumArtContainer
-                    Layout.preferredWidth: queueVisible ? parent.width * 0.3 : parent.width
+                    Layout.preferredWidth: queueVisible ? parent.width * 0.3 : parent.width * 0.9
                     Layout.fillHeight: true
                     Layout.alignment: Qt.AlignHCenter
                     
@@ -103,6 +152,68 @@ Item {
                         }
                     }
                     
+                    // Column to show multiple album covers when queue is visible
+                    Column {
+                        anchors.centerIn: parent
+                        width: parent.width * (queueVisible ? 0.8 : 1.0)
+                        height: parent.height
+                        spacing: queueVisible ? 10 : 0
+                        visible: queueVisible && uniqueAlbumCovers.length > 0
+                        
+                        Repeater {
+                            model: uniqueAlbumCovers
+                            
+                            Image {
+                                width: parent.width
+                                height: (parent.height - (parent.spacing * (uniqueAlbumCovers.length - 1))) / uniqueAlbumCovers.length
+                                source: {
+                                    if (modelData.albumArtist && modelData.album) {
+                                        var encodedArtist = encodeURIComponent(modelData.albumArtist)
+                                        var encodedAlbum = encodeURIComponent(modelData.album)
+                                        return "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/full"
+                                    }
+                                    return ""
+                                }
+                                fillMode: Image.PreserveAspectFit
+                                cache: true
+                                
+                                // Drop shadow effect using MultiEffect
+                                layer.enabled: true
+                                layer.effect: MultiEffect {
+                                    shadowEnabled: true
+                                    shadowHorizontalOffset: 0
+                                    shadowVerticalOffset: 4
+                                    shadowBlur: 0.5
+                                    shadowColor: "#80000000"
+                                }
+                                
+                                // Placeholder when no album art
+                                Rectangle {
+                                    anchors.fill: parent
+                                    color: "#202020"
+                                    visible: parent.status !== Image.Ready || parent.source == ""
+                                    
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "♪"
+                                        font.pixelSize: parent.width * 0.3
+                                        color: "#404040"
+                                    }
+                                }
+                                
+                                // MouseArea to toggle queue on click
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        root.queueVisible = false
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Single album art when queue is hidden
                     Image {
                         id: albumArt
                         anchors.centerIn: parent
@@ -111,6 +222,7 @@ Item {
                         source: albumArtUrl
                         fillMode: Image.PreserveAspectFit
                         cache: true
+                        visible: !queueVisible || uniqueAlbumCovers.length === 0
                         
                         // Drop shadow effect using MultiEffect
                         layer.enabled: true
@@ -133,18 +245,6 @@ Item {
                                 text: "♪"
                                 font.pixelSize: parent.width * 0.3
                                 color: "#404040"
-                            }
-                        }
-                        
-                        // MouseArea to toggle queue on click when queue is visible
-                        MouseArea {
-                            anchors.fill: parent
-                            enabled: queueVisible
-                            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                            onClicked: {
-                                if (queueVisible) {
-                                    root.queueVisible = false
-                                }
                             }
                         }
                     }
