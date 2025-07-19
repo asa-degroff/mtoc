@@ -559,7 +559,7 @@ Item {
         anchors.margins: 8
         spacing: 8
         
-        // Header section with tabs
+        // Header section - minimal design
         Item {
             Layout.fillWidth: true
             height: 24  // Reduced height
@@ -569,79 +569,11 @@ Item {
                 anchors.leftMargin: 4
                 anchors.rightMargin: 4
                 
-                // Tab bar for Artists/Playlists
-                TabBar {
-                    id: tabBar
-                    Layout.preferredWidth: 200
-                    Layout.preferredHeight: parent.height
-                    currentIndex: root.currentTab
-                    
-                    background: Rectangle {
-                        color: Qt.rgba(1, 1, 1, 0.03)
-                        radius: 4
-                        border.width: 1
-                        border.color: Qt.rgba(1, 1, 1, 0.06)
-                    }
-                    
-                    TabButton {
-                        text: "Artists"
-                        font.pixelSize: 12
-                        
-                        background: Rectangle {
-                            color: tabBar.currentIndex === 0 ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
-                            radius: 3
-                            
-                            Behavior on color {
-                                ColorAnimation { duration: 150 }
-                            }
-                        }
-                        
-                        contentItem: Text {
-                            text: parent.text
-                            font: parent.font
-                            color: tabBar.currentIndex === 0 ? "white" : "#808080"
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                            
-                            Behavior on color {
-                                ColorAnimation { duration: 150 }
-                            }
-                        }
-                    }
-                    
-                    TabButton {
-                        text: "Playlists"
-                        font.pixelSize: 12
-                        
-                        background: Rectangle {
-                            color: tabBar.currentIndex === 1 ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
-                            radius: 3
-                            
-                            Behavior on color {
-                                ColorAnimation { duration: 150 }
-                            }
-                        }
-                        
-                        contentItem: Text {
-                            text: parent.text
-                            font: parent.font
-                            color: tabBar.currentIndex === 1 ? "white" : "#808080"
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                            
-                            Behavior on color {
-                                ColorAnimation { duration: 150 }
-                            }
-                        }
-                    }
-                    
-                    onCurrentIndexChanged: {
-                        root.currentTab = currentIndex
-                        if (currentIndex === 0) {
-                            // Reset navigation when switching to Artists tab
-                            resetNavigation()
-                        }
-                    }
+                Label {
+                    text: "Music Library"
+                    font.pixelSize: 18  // Slightly smaller
+                    font.bold: true
+                    color: "white"
                 }
                 
                 Item { Layout.fillWidth: true } // Spacer
@@ -924,14 +856,23 @@ Item {
                     anchors.fill: parent
                     anchors.margins: 4
                     
-                    // Search bar at the top (smaller size)
-                    SearchBar {
-                        id: searchBar
+                    // Row for search bar and tab selector
+                    RowLayout {
+                        id: searchRow
                         anchors.top: parent.top
                         anchors.left: parent.left
                         anchors.right: parent.right
-                        placeholderText: root.currentTab === 0 ? "Search artists..." : "Search playlists..."
-                        z: 1
+                        height: 38  // Close to list item height (40px) with some breathing room
+                        spacing: 8
+                        
+                        // Search bar at 50% width
+                        SearchBar {
+                            id: searchBar
+                            Layout.fillWidth: false
+                            Layout.preferredWidth: parent.width * 0.48  // Slightly less than 50% to account for spacing
+                            Layout.preferredHeight: parent.height
+                            placeholderText: root.currentTab === 0 ? "Search artists..." : "Search playlists..."
+                            z: 1
                         
                         onSearchRequested: function(searchTerm) {
                             root.performSearch(searchTerm)
@@ -971,10 +912,90 @@ Item {
                             root.forceActiveFocus()
                         }
                     }
+                        
+                        // Tab selector - custom implementation
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            color: Qt.rgba(1, 1, 1, 0.03)
+                            radius: 4
+                            border.width: 1
+                            border.color: Qt.rgba(1, 1, 1, 0.06)
+                            
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 3
+                                spacing: 2  // Add small spacing between buttons
+                                
+                                // Artists button
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    color: root.currentTab === 0 ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
+                                    radius: 3
+                                    
+                                    Behavior on color {
+                                        ColorAnimation { duration: 150 }
+                                    }
+                                    
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "Artists"
+                                        font.pixelSize: 12
+                                        color: root.currentTab === 0 ? "white" : "#808080"
+                                        
+                                        Behavior on color {
+                                            ColorAnimation { duration: 150 }
+                                        }
+                                    }
+                                    
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            root.currentTab = 0
+                                            resetNavigation()
+                                        }
+                                    }
+                                }
+                                
+                                // Playlists button
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    color: root.currentTab === 1 ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
+                                    radius: 3
+                                    
+                                    Behavior on color {
+                                        ColorAnimation { duration: 150 }
+                                    }
+                                    
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "Playlists"
+                                        font.pixelSize: 12
+                                        color: root.currentTab === 1 ? "white" : "#808080"
+                                        
+                                        Behavior on color {
+                                            ColorAnimation { duration: 150 }
+                                        }
+                                    }
+                                    
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            root.currentTab = 1
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     
                     // StackLayout to switch between Artists and Playlists
                     StackLayout {
-                        anchors.top: searchBar.bottom
+                        anchors.top: searchRow.bottom
                         anchors.topMargin: 8
                         anchors.left: parent.left
                         anchors.right: parent.right
