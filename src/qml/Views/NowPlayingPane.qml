@@ -135,6 +135,18 @@ Item {
                                 color: "#404040"
                             }
                         }
+                        
+                        // MouseArea to toggle queue on click when queue is visible
+                        MouseArea {
+                            anchors.fill: parent
+                            enabled: queueVisible
+                            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            onClicked: {
+                                if (queueVisible) {
+                                    root.queueVisible = false
+                                }
+                            }
+                        }
                     }
                 }
                 
