@@ -2170,16 +2170,22 @@ Item {
                                             hoverEnabled: true
                                             cursorShape: Qt.PointingHandCursor
                                             onClicked: {
-                                                // Save the current scroll position
-                                                var savedContentY = trackListView.contentY
+                                                // Capture the ListView reference to avoid reference errors
+                                                var listView = trackListView
                                                 
-                                                // Remove track from edited list
-                                                root.editedPlaylistTracks.splice(index, 1)
-                                                // Update the view
-                                                rightPane.currentAlbumTracks = root.editedPlaylistTracks.slice()
-                                                
-                                                // Immediately restore the scroll position
-                                                trackListView.contentY = savedContentY
+                                                // Use Qt.callLater to ensure proper timing
+                                                Qt.callLater(function() {
+                                                    // Save the current scroll position
+                                                    var currentContentY = listView.contentY
+                                                    
+                                                    // Remove track from edited list
+                                                    root.editedPlaylistTracks.splice(index, 1)
+                                                    // Update the view
+                                                    rightPane.currentAlbumTracks = root.editedPlaylistTracks.slice()
+                                                    
+                                                    // Immediately restore the scroll position
+                                                    listView.contentY = currentContentY
+                                                })
                                             }
                                         }
                                     }
