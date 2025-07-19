@@ -1551,6 +1551,23 @@ void MediaPlayer::setQueueModified(bool modified)
     }
 }
 
+void MediaPlayer::updateShuffleOrder()
+{
+    // Only update if shuffle is enabled and we have tracks
+    if (m_shuffleEnabled && !m_playbackQueue.isEmpty()) {
+        generateShuffleOrder();
+        
+        // After generating shuffle order, we need to find where our current track ended up
+        // and update m_shuffleIndex to that position
+        if (!m_shuffleOrder.isEmpty() && m_currentQueueIndex >= 0) {
+            int shufflePos = m_shuffleOrder.indexOf(m_currentQueueIndex);
+            if (shufflePos >= 0) {
+                m_shuffleIndex = shufflePos;
+            }
+        }
+    }
+}
+
 void MediaPlayer::generateShuffleOrder()
 {
     generateShuffleOrder(true);

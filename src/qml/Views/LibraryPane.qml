@@ -1639,14 +1639,16 @@ Item {
                                 // Play the playlist directly
                                 var tracks = PlaylistManager.loadPlaylist(playlistName)
                                 if (tracks.length > 0) {
-                                    // Clear queue and play all tracks
+                                    // Clear queue first
                                     MediaPlayer.clearQueue()
-                                    // Play the first track
-                                    MediaPlayer.playTrackFromData(tracks[0])
-                                    // Add the rest to the queue
-                                    for (var i = 1; i < tracks.length; i++) {
+                                    // Add all tracks to the queue
+                                    for (var i = 0; i < tracks.length; i++) {
                                         MediaPlayer.playTrackLast(tracks[i])
                                     }
+                                    // Update shuffle order if shuffle is enabled
+                                    MediaPlayer.updateShuffleOrder()
+                                    // Play the first track
+                                    MediaPlayer.playTrackAt(0)
                                 }
                             }
                         }
@@ -2216,8 +2218,8 @@ Item {
                                             MediaPlayer.clearQueue()
                                             // Debug: Check what's in modelData
                                             console.log("Playing playlist track:", modelData.title, "Album:", modelData.album, "AlbumArtist:", modelData.albumArtist)
-                                            // Play this track first
-                                            MediaPlayer.playTrackFromData(modelData)
+                                            // Add all tracks in the correct order (starting from clicked track)
+                                            MediaPlayer.playTrackLast(modelData)
                                             // Add remaining tracks after this one
                                             for (var i = index + 1; i < rightPane.currentAlbumTracks.length; i++) {
                                                 MediaPlayer.playTrackLast(rightPane.currentAlbumTracks[i])
@@ -2226,6 +2228,10 @@ Item {
                                             for (var j = 0; j < index; j++) {
                                                 MediaPlayer.playTrackLast(rightPane.currentAlbumTracks[j])
                                             }
+                                            // Update shuffle order if shuffle is enabled
+                                            MediaPlayer.updateShuffleOrder()
+                                            // Play the first track in queue (which is the clicked track)
+                                            MediaPlayer.playTrackAt(0)
                                         } else if (root.selectedAlbum) {
                                             // Regular album - use the existing method
                                             var globalPos = trackDelegate.mapToGlobal(mouse.x, mouse.y);
