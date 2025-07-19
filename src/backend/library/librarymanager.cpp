@@ -1073,7 +1073,24 @@ QVariantMap LibraryManager::searchAll(const QString &query) const
 
 Track* LibraryManager::trackByPath(const QString &path) const
 {
-    return nullptr;
+    if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        return nullptr;
+    }
+    
+    // Get track ID by file path
+    int trackId = m_databaseManager->getTrackIdByPath(path);
+    if (trackId <= 0) {
+        return nullptr;
+    }
+    
+    // Get track data from database
+    QVariantMap trackData = m_databaseManager->getTrack(trackId);
+    if (trackData.isEmpty()) {
+        return nullptr;
+    }
+    
+    // Create and return a Track object using fromMetadata
+    return Track::fromMetadata(trackData);
 }
 
 Album* LibraryManager::albumByTitle(const QString &title, const QString &artistName) const

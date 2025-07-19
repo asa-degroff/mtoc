@@ -736,7 +736,7 @@ void MediaPlayer::playTrackFromData(const QVariant& trackData)
     QString filePath = trackMap.value("filePath").toString();
     
     qDebug() << "MediaPlayer::playTrackFromData called with track:" << title << "path:" << filePath;
-    qDebug() << "  Album:" << trackMap.value("album").toString() << "AlbumArtist:" << trackMap.value("albumArtist").toString();
+    qDebug() << "MediaPlayer::playTrackFromData Album:" << trackMap.value("album").toString() << "AlbumArtist:" << trackMap.value("albumArtist").toString();
     
     if (filePath.isEmpty()) {
         qWarning() << "Empty filePath for track:" << title;

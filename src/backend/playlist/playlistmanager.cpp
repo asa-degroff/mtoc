@@ -301,8 +301,12 @@ QVariantList PlaylistManager::readM3UFile(const QString& filepath)
                         trackMap["albumArtist"] = track->albumArtist();
                         trackMap["trackNumber"] = track->trackNumber();
                         trackMap["duration"] = track->duration();
+                        qDebug() << "PlaylistManager: Found track in library:" << track->title() 
+                                 << "Album:" << track->album() << "AlbumArtist:" << track->albumArtist();
                         tracks.append(trackMap);
                         continue;
+                    } else {
+                        qDebug() << "PlaylistManager: Track not found in library:" << resolvedPath;
                     }
                 }
                 

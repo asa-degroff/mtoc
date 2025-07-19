@@ -1882,6 +1882,8 @@ Item {
                                         if (root.selectedAlbum && root.selectedAlbum.isPlaylist) {
                                             // For playlists, clear queue and play all tracks starting from this one
                                             MediaPlayer.clearQueue()
+                                            // Debug: Check what's in modelData
+                                            console.log("Playing playlist track:", modelData.title, "Album:", modelData.album, "AlbumArtist:", modelData.albumArtist)
                                             // Play this track first
                                             MediaPlayer.playTrackFromData(modelData)
                                             // Add remaining tracks after this one
