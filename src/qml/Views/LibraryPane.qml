@@ -1731,15 +1731,70 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: 2
                                 
-                                Label {
-                                    id: trackListHeader
+                                // Playlist title - editable in edit mode
+                                Loader {
+                                    id: titleLoader
                                     Layout.fillWidth: true
-                                    text: rightPane.albumTitleText
-                                    color: "white"
-                                    font.pixelSize: 16
-                                    font.bold: true
-                                    elide: Text.ElideRight
-                                    wrapMode: Text.NoWrap
+                                    height: 24
+                                    sourceComponent: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist ? editableTitleComponent : readOnlyTitleComponent
+                                    
+                                    Component {
+                                        id: readOnlyTitleComponent
+                                        Label {
+                                            id: trackListHeader
+                                            anchors.fill: parent
+                                            text: rightPane.albumTitleText
+                                            color: "white"
+                                            font.pixelSize: 16
+                                            font.bold: true
+                                            elide: Text.ElideRight
+                                            wrapMode: Text.NoWrap
+                                        }
+                                    }
+                                    
+                                    Component {
+                                        id: editableTitleComponent
+                                        TextField {
+                                            id: titleTextField
+                                            anchors.fill: parent
+                                            text: root.editingPlaylistName
+                                            color: "white"
+                                            font.pixelSize: 16
+                                            font.bold: true
+                                            selectByMouse: true
+                                            selectionColor: Qt.rgba(0, 0.5, 1, 0.3)
+                                            selectedTextColor: "white"
+                                            
+                                            background: Rectangle {
+                                                color: titleTextField.activeFocus ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(1, 1, 1, 0.05)
+                                                border.width: 1
+                                                border.color: titleTextField.activeFocus ? Qt.rgba(0, 0.5, 1, 0.5) : Qt.rgba(1, 1, 1, 0.1)
+                                                radius: 4
+                                            }
+                                            
+                                            onTextChanged: {
+                                                root.editingPlaylistName = text
+                                            }
+                                            
+                                            Keys.onReturnPressed: {
+                                                focus = false
+                                            }
+                                            
+                                            Keys.onEscapePressed: {
+                                                text = root.selectedAlbum.title
+                                                focus = false
+                                            }
+                                            
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.IBeamCursor
+                                                onClicked: {
+                                                    titleTextField.forceActiveFocus()
+                                                    titleTextField.selectAll()
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                                 
                                 RowLayout {
@@ -1842,8 +1897,43 @@ Item {
                                         hoverEnabled: true
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
-                                            // Save the edited playlist
-                                            PlaylistManager.updatePlaylist(root.editingPlaylistName, root.editedPlaylistTracks)
+                                            // Validate the playlist name
+                                            var trimmedName = root.editingPlaylistName.trim()
+                                            if (trimmedName.length === 0) {
+                                                console.error("Playlist name cannot be empty")
+                                                return
+                                            }
+                                            
+                                            // Check for invalid characters
+                                            if (!/^[^<>:"/\\|?*]+$/.test(trimmedName)) {
+                                                console.error("Invalid characters in playlist name")
+                                                return
+                                            }
+                                            
+                                            // Check if we need to rename the playlist
+                                            var originalName = root.selectedAlbum.title
+                                            var needsRename = trimmedName !== originalName
+                                            
+                                            if (needsRename) {
+                                                // Check if the new name already exists
+                                                if (PlaylistManager.playlists.indexOf(trimmedName) !== -1) {
+                                                    console.error("A playlist with this name already exists")
+                                                    return
+                                                }
+                                                
+                                                // Rename the playlist first
+                                                if (!PlaylistManager.renamePlaylist(originalName, trimmedName)) {
+                                                    console.error("Failed to rename playlist")
+                                                    return
+                                                }
+                                                
+                                                // Update the selected album title
+                                                root.selectedAlbum.title = trimmedName
+                                                rightPane.albumTitleText = "Playlist - " + trimmedName
+                                            }
+                                            
+                                            // Save the edited playlist tracks
+                                            PlaylistManager.updatePlaylist(trimmedName, root.editedPlaylistTracks)
                                             root.playlistEditMode = false
                                             // Update the current view with edited tracks
                                             rightPane.currentAlbumTracks = root.editedPlaylistTracks.slice()

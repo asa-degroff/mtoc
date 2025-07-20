@@ -47,5 +47,6 @@
         <file>resources/icons/save.svg</file>
         <file>resources/icons/edit.svg</file>
         <file>resources/icons/cancel.svg</file>
+        <file>resources/icons/text-input.svg</file>
     </qresource>
 </RCC>

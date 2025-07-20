@@ -108,13 +108,46 @@ Item {
                     spacing: 4
                     z: 10  // Increase z-order to ensure it's above everything
                     
+                    // Rename button
+                    Rectangle {
+                        width: 28
+                        height: 28
+                        radius: 4
+                        color: renameMouseArea.containsMouse ? Qt.rgba(0, 0.5, 1, 0.2) : Qt.rgba(1, 1, 1, 0.05)
+                        visible: (mouseArea.containsMouse || renameMouseArea.containsMouse || deleteMouseArea.containsMouse) && !PlaylistManager.isSpecialPlaylist(modelData)
+                        
+                        Image {
+                            anchors.centerIn: parent
+                            width: 16
+                            height: 16
+                            source: "qrc:/resources/icons/text-input.svg"
+                            sourceSize.width: 32
+                            sourceSize.height: 32
+                        }
+                        
+                        MouseArea {
+                            id: renameMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            propagateComposedEvents: false
+                            onClicked: {
+                                console.log("Rename button clicked for playlist:", modelData)
+                                renamePopup.playlistName = modelData
+                                renamePopup.newPlaylistName = modelData
+                                renamePopup.visible = true
+                                mouse.accepted = true
+                            }
+                        }
+                    }
+                    
                     // Delete button
                     Rectangle {
                         width: 28
                         height: 28
                         radius: 4
                         color: deleteMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
-                        visible: (mouseArea.containsMouse || deleteMouseArea.containsMouse) && !PlaylistManager.isSpecialPlaylist(modelData)
+                        visible: (mouseArea.containsMouse || renameMouseArea.containsMouse || deleteMouseArea.containsMouse) && !PlaylistManager.isSpecialPlaylist(modelData)
                         
                         Image {
                             anchors.centerIn: parent
@@ -149,14 +182,14 @@ Item {
                 acceptedButtons: Qt.LeftButton
                 z: -1  // Put below other elements
                 onClicked: {
-                    // Only handle clicks if not clicking on the delete button area
-                    if (mouse.x < width - 36) {
+                    // Only handle clicks if not clicking on the action buttons area
+                    if (mouse.x < width - 68) {  // Account for both rename and delete buttons
                         root.playlistSelected(modelData)
                     }
                 }
                 onDoubleClicked: {
-                    // Only handle double clicks if not clicking on the delete button area
-                    if (mouse.x < width - 36) {
+                    // Only handle double clicks if not clicking on the action buttons area
+                    if (mouse.x < width - 68) {  // Account for both rename and delete buttons
                         root.playlistDoubleClicked(modelData)
                     }
                 }
@@ -192,6 +225,206 @@ Item {
             return hours + ":" + (minutes < 10 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds
         } else {
             return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
+        }
+    }
+    
+    // Rename popup
+    Rectangle {
+        id: renamePopup
+        visible: false
+        anchors.fill: parent
+        color: Qt.rgba(0, 0, 0, 0.7)
+        
+        property string playlistName: ""
+        property string newPlaylistName: ""
+        
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                // Close popup if clicking outside
+                renamePopup.visible = false
+            }
+        }
+        
+        Rectangle {
+            anchors.centerIn: parent
+            width: 360
+            height: 180
+            radius: 8
+            color: Qt.rgba(0.1, 0.1, 0.1, 0.95)
+            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, 0.1)
+            
+            MouseArea {
+                anchors.fill: parent
+                // Prevent clicks from propagating to the background
+            }
+            
+            Column {
+                anchors.fill: parent
+                anchors.margins: 20
+                spacing: 16
+                
+                Label {
+                    text: "Rename playlist"
+                    color: "white"
+                    font.pixelSize: 16
+                    font.weight: Font.DemiBold
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
+                
+                TextField {
+                    id: renameTextField
+                    width: parent.width
+                    text: renamePopup.newPlaylistName
+                    color: "white"
+                    font.pixelSize: 14
+                    selectByMouse: true
+                    selectionColor: Qt.rgba(0, 0.5, 1, 0.3)
+                    selectedTextColor: "white"
+                    placeholderText: "Enter new playlist name"
+                    placeholderTextColor: "#606060"
+                    
+                    background: Rectangle {
+                        color: Qt.rgba(1, 1, 1, 0.05)
+                        border.width: 1
+                        border.color: renameTextField.activeFocus ? Qt.rgba(0, 0.5, 1, 0.5) : Qt.rgba(1, 1, 1, 0.1)
+                        radius: 4
+                    }
+                    
+                    onTextChanged: {
+                        renamePopup.newPlaylistName = text
+                    }
+                    
+                    Keys.onReturnPressed: {
+                        if (text.trim().length > 0) {
+                            renameButton.clicked()
+                        }
+                    }
+                    
+                    Keys.onEscapePressed: {
+                        renamePopup.visible = false
+                    }
+                    
+                    Component.onCompleted: {
+                        // Select all text when popup opens
+                        selectAll()
+                        forceActiveFocus()
+                    }
+                }
+                
+                Label {
+                    text: {
+                        var trimmedName = renamePopup.newPlaylistName.trim()
+                        if (trimmedName.length === 0) {
+                            return "Playlist name cannot be empty"
+                        } else if (trimmedName !== renamePopup.playlistName && PlaylistManager.playlists.indexOf(trimmedName) !== -1) {
+                            return "A playlist with this name already exists"
+                        } else if (!/^[^<>:"/\\|?*]+$/.test(trimmedName)) {
+                            return "Invalid characters in playlist name"
+                        }
+                        return ""
+                    }
+                    color: "#ff6060"
+                    font.pixelSize: 12
+                    visible: text.length > 0
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
+                
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 12
+                    
+                    // Cancel button
+                    Rectangle {
+                        width: 100
+                        height: 36
+                        radius: 4
+                        color: cancelRenameMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(1, 1, 1, 0.1)
+                        
+                        Behavior on color {
+                            ColorAnimation { duration: 150 }
+                        }
+                        
+                        Label {
+                            anchors.centerIn: parent
+                            text: "Cancel"
+                            color: "white"
+                            font.pixelSize: 13
+                        }
+                        
+                        MouseArea {
+                            id: cancelRenameMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                renamePopup.visible = false
+                            }
+                        }
+                    }
+                    
+                    // Rename button
+                    Rectangle {
+                        id: renameButton
+                        width: 100
+                        height: 36
+                        radius: 4
+                        color: {
+                            var trimmedName = renamePopup.newPlaylistName.trim()
+                            var isValid = trimmedName.length > 0 && 
+                                         (trimmedName === renamePopup.playlistName || PlaylistManager.playlists.indexOf(trimmedName) === -1) &&
+                                         /^[^<>:"/\\|?*]+$/.test(trimmedName)
+                            
+                            if (!isValid) {
+                                return Qt.rgba(0.3, 0.3, 0.3, 0.3)
+                            }
+                            return confirmRenameMouseArea.containsMouse ? Qt.rgba(0, 0.6, 1, 0.8) : Qt.rgba(0, 0.5, 1, 0.6)
+                        }
+                        
+                        Behavior on color {
+                            ColorAnimation { duration: 150 }
+                        }
+                        
+                        Label {
+                            anchors.centerIn: parent
+                            text: "Rename"
+                            color: "white"
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
+                        }
+                        
+                        MouseArea {
+                            id: confirmRenameMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: {
+                                var trimmedName = renamePopup.newPlaylistName.trim()
+                                var isValid = trimmedName.length > 0 && 
+                                             (trimmedName === renamePopup.playlistName || PlaylistManager.playlists.indexOf(trimmedName) === -1) &&
+                                             /^[^<>:"/\\|?*]+$/.test(trimmedName)
+                                return isValid ? Qt.PointingHandCursor : Qt.ForbiddenCursor
+                            }
+                            onClicked: {
+                                var trimmedName = renamePopup.newPlaylistName.trim()
+                                var isValid = trimmedName.length > 0 && 
+                                             (trimmedName === renamePopup.playlistName || PlaylistManager.playlists.indexOf(trimmedName) === -1) &&
+                                             /^[^<>:"/\\|?*]+$/.test(trimmedName)
+                                
+                                if (isValid && trimmedName !== renamePopup.playlistName) {
+                                    // Rename the playlist
+                                    if (PlaylistManager.renamePlaylist(renamePopup.playlistName, trimmedName)) {
+                                        console.log("Playlist renamed from", renamePopup.playlistName, "to", trimmedName)
+                                    } else {
+                                        console.error("Failed to rename playlist")
+                                    }
+                                }
+                                renamePopup.visible = false
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
     
