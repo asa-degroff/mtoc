@@ -47,7 +47,7 @@ Item {
     // Timer to save position after user stops scrolling
     Timer {
         id: savePositionTimer
-        interval: 3000  // Save 3 seconds after user stops scrolling
+        interval: 250  // Save 250ms after user stops scrolling
         running: false
         onTriggered: {
             if (selectedAlbum && selectedAlbum.id) {
