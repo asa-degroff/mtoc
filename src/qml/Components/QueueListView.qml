@@ -5,6 +5,7 @@ import Mtoc.Backend 1.0
 
 ListView {
     id: root
+    focus: true
     
     property var queueModel: []
     property int currentPlayingIndex: -1
@@ -17,8 +18,38 @@ ListView {
     property int draggedTrackIndex: -1
     property int dropIndex: -1
     
+    // Multi-selection state
+    property var selectedTrackIndices: []
+    property int lastSelectedIndex: -1
+    
     signal trackDoubleClicked(int index)
     signal removeTrackRequested(int index)
+    signal removeTracksRequested(var indices)
+    
+    // Keyboard shortcuts
+    Keys.onPressed: function(event) {
+        if (event.modifiers & Qt.ControlModifier) {
+            if (event.key === Qt.Key_A) {
+                // Select all
+                selectedTrackIndices = []
+                for (var i = 0; i < count; i++) {
+                    selectedTrackIndices.push(i)
+                }
+                selectedTrackIndices = selectedTrackIndices.slice() // Force binding update
+                event.accepted = true
+            }
+        } else if (event.key === Qt.Key_Escape) {
+            // Clear selection
+            selectedTrackIndices = []
+            lastSelectedIndex = -1
+            event.accepted = true
+        } else if (event.key === Qt.Key_Delete && selectedTrackIndices.length > 0) {
+            // Delete selected tracks
+            removeTracksRequested(selectedTrackIndices.slice())
+            selectedTrackIndices = []
+            event.accepted = true
+        }
+    }
     
     // Timer to ensure final scroll position after rapid skipping
     Timer {
@@ -198,6 +229,9 @@ ListView {
     // Also scroll when the model changes (e.g., when queue is first loaded)
     onModelChanged: {
         Qt.callLater(scrollToCurrentTrack);
+        // Clear selection when queue changes
+        selectedTrackIndices = [];
+        lastSelectedIndex = -1;
     }
     
     clip: true
@@ -210,7 +244,9 @@ ListView {
         width: root.width
         height: isRemoving ? 0 : 45
         color: {
-            if (index === root.currentPlayingIndex) {
+            if (root.selectedTrackIndices.indexOf(index) !== -1) {
+                return Qt.rgba(0.25, 0.32, 0.71, 0.35)  // Selected
+            } else if (index === root.currentPlayingIndex) {
                 return Qt.rgba(0.25, 0.32, 0.71, 0.25)  // Currently playing
             } else if (queueItemMouseArea.containsMouse) {
                 return Qt.rgba(1, 1, 1, 0.04)  // Hover
@@ -451,12 +487,19 @@ ListView {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            // Start removal animation
-                            queueItemDelegate.isRemoving = true
-                            queueItemDelegate.slideX = root.width
-                            
-                            // Delay actual removal until animation completes
-                            removalTimer.start()
+                            // Check if this track is selected and there are multiple selections
+                            if (root.selectedTrackIndices.length > 1 && root.selectedTrackIndices.indexOf(index) !== -1) {
+                                // Remove all selected tracks
+                                root.removeTracksRequested(root.selectedTrackIndices.slice())
+                                root.selectedTrackIndices = []
+                            } else {
+                                // Single track removal with animation
+                                queueItemDelegate.isRemoving = true
+                                queueItemDelegate.slideX = root.width
+                                
+                                // Delay actual removal until animation completes
+                                removalTimer.start()
+                            }
                         }
                     }
                 }
@@ -469,9 +512,47 @@ ListView {
             anchors.leftMargin: 38  // Leave space for the drag handle (20px icon + margins)
             anchors.rightMargin: 24  // Leave space for the remove button
             hoverEnabled: true
-            acceptedButtons: Qt.LeftButton
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
             
-            onDoubleClicked: root.trackDoubleClicked(index)
+            onClicked: function(mouse) {
+                if (mouse.button === Qt.LeftButton) {
+                    if (mouse.modifiers & Qt.ControlModifier) {
+                        // Ctrl+Click: Toggle selection
+                        var idx = root.selectedTrackIndices.indexOf(index)
+                        if (idx !== -1) {
+                            // Deselect
+                            root.selectedTrackIndices.splice(idx, 1)
+                            root.selectedTrackIndices = root.selectedTrackIndices.slice() // Force binding update
+                        } else {
+                            // Select
+                            root.selectedTrackIndices.push(index)
+                            root.selectedTrackIndices = root.selectedTrackIndices.slice() // Force binding update
+                        }
+                        root.lastSelectedIndex = index
+                    } else if (mouse.modifiers & Qt.ShiftModifier && root.lastSelectedIndex !== -1) {
+                        // Shift+Click: Range selection
+                        root.selectedTrackIndices = []
+                        var start = Math.min(root.lastSelectedIndex, index)
+                        var end = Math.max(root.lastSelectedIndex, index)
+                        for (var i = start; i <= end; i++) {
+                            root.selectedTrackIndices.push(i)
+                        }
+                        root.selectedTrackIndices = root.selectedTrackIndices.slice() // Force binding update
+                    } else {
+                        // Regular click: Select only this track
+                        root.selectedTrackIndices = [index]
+                        root.lastSelectedIndex = index
+                    }
+                }
+            }
+            
+            onDoubleClicked: function(mouse) {
+                if (mouse.button === Qt.LeftButton && 
+                    !(mouse.modifiers & Qt.ControlModifier) && 
+                    !(mouse.modifiers & Qt.ShiftModifier)) {
+                    root.trackDoubleClicked(index)
+                }
+            }
         }
         
         Behavior on color {

@@ -728,6 +728,101 @@ void MediaPlayer::removeTrackAt(int index)
     }
 }
 
+void MediaPlayer::removeTracks(const QList<int>& indices)
+{
+    if (indices.isEmpty()) return;
+    
+    // Sort indices in descending order to remove from end to beginning
+    QList<int> sortedIndices = indices;
+    std::sort(sortedIndices.begin(), sortedIndices.end(), std::greater<int>());
+    
+    // Check if we're removing the current track
+    bool removingCurrent = false;
+    int newCurrentIndex = m_currentQueueIndex;
+    int tracksBeforeCurrent = 0;
+    
+    for (int idx : sortedIndices) {
+        if (idx == m_currentQueueIndex) {
+            removingCurrent = true;
+        } else if (idx < m_currentQueueIndex) {
+            tracksBeforeCurrent++;
+        }
+    }
+    
+    // If removing current track, determine what to play next
+    Mtoc::Track* nextTrack = nullptr;
+    if (removingCurrent && m_playbackQueue.size() > sortedIndices.size()) {
+        // Find the first non-removed track after current
+        for (int i = m_currentQueueIndex + 1; i < m_playbackQueue.size(); i++) {
+            if (!sortedIndices.contains(i)) {
+                nextTrack = m_playbackQueue[i];
+                newCurrentIndex = i - tracksBeforeCurrent - 1; // Adjust for removed tracks
+                break;
+            }
+        }
+        
+        // If no track after, find one before
+        if (!nextTrack) {
+            for (int i = m_currentQueueIndex - 1; i >= 0; i--) {
+                if (!sortedIndices.contains(i)) {
+                    nextTrack = m_playbackQueue[i];
+                    newCurrentIndex = i - tracksBeforeCurrent;
+                    break;
+                }
+            }
+        }
+    } else if (!removingCurrent) {
+        // Just adjust the current index for removed tracks before it
+        newCurrentIndex = m_currentQueueIndex - tracksBeforeCurrent;
+    }
+    
+    // Remove tracks from queue (in descending order)
+    for (int idx : sortedIndices) {
+        if (idx >= 0 && idx < m_playbackQueue.size()) {
+            Mtoc::Track* track = m_playbackQueue[idx];
+            m_playbackQueue.removeAt(idx);
+            
+            // Clean up if we created this track
+            if (track && track->parent() == this) {
+                track->deleteLater();
+            }
+        }
+    }
+    
+    // Update shuffle order if needed
+    if (m_shuffleEnabled) {
+        QVector<int> newShuffleOrder;
+        for (int i = 0; i < m_shuffleOrder.size(); i++) {
+            int oldIdx = m_shuffleOrder[i];
+            if (!sortedIndices.contains(oldIdx)) {
+                // Calculate new index after removals
+                int removedBefore = 0;
+                for (int removedIdx : sortedIndices) {
+                    if (removedIdx < oldIdx) removedBefore++;
+                }
+                newShuffleOrder.append(oldIdx - removedBefore);
+            }
+        }
+        m_shuffleOrder = newShuffleOrder;
+    }
+    
+    // Handle playback state
+    if (m_playbackQueue.isEmpty()) {
+        stop();
+    } else if (removingCurrent && nextTrack) {
+        m_currentQueueIndex = newCurrentIndex;
+        playTrack(nextTrack);
+    } else {
+        m_currentQueueIndex = newCurrentIndex;
+    }
+    
+    // Mark queue as modified
+    setQueueModified(true);
+    
+    // Emit signals
+    emit playbackQueueChanged();
+}
+
 void MediaPlayer::playTrackAt(int index)
 {
     if (m_isVirtualPlaylist && m_virtualPlaylist) {

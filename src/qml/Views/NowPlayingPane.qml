@@ -474,6 +474,10 @@ Item {
                             onRemoveTrackRequested: function(index) {
                                 MediaPlayer.removeTrackAt(index);
                             }
+                            
+                            onRemoveTracksRequested: function(indices) {
+                                MediaPlayer.removeTracks(indices);
+                            }
                         }
                     }
                     }
