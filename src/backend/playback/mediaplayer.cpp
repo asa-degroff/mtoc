@@ -1950,7 +1950,7 @@ Mtoc::Track* MediaPlayer::getOrCreateTrackFromVirtual(int index)
     // Get track data from virtual playlist
     Mtoc::VirtualTrackData trackData = m_virtualPlaylist->getTrack(index);
     if (!trackData.isValid()) {
-        qWarning() << "[MediaPlayer::getOrCreateTrackFromVirtual] Failed to get valid track data at index" << index;
+        // This is expected for tracks not yet loaded - don't warn
         return nullptr;
     }
     
