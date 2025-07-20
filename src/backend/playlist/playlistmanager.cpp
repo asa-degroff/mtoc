@@ -288,9 +288,9 @@ QVariantList PlaylistManager::loadPlaylist(const QString& name)
         return QVariantList();
     }
     
-    QString filename = name + ".m3u";
-    if (!QFileInfo(name).suffix().isEmpty()) {
-        filename = name; // Already has extension
+    QString filename = name;
+    if (!name.endsWith(".m3u") && !name.endsWith(".m3u8")) {
+        filename = name + ".m3u";
     }
     
     QString filepath = QDir(m_playlistsDirectory).absoluteFilePath(filename);
@@ -415,9 +415,9 @@ bool PlaylistManager::deletePlaylist(const QString& name)
         return false;
     }
     
-    QString filename = name + ".m3u";
-    if (!QFileInfo(name).suffix().isEmpty()) {
-        filename = name;
+    QString filename = name;
+    if (!name.endsWith(".m3u") && !name.endsWith(".m3u8")) {
+        filename = name + ".m3u";
     }
     
     QString filepath = QDir(m_playlistsDirectory).absoluteFilePath(filename);
@@ -536,7 +536,10 @@ QString PlaylistManager::getPlaylistModifiedDate(const QString& name)
         return QString();
     }
     
-    QString filename = name + ".m3u";
+    QString filename = name;
+    if (!name.endsWith(".m3u") && !name.endsWith(".m3u8")) {
+        filename = name + ".m3u";
+    }
     QString filepath = QDir(m_playlistsDirectory).absoluteFilePath(filename);
     
     QFileInfo info(filepath);
