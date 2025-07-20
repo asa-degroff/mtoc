@@ -722,12 +722,18 @@ Item {
                             }
                             onDoubleClicked: function(mouse) {
                                 if (mouse.button === Qt.LeftButton) {
+                                    // If shuffle is enabled, start with a random track instead of the first
+                                    var startIndex = 0;
+                                    if (MediaPlayer.shuffleEnabled && albumData && albumData.trackCount > 0) {
+                                        startIndex = Math.floor(Math.random() * albumData.trackCount);
+                                    }
+                                    
                                     // Check if we should show the dialog
                                     if (SettingsManager.queueActionDefault === SettingsManager.Ask && MediaPlayer.isQueueModified) {
                                         // Show dialog for "Ask every time" setting when queue is modified
                                         queueActionDialog.albumArtist = albumData.albumArtist
                                         queueActionDialog.albumTitle = albumData.title
-                                        queueActionDialog.startIndex = 0
+                                        queueActionDialog.startIndex = startIndex
                                         
                                         // Position dialog at album center
                                         var globalPos = parent.mapToGlobal(parent.width / 2, parent.height / 2)
@@ -739,7 +745,7 @@ Item {
                                         // Apply the configured action
                                         switch (SettingsManager.queueActionDefault) {
                                             case SettingsManager.Replace:
-                                                MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, 0);
+                                                MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, startIndex);
                                                 break;
                                             case SettingsManager.Insert:
                                                 MediaPlayer.playAlbumNext(albumData.albumArtist, albumData.title);
@@ -749,7 +755,7 @@ Item {
                                                 break;
                                             case SettingsManager.Ask:
                                                 // If Ask but queue not modified, default to replace
-                                                MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, 0);
+                                                MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, startIndex);
                                                 break;
                                         }
                                     }
@@ -764,12 +770,18 @@ Item {
                                 text: "Play"
                                 onTriggered: {
                                     if (albumData) {
+                                        // If shuffle is enabled, start with a random track instead of the first
+                                        var startIndex = 0;
+                                        if (MediaPlayer.shuffleEnabled && albumData.trackCount > 0) {
+                                            startIndex = Math.floor(Math.random() * albumData.trackCount);
+                                        }
+                                        
                                         // Check if we should show the dialog
                                         if (SettingsManager.queueActionDefault === SettingsManager.Ask && MediaPlayer.isQueueModified) {
                                             // Show dialog for "Ask every time" setting when queue is modified
                                             queueActionDialog.albumArtist = albumData.albumArtist
                                             queueActionDialog.albumTitle = albumData.title
-                                            queueActionDialog.startIndex = 0
+                                            queueActionDialog.startIndex = startIndex
                                             
                                             // Position dialog at album center
                                             var globalPos = albumContainer.mapToGlobal(albumContainer.width / 2, albumContainer.height / 2)
@@ -781,7 +793,7 @@ Item {
                                             // Apply the configured action
                                             switch (SettingsManager.queueActionDefault) {
                                                 case SettingsManager.Replace:
-                                                    MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, 0);
+                                                    MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, startIndex);
                                                     break;
                                                 case SettingsManager.Insert:
                                                     MediaPlayer.playAlbumNext(albumData.albumArtist, albumData.title);
@@ -791,7 +803,7 @@ Item {
                                                     break;
                                                 case SettingsManager.Ask:
                                                     // If Ask but queue not modified, default to replace
-                                                    MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, 0);
+                                                    MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, startIndex);
                                                     break;
                                             }
                                         }

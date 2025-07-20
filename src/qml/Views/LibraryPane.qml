@@ -1546,7 +1546,14 @@ Item {
                                         onDoubleClicked: function(mouse) {
                                             // Play the album on double-click
                                             var globalPos = parent.mapToGlobal(mouse.x, mouse.y);
-                                            root.playAlbumWithQueueCheck(modelData.albumArtist, modelData.title, 0, globalPos.x, globalPos.y);
+                                            
+                                            // If shuffle is enabled, start with a random track instead of the first
+                                            var startIndex = 0;
+                                            if (MediaPlayer.shuffleEnabled && modelData.trackCount > 0) {
+                                                startIndex = Math.floor(Math.random() * modelData.trackCount);
+                                            }
+                                            
+                                            root.playAlbumWithQueueCheck(modelData.albumArtist, modelData.title, startIndex, globalPos.x, globalPos.y);
                                         }
                                     }
                                     
@@ -1557,7 +1564,14 @@ Item {
                                             text: "Play"
                                             onTriggered: {
                                                 var globalPos = artistAlbumMouseArea.parent.mapToGlobal(artistAlbumMouseArea.width / 2, artistAlbumMouseArea.height / 2);
-                                                root.playAlbumWithQueueCheck(modelData.albumArtist, modelData.title, 0, globalPos.x, globalPos.y);
+                                                
+                                                // If shuffle is enabled, start with a random track instead of the first
+                                                var startIndex = 0;
+                                                if (MediaPlayer.shuffleEnabled && modelData.trackCount > 0) {
+                                                    startIndex = Math.floor(Math.random() * modelData.trackCount);
+                                                }
+                                                
+                                                root.playAlbumWithQueueCheck(modelData.albumArtist, modelData.title, startIndex, globalPos.x, globalPos.y);
                                             }
                                         }
                                         
