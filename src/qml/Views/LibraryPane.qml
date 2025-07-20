@@ -292,10 +292,17 @@ Item {
                 handleNavigationActivate()
                 event.accepted = true
             } else if (event.key === Qt.Key_Escape) {
-                // Return focus to search bar on Escape
-                resetNavigation()
-                searchBar.forceActiveFocus()
-                event.accepted = true
+                if (navigationMode === "track" && selectedTrackIndex !== -1) {
+                    // Clear track selection
+                    selectedTrackIndex = -1
+                    trackListView.currentIndex = -1
+                    event.accepted = true
+                } else {
+                    // Return focus to search bar on Escape
+                    resetNavigation()
+                    searchBar.forceActiveFocus()
+                    event.accepted = true
+                }
             } else if (event.key === Qt.Key_Left) {
                 handleNavigationLeft()
                 event.accepted = true
@@ -371,13 +378,13 @@ Item {
         }
     }
     
-    // Don't auto-select tracks anymore - start with no selection
-    // Connections {
-    //     target: MediaPlayer
-    //     function onCurrentTrackChanged() {
-    //         autoSelectCurrentTrack()
-    //     }
-    // }
+    // Auto-select currently playing track
+    Connections {
+        target: MediaPlayer
+        function onCurrentTrackChanged() {
+            autoSelectCurrentTrack()
+        }
+    }
     
     // Function to build artist name to index mapping for O(1) lookups
     function updateArtistIndexMapping() {
