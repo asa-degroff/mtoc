@@ -1799,15 +1799,33 @@ Item {
                                     
                                     Component {
                                         id: readOnlyTitleComponent
-                                        Label {
-                                            id: trackListHeader
+                                        Item {
                                             anchors.fill: parent
-                                            text: rightPane.albumTitleText
-                                            color: "white"
-                                            font.pixelSize: 16
-                                            font.bold: true
-                                            elide: Text.ElideRight
-                                            wrapMode: Text.NoWrap
+                                            
+                                            Label {
+                                                id: trackListHeader
+                                                anchors.fill: parent
+                                                text: rightPane.albumTitleText
+                                                color: albumTitleMouseArea.containsMouse ? "#ffffff" : "#e0e0e0"
+                                                font.pixelSize: 16
+                                                font.bold: true
+                                                elide: Text.ElideRight
+                                                wrapMode: Text.NoWrap
+                                            }
+                                            
+                                            MouseArea {
+                                                id: albumTitleMouseArea
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: root.selectedAlbum && !root.selectedAlbum.isPlaylist ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                                visible: root.selectedAlbum && !root.selectedAlbum.isPlaylist
+                                                
+                                                onClicked: {
+                                                    if (root.selectedAlbum && !root.selectedAlbum.isPlaylist) {
+                                                        albumBrowser.jumpToAlbum(root.selectedAlbum)
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                     
