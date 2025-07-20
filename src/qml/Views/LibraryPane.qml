@@ -772,6 +772,25 @@ Item {
                     // Highlight the album's artist
                     root.highlightedArtist = album.albumArtist
                 }
+                
+                onCenterAlbumChanged: function(album) {
+                    // Update the background when scrolling stops on a new album
+                    if (album && album.hasArt === true) {
+                        try {
+                            var encodedArtist = encodeURIComponent(album.albumArtist);
+                            var encodedAlbum = encodeURIComponent(album.title);
+                            var newThumbnailUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/thumbnail";
+                            
+                            if (thumbnailUrl !== newThumbnailUrl) {
+                                Qt.callLater(function() {
+                                    thumbnailUrl = newThumbnailUrl;
+                                });
+                            }
+                        } catch (encodeError) {
+                            console.warn("Error encoding album art URL:", encodeError);
+                        }
+                    }
+                }
             }
             
             // Gradient overlay to fade the bottom to black

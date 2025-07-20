@@ -16,8 +16,10 @@ Item {
     property real scrollVelocity: 0
     property real accumulatedDelta: 0
     property bool isSnapping: false
+    property bool isUserScrolling: false
     
     signal albumClicked(var album)
+    signal centerAlbumChanged(var album)
     
     // Queue action dialog
     QueueActionDialog {
@@ -251,11 +253,20 @@ Item {
                 }
             }
             
-            onMovementStarted: gcTimer.running = true
+            onMovementStarted: {
+                gcTimer.running = true
+                root.isUserScrolling = true
+            }
             onMovementEnded: {
                 gcTimer.running = false
                 // Final cleanup after scrolling stops
                 gcTimer.triggered()
+                
+                // Emit signal when user scrolling stops and we have an album
+                if (root.isUserScrolling && root.selectedAlbum) {
+                    root.centerAlbumChanged(root.selectedAlbum)
+                }
+                root.isUserScrolling = false
             }
             
             // Smooth velocity animation for touchpad scrolling
@@ -319,6 +330,11 @@ Item {
                 easing.type: Easing.OutCubic
                 onStopped: {
                     root.isSnapping = false
+                    // Emit signal when snap animation completes and we have an album
+                    if (root.isUserScrolling && root.selectedAlbum) {
+                        root.centerAlbumChanged(root.selectedAlbum)
+                    }
+                    root.isUserScrolling = false
                 }
             }
             
@@ -356,6 +372,10 @@ Item {
                         // Update current index
                         snapIndexTimer.targetIndex = targetIndex
                         snapIndexTimer.start()
+                    } else if (!root.isSnapping && root.isUserScrolling && root.selectedAlbum) {
+                        // If we're not snapping but finished scrolling, emit the signal
+                        root.centerAlbumChanged(root.selectedAlbum)
+                        root.isUserScrolling = false
                     }
                 }
             }
@@ -381,6 +401,9 @@ Item {
                     mouse.accepted = false  // Let the click propagate to album items
                 }
                 onWheel: function(wheel) {
+                    // Mark as user scrolling
+                    root.isUserScrolling = true
+                    
                     // Different behavior for touchpad vs mouse wheel
                     if (wheel.pixelDelta.y !== 0 || wheel.pixelDelta.x !== 0) {
                         // Touchpad - use direct content manipulation for smooth scrolling
