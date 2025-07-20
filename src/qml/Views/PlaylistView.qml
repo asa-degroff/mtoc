@@ -42,9 +42,9 @@ Item {
                     
                     Text {
                         anchors.centerIn: parent
-                        text: "♪"
+                        text: PlaylistManager.isSpecialPlaylist(modelData) ? "♫" : "♪"
                         font.pixelSize: 24
-                        color: "#808080"
+                        color: PlaylistManager.isSpecialPlaylist(modelData) ? "#4a9eff" : "#808080"
                     }
                 }
                 
@@ -114,7 +114,7 @@ Item {
                         height: 28
                         radius: 4
                         color: deleteMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
-                        visible: mouseArea.containsMouse || deleteMouseArea.containsMouse
+                        visible: (mouseArea.containsMouse || deleteMouseArea.containsMouse) && !PlaylistManager.isSpecialPlaylist(modelData)
                         
                         Image {
                             anchors.centerIn: parent

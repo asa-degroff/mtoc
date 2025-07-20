@@ -60,6 +60,11 @@ set(PROJECT_SOURCES
         src/backend/playback/mediaplayer.cpp
         src/backend/playlist/playlistmanager.h
         src/backend/playlist/playlistmanager.cpp
+        src/backend/playlist/VirtualTrackData.h
+        src/backend/playlist/VirtualPlaylist.h
+        src/backend/playlist/VirtualPlaylist.cpp
+        src/backend/playlist/VirtualPlaylistModel.h
+        src/backend/playlist/VirtualPlaylistModel.cpp
         src/backend/settings/settingsmanager.h
         src/backend/settings/settingsmanager.cpp
         src/backend/system/mprismanager.h

@@ -115,6 +115,17 @@ LibraryManager::~LibraryManager()
         m_scanFuture.waitForFinished();
     }
     
+    // Clear track cache
+    {
+        QMutexLocker locker(&m_trackCacheMutex);
+        qDeleteAll(m_trackCache);
+        m_trackCache.clear();
+    }
+    
+    // Delete virtual playlist objects
+    delete m_allSongsPlaylistModel;
+    delete m_allSongsPlaylist;
+    
     // Ensure all models are cleared before database cleanup
     m_allTracksModel->clear();
     m_allAlbumsModel->clear();
@@ -1071,27 +1082,6 @@ QVariantMap LibraryManager::searchAll(const QString &query) const
     return m_databaseManager->searchAll(query);
 }
 
-Track* LibraryManager::trackByPath(const QString &path) const
-{
-    if (!m_databaseManager || !m_databaseManager->isOpen()) {
-        return nullptr;
-    }
-    
-    // Get track ID by file path
-    int trackId = m_databaseManager->getTrackIdByPath(path);
-    if (trackId <= 0) {
-        return nullptr;
-    }
-    
-    // Get track data from database
-    QVariantMap trackData = m_databaseManager->getTrack(trackId);
-    if (trackData.isEmpty()) {
-        return nullptr;
-    }
-    
-    // Create and return a Track object using fromMetadata
-    return Track::fromMetadata(trackData);
-}
 
 Album* LibraryManager::albumByTitle(const QString &title, const QString &artistName) const
 {
@@ -1828,6 +1818,89 @@ void LibraryManager::processAlbumArtInBackground()
         m_processingAlbumArt = false;
         emit processingAlbumArtChanged();
     }, Qt::QueuedConnection);
+}
+
+VirtualPlaylistModel* LibraryManager::getAllSongsPlaylist()
+{
+    if (!m_allSongsPlaylistModel) {
+        // Create virtual playlist on first access
+        m_allSongsPlaylist = new VirtualPlaylist(m_databaseManager, this);
+        m_allSongsPlaylistModel = new VirtualPlaylistModel(this);
+        m_allSongsPlaylistModel->setVirtualPlaylist(m_allSongsPlaylist);
+        
+        // Start loading tracks asynchronously
+        m_allSongsPlaylist->loadAllTracks();
+    }
+    
+    return m_allSongsPlaylistModel;
+}
+
+bool LibraryManager::isTrackInLibrary(const QString &filePath) const
+{
+    if (filePath.isEmpty()) {
+        return false;
+    }
+    
+    // Check cache first
+    {
+        QMutexLocker locker(&m_trackCacheMutex);
+        if (m_trackCache.contains(filePath)) {
+            return true;
+        }
+    }
+    
+    // Check database
+    return m_databaseManager->trackExists(filePath);
+}
+
+Track* LibraryManager::trackByPath(const QString &path) const
+{
+    if (path.isEmpty() || !m_databaseManager || !m_databaseManager->isOpen()) {
+        return nullptr;
+    }
+    
+    // Check cache first
+    {
+        QMutexLocker locker(&m_trackCacheMutex);
+        if (m_trackCache.contains(path)) {
+            return m_trackCache.value(path);
+        }
+    }
+    
+    // Not in cache, load from database
+    int trackId = m_databaseManager->getTrackIdByPath(path);
+    if (trackId <= 0) {
+        return nullptr;
+    }
+    
+    QVariantMap trackData = m_databaseManager->getTrack(trackId);
+    if (trackData.isEmpty()) {
+        return nullptr;
+    }
+    
+    // Create new track object using fromMetadata
+    Track* track = Track::fromMetadata(trackData);
+    
+    // Add to cache with size limit
+    {
+        QMutexLocker locker(&m_trackCacheMutex);
+        
+        // If cache is full, remove oldest entries (simple FIFO)
+        if (m_trackCache.size() >= MAX_TRACK_CACHE_SIZE) {
+            // Remove about 10% of cache
+            int toRemove = MAX_TRACK_CACHE_SIZE / 10;
+            auto it = m_trackCache.begin();
+            while (toRemove > 0 && it != m_trackCache.end()) {
+                delete it.value();
+                it = m_trackCache.erase(it);
+                toRemove--;
+            }
+        }
+        
+        m_trackCache.insert(path, track);
+    }
+    
+    return track;
 }
 
 } // namespace Mtoc

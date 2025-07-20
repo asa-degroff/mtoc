@@ -22,6 +22,8 @@
 #include "../utility/metadataextractor.h"
 #include "../database/databasemanager.h"
 #include "albumartmanager.h"
+#include "../playlist/VirtualPlaylist.h"
+#include "../playlist/VirtualPlaylistModel.h"
 
 namespace Mtoc {
 
@@ -91,6 +93,10 @@ public:
     Q_INVOKABLE Album* albumByTitle(const QString &title, const QString &artistName = QString()) const;
     Q_INVOKABLE Artist* artistByName(const QString &name) const;
     
+    // Virtual playlist support
+    Q_INVOKABLE VirtualPlaylistModel* getAllSongsPlaylist();
+    Q_INVOKABLE bool isTrackInLibrary(const QString &filePath) const;
+    
     // Access to database manager (for image provider)
     DatabaseManager* databaseManager() const { return m_databaseManager; }
     
@@ -149,6 +155,15 @@ private:
     mutable bool m_albumCountCacheValid;
     mutable QVariantList m_cachedArtistModel;  // Cache for artist model
     mutable bool m_artistModelCacheValid;
+    
+    // Track cache for efficiency
+    mutable QHash<QString, Track*> m_trackCache;  // FilePath -> Track
+    mutable QMutex m_trackCacheMutex;
+    static const int MAX_TRACK_CACHE_SIZE = 1000;  // Limit cache size
+    
+    // Virtual playlist support
+    VirtualPlaylist* m_allSongsPlaylist = nullptr;
+    VirtualPlaylistModel* m_allSongsPlaylistModel = nullptr;
     
     // Models for UI
     TrackModel *m_allTracksModel;

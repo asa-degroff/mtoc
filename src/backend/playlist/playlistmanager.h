@@ -44,6 +44,9 @@ public:
     Q_INVOKABLE int getPlaylistDuration(const QString& name);
     Q_INVOKABLE QString getPlaylistModifiedDate(const QString& name);
     
+    // Special playlist support
+    Q_INVOKABLE bool isSpecialPlaylist(const QString& name) const;
+    
     // Initialize and refresh
     void initialize();
     Q_INVOKABLE void refreshPlaylists();
@@ -73,6 +76,7 @@ private:
     Mtoc::LibraryManager* m_libraryManager = nullptr;
     MediaPlayer* m_mediaPlayer = nullptr;
     QStringList m_playlists;
+    QStringList m_specialPlaylists;
     QString m_playlistsDirectory;
     bool m_isReady = false;
 };

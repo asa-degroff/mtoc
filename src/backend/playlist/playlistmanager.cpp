@@ -19,6 +19,8 @@ PlaylistManager* PlaylistManager::s_instance = nullptr;
 PlaylistManager::PlaylistManager(QObject *parent)
     : QObject(parent)
 {
+    // Initialize special playlists
+    m_specialPlaylists << "All Songs";
 }
 
 PlaylistManager::~PlaylistManager()
@@ -80,6 +82,9 @@ void PlaylistManager::ensurePlaylistsDirectory()
 void PlaylistManager::refreshPlaylists()
 {
     m_playlists.clear();
+    
+    // Add special playlists first
+    m_playlists.append(m_specialPlaylists);
     
     if (m_playlistsDirectory.isEmpty()) {
         emit playlistsChanged();
@@ -276,6 +281,13 @@ QString PlaylistManager::makeRelativePath(const QString& filePath) const
 
 QVariantList PlaylistManager::loadPlaylist(const QString& name)
 {
+    // Handle special playlists
+    if (name == "All Songs") {
+        // Return empty list - the UI should use LibraryManager.getAllSongsPlaylist() instead
+        // This is a virtual playlist that shouldn't be loaded as a regular playlist
+        return QVariantList();
+    }
+    
     QString filename = name + ".m3u";
     if (!QFileInfo(name).suffix().isEmpty()) {
         filename = name; // Already has extension
@@ -397,6 +409,12 @@ QString PlaylistManager::resolvePlaylistPath(const QString& playlistPath, const 
 
 bool PlaylistManager::deletePlaylist(const QString& name)
 {
+    // Prevent deletion of special playlists
+    if (isSpecialPlaylist(name)) {
+        emit error("Cannot delete special playlist");
+        return false;
+    }
+    
     QString filename = name + ".m3u";
     if (!QFileInfo(name).suffix().isEmpty()) {
         filename = name;
@@ -479,12 +497,26 @@ QVariantList PlaylistManager::getPlaylistTracks(const QString& name)
 
 int PlaylistManager::getPlaylistTrackCount(const QString& name)
 {
+    // Handle special playlists
+    if (name == "All Songs" && m_libraryManager) {
+        return m_libraryManager->trackCount();
+    }
+    
     QVariantList tracks = loadPlaylist(name);
     return tracks.size();
 }
 
 int PlaylistManager::getPlaylistDuration(const QString& name)
 {
+    // Handle special playlists
+    if (name == "All Songs" && m_libraryManager) {
+        // Get total duration from database
+        auto db = m_libraryManager->databaseManager();
+        if (db) {
+            return db->getTotalDuration();
+        }
+    }
+    
     QVariantList tracks = loadPlaylist(name);
     int totalDuration = 0;
     
@@ -498,6 +530,12 @@ int PlaylistManager::getPlaylistDuration(const QString& name)
 
 QString PlaylistManager::getPlaylistModifiedDate(const QString& name)
 {
+    // Handle special playlists
+    if (name == "All Songs") {
+        // Return empty string or current date for special playlists
+        return QString();
+    }
+    
     QString filename = name + ".m3u";
     QString filepath = QDir(m_playlistsDirectory).absoluteFilePath(filename);
     
@@ -515,4 +553,9 @@ void PlaylistManager::setReady(bool ready)
         m_isReady = ready;
         emit readyChanged(ready);
     }
+}
+
+bool PlaylistManager::isSpecialPlaylist(const QString& name) const
+{
+    return m_specialPlaylists.contains(name);
 }

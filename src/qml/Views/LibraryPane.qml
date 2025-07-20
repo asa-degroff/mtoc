@@ -1620,35 +1620,64 @@ Item {
                             id: playlistView
                             
                             onPlaylistSelected: function(playlistName) {
-                                // Load and display playlist tracks
-                                var tracks = PlaylistManager.loadPlaylist(playlistName)
-                                if (tracks.length > 0) {
-                                    // Create a pseudo-album for the playlist
+                                // Handle special "All Songs" playlist
+                                if (playlistName === "All Songs") {
+                                    // Get the virtual playlist model
+                                    var allSongsModel = LibraryManager.getAllSongsPlaylist()
                                     root.selectedAlbum = {
                                         title: playlistName,
-                                        albumArtist: "Playlist",
+                                        albumArtist: "Library",
                                         hasArt: false,
-                                        isPlaylist: true
+                                        isPlaylist: true,
+                                        isVirtualPlaylist: true,
+                                        virtualModel: allSongsModel
                                     }
-                                    rightPane.currentAlbumTracks = tracks
-                                    rightPane.albumTitleText = "Playlist - " + playlistName
+                                    // For virtual playlists, we don't load all tracks immediately
+                                    rightPane.currentAlbumTracks = []
+                                    rightPane.albumTitleText = "All Songs - " + allSongsModel.count + " tracks"
+                                } else {
+                                    // Load and display regular playlist tracks
+                                    var tracks = PlaylistManager.loadPlaylist(playlistName)
+                                    if (tracks.length > 0) {
+                                        // Create a pseudo-album for the playlist
+                                        root.selectedAlbum = {
+                                            title: playlistName,
+                                            albumArtist: "Playlist",
+                                            hasArt: false,
+                                            isPlaylist: true,
+                                            isVirtualPlaylist: false
+                                        }
+                                        rightPane.currentAlbumTracks = tracks
+                                        rightPane.albumTitleText = "Playlist - " + playlistName
+                                    }
                                 }
                             }
                             
                             onPlaylistDoubleClicked: function(playlistName) {
-                                // Play the playlist directly
-                                var tracks = PlaylistManager.loadPlaylist(playlistName)
-                                if (tracks.length > 0) {
-                                    // Clear queue first
+                                // Handle special "All Songs" playlist
+                                if (playlistName === "All Songs") {
+                                    // Get the virtual playlist model
+                                    var allSongsModel = LibraryManager.getAllSongsPlaylist()
+                                    // Clear queue and load virtual playlist
                                     MediaPlayer.clearQueue()
-                                    // Add all tracks to the queue
-                                    for (var i = 0; i < tracks.length; i++) {
-                                        MediaPlayer.playTrackLast(tracks[i])
+                                    MediaPlayer.loadVirtualPlaylist(allSongsModel)
+                                    // Start playing
+                                    MediaPlayer.play()
+                                } else {
+                                    // Play regular playlist directly
+                                    var tracks = PlaylistManager.loadPlaylist(playlistName)
+                                    if (tracks.length > 0) {
+                                        // Clear queue first
+                                        MediaPlayer.clearQueue()
+                                        // Add all tracks to the queue
+                                        for (var i = 0; i < tracks.length; i++) {
+                                            MediaPlayer.playTrackLast(tracks[i])
+                                        }
+                                        // Update shuffle order if shuffle is enabled
+                                        MediaPlayer.updateShuffleOrder()
+                                        // Play the first track
+                                        MediaPlayer.playTrackAt(0)
                                     }
-                                    // Update shuffle order if shuffle is enabled
-                                    MediaPlayer.updateShuffleOrder()
-                                    // Play the first track
-                                    MediaPlayer.playTrackAt(0)
                                 }
                             }
                         }
@@ -1872,8 +1901,8 @@ Item {
                         Layout.fillHeight: !root.showTrackInfoPanel || root.trackInfoPanelY > 10
                         Layout.preferredHeight: root.showTrackInfoPanel && root.trackInfoPanelY < 10 ? parent.height - 60 - 180 - 24 : -1  // Album header - info panel - spacing
                         clip: true
-                        model: rightPane.currentAlbumTracks
-                        visible: rightPane.currentAlbumTracks.length > 0
+                        model: root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist ? root.selectedAlbum.virtualModel : rightPane.currentAlbumTracks
+                        visible: (root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist) || rightPane.currentAlbumTracks.length > 0
                         spacing: 1
                         reuseItems: false
                         cacheBuffer: 800  // Increased cache without recycling
@@ -1932,10 +1961,20 @@ Item {
                         delegate: Column {
                             width: ListView.view.width
                             
+                            // Helper property to determine if using virtual model
+                            property bool isVirtualModel: root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist
+                            
+                            // Track data accessor - works for both regular and virtual models
+                            property var trackData: isVirtualModel ? model : modelData
+                            
                             // Helper properties to determine if we should show disc number
-                            property int currentDiscNumber: modelData.discNumber || 1
-                            property int previousDiscNumber: index > 0 && rightPane.currentAlbumTracks[index - 1] ? 
-                                                           (rightPane.currentAlbumTracks[index - 1].discNumber || 1) : 0
+                            property int currentDiscNumber: (trackData && trackData.discNumber) || 1
+                            property int previousDiscNumber: {
+                                if (!isVirtualModel && index > 0 && rightPane.currentAlbumTracks[index - 1]) {
+                                    return rightPane.currentAlbumTracks[index - 1].discNumber || 1
+                                }
+                                return 0
+                            }
                             property bool showDiscNumber: currentDiscNumber > 1 && (index === 0 || currentDiscNumber !== previousDiscNumber)
                             
                             // Cache multi-disc check at the ListView level
@@ -1951,7 +1990,7 @@ Item {
                                     anchors.left: parent.left
                                     anchors.leftMargin: 12
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: "Disc " + (modelData.discNumber || 1)
+                                    text: "Disc " + (trackData.discNumber || 1)
                                     color: "#cccccc"
                                     font.pixelSize: 11
                                     font.weight: Font.Medium
@@ -2103,7 +2142,7 @@ Item {
                                     }
 
                                     Label { // Track Number
-                                        text: modelData.trackNumber ? String(modelData.trackNumber).padStart(2, '0') : "--"
+                                        text: trackData.trackNumber ? String(trackData.trackNumber).padStart(2, '0') : "--"
                                         color: "#aaaaaa"
                                         font.pixelSize: 12
                                         Layout.preferredWidth: 25
@@ -2112,7 +2151,7 @@ Item {
                                     }
 
                                     Label { // Track Title
-                                        text: modelData.title || "Unknown Track"
+                                        text: trackData.title || "Unknown Track"
                                         color: "white"
                                         font.pixelSize: 13
                                         elide: Text.ElideRight
@@ -2127,14 +2166,14 @@ Item {
                                         sourceSize.width: 32  // 2x for retina
                                         sourceSize.height: 32
                                         visible: MediaPlayer.currentTrack && 
-                                                MediaPlayer.currentTrack.filePath === modelData.filePath &&
+                                                MediaPlayer.currentTrack.filePath === trackData.filePath &&
                                                 MediaPlayer.state === MediaPlayer.PlayingState &&
                                                 !root.playlistEditMode
                                         opacity: 0.9
                                     }
 
                                     Label { // Track Duration
-                                        text: modelData.duration ? formatDuration(modelData.duration) : "0:00"
+                                        text: trackData.duration ? formatDuration(trackData.duration) : "0:00"
                                         color: "#aaaaaa"
                                         font.pixelSize: 12
                                         Layout.preferredWidth: 40
@@ -2227,7 +2266,7 @@ Item {
                                             root.selectedTrackIndex = index;
                                             // Update track info panel if visible
                                             if (root.showTrackInfoPanel && root.selectedTrackIndices.length === 1) {
-                                                root.selectedTrackForInfo = modelData;
+                                                root.selectedTrackForInfo = trackData;
                                             }
                                         } else if (mouse.button === Qt.RightButton) {
                                             // If right-clicking on an unselected track, select it first
@@ -2241,14 +2280,19 @@ Item {
                                         }
                                     }
                                     onDoubleClicked: function(mouse) {
-                                        // Check if this is a playlist or regular album
-                                        if (root.selectedAlbum && root.selectedAlbum.isPlaylist) {
-                                            // For playlists, clear queue and play all tracks starting from this one
+                                        // Check if this is a virtual playlist
+                                        if (root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist) {
+                                            // For virtual playlists, use the virtual playlist model
                                             MediaPlayer.clearQueue()
-                                            // Debug: Check what's in modelData
-                                            console.log("Playing playlist track:", modelData.title, "Album:", modelData.album, "AlbumArtist:", modelData.albumArtist)
+                                            MediaPlayer.loadVirtualPlaylist(root.selectedAlbum.virtualModel)
+                                            MediaPlayer.playTrackAt(index)
+                                        } else if (root.selectedAlbum && root.selectedAlbum.isPlaylist) {
+                                            // For regular playlists, clear queue and play all tracks starting from this one
+                                            MediaPlayer.clearQueue()
+                                            // Debug: Check what's in trackData
+                                            console.log("Playing playlist track:", trackData.title, "Album:", trackData.album, "AlbumArtist:", trackData.albumArtist)
                                             // Add all tracks in the correct order (starting from clicked track)
-                                            MediaPlayer.playTrackLast(modelData)
+                                            MediaPlayer.playTrackLast(trackData)
                                             // Add remaining tracks after this one
                                             for (var i = index + 1; i < rightPane.currentAlbumTracks.length; i++) {
                                                 MediaPlayer.playTrackLast(rightPane.currentAlbumTracks[i])
@@ -2268,7 +2312,7 @@ Item {
                                                                         globalPos.x, globalPos.y);
                                         } else {
                                             // Single track
-                                            MediaPlayer.playTrackFromData(modelData);
+                                            MediaPlayer.playTrackFromData(trackData);
                                         }
                                     }
                                     
@@ -2280,14 +2324,28 @@ Item {
                                                   "Play " + root.selectedTrackIndices.length + " Tracks Next" : 
                                                   "Play Next"
                                             onTriggered: {
-                                                if (root.selectedTrackIndices.length > 1) {
-                                                    // Add all selected tracks in order
-                                                    var indices = root.selectedTrackIndices.slice().sort(function(a, b) { return a - b; });
-                                                    for (var i = 0; i < indices.length; i++) {
-                                                        MediaPlayer.playTrackNext(rightPane.currentAlbumTracks[indices[i]]);
+                                                if (root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist) {
+                                                    // For virtual playlists, we need to get track data from the model
+                                                    if (root.selectedTrackIndices.length > 1) {
+                                                        // Add all selected tracks in order
+                                                        var indices = root.selectedTrackIndices.slice().sort(function(a, b) { return a - b; });
+                                                        for (var i = 0; i < indices.length; i++) {
+                                                            var track = root.selectedAlbum.virtualModel.getTrack(indices[i]);
+                                                            if (track) MediaPlayer.playTrackNext(track);
+                                                        }
+                                                    } else {
+                                                        MediaPlayer.playTrackNext(trackData);
                                                     }
                                                 } else {
-                                                    MediaPlayer.playTrackNext(modelData);
+                                                    if (root.selectedTrackIndices.length > 1) {
+                                                        // Add all selected tracks in order
+                                                        var indices = root.selectedTrackIndices.slice().sort(function(a, b) { return a - b; });
+                                                        for (var i = 0; i < indices.length; i++) {
+                                                            MediaPlayer.playTrackNext(rightPane.currentAlbumTracks[indices[i]]);
+                                                        }
+                                                    } else {
+                                                        MediaPlayer.playTrackNext(trackData);
+                                                    }
                                                 }
                                             }
                                         }
@@ -2297,14 +2355,28 @@ Item {
                                                   "Play " + root.selectedTrackIndices.length + " Tracks Last" : 
                                                   "Play Last"
                                             onTriggered: {
-                                                if (root.selectedTrackIndices.length > 1) {
-                                                    // Add all selected tracks in order
-                                                    var indices = root.selectedTrackIndices.slice().sort(function(a, b) { return a - b; });
-                                                    for (var i = 0; i < indices.length; i++) {
-                                                        MediaPlayer.playTrackLast(rightPane.currentAlbumTracks[indices[i]]);
+                                                if (root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist) {
+                                                    // For virtual playlists, we need to get track data from the model
+                                                    if (root.selectedTrackIndices.length > 1) {
+                                                        // Add all selected tracks in order
+                                                        var indices = root.selectedTrackIndices.slice().sort(function(a, b) { return a - b; });
+                                                        for (var i = 0; i < indices.length; i++) {
+                                                            var track = root.selectedAlbum.virtualModel.getTrack(indices[i]);
+                                                            if (track) MediaPlayer.playTrackLast(track);
+                                                        }
+                                                    } else {
+                                                        MediaPlayer.playTrackLast(trackData);
                                                     }
                                                 } else {
-                                                    MediaPlayer.playTrackLast(modelData);
+                                                    if (root.selectedTrackIndices.length > 1) {
+                                                        // Add all selected tracks in order
+                                                        var indices = root.selectedTrackIndices.slice().sort(function(a, b) { return a - b; });
+                                                        for (var i = 0; i < indices.length; i++) {
+                                                            MediaPlayer.playTrackLast(rightPane.currentAlbumTracks[indices[i]]);
+                                                        }
+                                                    } else {
+                                                        MediaPlayer.playTrackLast(trackData);
+                                                    }
                                                 }
                                             }
                                         }
@@ -2321,7 +2393,7 @@ Item {
                                             onTriggered: {
                                                 // Select the track first
                                                 trackListView.currentIndex = index;
-                                                root.selectedTrackForInfo = modelData;
+                                                root.selectedTrackForInfo = trackData;
                                                 root.showTrackInfoPanel = true;
                                             }
                                         }

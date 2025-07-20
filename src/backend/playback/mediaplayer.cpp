@@ -3,6 +3,8 @@
 #include "backend/library/album.h"
 #include "backend/library/librarymanager.h"
 #include "backend/settings/settingsmanager.h"
+#include "backend/playlist/VirtualPlaylistModel.h"
+#include "backend/playlist/VirtualPlaylist.h"
 #include <QDebug>
 #include <QFile>
 #include <QDateTime>
@@ -185,6 +187,15 @@ void MediaPlayer::setShuffleEnabled(bool enabled)
 
 bool MediaPlayer::hasNext() const
 {
+    // Handle virtual playlist
+    if (m_isVirtualPlaylist && m_virtualPlaylist) {
+        if (m_repeatEnabled) {
+            return true;
+        }
+        return m_virtualCurrentIndex < m_virtualPlaylist->trackCount() - 1;
+    }
+    
+    // Regular queue handling
     if (m_playbackQueue.isEmpty()) {
         return false;
     }
@@ -202,6 +213,12 @@ bool MediaPlayer::hasNext() const
 
 bool MediaPlayer::hasPrevious() const
 {
+    // Handle virtual playlist
+    if (m_isVirtualPlaylist && m_virtualPlaylist) {
+        return m_virtualCurrentIndex > 0;
+    }
+    
+    // Regular queue handling
     // Only return true if we can actually go to a previous track
     // (i.e., we're not on the first track)
     return m_currentQueueIndex > 0 && m_playbackQueue.size() > 0;
@@ -209,6 +226,12 @@ bool MediaPlayer::hasPrevious() const
 
 QVariantList MediaPlayer::queue() const
 {
+    // For virtual playlists, return empty list (UI should use the VirtualPlaylistModel directly)
+    if (m_isVirtualPlaylist) {
+        return QVariantList();
+    }
+    
+    // Regular queue handling
     QVariantList queueList;
     for (Mtoc::Track* track : m_playbackQueue) {
         if (track) {
@@ -225,8 +248,30 @@ QVariantList MediaPlayer::queue() const
     return queueList;
 }
 
+int MediaPlayer::queueLength() const
+{
+    if (m_isVirtualPlaylist && m_virtualPlaylist) {
+        return m_virtualPlaylist->trackCount();
+    }
+    return m_playbackQueue.size();
+}
+
+int MediaPlayer::currentQueueIndex() const
+{
+    if (m_isVirtualPlaylist) {
+        return m_virtualCurrentIndex;
+    }
+    return m_currentQueueIndex;
+}
+
 int MediaPlayer::totalQueueDuration() const
 {
+    // For virtual playlists, we can't easily calculate total duration without loading all tracks
+    // Return 0 for now - UI should get this info from PlaylistManager if needed
+    if (m_isVirtualPlaylist) {
+        return 0;
+    }
+    
     int totalSeconds = 0;
     for (Mtoc::Track* track : m_playbackQueue) {
         if (track) {
@@ -243,6 +288,9 @@ void MediaPlayer::play()
     } else if (m_currentTrack && m_state == StoppedState) {
         m_audioEngine->loadTrack(m_currentTrack->filePath());
         m_audioEngine->play();
+    } else if (m_isVirtualPlaylist && m_virtualPlaylist && m_virtualCurrentIndex < 0) {
+        // Start playing from beginning of virtual playlist
+        playTrackAt(0);
     }
 }
 
@@ -281,38 +329,72 @@ void MediaPlayer::next()
         return;
     }
     
-    if (m_shuffleEnabled) {
-        int nextShuffleIdx = getNextShuffleIndex();
+    if (m_isVirtualPlaylist && m_virtualPlaylist) {
+        // Handle virtual playlist navigation
+        int nextIndex = -1;
         
-        // Check if we need to re-shuffle for repeat
-        if (nextShuffleIdx == 0 && m_shuffleIndex == m_shuffleOrder.size() - 1 && m_repeatEnabled) {
-            // We're looping with repeat, re-shuffle without putting current track first
-            generateShuffleOrder(false);
-            // m_shuffleIndex is already set to 0 by generateShuffleOrder
-        } else {
-            m_shuffleIndex = nextShuffleIdx;
-        }
-        
-        if (m_shuffleIndex >= 0 && m_shuffleIndex < m_shuffleOrder.size()) {
-            m_currentQueueIndex = m_shuffleOrder[m_shuffleIndex];
-        }
-    } else {
-        // Sequential playback
-        if (m_currentQueueIndex >= m_playbackQueue.size() - 1) {
-            if (m_repeatEnabled) {
-                m_currentQueueIndex = 0; // Loop to beginning
-            } else {
-                return; // Should not happen due to hasNext() check
+        if (m_shuffleEnabled) {
+            // Get next shuffle index from virtual playlist
+            QVector<int> nextIndices = m_virtualPlaylist->getNextShuffleIndices(m_virtualCurrentIndex, 1);
+            if (!nextIndices.isEmpty()) {
+                nextIndex = nextIndices.first();
+            } else if (m_repeatEnabled) {
+                // Re-shuffle and start from beginning
+                m_virtualPlaylist->generateShuffleOrder();
+                nextIndices = m_virtualPlaylist->getNextShuffleIndices(-1, 1);
+                if (!nextIndices.isEmpty()) {
+                    nextIndex = nextIndices.first();
+                }
             }
         } else {
-            m_currentQueueIndex++;
+            // Sequential playback
+            if (m_virtualCurrentIndex >= m_virtualPlaylist->trackCount() - 1) {
+                if (m_repeatEnabled) {
+                    nextIndex = 0; // Loop to beginning
+                }
+            } else {
+                nextIndex = m_virtualCurrentIndex + 1;
+            }
         }
-    }
-    
-    if (m_currentQueueIndex >= 0 && m_currentQueueIndex < m_playbackQueue.size()) {
-        Mtoc::Track* nextTrack = m_playbackQueue[m_currentQueueIndex];
-        playTrack(nextTrack);
-        emit playbackQueueChanged();
+        
+        if (nextIndex >= 0) {
+            playTrackAt(nextIndex);
+        }
+    } else {
+        // Handle regular queue navigation
+        if (m_shuffleEnabled) {
+            int nextShuffleIdx = getNextShuffleIndex();
+            
+            // Check if we need to re-shuffle for repeat
+            if (nextShuffleIdx == 0 && m_shuffleIndex == m_shuffleOrder.size() - 1 && m_repeatEnabled) {
+                // We're looping with repeat, re-shuffle without putting current track first
+                generateShuffleOrder(false);
+                // m_shuffleIndex is already set to 0 by generateShuffleOrder
+            } else {
+                m_shuffleIndex = nextShuffleIdx;
+            }
+            
+            if (m_shuffleIndex >= 0 && m_shuffleIndex < m_shuffleOrder.size()) {
+                m_currentQueueIndex = m_shuffleOrder[m_shuffleIndex];
+            }
+        } else {
+            // Sequential playback
+            if (m_currentQueueIndex >= m_playbackQueue.size() - 1) {
+                if (m_repeatEnabled) {
+                    m_currentQueueIndex = 0; // Loop to beginning
+                } else {
+                    return; // Should not happen due to hasNext() check
+                }
+            } else {
+                m_currentQueueIndex++;
+            }
+        }
+        
+        if (m_currentQueueIndex >= 0 && m_currentQueueIndex < m_playbackQueue.size()) {
+            Mtoc::Track* nextTrack = m_playbackQueue[m_currentQueueIndex];
+            playTrack(nextTrack);
+            emit playbackQueueChanged();
+        }
     }
 }
 
@@ -323,6 +405,27 @@ void MediaPlayer::previous()
         return;
     }
     
+    // Handle virtual playlist
+    if (m_isVirtualPlaylist && m_virtualPlaylist) {
+        if (m_virtualCurrentIndex > 0) {
+            m_virtualCurrentIndex--;
+            
+            // Preload tracks around the new position
+            preloadVirtualTracks(m_virtualCurrentIndex);
+            
+            // Get or create the track object
+            Mtoc::Track* prevTrack = getOrCreateTrackFromVirtual(m_virtualCurrentIndex);
+            if (prevTrack) {
+                playTrack(prevTrack);
+                emit playbackQueueChanged();
+            }
+        } else {
+            seek(0);
+        }
+        return;
+    }
+    
+    // Regular queue handling
     if (m_shuffleEnabled) {
         int prevShuffleIdx = getPreviousShuffleIndex();
         if (prevShuffleIdx >= 0) {
@@ -548,30 +651,69 @@ void MediaPlayer::removeTrackAt(int index)
 
 void MediaPlayer::playTrackAt(int index)
 {
-    if (index < 0 || index >= m_playbackQueue.size()) {
-        qWarning() << "playTrackAt: Invalid index" << index;
-        return;
-    }
-    
-    qDebug() << "MediaPlayer::playTrackAt called with index:" << index;
-    
-    m_currentQueueIndex = index;
-    
-    // Update shuffle index if shuffle is enabled
-    if (m_shuffleEnabled && !m_shuffleOrder.isEmpty()) {
-        // Find this index in the shuffle order
-        int shufflePos = m_shuffleOrder.indexOf(index);
-        if (shufflePos >= 0) {
-            m_shuffleIndex = shufflePos;
+    if (m_isVirtualPlaylist && m_virtualPlaylist) {
+        // Handle virtual playlist
+        if (index < 0 || index >= m_virtualPlaylist->trackCount()) {
+            qWarning() << "playTrackAt: Invalid virtual playlist index" << index;
+            return;
         }
+        
+        qDebug() << "MediaPlayer::playTrackAt (virtual) called with index:" << index;
+        
+        // Update indices
+        m_virtualCurrentIndex = index;
+        m_currentQueueIndex = -1;  // Not using regular queue
+        
+        // Update shuffle index if shuffle is enabled
+        if (m_shuffleEnabled) {
+            // For virtual playlists, shuffle is handled by VirtualPlaylist
+            // Just update our local shuffle index
+            m_shuffleIndex = m_virtualPlaylist->getLinearIndex(index);
+        }
+        
+        // Preload nearby tracks
+        preloadVirtualTracks(index);
+        
+        // Get or create the track object
+        Mtoc::Track* track = getOrCreateTrackFromVirtual(index);
+        if (track) {
+            emit playbackQueueChanged();
+            playTrack(track);
+        } else {
+            qWarning() << "Failed to get track from virtual playlist at index" << index;
+        }
+    } else {
+        // Handle regular queue
+        if (index < 0 || index >= m_playbackQueue.size()) {
+            qWarning() << "playTrackAt: Invalid index" << index;
+            return;
+        }
+        
+        qDebug() << "MediaPlayer::playTrackAt called with index:" << index;
+        
+        m_currentQueueIndex = index;
+        
+        // Update shuffle index if shuffle is enabled
+        if (m_shuffleEnabled && !m_shuffleOrder.isEmpty()) {
+            // Find this index in the shuffle order
+            int shufflePos = m_shuffleOrder.indexOf(index);
+            if (shufflePos >= 0) {
+                m_shuffleIndex = shufflePos;
+            }
+        }
+        
+        emit playbackQueueChanged();
+        playTrack(m_playbackQueue[index]);
     }
-    
-    emit playbackQueueChanged();
-    playTrack(m_playbackQueue[index]);
 }
 
 void MediaPlayer::clearQueue()
 {
+    // Clear virtual playlist if active
+    if (m_isVirtualPlaylist) {
+        clearVirtualPlaylist();
+    }
+    
     // Clean up any tracks we created
     for (auto track : m_playbackQueue) {
         if (track && track->parent() == this) {
@@ -1553,6 +1695,13 @@ void MediaPlayer::setQueueModified(bool modified)
 
 void MediaPlayer::updateShuffleOrder()
 {
+    // Handle virtual playlist shuffle update
+    if (m_isVirtualPlaylist && m_virtualPlaylist && m_shuffleEnabled) {
+        m_virtualPlaylist->generateShuffleOrder(m_virtualCurrentIndex);
+        return;
+    }
+    
+    // Regular queue handling
     // Only update if shuffle is enabled and we have tracks
     if (m_shuffleEnabled && !m_playbackQueue.isEmpty()) {
         generateShuffleOrder();
@@ -1577,6 +1726,15 @@ void MediaPlayer::generateShuffleOrder(bool putCurrentTrackFirst)
 {
     m_shuffleOrder.clear();
     
+    // Handle virtual playlist shuffle generation
+    if (m_isVirtualPlaylist && m_virtualPlaylist) {
+        // For virtual playlists, generate shuffle order in the VirtualPlaylist object
+        m_virtualPlaylist->generateShuffleOrder(putCurrentTrackFirst ? m_virtualCurrentIndex : -1);
+        m_shuffleIndex = 0;  // Not used for virtual playlists, but set for consistency
+        return;
+    }
+    
+    // Regular queue handling
     if (m_playbackQueue.isEmpty()) {
         m_shuffleIndex = -1;
         return;
@@ -1648,4 +1806,107 @@ int MediaPlayer::getPreviousShuffleIndex() const
     }
     
     return prevIndex;
+}
+
+void MediaPlayer::loadVirtualPlaylist(Mtoc::VirtualPlaylistModel* model)
+{
+    if (!model || !model->virtualPlaylist()) {
+        qWarning() << "MediaPlayer: Cannot load null virtual playlist";
+        return;
+    }
+    
+    // Clear existing queue and virtual playlist
+    clearQueue();
+    clearVirtualPlaylist();
+    
+    // Set up virtual playlist
+    m_virtualPlaylist = model->virtualPlaylist();
+    m_isVirtualPlaylist = true;
+    m_virtualCurrentIndex = -1;
+    
+    // Generate shuffle order if needed
+    if (m_shuffleEnabled) {
+        m_virtualPlaylist->generateShuffleOrder();
+    }
+    
+    // Emit queue changed to update UI
+    emit playbackQueueChanged();
+}
+
+void MediaPlayer::clearVirtualPlaylist()
+{
+    m_virtualPlaylist = nullptr;
+    m_isVirtualPlaylist = false;
+    m_virtualCurrentIndex = -1;
+    
+    // Clean up buffered tracks
+    for (auto* track : m_virtualBufferTracks) {
+        if (track && track != m_currentTrack) {
+            track->deleteLater();
+        }
+    }
+    m_virtualBufferTracks.clear();
+}
+
+void MediaPlayer::preloadVirtualTracks(int centerIndex)
+{
+    if (!m_virtualPlaylist || centerIndex < 0) {
+        return;
+    }
+    
+    // Preload tracks around the center index
+    const int preloadRadius = 3;  // Load 3 tracks before and after
+    int startIndex = qMax(0, centerIndex - preloadRadius);
+    int endIndex = qMin(m_virtualPlaylist->trackCount() - 1, centerIndex + preloadRadius);
+    
+    // Request virtual playlist to preload this range
+    m_virtualPlaylist->preloadRange(centerIndex, preloadRadius);
+    
+    // Create Track objects for immediate neighbors
+    for (int i = centerIndex - 1; i <= centerIndex + 1; ++i) {
+        if (i >= 0 && i < m_virtualPlaylist->trackCount()) {
+            getOrCreateTrackFromVirtual(i);
+        }
+    }
+}
+
+Mtoc::Track* MediaPlayer::getOrCreateTrackFromVirtual(int index)
+{
+    if (!m_virtualPlaylist || !m_libraryManager || index < 0 || index >= m_virtualPlaylist->trackCount()) {
+        return nullptr;
+    }
+    
+    // Check if track is already in buffer
+    for (auto* track : m_virtualBufferTracks) {
+        if (track && track->property("virtualIndex").toInt() == index) {
+            return track;
+        }
+    }
+    
+    // Get track data from virtual playlist
+    Mtoc::VirtualTrackData trackData = m_virtualPlaylist->getTrack(index);
+    if (!trackData.isValid()) {
+        return nullptr;
+    }
+    
+    // Use LibraryManager's trackByPath to get or create Track object
+    Mtoc::Track* track = m_libraryManager->trackByPath(trackData.filePath);
+    if (track) {
+        // Store virtual index for later reference
+        track->setProperty("virtualIndex", index);
+        
+        // Add to buffer if not already there
+        m_virtualBufferTracks.append(track);
+        
+        // Keep buffer size limited
+        const int maxBufferSize = 10;
+        while (m_virtualBufferTracks.size() > maxBufferSize) {
+            Mtoc::Track* oldTrack = m_virtualBufferTracks.takeFirst();
+            if (oldTrack && oldTrack != m_currentTrack) {
+                oldTrack->deleteLater();
+            }
+        }
+    }
+    
+    return track;
 }

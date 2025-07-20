@@ -566,6 +566,87 @@ QVariantList DatabaseManager::getTracksByAlbumAndArtist(const QString& albumTitl
     return tracks;
 }
 
+QVariantList DatabaseManager::getAllTracks(int limit, int offset)
+{
+    QVariantList tracks;
+    if (!m_db.isOpen()) {
+        qWarning() << "[DatabaseManager::getAllTracks] Database is not open!";
+        return tracks;
+    }
+    
+    QSqlQuery query(m_db);
+    QString queryStr = 
+        "SELECT t.*, a.name as artist_name, al.title as album_title, "
+        "aa.name as album_artist_name "
+        "FROM tracks t "
+        "LEFT JOIN artists a ON t.artist_id = a.id "
+        "LEFT JOIN albums al ON t.album_id = al.id "
+        "LEFT JOIN album_artists aa ON al.album_artist_id = aa.id "
+        "ORDER BY aa.name COLLATE NOCASE, al.title COLLATE NOCASE, "
+        "t.disc_number, t.track_number, t.title COLLATE NOCASE";
+    
+    if (limit > 0) {
+        queryStr += " LIMIT :limit";
+        if (offset > 0) {
+            queryStr += " OFFSET :offset";
+        }
+    }
+    
+    query.prepare(queryStr);
+    
+    if (limit > 0) {
+        query.bindValue(":limit", limit);
+        if (offset > 0) {
+            query.bindValue(":offset", offset);
+        }
+    }
+    
+    if (query.exec()) {
+        while (query.next()) {
+            QVariantMap track;
+            track["id"] = query.value("id");
+            track["filePath"] = query.value("file_path");
+            track["title"] = query.value("title");
+            track["artist"] = query.value("artist_name");
+            track["album"] = query.value("album_title");
+            track["albumArtist"] = query.value("album_artist_name");
+            track["genre"] = query.value("genre");
+            track["year"] = query.value("year");
+            track["trackNumber"] = query.value("track_number");
+            track["discNumber"] = query.value("disc_number");
+            track["duration"] = query.value("duration");
+            track["fileSize"] = query.value("file_size");
+            track["lastPlayed"] = query.value("last_played");
+            track["playCount"] = query.value("play_count");
+            track["rating"] = query.value("rating");
+            tracks.append(track);
+        }
+    } else {
+        qWarning() << "[DatabaseManager::getAllTracks] Query execution failed!";
+        logError("Get all tracks", query);
+    }
+    
+    return tracks;
+}
+
+int DatabaseManager::getTrackCount()
+{
+    if (!m_db.isOpen()) {
+        qWarning() << "[DatabaseManager::getTrackCount] Database is not open!";
+        return 0;
+    }
+    
+    QSqlQuery query(m_db);
+    query.prepare("SELECT COUNT(*) FROM tracks");
+    
+    if (query.exec() && query.next()) {
+        return query.value(0).toInt();
+    }
+    
+    logError("Get track count", query);
+    return 0;
+}
+
 int DatabaseManager::insertOrGetArtist(const QString& artistName)
 {
     if (!m_db.isOpen() || artistName.isEmpty()) return 0;

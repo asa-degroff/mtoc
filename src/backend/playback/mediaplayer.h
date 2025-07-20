@@ -12,6 +12,8 @@ namespace Mtoc {
 class Track;
 class Album;
 class LibraryManager;
+class VirtualPlaylistModel;
+class VirtualPlaylist;
 }
 
 class MediaPlayer : public QObject
@@ -63,8 +65,8 @@ public:
     qint64 savedPosition() const { return m_savedPosition; }
     bool isReady() const { return m_isReady; }
     QVariantList queue() const;
-    int queueLength() const { return m_playbackQueue.size(); }
-    int currentQueueIndex() const { return m_currentQueueIndex; }
+    int queueLength() const;
+    int currentQueueIndex() const;
     int totalQueueDuration() const;
     bool isQueueModified() const { return m_isQueueModified; }
     bool canUndoClear() const { return !m_undoQueue.isEmpty(); }
@@ -95,6 +97,10 @@ public slots:
     void clearQueue();
     Q_INVOKABLE void clearQueueForUndo();
     Q_INVOKABLE void undoClearQueue();
+    
+    // Virtual playlist support
+    Q_INVOKABLE void loadVirtualPlaylist(Mtoc::VirtualPlaylistModel* model);
+    void clearVirtualPlaylist();
     
     void setRepeatEnabled(bool enabled);
     void setShuffleEnabled(bool enabled);
@@ -175,6 +181,14 @@ private:
     void generateShuffleOrder(bool putCurrentTrackFirst);
     int getNextShuffleIndex() const;
     int getPreviousShuffleIndex() const;
+    
+    // Virtual playlist support
+    Mtoc::VirtualPlaylist* m_virtualPlaylist = nullptr;
+    bool m_isVirtualPlaylist = false;
+    int m_virtualCurrentIndex = -1;
+    QList<Mtoc::Track*> m_virtualBufferTracks;  // Pre-loaded tracks for smooth playback
+    void preloadVirtualTracks(int centerIndex);
+    Mtoc::Track* getOrCreateTrackFromVirtual(int index);
 };
 
 #endif // MEDIAPLAYER_H
