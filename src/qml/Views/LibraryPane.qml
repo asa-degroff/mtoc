@@ -1242,7 +1242,7 @@ Item {
                             color: Qt.rgba(1, 1, 1, 0.04) // Very subtle frosted background
                             radius: 6
                             opacity: albumsVisible ? 1 : 0
-                            clip: true
+                            clip: false  // Allow glow effect to overflow
                             
                             Behavior on opacity {
                                 enabled: !root.isScrollBarDragging && !artistsListView.moving
@@ -1304,7 +1304,7 @@ Item {
                                 id: albumsGrid
                                 anchors.fill: parent
                                 anchors.margins: 8
-                                clip: true
+                                clip: false  // Allow glow effect to overflow
                                 cellWidth: 120 + 10 // Thumbnail size + padding
                                 cellHeight: 140 + 10 // Thumbnail + title + padding
                                 interactive: false // Parent ListView handles scrolling primarily
@@ -1358,20 +1358,40 @@ Item {
 
                                     Item { 
                                         anchors.fill: parent
+                                        clip: false  // Don't clip to allow glow overflow
                                         
-                                        // Navigation highlight for albums
+                                        // Navigation selection glow effect
                                         Rectangle {
-                                            anchors.fill: parent
-                                            anchors.margins: -4
-                                            color: "transparent"
-                                            border.width: 2
-                                            border.color: Qt.rgba(0.35, 0.42, 0.81, 0.7)
-                                            radius: 6
+                                            id: glowSource
+                                            anchors.centerIn: albumArtContainer
+                                            width: albumArtContainer.width - 10
+                                            height: albumArtContainer.height - 10
+                                            radius: 8
+                                            color: Qt.rgba(1.0, 1.0, 1.0, 0.8)
                                             // Cache the visibility check
                                             property bool shouldShow: root.navigationMode === "album" && 
                                                     root.selectedArtistName === artistData.name && 
                                                     root.selectedAlbumIndex === index
-                                            visible: shouldShow
+                                            visible: false // Hidden, used as source for effect
+                                            
+                                            layer.enabled: shouldShow
+                                            layer.effect: MultiEffect {
+                                                source: glowSource
+                                                anchors.fill: glowSource
+                                                blurEnabled: true
+                                                blur: 1.0
+                                                blurMax: 32
+                                                brightness: 0.3
+                                                saturation: 1.2
+                                                visible: glowSource.shouldShow
+                                                opacity: glowSource.shouldShow ? 1.0 : 0.0
+                                                
+                                                Behavior on opacity {
+                                                    NumberAnimation { duration: 200 }
+                                                }
+                                            }
+                                            
+                                            z: -1 // Behind the album art
                                         }
 
                                         Rectangle { // Album Art container
@@ -1495,12 +1515,20 @@ Item {
                                             text: modelData.title
                                             color: "white"
                                             font.pixelSize: 11
+                                            font.underline: root.navigationMode === "album" && 
+                                                    root.selectedArtistName === artistData.name && 
+                                                    root.selectedAlbumIndex === index
                                             elide: Text.ElideRight
                                             horizontalAlignment: Text.AlignHCenter
                                             maximumLineCount: 2
                                             wrapMode: Text.Wrap
                                             verticalAlignment: Text.AlignTop
                                             clip: true
+                                            
+                                            // Smooth transition for underline
+                                            Behavior on font.underline {
+                                                enabled: false // Instant transition for boolean
+                                            }
                                         }
                                     }
                                     MouseArea { 
@@ -1577,7 +1605,7 @@ Item {
                             }
                             
                             // Default reduced opacity
-                            opacity: scrollBarMouseArea.containsMouse || artistScrollBar.hovered || artistScrollBar.pressed ? 1.0 : 0.3
+                            opacity: scrollBarMouseArea.containsMouse || artistScrollBar.pressed ? 1.0 : 0.3
                             
                             // Smooth opacity transition
                             Behavior on opacity {
@@ -1593,19 +1621,10 @@ Item {
                             }
                             
                             contentItem: Rectangle {
-                                color: Qt.rgba(1, 1, 1, 0.3)
+                                color: Qt.rgba(1, 1, 1, artistScrollBar.pressed ? 0.5 : 0.3)
                                 radius: width / 2
                                 
-                                // Hover effect
-                                states: State {
-                                    when: parent.parent.hovered || parent.parent.pressed
-                                    PropertyChanges {
-                                        target: parent
-                                        color: Qt.rgba(1, 1, 1, 0.5)
-                                    }
-                                }
-                                
-                                transitions: Transition {
+                                Behavior on color {
                                     ColorAnimation { duration: 150 }
                                 }
                             }
