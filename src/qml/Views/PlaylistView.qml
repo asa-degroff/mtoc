@@ -211,15 +211,14 @@ Item {
         }
     }
     
-    function formatDuration(milliseconds) {
-        if (isNaN(milliseconds) || milliseconds < 0) {
+    function formatDuration(seconds) {
+        if (isNaN(seconds) || seconds < 0) {
             return "0:00"
         }
         
-        var totalSeconds = Math.floor(milliseconds / 1000)
-        var hours = Math.floor(totalSeconds / 3600)
-        var minutes = Math.floor((totalSeconds % 3600) / 60)
-        var seconds = totalSeconds % 60
+        var hours = Math.floor(seconds / 3600)
+        var minutes = Math.floor((seconds % 3600) / 60)
+        var seconds = seconds % 60
         
         if (hours > 0) {
             return hours + ":" + (minutes < 10 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds
