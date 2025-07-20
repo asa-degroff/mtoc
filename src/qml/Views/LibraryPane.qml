@@ -336,8 +336,8 @@ Item {
         updateArtistIndexMapping()
         // Initialize track info panel as hidden
         trackInfoPanelY = 184  // Start off-screen
-        // Auto-select currently playing track if album is already loaded
-        Qt.callLater(autoSelectCurrentTrack)
+        // Don't auto-select any track - start with no selection
+        // Qt.callLater(autoSelectCurrentTrack)
         
         // Initialize keyboard navigation after a small delay to ensure everything is ready
         navigationInitTimer.start()
@@ -371,13 +371,13 @@ Item {
         }
     }
     
-    // Auto-select currently playing track
-    Connections {
-        target: MediaPlayer
-        function onCurrentTrackChanged() {
-            autoSelectCurrentTrack()
-        }
-    }
+    // Don't auto-select tracks anymore - start with no selection
+    // Connections {
+    //     target: MediaPlayer
+    //     function onCurrentTrackChanged() {
+    //         autoSelectCurrentTrack()
+    //     }
+    // }
     
     // Function to build artist name to index mapping for O(1) lookups
     function updateArtistIndexMapping() {
@@ -401,6 +401,7 @@ Item {
             root.selectedAlbumData = selectedAlbum
             
             // Clear track selection immediately when album changes
+            root.selectedTrackIndex = -1;
             if (trackListView) {
                 trackListView.currentIndex = -1;
             }
@@ -450,8 +451,8 @@ Item {
                     rightPane.currentAlbumTracks = tracks || [];
                 }
                 
-                // Auto-select currently playing track if it's in this album
-                Qt.callLater(autoSelectCurrentTrack)
+                // Don't auto-select any track - start with no selection
+                // Qt.callLater(autoSelectCurrentTrack)
                 
                 // Update the thumbnail URL for the background when an album is selected
                 if (selectedAlbum.hasArt === true) {
@@ -1997,6 +1998,7 @@ Item {
                         spacing: 1
                         reuseItems: false
                         cacheBuffer: 800  // Increased cache without recycling
+                        currentIndex: -1  // Start with no selection
                         
                         // Drag and drop state
                         property int draggedTrackIndex: -1
@@ -2053,7 +2055,7 @@ Item {
                             width: ListView.view.width
                             
                             // Helper property to determine if using virtual model
-                            property bool isVirtualModel: root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist
+                            property bool isVirtualModel: root.selectedAlbum && (root.selectedAlbum.isVirtualPlaylist === true)
                             
                             // Track data accessor - works for both regular and virtual models
                             property var trackData: isVirtualModel ? model : modelData
@@ -2095,7 +2097,7 @@ Item {
                                 color: {
                                     if (root.selectedTrackIndices.indexOf(index) !== -1) {
                                         return Qt.rgba(0.25, 0.32, 0.71, 0.25)  // Selected track
-                                    } else if (trackListView.currentIndex === index) {
+                                    } else if (root.selectedTrackIndex === index) {
                                         return Qt.rgba(0.25, 0.32, 0.71, 0.15)  // Current track (lighter)
                                     } else {
                                         return Qt.rgba(1, 1, 1, 0.02)  // Default background
@@ -2493,7 +2495,7 @@ Item {
                                 
                                 // Hover effect
                                 states: State {
-                                    when: trackMouseArea.containsMouse && trackListView.currentIndex !== index && root.selectedTrackIndices.indexOf(index) === -1
+                                    when: trackMouseArea.containsMouse && root.selectedTrackIndex !== index && root.selectedTrackIndices.indexOf(index) === -1
                                     PropertyChanges {
                                         target: trackDelegate
                                         color: Qt.rgba(1, 1, 1, 0.04)
