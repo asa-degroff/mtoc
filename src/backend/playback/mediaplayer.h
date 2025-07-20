@@ -93,6 +93,7 @@ public slots:
     Q_INVOKABLE void playAlbumLast(const QString& artist, const QString& title);
     Q_INVOKABLE void removeTrackAt(int index);
     Q_INVOKABLE void playTrackAt(int index);
+    Q_INVOKABLE void moveTrack(int fromIndex, int toIndex);
     Q_INVOKABLE void updateShuffleOrder();
     void clearQueue();
     Q_INVOKABLE void clearQueueForUndo();

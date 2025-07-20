@@ -13,6 +13,10 @@ ListView {
     property int lastSkipTime: 0
     property int rapidSkipThreshold: 500 // milliseconds
     
+    // Drag and drop state
+    property int draggedTrackIndex: -1
+    property int dropIndex: -1
+    
     signal trackDoubleClicked(int index)
     signal removeTrackRequested(int index)
     
@@ -219,13 +223,49 @@ ListView {
         border.color: Qt.rgba(1, 1, 1, 0.04)
         clip: true
         
+        
+        property real verticalOffset: {
+            if (root.draggedTrackIndex === -1) return 0
+            
+            var dragIdx = root.draggedTrackIndex
+            var dropIdx = root.dropIndex
+            
+            if (dragIdx === index || dropIdx === -1) return 0  // Don't offset the dragged item
+            
+            if (dragIdx < dropIdx) {
+                // Dragging down: items between drag and drop move up
+                if (index > dragIdx && index <= dropIdx) {
+                    return -(height + root.spacing)
+                }
+            } else if (dragIdx > dropIdx) {
+                // Dragging up: items between drop and drag move down
+                if (index >= dropIdx && index < dragIdx) {
+                    return height + root.spacing
+                }
+            }
+            
+            return 0
+        }
+        
+        // Update drop position in real-time while dragging
+        onYChanged: {
+            if (dragArea.drag.active && root.draggedTrackIndex === index) {
+                // Calculate potential drop position based on current Y
+                var dragDistance = y - dragArea.originalY
+                var itemsMoved = Math.round(dragDistance / (height + root.spacing))
+                var potentialIndex = root.draggedTrackIndex + itemsMoved
+                potentialIndex = Math.max(0, Math.min(potentialIndex, root.count - 1))
+                
+                // Update drop index if it changed
+                if (potentialIndex !== root.dropIndex) {
+                    root.dropIndex = potentialIndex
+                }
+            }
+        }
+        
         // Animation properties
         property bool isRemoving: false
         property real slideX: 0
-        
-        transform: Translate {
-            x: slideX
-        }
         
         Behavior on height {
             enabled: !root.isRapidSkipping
@@ -243,8 +283,22 @@ ListView {
             }
         }
         
-        // Drag and drop properties
-        property int dragIndex: index
+        // Combined transforms for removal slide and drag feedback
+        transform: [
+            Translate {
+                x: slideX
+            },
+            Translate {
+                y: queueItemDelegate.verticalOffset
+                Behavior on y {
+                    enabled: root.draggedTrackIndex !== -1 && !root.isRapidSkipping
+                    NumberAnimation {
+                        duration: 200
+                        easing.type: Easing.InOutQuad
+                    }
+                }
+            }
+        ]
         
         RowLayout {
             anchors.fill: parent
@@ -269,15 +323,39 @@ ListView {
                     drag.target: queueItemDelegate
                     drag.axis: Drag.YAxis
                     
+                    property int originalY: 0
+                    
                     onPressed: {
+                        root.draggedTrackIndex = index
+                        root.dropIndex = index
+                        originalY = queueItemDelegate.y
                         queueItemDelegate.z = 1000
                         queueItemDelegate.opacity = 0.8
                     }
                     
                     onReleased: {
+                        // Use the pre-calculated drop index
+                        var newIndex = root.dropIndex
+                        var draggedIdx = root.draggedTrackIndex
+                        
+                        // Keep track of whether we're actually moving
+                        var isMoving = newIndex !== draggedIdx && draggedIdx >= 0
+                        
+                        // Reset visual properties
                         queueItemDelegate.z = 0
                         queueItemDelegate.opacity = 1.0
-                        // TODO: Implement actual reordering logic
+                        queueItemDelegate.y = dragArea.originalY
+                        
+                        // Reset drag state to remove all visual offsets
+                        root.draggedTrackIndex = -1
+                        root.dropIndex = -1
+                        
+                        // Perform the reorder after a brief delay to allow visual reset
+                        if (isMoving) {
+                            Qt.callLater(function() {
+                                MediaPlayer.moveTrack(draggedIdx, newIndex)
+                            })
+                        }
                     }
                 }
             }
@@ -388,6 +466,7 @@ ListView {
         MouseArea {
             id: queueItemMouseArea
             anchors.fill: parent
+            anchors.leftMargin: 38  // Leave space for the drag handle (20px icon + margins)
             anchors.rightMargin: 24  // Leave space for the remove button
             hoverEnabled: true
             acceptedButtons: Qt.LeftButton

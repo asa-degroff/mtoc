@@ -832,6 +832,94 @@ void MediaPlayer::playTrackAt(int index)
     }
 }
 
+void MediaPlayer::moveTrack(int fromIndex, int toIndex)
+{
+    // Don't allow moving in virtual playlist mode
+    if (m_isVirtualPlaylist) {
+        qWarning() << "Cannot reorder tracks in virtual playlist mode";
+        return;
+    }
+    
+    // Validate indices
+    if (fromIndex < 0 || fromIndex >= m_playbackQueue.size() ||
+        toIndex < 0 || toIndex >= m_playbackQueue.size() ||
+        fromIndex == toIndex) {
+        return;
+    }
+    
+    // Store the track being moved
+    Mtoc::Track* track = m_playbackQueue[fromIndex];
+    
+    // Update current queue index if needed
+    int newCurrentIndex = m_currentQueueIndex;
+    
+    // If we're moving the current track
+    if (fromIndex == m_currentQueueIndex) {
+        newCurrentIndex = toIndex;
+    } 
+    // If current track is between source and destination
+    else if (m_currentQueueIndex >= 0) {
+        if (fromIndex < m_currentQueueIndex && toIndex >= m_currentQueueIndex) {
+            // Moving a track from before current to after current
+            newCurrentIndex--;
+        } else if (fromIndex > m_currentQueueIndex && toIndex <= m_currentQueueIndex) {
+            // Moving a track from after current to before current
+            newCurrentIndex++;
+        }
+    }
+    
+    // Remove from old position
+    m_playbackQueue.removeAt(fromIndex);
+    
+    // Insert at new position
+    m_playbackQueue.insert(toIndex, track);
+    
+    // Update current index
+    m_currentQueueIndex = newCurrentIndex;
+    
+    // Update shuffle order if shuffle is enabled
+    if (m_shuffleEnabled) {
+        // Find the track in shuffle order
+        int shuffleIndex = -1;
+        for (int i = 0; i < m_shuffleOrder.size(); i++) {
+            if (m_shuffleOrder[i] == fromIndex) {
+                shuffleIndex = i;
+                break;
+            }
+        }
+        
+        // Update all indices in shuffle order
+        for (int i = 0; i < m_shuffleOrder.size(); i++) {
+            int& idx = m_shuffleOrder[i];
+            
+            // Skip the item being moved
+            if (i == shuffleIndex) {
+                idx = toIndex;
+            } 
+            // Adjust indices affected by the move
+            else {
+                if (fromIndex < toIndex) {
+                    // Moving forward: indices between source and destination shift back
+                    if (idx > fromIndex && idx <= toIndex) {
+                        idx--;
+                    }
+                } else {
+                    // Moving backward: indices between destination and source shift forward
+                    if (idx >= toIndex && idx < fromIndex) {
+                        idx++;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Mark queue as modified
+    setQueueModified(true);
+    
+    // Emit signal to update UI
+    emit playbackQueueChanged();
+}
+
 void MediaPlayer::clearQueue()
 {
     // Clear virtual playlist if active
