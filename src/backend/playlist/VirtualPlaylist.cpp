@@ -4,6 +4,8 @@
 #include <QtConcurrent>
 #include <algorithm>
 #include <random>
+#include <QThread>
+#include <QSqlDatabase>
 
 namespace Mtoc {
 
@@ -85,17 +87,25 @@ void VirtualPlaylist::clear()
 VirtualTrackData VirtualPlaylist::getTrack(int index) const
 {
     if (index < 0 || index >= m_totalTrackCount) {
+        qWarning() << "[VirtualPlaylist::getTrack] Invalid index:" << index << "total tracks:" << m_totalTrackCount;
         return VirtualTrackData();
     }
+    
+    // Ensure track is loaded first (before locking)
+    const_cast<VirtualPlaylist*>(this)->ensureLoaded(index);
     
     QMutexLocker locker(&m_trackMutex);
     
     if (index < m_tracks.size() && m_tracks[index]) {
-        return *m_tracks[index];
+        VirtualTrackData trackData = *m_tracks[index];
+        if (!trackData.isValid()) {
+            qWarning() << "[VirtualPlaylist::getTrack] Track data at index" << index << "is invalid";
+        }
+        return trackData;
     }
     
-    // Track not loaded yet
-    const_cast<VirtualPlaylist*>(this)->ensureLoaded(index);
+    // Still not loaded - this shouldn't happen
+    qWarning() << "[VirtualPlaylist::getTrack] Failed to load track at index" << index;
     return VirtualTrackData();
 }
 
@@ -267,10 +277,16 @@ int VirtualPlaylist::getLinearIndex(int shuffledIndex) const
     QMutexLocker locker(&m_shuffleMutex);
     
     if (m_shuffleOrder.isEmpty()) {
-        return shuffledIndex;
+        qWarning() << "[VirtualPlaylist::getLinearIndex] Shuffle order is empty";
+        return -1;
     }
     
-    return m_shuffleOrder.indexOf(shuffledIndex);
+    int index = m_shuffleOrder.indexOf(shuffledIndex);
+    if (index < 0) {
+        qWarning() << "[VirtualPlaylist::getLinearIndex] Track index" << shuffledIndex 
+                   << "not found in shuffle order";
+    }
+    return index;
 }
 
 QVector<int> VirtualPlaylist::getNextShuffleIndices(int currentShuffledIndex, int count) const
@@ -305,9 +321,18 @@ void VirtualPlaylist::loadRange(int startIndex, int count)
     
     // Load tracks in background
     m_loadFuture = QtConcurrent::run([this, startIndex, count]() {
+        // Store thread ID for cleanup
+        QString connectionName = QString("MtocThread_%1").arg(quintptr(QThread::currentThreadId()));
+        
         QVariantList tracks = m_dbManager->getAllTracks(count, startIndex);
         
+        // Clean up thread connection
+        if (QSqlDatabase::contains(connectionName)) {
+            QSqlDatabase::removeDatabase(connectionName);
+        }
+        
         if (tracks.isEmpty()) {
+            qWarning() << "[VirtualPlaylist] Failed to load tracks at range" << startIndex << "count" << count;
             return;
         }
         

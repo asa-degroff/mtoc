@@ -338,13 +338,18 @@ void MediaPlayer::next()
             QVector<int> nextIndices = m_virtualPlaylist->getNextShuffleIndices(m_virtualCurrentIndex, 1);
             if (!nextIndices.isEmpty()) {
                 nextIndex = nextIndices.first();
+                qDebug() << "[MediaPlayer::next] Shuffle next from" << m_virtualCurrentIndex << "to" << nextIndex;
             } else if (m_repeatEnabled) {
                 // Re-shuffle and start from beginning
+                qDebug() << "[MediaPlayer::next] End of shuffle, re-shuffling with repeat";
                 m_virtualPlaylist->generateShuffleOrder();
-                nextIndices = m_virtualPlaylist->getNextShuffleIndices(-1, 1);
-                if (!nextIndices.isEmpty()) {
-                    nextIndex = nextIndices.first();
+                // After re-shuffle, get the first track (index 0 in shuffle order)
+                if (m_virtualPlaylist->trackCount() > 0) {
+                    nextIndex = m_virtualPlaylist->getShuffledIndex(0);
+                    qDebug() << "[MediaPlayer::next] Starting from shuffled index:" << nextIndex;
                 }
+            } else {
+                qDebug() << "[MediaPlayer::next] End of shuffle, no repeat";
             }
         } else {
             // Sequential playback
@@ -654,11 +659,12 @@ void MediaPlayer::playTrackAt(int index)
     if (m_isVirtualPlaylist && m_virtualPlaylist) {
         // Handle virtual playlist
         if (index < 0 || index >= m_virtualPlaylist->trackCount()) {
-            qWarning() << "playTrackAt: Invalid virtual playlist index" << index;
+            qWarning() << "[MediaPlayer::playTrackAt] Invalid virtual playlist index" << index 
+                       << "track count:" << m_virtualPlaylist->trackCount();
             return;
         }
         
-        qDebug() << "MediaPlayer::playTrackAt (virtual) called with index:" << index;
+        qDebug() << "[MediaPlayer::playTrackAt] Virtual playlist index:" << index;
         
         // Update indices
         m_virtualCurrentIndex = index;
@@ -1839,12 +1845,7 @@ void MediaPlayer::clearVirtualPlaylist()
     m_isVirtualPlaylist = false;
     m_virtualCurrentIndex = -1;
     
-    // Clean up buffered tracks
-    for (auto* track : m_virtualBufferTracks) {
-        if (track && track != m_currentTrack) {
-            track->deleteLater();
-        }
-    }
+    // Clear buffer - tracks are owned by LibraryManager, don't delete
     m_virtualBufferTracks.clear();
 }
 
@@ -1873,6 +1874,9 @@ void MediaPlayer::preloadVirtualTracks(int centerIndex)
 Mtoc::Track* MediaPlayer::getOrCreateTrackFromVirtual(int index)
 {
     if (!m_virtualPlaylist || !m_libraryManager || index < 0 || index >= m_virtualPlaylist->trackCount()) {
+        qWarning() << "[MediaPlayer::getOrCreateTrackFromVirtual] Invalid parameters - index:" << index
+                   << "virtualPlaylist:" << (m_virtualPlaylist != nullptr)
+                   << "trackCount:" << (m_virtualPlaylist ? m_virtualPlaylist->trackCount() : -1);
         return nullptr;
     }
     
@@ -1886,6 +1890,7 @@ Mtoc::Track* MediaPlayer::getOrCreateTrackFromVirtual(int index)
     // Get track data from virtual playlist
     Mtoc::VirtualTrackData trackData = m_virtualPlaylist->getTrack(index);
     if (!trackData.isValid()) {
+        qWarning() << "[MediaPlayer::getOrCreateTrackFromVirtual] Failed to get valid track data at index" << index;
         return nullptr;
     }
     
@@ -1901,10 +1906,8 @@ Mtoc::Track* MediaPlayer::getOrCreateTrackFromVirtual(int index)
         // Keep buffer size limited
         const int maxBufferSize = 10;
         while (m_virtualBufferTracks.size() > maxBufferSize) {
-            Mtoc::Track* oldTrack = m_virtualBufferTracks.takeFirst();
-            if (oldTrack && oldTrack != m_currentTrack) {
-                oldTrack->deleteLater();
-            }
+            // Just remove from buffer, don't delete as LibraryManager owns the tracks
+            m_virtualBufferTracks.takeFirst();
         }
     }
     

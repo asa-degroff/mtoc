@@ -6,6 +6,7 @@
 #include <QDebug>
 #include <QVariant>
 #include <QMutexLocker>
+#include <QThread>
 
 namespace Mtoc {
 
@@ -482,6 +483,7 @@ bool DatabaseManager::deleteTracksByFolderPath(const QString& folderPath)
 
 QVariantMap DatabaseManager::getTrack(int trackId)
 {
+    QMutexLocker locker(&m_databaseMutex);
     QVariantMap track;
     if (!m_db.isOpen()) return track;
     
@@ -521,6 +523,7 @@ QVariantList DatabaseManager::getTracksByAlbumAndArtist(const QString& albumTitl
 {
     // qDebug() << "[DatabaseManager::getTracksByAlbumAndArtist] Called with album:" << albumTitle << "artist:" << albumArtistName;
     
+    QMutexLocker locker(&m_databaseMutex);
     QVariantList tracks;
     if (!m_db.isOpen()) {
         qWarning() << "[DatabaseManager::getTracksByAlbumAndArtist] Database is not open!";
@@ -569,12 +572,36 @@ QVariantList DatabaseManager::getTracksByAlbumAndArtist(const QString& albumTitl
 QVariantList DatabaseManager::getAllTracks(int limit, int offset)
 {
     QVariantList tracks;
-    if (!m_db.isOpen()) {
-        qWarning() << "[DatabaseManager::getAllTracks] Database is not open!";
-        return tracks;
+    
+    // Check if we're in the main thread or a worker thread
+    bool isMainThread = (QThread::currentThread() == this->thread());
+    QSqlDatabase db;
+    QString connectionName;
+    
+    if (isMainThread) {
+        // Use the main connection with mutex protection
+        QMutexLocker locker(&m_databaseMutex);
+        if (!m_db.isOpen()) {
+            qWarning() << "[DatabaseManager::getAllTracks] Database is not open!";
+            return tracks;
+        }
+        db = m_db;
+    } else {
+        // Create a thread-specific connection for background threads
+        connectionName = QString("MtocThread_%1").arg(quintptr(QThread::currentThreadId()));
+        if (QSqlDatabase::contains(connectionName)) {
+            db = QSqlDatabase::database(connectionName);
+        } else {
+            db = createThreadConnection(connectionName);
+        }
+        
+        if (!db.isOpen()) {
+            qWarning() << "[DatabaseManager::getAllTracks] Failed to open thread database!";
+            return tracks;
+        }
     }
     
-    QSqlQuery query(m_db);
+    QSqlQuery query(db);
     QString queryStr = 
         "SELECT t.*, a.name as artist_name, al.title as album_title, "
         "aa.name as album_artist_name "

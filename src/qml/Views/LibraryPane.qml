@@ -1661,8 +1661,8 @@ Item {
                                     // Clear queue and load virtual playlist
                                     MediaPlayer.clearQueue()
                                     MediaPlayer.loadVirtualPlaylist(allSongsModel)
-                                    // Start playing
-                                    MediaPlayer.play()
+                                    // Start playing from the first track
+                                    MediaPlayer.playTrackAt(0)
                                 } else {
                                     // Play regular playlist directly
                                     var tracks = PlaylistManager.loadPlaylist(playlistName)
@@ -2929,7 +2929,7 @@ Item {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         wrapMode: Text.WordWrap
-                        visible: rightPane.currentAlbumTracks.length === 0
+                        visible: rightPane.currentAlbumTracks.length === 0 && !(root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist)
                         font.pixelSize: 14
                     }
                 }
