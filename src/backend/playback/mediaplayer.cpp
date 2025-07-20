@@ -748,14 +748,18 @@ void MediaPlayer::playTrackAt(int index)
             qDebug() << "[MediaPlayer::playTrackAt] Track not loaded yet at index" << index << ", waiting for load";
             m_waitingForVirtualTrack = true;
             
+            // Disconnect any existing connection to prevent leaks
+            if (m_virtualTrackLoadConnection) {
+                disconnect(m_virtualTrackLoadConnection);
+            }
+            
             // Set up a connection to retry when the track is loaded
-            QMetaObject::Connection* connection = new QMetaObject::Connection();
-            *connection = connect(m_virtualPlaylist, &Mtoc::VirtualPlaylist::rangeLoaded, this,
-                    [this, index, connection](int startIdx, int endIdx) {
+            m_virtualTrackLoadConnection = connect(m_virtualPlaylist, &Mtoc::VirtualPlaylist::rangeLoaded, this,
+                    [this, index](int startIdx, int endIdx) {
                         if (index >= startIdx && index <= endIdx) {
                             // Disconnect to avoid multiple attempts
-                            disconnect(*connection);
-                            delete connection;
+                            disconnect(m_virtualTrackLoadConnection);
+                            m_virtualTrackLoadConnection = QMetaObject::Connection();
                             
                             // Try again now that the track should be loaded
                             Mtoc::Track* track = getOrCreateTrackFromVirtual(index);
@@ -2055,14 +2059,18 @@ void MediaPlayer::playVirtualPlaylist()
         qDebug() << "[MediaPlayer::playVirtualPlaylist] Track not loaded yet at index" << firstTrack << ", waiting for load";
         m_waitingForVirtualTrack = true;
         
+        // Disconnect any existing connection to prevent leaks
+        if (m_virtualTrackLoadConnection) {
+            disconnect(m_virtualTrackLoadConnection);
+        }
+        
         // Set up a connection to retry when tracks are loaded
-        QMetaObject::Connection* connection = new QMetaObject::Connection();
-        *connection = connect(m_virtualPlaylist, &Mtoc::VirtualPlaylist::rangeLoaded, this,
-                [this, firstTrack, connection](int startIdx, int endIdx) {
+        m_virtualTrackLoadConnection = connect(m_virtualPlaylist, &Mtoc::VirtualPlaylist::rangeLoaded, this,
+                [this, firstTrack](int startIdx, int endIdx) {
                     if (firstTrack >= startIdx && firstTrack <= endIdx) {
                         // Disconnect to avoid multiple attempts
-                        disconnect(*connection);
-                        delete connection;
+                        disconnect(m_virtualTrackLoadConnection);
+                        m_virtualTrackLoadConnection = QMetaObject::Connection();
                         
                         // Try again now that the track should be loaded
                         Mtoc::Track* track = getOrCreateTrackFromVirtual(firstTrack);
@@ -2084,6 +2092,12 @@ void MediaPlayer::playVirtualPlaylist()
 
 void MediaPlayer::clearVirtualPlaylist()
 {
+    // Disconnect any pending connection
+    if (m_virtualTrackLoadConnection) {
+        disconnect(m_virtualTrackLoadConnection);
+        m_virtualTrackLoadConnection = QMetaObject::Connection();
+    }
+    
     m_virtualPlaylist = nullptr;
     m_isVirtualPlaylist = false;
     m_virtualCurrentIndex = -1;
@@ -2105,32 +2119,61 @@ void MediaPlayer::preloadVirtualTracks(int centerIndex)
     
     if (m_shuffleEnabled) {
         // For shuffle mode, preload the next/previous tracks in shuffle order
-        QVector<int> nextTracks = m_virtualPlaylist->getNextShuffleIndices(centerIndex, 3);
+        QVector<int> nextTracks = m_virtualPlaylist->getNextShuffleIndices(centerIndex, 2);  // Reduced from 3
         
         // Preload the current track's range first
         m_virtualPlaylist->preloadRange(centerIndex, 1);
         
-        // Create Track object for current track
-        getOrCreateTrackFromVirtual(centerIndex);
+        // Create Track object for current track only if not already in buffer
+        bool currentInBuffer = false;
+        for (auto* track : m_virtualBufferTracks) {
+            if (track && track->property("virtualIndex").toInt() == centerIndex) {
+                currentInBuffer = true;
+                break;
+            }
+        }
+        if (!currentInBuffer) {
+            getOrCreateTrackFromVirtual(centerIndex);
+        }
         
         // Preload next tracks in shuffle order
         for (int trackIndex : nextTracks) {
             m_virtualPlaylist->preloadRange(trackIndex, 1);
-            getOrCreateTrackFromVirtual(trackIndex);
+            // Only create if not already in buffer
+            bool inBuffer = false;
+            for (auto* track : m_virtualBufferTracks) {
+                if (track && track->property("virtualIndex").toInt() == trackIndex) {
+                    inBuffer = true;
+                    break;
+                }
+            }
+            if (!inBuffer) {
+                getOrCreateTrackFromVirtual(trackIndex);
+            }
         }
     } else {
         // Sequential mode - preload tracks around the center index
-        const int preloadRadius = 3;  // Load 3 tracks before and after
+        const int preloadRadius = 2;  // Reduced from 3
         int startIndex = qMax(0, centerIndex - preloadRadius);
         int endIndex = qMin(m_virtualPlaylist->trackCount() - 1, centerIndex + preloadRadius);
         
         // Request virtual playlist to preload this range
         m_virtualPlaylist->preloadRange(centerIndex, preloadRadius);
         
-        // Create Track objects for immediate neighbors
+        // Create Track objects for immediate neighbors only
         for (int i = centerIndex - 1; i <= centerIndex + 1; ++i) {
             if (i >= 0 && i < m_virtualPlaylist->trackCount()) {
-                getOrCreateTrackFromVirtual(i);
+                // Only create if not already in buffer
+                bool inBuffer = false;
+                for (auto* track : m_virtualBufferTracks) {
+                    if (track && track->property("virtualIndex").toInt() == i) {
+                        inBuffer = true;
+                        break;
+                    }
+                }
+                if (!inBuffer) {
+                    getOrCreateTrackFromVirtual(i);
+                }
             }
         }
     }
@@ -2166,13 +2209,23 @@ Mtoc::Track* MediaPlayer::getOrCreateTrackFromVirtual(int index)
         track->setProperty("virtualIndex", index);
         
         // Add to buffer if not already there
-        m_virtualBufferTracks.append(track);
+        bool alreadyInBuffer = false;
+        for (auto* bufferTrack : m_virtualBufferTracks) {
+            if (bufferTrack == track) {
+                alreadyInBuffer = true;
+                break;
+            }
+        }
         
-        // Keep buffer size limited
-        const int maxBufferSize = 10;
-        while (m_virtualBufferTracks.size() > maxBufferSize) {
-            // Just remove from buffer, don't delete as LibraryManager owns the tracks
-            m_virtualBufferTracks.takeFirst();
+        if (!alreadyInBuffer) {
+            m_virtualBufferTracks.append(track);
+            
+            // Keep buffer size limited - remove oldest tracks
+            const int maxBufferSize = 10;
+            while (m_virtualBufferTracks.size() > maxBufferSize) {
+                // Just remove from buffer, don't delete as LibraryManager owns the tracks
+                m_virtualBufferTracks.takeFirst();
+            }
         }
     }
     

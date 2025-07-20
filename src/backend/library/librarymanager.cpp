@@ -1911,8 +1911,8 @@ Track* LibraryManager::trackByPath(const QString &path) const
         return nullptr;
     }
     
-    // Create new track object using fromMetadata
-    Track* track = Track::fromMetadata(trackData);
+    // Create new track object using fromMetadata with this as parent
+    Track* track = Track::fromMetadata(trackData, const_cast<LibraryManager*>(this));
     
     // Add to cache with size limit
     {
