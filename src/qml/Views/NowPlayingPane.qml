@@ -466,6 +466,7 @@ Item {
                             Layout.fillHeight: true
                             queueModel: MediaPlayer.queue
                             currentPlayingIndex: MediaPlayer.currentQueueIndex
+                            focus: root.queueVisible
                             
                             onTrackDoubleClicked: function(index) {
                                 MediaPlayer.playTrackAt(index);

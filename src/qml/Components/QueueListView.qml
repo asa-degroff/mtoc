@@ -515,6 +515,7 @@ ListView {
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             
             onClicked: function(mouse) {
+                root.forceActiveFocus()  // Ensure list has focus for keyboard shortcuts
                 if (mouse.button === Qt.LeftButton) {
                     if (mouse.modifiers & Qt.ControlModifier) {
                         // Ctrl+Click: Toggle selection
@@ -580,5 +581,15 @@ ListView {
         color: "#666666"
         font.pixelSize: 14
         visible: root.count === 0
+    }
+    
+    // Background mouse area to capture clicks and set focus
+    MouseArea {
+        anchors.fill: parent
+        z: -1
+        onPressed: {
+            root.forceActiveFocus()
+            mouse.accepted = false  // Let the click propagate to items
+        }
     }
 }
