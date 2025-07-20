@@ -101,7 +101,7 @@ void PlaylistManager::refreshPlaylists()
     QStringList filters;
     filters << "*.m3u" << "*.m3u8";
     dir.setNameFilters(filters);
-    dir.setSorting(QDir::Time | QDir::Reversed); // Newest first
+    dir.setSorting(QDir::Time); // Sort by modification time, newest first
     
     QStringList files = dir.entryList(QDir::Files);
     for (const QString& file : files) {
@@ -483,6 +483,7 @@ bool PlaylistManager::updatePlaylist(const QString& name, const QVariantList& tr
     
     // Write the updated playlist
     if (writeM3UFile(filepath, tracks)) {
+        refreshPlaylists();  // Refresh to update sort order after modification
         emit playlistSaved(name);
         return true;
     }
