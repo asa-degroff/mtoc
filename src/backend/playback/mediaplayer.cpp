@@ -349,11 +349,13 @@ void MediaPlayer::next()
             QVector<int> nextIndices = m_virtualPlaylist->getNextShuffleIndices(m_virtualCurrentIndex, 1);
             if (!nextIndices.isEmpty()) {
                 nextIndex = nextIndices.first();
+                m_virtualShuffleIndex++;  // Increment shuffle position
                 qDebug() << "[MediaPlayer::next] Shuffle next from" << m_virtualCurrentIndex << "to" << nextIndex;
             } else if (m_repeatEnabled) {
                 // Re-shuffle and start from beginning
                 qDebug() << "[MediaPlayer::next] End of shuffle, re-shuffling with repeat";
                 m_virtualPlaylist->generateShuffleOrder();
+                m_virtualShuffleIndex = 0;  // Reset to beginning of new shuffle order
                 // After re-shuffle, get the first track (index 0 in shuffle order)
                 if (m_virtualPlaylist->trackCount() > 0) {
                     nextIndex = m_virtualPlaylist->getShuffledIndex(0);
@@ -423,20 +425,42 @@ void MediaPlayer::previous()
     
     // Handle virtual playlist
     if (m_isVirtualPlaylist && m_virtualPlaylist) {
-        if (m_virtualCurrentIndex > 0) {
-            m_virtualCurrentIndex--;
-            
-            // Preload tracks around the new position
-            preloadVirtualTracks(m_virtualCurrentIndex);
-            
-            // Get or create the track object
-            Mtoc::Track* prevTrack = getOrCreateTrackFromVirtual(m_virtualCurrentIndex);
-            if (prevTrack) {
-                playTrack(prevTrack);
-                emit playbackQueueChanged();
+        if (m_shuffleEnabled) {
+            // Get previous track in shuffle order
+            int prevShuffledIndex = m_virtualPlaylist->getPreviousShuffleIndex(m_virtualCurrentIndex);
+            if (prevShuffledIndex >= 0) {
+                m_virtualCurrentIndex = prevShuffledIndex;
+                m_virtualShuffleIndex--;
+                
+                // Preload tracks around the new position
+                preloadVirtualTracks(m_virtualCurrentIndex);
+                
+                // Get or create the track object
+                Mtoc::Track* prevTrack = getOrCreateTrackFromVirtual(m_virtualCurrentIndex);
+                if (prevTrack) {
+                    playTrack(prevTrack);
+                    emit playbackQueueChanged();
+                }
+            } else {
+                seek(0);
             }
         } else {
-            seek(0);
+            // Sequential mode
+            if (m_virtualCurrentIndex > 0) {
+                m_virtualCurrentIndex--;
+                
+                // Preload tracks around the new position
+                preloadVirtualTracks(m_virtualCurrentIndex);
+                
+                // Get or create the track object
+                Mtoc::Track* prevTrack = getOrCreateTrackFromVirtual(m_virtualCurrentIndex);
+                if (prevTrack) {
+                    playTrack(prevTrack);
+                    emit playbackQueueChanged();
+                }
+            } else {
+                seek(0);
+            }
         }
         return;
     }
@@ -684,17 +708,17 @@ void MediaPlayer::playTrackAt(int index)
         // Update shuffle index if shuffle is enabled
         if (m_shuffleEnabled) {
             // For virtual playlists, shuffle is handled by VirtualPlaylist
-            // Just update our local shuffle index
-            m_shuffleIndex = m_virtualPlaylist->getLinearIndex(index);
-            qDebug() << "[MediaPlayer::playTrackAt] Shuffle enabled - linear index:" << m_shuffleIndex 
+            // Update our virtual shuffle index
+            m_virtualShuffleIndex = m_virtualPlaylist->getLinearIndex(index);
+            qDebug() << "[MediaPlayer::playTrackAt] Shuffle enabled - linear index:" << m_virtualShuffleIndex 
                      << "for track index:" << index;
             
             // If this is the first track being played and shuffle order isn't initialized properly,
             // regenerate it with the current track first
-            if (m_shuffleIndex < 0) {
+            if (m_virtualShuffleIndex < 0) {
                 qDebug() << "[MediaPlayer::playTrackAt] Track not in shuffle order, regenerating with current track first";
                 m_virtualPlaylist->generateShuffleOrder(index);
-                m_shuffleIndex = 0; // Current track is now at position 0
+                m_virtualShuffleIndex = 0; // Current track is now at position 0
             }
         }
         
@@ -1267,22 +1291,40 @@ void MediaPlayer::saveState()
     QString filePath = m_currentTrack->filePath();
     qint64 currentPosition = position();
     
+    // Check if we're playing from a virtual playlist
+    QVariantMap virtualPlaylistInfo;
+    if (m_isVirtualPlaylist && m_virtualPlaylist) {
+        virtualPlaylistInfo["isVirtualPlaylist"] = true;
+        virtualPlaylistInfo["virtualPlaylistType"] = "AllSongs";
+        virtualPlaylistInfo["virtualTrackIndex"] = m_virtualCurrentIndex;
+        virtualPlaylistInfo["virtualShuffleIndex"] = m_virtualShuffleIndex;
+        virtualPlaylistInfo["shuffleEnabled"] = m_shuffleEnabled;
+        
+        // Save track metadata to avoid "Unknown Track" on restore
+        virtualPlaylistInfo["trackTitle"] = m_currentTrack->title();
+        virtualPlaylistInfo["trackArtist"] = m_currentTrack->artist();
+        virtualPlaylistInfo["trackAlbum"] = m_currentTrack->album();
+        virtualPlaylistInfo["trackAlbumArtist"] = m_currentTrack->albumArtist();
+    }
+    
     // Get album info if playing from an album
     QString albumArtist;
     QString albumTitle;
     int trackIndex = m_currentQueueIndex;
     
-    if (m_currentAlbum) {
-        albumArtist = m_currentAlbum->artist();
-        albumTitle = m_currentAlbum->title();
-    } else if (!m_playbackQueue.isEmpty() && m_currentQueueIndex >= 0) {
-        // We're playing from a queue but don't have album object
-        // Try to get album info from the current track
-        albumArtist = m_currentTrack->albumArtist();
-        if (albumArtist.isEmpty()) {
-            albumArtist = m_currentTrack->artist();
+    if (!m_isVirtualPlaylist) {
+        if (m_currentAlbum) {
+            albumArtist = m_currentAlbum->artist();
+            albumTitle = m_currentAlbum->title();
+        } else if (!m_playbackQueue.isEmpty() && m_currentQueueIndex >= 0) {
+            // We're playing from a queue but don't have album object
+            // Try to get album info from the current track
+            albumArtist = m_currentTrack->albumArtist();
+            if (albumArtist.isEmpty()) {
+                albumArtist = m_currentTrack->artist();
+            }
+            albumTitle = m_currentTrack->album();
         }
-        albumTitle = m_currentTrack->album();
     }
     
     // Get the duration
@@ -1309,7 +1351,7 @@ void MediaPlayer::saveState()
     // Save the state
     m_libraryManager->savePlaybackState(filePath, currentPosition, 
                                         albumArtist, albumTitle, trackIndex, trackDuration,
-                                        m_isQueueModified, queueData);
+                                        m_isQueueModified, queueData, virtualPlaylistInfo);
     
     // qDebug() << "MediaPlayer::saveState - saved state for track:" << m_currentTrack->title()
     //         << "position:" << currentPosition << "ms"
@@ -1364,6 +1406,13 @@ void MediaPlayer::restoreState()
     bool queueModified = state["queueModified"].toBool();
     QVariantList queueData = state["queue"].toList();
     
+    // Check for virtual playlist info
+    bool isVirtualPlaylist = state["isVirtualPlaylist"].toBool();
+    QString virtualPlaylistType = state["virtualPlaylistType"].toString();
+    int virtualTrackIndex = state["virtualTrackIndex"].toInt();
+    int virtualShuffleIndex = state["virtualShuffleIndex"].toInt();
+    bool savedShuffleEnabled = state["shuffleEnabled"].toBool();
+    
     // qDebug() << "MediaPlayer::restoreState - restoring track:" << filePath
     //          << "position:" << savedPosition << "ms"
     //          << "album:" << albumArtist << "-" << albumTitle
@@ -1387,6 +1436,74 @@ void MediaPlayer::restoreState()
     emit savedPositionChanged(m_savedPosition);
     
     try {
+        // Check if we're restoring from a virtual playlist
+        if (isVirtualPlaylist && virtualPlaylistType == "AllSongs") {
+            qDebug() << "MediaPlayer::restoreState - Restoring virtual playlist state";
+            
+            // Get the All Songs playlist
+            Mtoc::VirtualPlaylistModel* allSongsModel = m_libraryManager->getAllSongsPlaylist();
+            if (allSongsModel && allSongsModel->virtualPlaylist()) {
+                // Clear current state and load virtual playlist
+                clearQueue();
+                loadVirtualPlaylist(allSongsModel);
+                
+                // Restore shuffle state if it was enabled
+                if (savedShuffleEnabled) {
+                    // Make sure shuffle is enabled
+                    if (!m_shuffleEnabled) {
+                        setShuffleEnabled(true);
+                    }
+                    
+                    // Generate shuffle order with the saved track first
+                    m_virtualPlaylist->generateShuffleOrder(virtualTrackIndex);
+                    m_virtualShuffleIndex = 0; // Saved track is now at position 0
+                }
+                
+                // Set the virtual indices
+                m_virtualCurrentIndex = virtualTrackIndex;
+                if (savedShuffleEnabled) {
+                    m_virtualShuffleIndex = 0; // Already set above
+                }
+                
+                // Create a proper track object with saved metadata
+                Mtoc::Track* track = m_libraryManager->trackByPath(filePath);
+                if (track) {
+                    // If track metadata wasn't fully loaded, use saved metadata
+                    if (track->title().isEmpty() || track->title() == QFileInfo(filePath).baseName()) {
+                        track->setTitle(state["trackTitle"].toString());
+                        track->setArtist(state["trackArtist"].toString());
+                        track->setAlbum(state["trackAlbum"].toString());
+                        track->setAlbumArtist(state["trackAlbumArtist"].toString());
+                    }
+                    
+                    // Set up restoration connection
+                    if (m_restoreConnection) {
+                        disconnect(m_restoreConnection);
+                    }
+                    
+                    m_restoreConnection = connect(m_audioEngine.get(), &AudioEngine::durationChanged, this, [this]() {
+                        if (m_audioEngine->duration() > 0) {
+                            disconnect(m_restoreConnection);
+                            m_restoreConnection = QMetaObject::Connection();
+                            onTrackLoadedForRestore();
+                        }
+                    });
+                    
+                    // Load the track without auto-playing
+                    loadTrack(track, false);
+                    emit playbackQueueChanged();
+                } else {
+                    qWarning() << "MediaPlayer::restoreState - Failed to load track from virtual playlist";
+                    clearRestorationState();
+                }
+                
+                return; // Don't continue to other restoration paths
+            } else {
+                qWarning() << "MediaPlayer::restoreState - Failed to get All Songs playlist";
+                // Fall through to regular restoration
+            }
+        }
+        
         // If we have a modified queue, restore it
         if (queueModified && !queueData.isEmpty()) {
             // Clear current queue and restore from saved data
@@ -1884,6 +2001,7 @@ void MediaPlayer::clearVirtualPlaylist()
     m_virtualPlaylist = nullptr;
     m_isVirtualPlaylist = false;
     m_virtualCurrentIndex = -1;
+    m_virtualShuffleIndex = -1;
     
     // Clear buffer - tracks are owned by LibraryManager, don't delete
     m_virtualBufferTracks.clear();

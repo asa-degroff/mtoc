@@ -316,6 +316,30 @@ QVector<int> VirtualPlaylist::getNextShuffleIndices(int currentShuffledIndex, in
     return indices;
 }
 
+int VirtualPlaylist::getPreviousShuffleIndex(int currentShuffledIndex) const
+{
+    QMutexLocker locker(&m_shuffleMutex);
+    
+    if (m_shuffleOrder.isEmpty()) {
+        return -1;
+    }
+    
+    // Find current position in shuffle order
+    int linearIndex = m_shuffleOrder.indexOf(currentShuffledIndex);
+    if (linearIndex < 0) {
+        return -1;
+    }
+    
+    // Get previous position
+    int prevLinearIndex = linearIndex - 1;
+    if (prevLinearIndex < 0) {
+        // At beginning of shuffle order
+        return -1;
+    }
+    
+    return m_shuffleOrder[prevLinearIndex];
+}
+
 void VirtualPlaylist::loadRange(int startIndex, int count)
 {
     if (m_loadFuture.isRunning()) {

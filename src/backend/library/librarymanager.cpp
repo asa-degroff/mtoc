@@ -1156,7 +1156,8 @@ int LibraryManager::loadCarouselPosition() const
 void LibraryManager::savePlaybackState(const QString &filePath, qint64 position, 
                                        const QString &albumArtist, const QString &albumTitle, 
                                        int trackIndex, qint64 duration,
-                                       bool queueModified, const QVariantList &queue)
+                                       bool queueModified, const QVariantList &queue,
+                                       const QVariantMap &virtualPlaylistInfo)
 {
     QSettings settings;
     settings.beginGroup("playbackState");
@@ -1169,6 +1170,23 @@ void LibraryManager::savePlaybackState(const QString &filePath, qint64 position,
     settings.setValue("albumTitle", albumTitle);
     settings.setValue("trackIndex", trackIndex);
     settings.setValue("savedTime", QDateTime::currentDateTime());
+    
+    // Save virtual playlist info if present
+    if (!virtualPlaylistInfo.isEmpty() && virtualPlaylistInfo.value("isVirtualPlaylist", false).toBool()) {
+        settings.setValue("isVirtualPlaylist", true);
+        settings.setValue("virtualPlaylistType", virtualPlaylistInfo.value("virtualPlaylistType"));
+        settings.setValue("virtualTrackIndex", virtualPlaylistInfo.value("virtualTrackIndex"));
+        settings.setValue("virtualShuffleIndex", virtualPlaylistInfo.value("virtualShuffleIndex"));
+        settings.setValue("shuffleEnabled", virtualPlaylistInfo.value("shuffleEnabled"));
+        
+        // Save track metadata
+        settings.setValue("trackTitle", virtualPlaylistInfo.value("trackTitle"));
+        settings.setValue("trackArtist", virtualPlaylistInfo.value("trackArtist"));
+        settings.setValue("trackAlbum", virtualPlaylistInfo.value("trackAlbum"));
+        settings.setValue("trackAlbumArtist", virtualPlaylistInfo.value("trackAlbumArtist"));
+    } else {
+        settings.setValue("isVirtualPlaylist", false);
+    }
     
     // Save queue info if modified
     settings.setValue("queueModified", queueModified);
@@ -1222,6 +1240,21 @@ QVariantMap LibraryManager::loadPlaybackState() const
             state["albumTitle"] = settings.value("albumTitle").toString();
             state["trackIndex"] = settings.value("trackIndex", -1).toInt();
             state["savedTime"] = settings.value("savedTime").toDateTime();
+            
+            // Load virtual playlist info if present
+            state["isVirtualPlaylist"] = settings.value("isVirtualPlaylist", false).toBool();
+            if (state["isVirtualPlaylist"].toBool()) {
+                state["virtualPlaylistType"] = settings.value("virtualPlaylistType").toString();
+                state["virtualTrackIndex"] = settings.value("virtualTrackIndex").toInt();
+                state["virtualShuffleIndex"] = settings.value("virtualShuffleIndex").toInt();
+                state["shuffleEnabled"] = settings.value("shuffleEnabled").toBool();
+                
+                // Load track metadata
+                state["trackTitle"] = settings.value("trackTitle").toString();
+                state["trackArtist"] = settings.value("trackArtist").toString();
+                state["trackAlbum"] = settings.value("trackAlbum").toString();
+                state["trackAlbumArtist"] = settings.value("trackAlbumArtist").toString();
+            }
             
             // Load queue info
             state["queueModified"] = settings.value("queueModified", false).toBool();

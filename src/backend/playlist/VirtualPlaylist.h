@@ -51,6 +51,7 @@ public:
     int getShuffledIndex(int linearIndex) const;
     int getLinearIndex(int shuffledIndex) const;
     QVector<int> getNextShuffleIndices(int currentShuffledIndex, int count) const;
+    int getPreviousShuffleIndex(int currentShuffledIndex) const;
     
 signals:
     void loadingStarted();

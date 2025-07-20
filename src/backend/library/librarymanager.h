@@ -108,7 +108,8 @@ public:
     Q_INVOKABLE void savePlaybackState(const QString &filePath, qint64 position, 
                                        const QString &albumArtist, const QString &albumTitle, 
                                        int trackIndex, qint64 duration,
-                                       bool queueModified = false, const QVariantList &queue = QVariantList());
+                                       bool queueModified = false, const QVariantList &queue = QVariantList(),
+                                       const QVariantMap &virtualPlaylistInfo = QVariantMap());
     Q_INVOKABLE QVariantMap loadPlaybackState() const;
     Q_INVOKABLE void clearPlaybackState();
 

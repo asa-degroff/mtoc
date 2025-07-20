@@ -187,6 +187,7 @@ private:
     Mtoc::VirtualPlaylist* m_virtualPlaylist = nullptr;
     bool m_isVirtualPlaylist = false;
     int m_virtualCurrentIndex = -1;
+    int m_virtualShuffleIndex = -1;  // Current position in virtual playlist shuffle order
     QList<Mtoc::Track*> m_virtualBufferTracks;  // Pre-loaded tracks for smooth playback
     void preloadVirtualTracks(int centerIndex);
     Mtoc::Track* getOrCreateTrackFromVirtual(int index);
