@@ -100,6 +100,7 @@ public slots:
     
     // Virtual playlist support
     Q_INVOKABLE void loadVirtualPlaylist(Mtoc::VirtualPlaylistModel* model);
+    Q_INVOKABLE void playVirtualPlaylist(); // Start playing respecting shuffle mode
     void clearVirtualPlaylist();
     
     void setRepeatEnabled(bool enabled);

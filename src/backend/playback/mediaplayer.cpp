@@ -192,6 +192,11 @@ bool MediaPlayer::hasNext() const
         if (m_repeatEnabled) {
             return true;
         }
+        // With shuffle enabled, we always have next unless we've played all tracks
+        if (m_shuffleEnabled) {
+            // If we have tracks, we can always shuffle to another one
+            return m_virtualPlaylist->trackCount() > 1;
+        }
         return m_virtualCurrentIndex < m_virtualPlaylist->trackCount() - 1;
     }
     
@@ -325,7 +330,12 @@ void MediaPlayer::togglePlayPause()
 
 void MediaPlayer::next()
 {
+    qDebug() << "[MediaPlayer::next] Called - virtual:" << m_isVirtualPlaylist 
+             << "shuffle:" << m_shuffleEnabled 
+             << "currentIndex:" << m_virtualCurrentIndex;
+    
     if (!hasNext()) {
+        qDebug() << "[MediaPlayer::next] hasNext() returned false";
         return;
     }
     
@@ -334,6 +344,7 @@ void MediaPlayer::next()
         int nextIndex = -1;
         
         if (m_shuffleEnabled) {
+            qDebug() << "[MediaPlayer::next] Getting next shuffle index from" << m_virtualCurrentIndex;
             // Get next shuffle index from virtual playlist
             QVector<int> nextIndices = m_virtualPlaylist->getNextShuffleIndices(m_virtualCurrentIndex, 1);
             if (!nextIndices.isEmpty()) {
@@ -675,6 +686,16 @@ void MediaPlayer::playTrackAt(int index)
             // For virtual playlists, shuffle is handled by VirtualPlaylist
             // Just update our local shuffle index
             m_shuffleIndex = m_virtualPlaylist->getLinearIndex(index);
+            qDebug() << "[MediaPlayer::playTrackAt] Shuffle enabled - linear index:" << m_shuffleIndex 
+                     << "for track index:" << index;
+            
+            // If this is the first track being played and shuffle order isn't initialized properly,
+            // regenerate it with the current track first
+            if (m_shuffleIndex < 0) {
+                qDebug() << "[MediaPlayer::playTrackAt] Track not in shuffle order, regenerating with current track first";
+                m_virtualPlaylist->generateShuffleOrder(index);
+                m_shuffleIndex = 0; // Current track is now at position 0
+            }
         }
         
         // Preload nearby tracks
@@ -1839,6 +1860,25 @@ void MediaPlayer::loadVirtualPlaylist(Mtoc::VirtualPlaylistModel* model)
     emit playbackQueueChanged();
 }
 
+void MediaPlayer::playVirtualPlaylist()
+{
+    if (!m_isVirtualPlaylist || !m_virtualPlaylist || m_virtualPlaylist->trackCount() == 0) {
+        qWarning() << "[MediaPlayer::playVirtualPlaylist] No virtual playlist loaded or empty";
+        return;
+    }
+    
+    int firstTrack = 0;
+    if (m_shuffleEnabled) {
+        // With shuffle enabled, play the first track in shuffle order
+        firstTrack = m_virtualPlaylist->getShuffledIndex(0);
+        qDebug() << "[MediaPlayer::playVirtualPlaylist] Starting shuffle playback with track:" << firstTrack;
+    } else {
+        qDebug() << "[MediaPlayer::playVirtualPlaylist] Starting sequential playback";
+    }
+    
+    playTrackAt(firstTrack);
+}
+
 void MediaPlayer::clearVirtualPlaylist()
 {
     m_virtualPlaylist = nullptr;
@@ -1855,18 +1895,38 @@ void MediaPlayer::preloadVirtualTracks(int centerIndex)
         return;
     }
     
-    // Preload tracks around the center index
-    const int preloadRadius = 3;  // Load 3 tracks before and after
-    int startIndex = qMax(0, centerIndex - preloadRadius);
-    int endIndex = qMin(m_virtualPlaylist->trackCount() - 1, centerIndex + preloadRadius);
+    qDebug() << "[MediaPlayer::preloadVirtualTracks] Center index:" << centerIndex 
+             << "shuffle enabled:" << m_shuffleEnabled;
     
-    // Request virtual playlist to preload this range
-    m_virtualPlaylist->preloadRange(centerIndex, preloadRadius);
-    
-    // Create Track objects for immediate neighbors
-    for (int i = centerIndex - 1; i <= centerIndex + 1; ++i) {
-        if (i >= 0 && i < m_virtualPlaylist->trackCount()) {
-            getOrCreateTrackFromVirtual(i);
+    if (m_shuffleEnabled) {
+        // For shuffle mode, preload the next/previous tracks in shuffle order
+        QVector<int> nextTracks = m_virtualPlaylist->getNextShuffleIndices(centerIndex, 3);
+        
+        // Preload the current track's range first
+        m_virtualPlaylist->preloadRange(centerIndex, 1);
+        
+        // Create Track object for current track
+        getOrCreateTrackFromVirtual(centerIndex);
+        
+        // Preload next tracks in shuffle order
+        for (int trackIndex : nextTracks) {
+            m_virtualPlaylist->preloadRange(trackIndex, 1);
+            getOrCreateTrackFromVirtual(trackIndex);
+        }
+    } else {
+        // Sequential mode - preload tracks around the center index
+        const int preloadRadius = 3;  // Load 3 tracks before and after
+        int startIndex = qMax(0, centerIndex - preloadRadius);
+        int endIndex = qMin(m_virtualPlaylist->trackCount() - 1, centerIndex + preloadRadius);
+        
+        // Request virtual playlist to preload this range
+        m_virtualPlaylist->preloadRange(centerIndex, preloadRadius);
+        
+        // Create Track objects for immediate neighbors
+        for (int i = centerIndex - 1; i <= centerIndex + 1; ++i) {
+            if (i >= 0 && i < m_virtualPlaylist->trackCount()) {
+                getOrCreateTrackFromVirtual(i);
+            }
         }
     }
 }

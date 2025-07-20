@@ -1661,8 +1661,8 @@ Item {
                                     // Clear queue and load virtual playlist
                                     MediaPlayer.clearQueue()
                                     MediaPlayer.loadVirtualPlaylist(allSongsModel)
-                                    // Start playing from the first track
-                                    MediaPlayer.playTrackAt(0)
+                                    // Start playing respecting shuffle mode
+                                    MediaPlayer.playVirtualPlaylist()
                                 } else {
                                     // Play regular playlist directly
                                     var tracks = PlaylistManager.loadPlaylist(playlistName)

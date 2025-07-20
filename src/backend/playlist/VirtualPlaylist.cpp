@@ -295,11 +295,23 @@ QVector<int> VirtualPlaylist::getNextShuffleIndices(int currentShuffledIndex, in
     
     QVector<int> indices;
     if (m_shuffleOrder.isEmpty() || count <= 0) {
+        qDebug() << "[VirtualPlaylist::getNextShuffleIndices] Empty shuffle order or invalid count";
         return indices;
     }
     
-    int linearIndex = getLinearIndex(currentShuffledIndex);
+    // Prevent infinite recursion by not calling getLinearIndex from within a mutex lock
+    int linearIndex = -1;
+    {
+        // Find the position without calling getLinearIndex (which also locks the mutex)
+        linearIndex = m_shuffleOrder.indexOf(currentShuffledIndex);
+    }
+    
+    qDebug() << "[VirtualPlaylist::getNextShuffleIndices] Current shuffled index:" << currentShuffledIndex 
+             << "linear index:" << linearIndex << "shuffle order size:" << m_shuffleOrder.size();
+    
     if (linearIndex < 0) {
+        qDebug() << "[VirtualPlaylist::getNextShuffleIndices] Track" << currentShuffledIndex 
+                 << "not found in shuffle order";
         return indices;
     }
     
@@ -308,6 +320,7 @@ QVector<int> VirtualPlaylist::getNextShuffleIndices(int currentShuffledIndex, in
         indices.append(m_shuffleOrder[linearIndex + i]);
     }
     
+    qDebug() << "[VirtualPlaylist::getNextShuffleIndices] Returning" << indices.size() << "indices";
     return indices;
 }
 
