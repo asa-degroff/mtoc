@@ -921,8 +921,7 @@ Item {
                         }
                         
                         onFocusRequested: {
-                            // Scroll to top when search is focused and reset navigation
-                            artistsListView.positionViewAtBeginning()
+                            // Reset navigation when search bar is focused
                             resetNavigation()
                         }
                         
