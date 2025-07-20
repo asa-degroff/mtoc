@@ -351,6 +351,18 @@ Item {
                 }
             }
             
+            // Timer to emit centerAlbumChanged after currentIndex changes (for mouse wheel/keyboard)
+            Timer {
+                id: centerAlbumTimer
+                interval: 250  // Wait for animation to complete
+                running: false
+                onTriggered: {
+                    if (root.selectedAlbum) {
+                        root.centerAlbumChanged(root.selectedAlbum)
+                    }
+                }
+            }
+            
             // Timer to detect when touchpad scrolling has stopped
             Timer {
                 id: scrollEndTimer
@@ -388,6 +400,10 @@ Item {
                     
                     // Save position after a delay
                     savePositionTimer.restart()
+                    
+                    // Emit centerAlbumChanged for mouse wheel and keyboard navigation
+                    // Use a timer to debounce and ensure it fires after the animation
+                    centerAlbumTimer.restart()
                 }
             }
             
