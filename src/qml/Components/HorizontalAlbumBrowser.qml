@@ -354,7 +354,7 @@ Item {
             // Timer to emit centerAlbumChanged after currentIndex changes (for mouse wheel/keyboard)
             Timer {
                 id: centerAlbumTimer
-                interval: 250  // Wait for animation to complete
+                interval: 100  // Wait for animation to complete
                 running: false
                 onTriggered: {
                     if (root.selectedAlbum) {
