@@ -15,6 +15,7 @@
 #include <QFileInfo>
 #include <QVariantList>
 #include <QVariantMap>
+#include <QPixmapCache>
 #include <algorithm>
 #include <random>
 
@@ -56,6 +57,9 @@ MediaPlayer::~MediaPlayer()
     
     // Clean up any remaining tracks in the queue
     clearQueue();
+    
+    // Final cache statistics
+    qDebug() << "[MediaPlayer::~MediaPlayer] Final QPixmapCache limit:" << QPixmapCache::cacheLimit() / 1024 << "MB";
 }
 
 void MediaPlayer::setLibraryManager(Mtoc::LibraryManager* manager)
@@ -333,6 +337,29 @@ void MediaPlayer::next()
     qDebug() << "[MediaPlayer::next] Called - virtual:" << m_isVirtualPlaylist 
              << "shuffle:" << m_shuffleEnabled 
              << "currentIndex:" << m_virtualCurrentIndex;
+    
+    // Monitor cache usage during rapid skipping
+    static int skipCount = 0;
+    static qint64 lastCacheCheck = QDateTime::currentMSecsSinceEpoch();
+    qint64 now = QDateTime::currentMSecsSinceEpoch();
+    
+    skipCount++;
+    
+    // Check cache every 10 skips or every 2 seconds
+    if (skipCount >= 10 || (now - lastCacheCheck) > 2000) {
+        // Log cache statistics
+        int cacheLimit = QPixmapCache::cacheLimit();
+        qDebug() << "[MediaPlayer::next] QPixmapCache status - Limit:" << cacheLimit / 1024 << "MB";
+        
+        // Clear cache if we're doing rapid skipping (more than 5 skips in 2 seconds)
+        if (skipCount > 5 && (now - lastCacheCheck) < 2000) {
+            qDebug() << "[MediaPlayer::next] Rapid skipping detected, clearing pixmap cache";
+            QPixmapCache::clear();
+        }
+        
+        skipCount = 0;
+        lastCacheCheck = now;
+    }
     
     // Don't skip if we're still waiting for a track to load
     if (m_waitingForVirtualTrack) {
@@ -2112,6 +2139,16 @@ void MediaPlayer::preloadVirtualTracks(int centerIndex)
 {
     if (!m_virtualPlaylist || centerIndex < 0) {
         return;
+    }
+    
+    // Monitor memory pressure before preloading
+    static qint64 lastMemoryCheck = 0;
+    qint64 now = QDateTime::currentMSecsSinceEpoch();
+    
+    if (now - lastMemoryCheck > 5000) {  // Check every 5 seconds
+        int cacheLimit = QPixmapCache::cacheLimit();
+        qDebug() << "[MediaPlayer::preloadVirtualTracks] Cache status - Limit:" << cacheLimit / 1024 << "MB";
+        lastMemoryCheck = now;
     }
     
     qDebug() << "[MediaPlayer::preloadVirtualTracks] Center index:" << centerIndex 

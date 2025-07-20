@@ -24,9 +24,17 @@ Item {
             // Update the non-visible layer with the new source
             if (currentImageIndex === 0) {
                 // Layer 1 is visible, update layer 2
+                // Clear the old source first to release memory
+                if (image2Source != "") {
+                    image2Source = ""
+                }
                 image2Source = source
             } else {
                 // Layer 2 is visible, update layer 1
+                // Clear the old source first to release memory
+                if (image1Source != "") {
+                    image1Source = ""
+                }
                 image1Source = source
             }
             // Toggle to the layer with the new image
@@ -76,11 +84,11 @@ Item {
                         anchors.fill: parent
                         anchors.margins: 40
                         fillMode: Image.PreserveAspectCrop
-                        cache: true
+                        cache: false  // Don't cache blurred backgrounds
                         asynchronous: true
                         source: root.image1Source
-                        sourceSize.width: 48
-                        sourceSize.height: 48
+                        sourceSize.width: 512
+                        sourceSize.height: 512
                         
                         onStatusChanged: {
                             if (status === Image.Error) {
@@ -146,11 +154,11 @@ Item {
                         anchors.fill: parent
                         anchors.margins: 40
                         fillMode: Image.PreserveAspectCrop
-                        cache: true
+                        cache: false  // Don't cache blurred backgrounds
                         asynchronous: true
                         source: root.image2Source
-                        sourceSize.width: 48
-                        sourceSize.height: 48
+                        sourceSize.width: 512
+                        sourceSize.height: 512
                         
                         onStatusChanged: {
                             if (status === Image.Error) {

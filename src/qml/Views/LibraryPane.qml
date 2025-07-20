@@ -1384,6 +1384,7 @@ Item {
                                                 fillMode: Image.PreserveAspectFit
                                                 clip: false
                                                 asynchronous: true
+                                                cache: false  // Don't cache in virtualized lists to save memory
                                                 sourceSize.width: 220  // Limit to 2x the display size for retina
                                                 sourceSize.height: 220
                                                 

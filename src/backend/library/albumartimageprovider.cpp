@@ -102,13 +102,37 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
     // Determine the actual size to use
     int actualSize = targetSize > 0 ? targetSize : (requestedSize.isValid() ? qMax(requestedSize.width(), requestedSize.height()) : 0);
     
-    // Check pixmap cache first - include size in cache key for size-specific caching
-    QString cacheKey = actualSize > 0 ? 
-        QString("album_%1_%2_%3").arg(albumId).arg(type).arg(actualSize) :
-        QString("album_%1_%2").arg(albumId).arg(type);
+    // Two-tier cache system: only cache thumbnail (256) and full size
+    // For other sizes, we'll scale from the nearest cached version
+    bool needsScaling = false;
+    QString baseCacheKey;
+    
+    if (type == "thumbnail") {
+        // Always use standard thumbnail size for caching
+        baseCacheKey = QString("album_%1_thumbnail").arg(albumId);
+        needsScaling = actualSize > 0 && actualSize != 256;
+    } else {
+        // Full size
+        baseCacheKey = QString("album_%1_full").arg(albumId);
+        needsScaling = actualSize > 0;
+    }
+    
+    // For exact matches (thumbnail at 256 or full without specific size), check cache directly
+    QString cacheKey = needsScaling ? QString() : baseCacheKey;
     
     QPixmap pixmap;
-    if (QPixmapCache::find(cacheKey, &pixmap)) {
+    if (!cacheKey.isEmpty() && QPixmapCache::find(cacheKey, &pixmap)) {
+        if (size) {
+            *size = pixmap.size();
+        }
+        return pixmap;
+    }
+    
+    // Try to find base cached version for scaling
+    if (needsScaling && QPixmapCache::find(baseCacheKey, &pixmap)) {
+        // Scale from cached version
+        pixmap = pixmap.scaled(actualSize, actualSize, Qt::KeepAspectRatio, 
+                              type == "thumbnail" ? Qt::FastTransformation : Qt::SmoothTransformation);
         if (size) {
             *size = pixmap.size();
         }
@@ -146,15 +170,13 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
                     return emptyPixmap;
                 }
                 
-                // Scale if specific size is requested - use faster transformation for thumbnails
-                if (actualSize > 0 && (pixmap.width() > actualSize || pixmap.height() > actualSize)) {
-                    pixmap = pixmap.scaled(actualSize, actualSize, Qt::KeepAspectRatio, Qt::FastTransformation);
-                } else if (requestedSize.isValid() && requestedSize != pixmap.size()) {
-                    pixmap = pixmap.scaled(requestedSize, Qt::KeepAspectRatio, Qt::FastTransformation);
-                }
+                // Cache the base pixmap first (at standard thumbnail size)
+                QPixmapCache::insert(baseCacheKey, pixmap);
                 
-                // Cache the pixmap
-                QPixmapCache::insert(cacheKey, pixmap);
+                // Scale if specific size is requested
+                if (needsScaling) {
+                    pixmap = pixmap.scaled(actualSize, actualSize, Qt::KeepAspectRatio, Qt::FastTransformation);
+                }
                 
                 if (size) {
                     *size = pixmap.size();
@@ -171,16 +193,13 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
             pixmap.load(imagePath);
             
             if (!pixmap.isNull()) {
-                // Scale if specific size is requested - use smoother transformation for full images
-                if (actualSize > 0 && (pixmap.width() > actualSize || pixmap.height() > actualSize)) {
-                    pixmap = pixmap.scaled(actualSize, actualSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-                } else if (requestedSize.isValid() && 
-                    (requestedSize.width() < pixmap.width() || requestedSize.height() < pixmap.height())) {
-                    pixmap = pixmap.scaled(requestedSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-                }
+                // Cache the base full-size pixmap
+                QPixmapCache::insert(baseCacheKey, pixmap);
                 
-                // Cache the pixmap
-                QPixmapCache::insert(cacheKey, pixmap);
+                // Scale if specific size is requested
+                if (needsScaling) {
+                    pixmap = pixmap.scaled(actualSize, actualSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                }
                 
                 if (size) {
                     *size = pixmap.size();
