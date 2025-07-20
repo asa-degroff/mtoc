@@ -334,6 +334,12 @@ void MediaPlayer::next()
              << "shuffle:" << m_shuffleEnabled 
              << "currentIndex:" << m_virtualCurrentIndex;
     
+    // Don't skip if we're still waiting for a track to load
+    if (m_waitingForVirtualTrack) {
+        qDebug() << "[MediaPlayer::next] Still waiting for virtual track to load, ignoring skip";
+        return;
+    }
+    
     if (!hasNext()) {
         qDebug() << "[MediaPlayer::next] hasNext() returned false";
         return;
@@ -418,6 +424,12 @@ void MediaPlayer::next()
 
 void MediaPlayer::previous()
 {
+    // Don't skip if we're still waiting for a track to load
+    if (m_waitingForVirtualTrack) {
+        qDebug() << "[MediaPlayer::previous] Still waiting for virtual track to load, ignoring skip";
+        return;
+    }
+    
     if (position() > 3000) {
         seek(0);
         return;
@@ -728,10 +740,41 @@ void MediaPlayer::playTrackAt(int index)
         // Get or create the track object
         Mtoc::Track* track = getOrCreateTrackFromVirtual(index);
         if (track) {
+            m_waitingForVirtualTrack = false;
             emit playbackQueueChanged();
             playTrack(track);
         } else {
-            qWarning() << "Failed to get track from virtual playlist at index" << index;
+            // Track not loaded yet - set up retry when it becomes available
+            qDebug() << "[MediaPlayer::playTrackAt] Track not loaded yet at index" << index << ", waiting for load";
+            m_waitingForVirtualTrack = true;
+            
+            // Set up a connection to retry when the track is loaded
+            QMetaObject::Connection* connection = new QMetaObject::Connection();
+            *connection = connect(m_virtualPlaylist, &Mtoc::VirtualPlaylist::rangeLoaded, this,
+                    [this, index, connection](int startIdx, int endIdx) {
+                        if (index >= startIdx && index <= endIdx) {
+                            // Disconnect to avoid multiple attempts
+                            disconnect(*connection);
+                            delete connection;
+                            
+                            // Try again now that the track should be loaded
+                            Mtoc::Track* track = getOrCreateTrackFromVirtual(index);
+                            if (track) {
+                                // Only play if we're still at the same index
+                                if (m_virtualCurrentIndex == index) {
+                                    m_waitingForVirtualTrack = false;
+                                    emit playbackQueueChanged();
+                                    playTrack(track);
+                                }
+                            } else {
+                                qWarning() << "[MediaPlayer::playTrackAt] Failed to get track even after loading at index" << index;
+                                m_waitingForVirtualTrack = false;
+                            }
+                        }
+                    }, Qt::QueuedConnection);
+            
+            // Ensure the track gets loaded
+            m_virtualPlaylist->ensureLoaded(index);
         }
     } else {
         // Handle regular queue
@@ -1967,6 +2010,7 @@ void MediaPlayer::loadVirtualPlaylist(Mtoc::VirtualPlaylistModel* model)
     m_virtualPlaylist = model->virtualPlaylist();
     m_isVirtualPlaylist = true;
     m_virtualCurrentIndex = -1;
+    m_virtualShuffleIndex = -1;
     
     // Generate shuffle order if needed
     if (m_shuffleEnabled) {
@@ -1989,11 +2033,53 @@ void MediaPlayer::playVirtualPlaylist()
         // With shuffle enabled, play the first track in shuffle order
         firstTrack = m_virtualPlaylist->getShuffledIndex(0);
         qDebug() << "[MediaPlayer::playVirtualPlaylist] Starting shuffle playback with track:" << firstTrack;
+        m_virtualShuffleIndex = 0; // Reset shuffle position
     } else {
         qDebug() << "[MediaPlayer::playVirtualPlaylist] Starting sequential playback";
     }
     
-    playTrackAt(firstTrack);
+    // Update current index and play
+    m_virtualCurrentIndex = firstTrack;
+    
+    // Preload tracks around the starting position
+    preloadVirtualTracks(firstTrack);
+    
+    // Try to get or create the track - this will trigger loading if needed
+    Mtoc::Track* track = getOrCreateTrackFromVirtual(firstTrack);
+    if (track) {
+        m_waitingForVirtualTrack = false;
+        playTrack(track);
+        emit playbackQueueChanged();
+    } else {
+        // Track loading failed or is pending
+        qDebug() << "[MediaPlayer::playVirtualPlaylist] Track not loaded yet at index" << firstTrack << ", waiting for load";
+        m_waitingForVirtualTrack = true;
+        
+        // Set up a connection to retry when tracks are loaded
+        QMetaObject::Connection* connection = new QMetaObject::Connection();
+        *connection = connect(m_virtualPlaylist, &Mtoc::VirtualPlaylist::rangeLoaded, this,
+                [this, firstTrack, connection](int startIdx, int endIdx) {
+                    if (firstTrack >= startIdx && firstTrack <= endIdx) {
+                        // Disconnect to avoid multiple attempts
+                        disconnect(*connection);
+                        delete connection;
+                        
+                        // Try again now that the track should be loaded
+                        Mtoc::Track* track = getOrCreateTrackFromVirtual(firstTrack);
+                        if (track) {
+                            m_waitingForVirtualTrack = false;
+                            playTrack(track);
+                            emit playbackQueueChanged();
+                        } else {
+                            qWarning() << "[MediaPlayer::playVirtualPlaylist] Failed to get track even after loading";
+                            m_waitingForVirtualTrack = false;
+                        }
+                    }
+                }, Qt::QueuedConnection);
+        
+        // Ensure the track gets loaded
+        m_virtualPlaylist->ensureLoaded(firstTrack);
+    }
 }
 
 void MediaPlayer::clearVirtualPlaylist()
@@ -2002,6 +2088,7 @@ void MediaPlayer::clearVirtualPlaylist()
     m_isVirtualPlaylist = false;
     m_virtualCurrentIndex = -1;
     m_virtualShuffleIndex = -1;
+    m_waitingForVirtualTrack = false;
     
     // Clear buffer - tracks are owned by LibraryManager, don't delete
     m_virtualBufferTracks.clear();
