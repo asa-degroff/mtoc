@@ -577,7 +577,13 @@ ListView {
     // Empty state
     Label {
         anchors.centerIn: parent
-        text: "Queue is empty"
+        text: {
+            if (MediaPlayer.isPlayingVirtualPlaylist && MediaPlayer.virtualPlaylistName) {
+                return "Playing from " + MediaPlayer.virtualPlaylistName
+            } else {
+                return "Queue is empty"
+            }
+        }
         color: "#666666"
         font.pixelSize: 14
         visible: root.count === 0

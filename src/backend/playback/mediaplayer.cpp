@@ -276,10 +276,9 @@ int MediaPlayer::currentQueueIndex() const
 
 int MediaPlayer::totalQueueDuration() const
 {
-    // For virtual playlists, we can't easily calculate total duration without loading all tracks
-    // Return 0 for now - UI should get this info from PlaylistManager if needed
-    if (m_isVirtualPlaylist) {
-        return 0;
+    // For virtual playlists, get the total duration from the virtual playlist
+    if (m_isVirtualPlaylist && m_virtualPlaylist) {
+        return m_virtualPlaylist->totalDuration();
     }
     
     int totalSeconds = 0;
@@ -2388,6 +2387,11 @@ void MediaPlayer::loadVirtualPlaylist(Mtoc::VirtualPlaylistModel* model)
     m_virtualCurrentIndex = -1;
     m_virtualShuffleIndex = -1;
     
+    // Set the virtual playlist name - for now, we know it's "All Songs"
+    // In the future, this could be passed as a parameter or stored in the model
+    m_virtualPlaylistName = "All Songs";
+    emit virtualPlaylistNameChanged(m_virtualPlaylistName);
+    
     // Generate shuffle order if needed
     if (m_shuffleEnabled) {
         m_virtualPlaylist->generateShuffleOrder();
@@ -2475,6 +2479,12 @@ void MediaPlayer::clearVirtualPlaylist()
     m_virtualCurrentIndex = -1;
     m_virtualShuffleIndex = -1;
     m_waitingForVirtualTrack = false;
+    
+    // Clear the virtual playlist name
+    if (!m_virtualPlaylistName.isEmpty()) {
+        m_virtualPlaylistName.clear();
+        emit virtualPlaylistNameChanged(m_virtualPlaylistName);
+    }
     
     // Clear buffer - tracks are owned by LibraryManager, don't delete
     m_virtualBufferTracks.clear();

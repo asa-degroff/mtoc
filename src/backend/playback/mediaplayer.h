@@ -38,6 +38,8 @@ class MediaPlayer : public QObject
     Q_PROPERTY(bool canUndoClear READ canUndoClear NOTIFY canUndoClearChanged)
     Q_PROPERTY(bool repeatEnabled READ repeatEnabled WRITE setRepeatEnabled NOTIFY repeatEnabledChanged)
     Q_PROPERTY(bool shuffleEnabled READ shuffleEnabled WRITE setShuffleEnabled NOTIFY shuffleEnabledChanged)
+    Q_PROPERTY(bool isPlayingVirtualPlaylist READ isPlayingVirtualPlaylist NOTIFY playbackQueueChanged)
+    Q_PROPERTY(QString virtualPlaylistName READ virtualPlaylistName NOTIFY virtualPlaylistNameChanged)
 
 public:
     enum State {
@@ -72,6 +74,8 @@ public:
     bool canUndoClear() const { return !m_undoQueue.isEmpty(); }
     bool repeatEnabled() const { return m_repeatEnabled; }
     bool shuffleEnabled() const { return m_shuffleEnabled; }
+    bool isPlayingVirtualPlaylist() const { return m_isVirtualPlaylist; }
+    QString virtualPlaylistName() const { return m_virtualPlaylistName; }
 
 public slots:
     void play();
@@ -132,6 +136,7 @@ signals:
     void canUndoClearChanged(bool canUndo);
     void repeatEnabledChanged(bool enabled);
     void shuffleEnabledChanged(bool enabled);
+    void virtualPlaylistNameChanged(const QString& name);
 
 private slots:
     void periodicStateSave();
@@ -192,6 +197,7 @@ private:
     // Virtual playlist support
     Mtoc::VirtualPlaylist* m_virtualPlaylist = nullptr;
     bool m_isVirtualPlaylist = false;
+    QString m_virtualPlaylistName;
     int m_virtualCurrentIndex = -1;
     int m_virtualShuffleIndex = -1;  // Current position in virtual playlist shuffle order
     QList<Mtoc::Track*> m_virtualBufferTracks;  // Pre-loaded tracks for smooth playback
