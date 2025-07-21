@@ -5,6 +5,7 @@
 #include "backend/settings/settingsmanager.h"
 #include "backend/playlist/VirtualPlaylistModel.h"
 #include "backend/playlist/VirtualPlaylist.h"
+#include "backend/playlist/playlistmanager.h"
 #include <QDebug>
 #include <QFile>
 #include <QDateTime>
@@ -1462,6 +1463,115 @@ void MediaPlayer::playAlbumLast(const QString& artist, const QString& title)
     }
 }
 
+void MediaPlayer::playPlaylistNext(const QString& playlistName)
+{
+    // Clear undo queue when adding new items
+    clearUndoQueue();
+    
+    qDebug() << "MediaPlayer::playPlaylistNext called with playlist:" << playlistName;
+    
+    // Get playlist tracks from PlaylistManager
+    PlaylistManager* playlistManager = PlaylistManager::instance();
+    auto trackList = playlistManager->loadPlaylist(playlistName);
+    
+    qDebug() << "Found" << trackList.size() << "tracks in playlist";
+    
+    if (trackList.isEmpty()) {
+        qWarning() << "No tracks found in playlist:" << playlistName;
+        return;
+    }
+    
+    // Find insertion point (after current track)
+    int insertIndex = m_currentQueueIndex + 1;
+    
+    // Build tracks from data and insert into queue
+    for (const auto& trackData : trackList) {
+        auto trackMap = trackData.toMap();
+        QString trackTitle = trackMap.value("title").toString();
+        QString filePath = trackMap.value("filePath").toString();
+        
+        if (filePath.isEmpty()) {
+            qWarning() << "Empty filePath for track:" << trackTitle;
+            continue;
+        }
+        
+        Mtoc::Track* track = new Mtoc::Track(this);
+        track->setTitle(trackTitle);
+        track->setArtist(trackMap.value("artist").toString());
+        track->setAlbum(trackMap.value("album").toString());
+        track->setAlbumArtist(trackMap.value("albumArtist").toString());
+        track->setTrackNumber(trackMap.value("trackNumber").toInt());
+        track->setDuration(trackMap.value("duration").toInt());
+        track->setFileUrl(QUrl::fromLocalFile(filePath));
+        
+        m_playbackQueue.insert(insertIndex++, track);
+    }
+    
+    // Mark queue as modified when adding playlists to existing queue
+    setQueueModified(true);
+    
+    emit playbackQueueChanged();
+    
+    // If nothing is playing, start playback
+    if (m_currentQueueIndex < 0 && !m_playbackQueue.isEmpty()) {
+        m_currentQueueIndex = 0;
+        playTrack(m_playbackQueue[0]);
+    }
+}
+
+void MediaPlayer::playPlaylistLast(const QString& playlistName)
+{
+    // Clear undo queue when adding new items
+    clearUndoQueue();
+    
+    qDebug() << "MediaPlayer::playPlaylistLast called with playlist:" << playlistName;
+    
+    // Get playlist tracks from PlaylistManager
+    PlaylistManager* playlistManager = PlaylistManager::instance();
+    auto trackList = playlistManager->loadPlaylist(playlistName);
+    
+    qDebug() << "Found" << trackList.size() << "tracks in playlist";
+    
+    if (trackList.isEmpty()) {
+        qWarning() << "No tracks found in playlist:" << playlistName;
+        return;
+    }
+    
+    // Build tracks from data and append to queue
+    for (const auto& trackData : trackList) {
+        auto trackMap = trackData.toMap();
+        QString trackTitle = trackMap.value("title").toString();
+        QString filePath = trackMap.value("filePath").toString();
+        
+        if (filePath.isEmpty()) {
+            qWarning() << "Empty filePath for track:" << trackTitle;
+            continue;
+        }
+        
+        Mtoc::Track* track = new Mtoc::Track(this);
+        track->setTitle(trackTitle);
+        track->setArtist(trackMap.value("artist").toString());
+        track->setAlbum(trackMap.value("album").toString());
+        track->setAlbumArtist(trackMap.value("albumArtist").toString());
+        track->setTrackNumber(trackMap.value("trackNumber").toInt());
+        track->setDuration(trackMap.value("duration").toInt());
+        track->setFileUrl(QUrl::fromLocalFile(filePath));
+        
+        m_playbackQueue.append(track);
+    }
+    
+    // Mark queue as modified when adding playlists to existing queue
+    setQueueModified(true);
+    
+    emit playbackQueueChanged();
+    
+    // If nothing is playing, start playback
+    if (m_currentQueueIndex < 0 && !m_playbackQueue.isEmpty()) {
+        m_currentQueueIndex = 0;
+        playTrack(m_playbackQueue[0]);
+    }
+}
+
 void MediaPlayer::updateCurrentTrack(Mtoc::Track* track)
 {
     if (m_currentTrack != track) {
@@ -2316,6 +2426,145 @@ void MediaPlayer::clearVirtualPlaylist()
     
     // Clear buffer - tracks are owned by LibraryManager, don't delete
     m_virtualBufferTracks.clear();
+}
+
+void MediaPlayer::loadVirtualPlaylistNext(Mtoc::VirtualPlaylistModel* model)
+{
+    if (!model || !model->virtualPlaylist()) {
+        qWarning() << "MediaPlayer: Cannot load null virtual playlist";
+        return;
+    }
+    
+    // Clear undo queue when adding new items
+    clearUndoQueue();
+    
+    qDebug() << "MediaPlayer::loadVirtualPlaylistNext called";
+    
+    // If we're already in virtual playlist mode, we need to convert to regular queue
+    if (m_isVirtualPlaylist) {
+        // Convert current virtual playlist state to regular queue
+        Mtoc::Track* currentTrack = m_currentTrack;
+        int currentPosition = m_virtualCurrentIndex;
+        
+        // Clear virtual playlist mode
+        m_isVirtualPlaylist = false;
+        m_virtualPlaylist = nullptr;
+        m_virtualCurrentIndex = -1;
+        m_virtualShuffleIndex = -1;
+        
+        // Add current track to regular queue if it exists
+        if (currentTrack) {
+            m_playbackQueue.append(currentTrack);
+            m_currentQueueIndex = 0;
+        }
+    }
+    
+    // Get all tracks from the virtual playlist and insert after current
+    Mtoc::VirtualPlaylist* vPlaylist = model->virtualPlaylist();
+    int insertIndex = m_currentQueueIndex + 1;
+    int trackCount = vPlaylist->trackCount();
+    
+    // We need to create Track objects from the virtual playlist data
+    for (int i = 0; i < trackCount; ++i) {
+        auto trackData = vPlaylist->getTrackVariant(i);
+        if (!trackData.isEmpty()) {
+            QString title = trackData.value("title").toString();
+            QString filePath = trackData.value("filePath").toString();
+            
+            if (!filePath.isEmpty()) {
+                Mtoc::Track* track = new Mtoc::Track(this);
+                track->setTitle(title);
+                track->setArtist(trackData.value("artist").toString());
+                track->setAlbum(trackData.value("album").toString());
+                track->setAlbumArtist(trackData.value("albumArtist").toString());
+                track->setTrackNumber(trackData.value("trackNumber").toInt());
+                track->setDuration(trackData.value("duration").toInt());
+                track->setFileUrl(QUrl::fromLocalFile(filePath));
+                
+                m_playbackQueue.insert(insertIndex++, track);
+            }
+        }
+    }
+    
+    // Mark queue as modified
+    setQueueModified(true);
+    
+    emit playbackQueueChanged();
+    
+    // If nothing is playing, start playback
+    if (m_currentQueueIndex < 0 && !m_playbackQueue.isEmpty()) {
+        m_currentQueueIndex = 0;
+        playTrack(m_playbackQueue[0]);
+    }
+}
+
+void MediaPlayer::loadVirtualPlaylistLast(Mtoc::VirtualPlaylistModel* model)
+{
+    if (!model || !model->virtualPlaylist()) {
+        qWarning() << "MediaPlayer: Cannot load null virtual playlist";
+        return;
+    }
+    
+    // Clear undo queue when adding new items
+    clearUndoQueue();
+    
+    qDebug() << "MediaPlayer::loadVirtualPlaylistLast called";
+    
+    // If we're already in virtual playlist mode, we need to convert to regular queue
+    if (m_isVirtualPlaylist) {
+        // Convert current virtual playlist state to regular queue
+        Mtoc::Track* currentTrack = m_currentTrack;
+        int currentPosition = m_virtualCurrentIndex;
+        
+        // Clear virtual playlist mode
+        m_isVirtualPlaylist = false;
+        m_virtualPlaylist = nullptr;
+        m_virtualCurrentIndex = -1;
+        m_virtualShuffleIndex = -1;
+        
+        // Add current track to regular queue if it exists
+        if (currentTrack) {
+            m_playbackQueue.append(currentTrack);
+            m_currentQueueIndex = 0;
+        }
+    }
+    
+    // Get all tracks from the virtual playlist and append
+    Mtoc::VirtualPlaylist* vPlaylist = model->virtualPlaylist();
+    int trackCount = vPlaylist->trackCount();
+    
+    // We need to create Track objects from the virtual playlist data
+    for (int i = 0; i < trackCount; ++i) {
+        auto trackData = vPlaylist->getTrackVariant(i);
+        if (!trackData.isEmpty()) {
+            QString title = trackData.value("title").toString();
+            QString filePath = trackData.value("filePath").toString();
+            
+            if (!filePath.isEmpty()) {
+                Mtoc::Track* track = new Mtoc::Track(this);
+                track->setTitle(title);
+                track->setArtist(trackData.value("artist").toString());
+                track->setAlbum(trackData.value("album").toString());
+                track->setAlbumArtist(trackData.value("albumArtist").toString());
+                track->setTrackNumber(trackData.value("trackNumber").toInt());
+                track->setDuration(trackData.value("duration").toInt());
+                track->setFileUrl(QUrl::fromLocalFile(filePath));
+                
+                m_playbackQueue.append(track);
+            }
+        }
+    }
+    
+    // Mark queue as modified
+    setQueueModified(true);
+    
+    emit playbackQueueChanged();
+    
+    // If nothing is playing, start playback
+    if (m_currentQueueIndex < 0 && !m_playbackQueue.isEmpty()) {
+        m_currentQueueIndex = 0;
+        playTrack(m_playbackQueue[0]);
+    }
 }
 
 void MediaPlayer::preloadVirtualTracks(int centerIndex)

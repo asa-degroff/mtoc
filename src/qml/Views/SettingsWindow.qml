@@ -7,7 +7,7 @@ ApplicationWindow {
     id: settingsWindow
     title: "Settings - mtoc"
     width: 600
-    height: 500
+    height: 800
     
     flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint
     
@@ -56,7 +56,7 @@ ApplicationWindow {
                         spacing: 12
                         
                         Label {
-                            text: "Default action when playing album:"
+                            text: "Default action when playing album if queue has been modified:"
                             font.pixelSize: 14
                             color: "#cccccc"
                             Layout.preferredWidth: 250

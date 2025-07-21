@@ -7,7 +7,7 @@ Item {
     id: root
     
     signal playlistSelected(string playlistName)
-    signal playlistDoubleClicked(string playlistName)
+    signal playlistDoubleClicked(string playlistName, var event)
     
     ListView {
         id: playlistListView
@@ -190,7 +190,7 @@ Item {
                 onDoubleClicked: {
                     // Only handle double clicks if not clicking on the action buttons area
                     if (mouse.x < width - 68) {  // Account for both rename and delete buttons
-                        root.playlistDoubleClicked(modelData)
+                        root.playlistDoubleClicked(modelData, mouse)
                     }
                 }
             }

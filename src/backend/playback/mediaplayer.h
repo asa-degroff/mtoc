@@ -91,6 +91,8 @@ public slots:
     Q_INVOKABLE void playTrackLast(const QVariant& trackData);
     Q_INVOKABLE void playAlbumNext(const QString& artist, const QString& title);
     Q_INVOKABLE void playAlbumLast(const QString& artist, const QString& title);
+    Q_INVOKABLE void playPlaylistNext(const QString& playlistName);
+    Q_INVOKABLE void playPlaylistLast(const QString& playlistName);
     Q_INVOKABLE void removeTrackAt(int index);
     Q_INVOKABLE void removeTracks(const QList<int>& indices);
     Q_INVOKABLE void playTrackAt(int index);
@@ -103,6 +105,8 @@ public slots:
     // Virtual playlist support
     Q_INVOKABLE void loadVirtualPlaylist(Mtoc::VirtualPlaylistModel* model);
     Q_INVOKABLE void playVirtualPlaylist(); // Start playing respecting shuffle mode
+    Q_INVOKABLE void loadVirtualPlaylistNext(Mtoc::VirtualPlaylistModel* model);
+    Q_INVOKABLE void loadVirtualPlaylistLast(Mtoc::VirtualPlaylistModel* model);
     void clearVirtualPlaylist();
     
     void setRepeatEnabled(bool enabled);

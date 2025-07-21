@@ -92,15 +92,27 @@ Item {
         id: queueActionDialog
         
         onReplaceQueue: {
-            MediaPlayer.playAlbumByName(albumArtist, albumTitle, startIndex)
+            if (isPlaylist) {
+                playPlaylistReplace(playlistName, isVirtualPlaylist)
+            } else {
+                MediaPlayer.playAlbumByName(albumArtist, albumTitle, startIndex)
+            }
         }
         
         onPlayNext: {
-            MediaPlayer.playAlbumNext(albumArtist, albumTitle)
+            if (isPlaylist) {
+                playPlaylistNext(playlistName, isVirtualPlaylist)
+            } else {
+                MediaPlayer.playAlbumNext(albumArtist, albumTitle)
+            }
         }
         
         onPlayLast: {
-            MediaPlayer.playAlbumLast(albumArtist, albumTitle)
+            if (isPlaylist) {
+                playPlaylistLast(playlistName, isVirtualPlaylist)
+            } else {
+                MediaPlayer.playAlbumLast(albumArtist, albumTitle)
+            }
         }
     }
     
@@ -1745,32 +1757,19 @@ Item {
                                 }
                             }
                             
-                            onPlaylistDoubleClicked: function(playlistName) {
-                                // Handle special "All Songs" playlist
-                                if (playlistName === "All Songs") {
-                                    // Get the virtual playlist model
-                                    var allSongsModel = LibraryManager.getAllSongsPlaylist()
-                                    // Clear queue and load virtual playlist
-                                    MediaPlayer.clearQueue()
-                                    MediaPlayer.loadVirtualPlaylist(allSongsModel)
-                                    // Start playing respecting shuffle mode
-                                    MediaPlayer.playVirtualPlaylist()
-                                } else {
-                                    // Play regular playlist directly
-                                    var tracks = PlaylistManager.loadPlaylist(playlistName)
-                                    if (tracks.length > 0) {
-                                        // Clear queue first
-                                        MediaPlayer.clearQueue()
-                                        // Add all tracks to the queue
-                                        for (var i = 0; i < tracks.length; i++) {
-                                            MediaPlayer.playTrackLast(tracks[i])
-                                        }
-                                        // Update shuffle order if shuffle is enabled
-                                        MediaPlayer.updateShuffleOrder()
-                                        // Play the first track
-                                        MediaPlayer.playTrackAt(0)
-                                    }
+                            onPlaylistDoubleClicked: function(playlistName, event) {
+                                var isVirtual = playlistName === "All Songs"
+                                var mouseX = event ? event.x : undefined
+                                var mouseY = event ? event.y : undefined
+                                
+                                // Map local coordinates to window coordinates if event is provided
+                                if (event && playlistView) {
+                                    var globalPos = playlistView.mapToItem(root, mouseX, mouseY)
+                                    mouseX = globalPos.x
+                                    mouseY = globalPos.y
                                 }
+                                
+                                playPlaylistWithQueueCheck(playlistName, isVirtual, mouseX, mouseY)
                             }
                         }
                     }
@@ -4229,9 +4228,12 @@ Item {
         // Check if we should show the dialog
         if (SettingsManager.queueActionDefault === SettingsManager.Ask && MediaPlayer.isQueueModified) {
             // Show dialog for "Ask every time" setting when queue is modified
+            queueActionDialog.isPlaylist = false
             queueActionDialog.albumArtist = artist
             queueActionDialog.albumTitle = title
             queueActionDialog.startIndex = startIndex || 0
+            queueActionDialog.playlistName = ""
+            queueActionDialog.isVirtualPlaylist = false
             
             // Position dialog at cursor location with bounds checking
             if (mouseX !== undefined && mouseY !== undefined) {
@@ -4268,6 +4270,100 @@ Item {
                     MediaPlayer.playAlbumByName(artist, title, startIndex || 0);
                     break;
             }
+        }
+    }
+    
+    function playPlaylistWithQueueCheck(playlistName, isVirtualPlaylist, mouseX, mouseY) {
+        // Check if we should show the dialog
+        if (SettingsManager.queueActionDefault === SettingsManager.Ask && MediaPlayer.isQueueModified) {
+            // Show dialog for "Ask every time" setting when queue is modified
+            queueActionDialog.isPlaylist = true
+            queueActionDialog.playlistName = playlistName
+            queueActionDialog.isVirtualPlaylist = isVirtualPlaylist || false
+            queueActionDialog.albumArtist = ""
+            queueActionDialog.albumTitle = ""
+            queueActionDialog.startIndex = 0
+            
+            // Position dialog at cursor location with bounds checking
+            if (mouseX !== undefined && mouseY !== undefined) {
+                var dialogX = mouseX - queueActionDialog.width / 2
+                var dialogY = mouseY - queueActionDialog.height / 2
+                
+                // Get window dimensions
+                var windowWidth = root.Window.window ? root.Window.window.width : root.width
+                var windowHeight = root.Window.window ? root.Window.window.height : root.height
+                
+                // Keep dialog within window bounds with 10px margin
+                dialogX = Math.max(10, Math.min(dialogX, windowWidth - queueActionDialog.width - 10))
+                dialogY = Math.max(10, Math.min(dialogY, windowHeight - queueActionDialog.height - 10))
+                
+                queueActionDialog.x = dialogX
+                queueActionDialog.y = dialogY
+            }
+            
+            queueActionDialog.open()
+        } else {
+            // Apply the configured action
+            switch (SettingsManager.queueActionDefault) {
+                case SettingsManager.Replace:
+                    playPlaylistReplace(playlistName, isVirtualPlaylist);
+                    break;
+                case SettingsManager.Insert:
+                    playPlaylistNext(playlistName, isVirtualPlaylist);
+                    break;
+                case SettingsManager.Append:
+                    playPlaylistLast(playlistName, isVirtualPlaylist);
+                    break;
+                case SettingsManager.Ask:
+                    // If Ask but queue not modified, default to replace
+                    playPlaylistReplace(playlistName, isVirtualPlaylist);
+                    break;
+            }
+        }
+    }
+    
+    function playPlaylistReplace(playlistName, isVirtualPlaylist) {
+        if (isVirtualPlaylist && playlistName === "All Songs") {
+            // Get the virtual playlist model
+            var allSongsModel = LibraryManager.getAllSongsPlaylist()
+            // Clear queue and load virtual playlist
+            MediaPlayer.clearQueue()
+            MediaPlayer.loadVirtualPlaylist(allSongsModel)
+            // Start playing respecting shuffle mode
+            MediaPlayer.playVirtualPlaylist()
+        } else {
+            // Play regular playlist directly
+            var tracks = PlaylistManager.loadPlaylist(playlistName)
+            if (tracks.length > 0) {
+                // Clear queue first
+                MediaPlayer.clearQueue()
+                // Add all tracks to the queue
+                for (var i = 0; i < tracks.length; i++) {
+                    MediaPlayer.playTrackLast(tracks[i])
+                }
+                // Update shuffle order if shuffle is enabled
+                MediaPlayer.updateShuffleOrder()
+                // Play the first track
+                MediaPlayer.playTrackAt(0)
+            }
+        }
+    }
+    
+    function playPlaylistNext(playlistName, isVirtualPlaylist) {
+        if (isVirtualPlaylist && playlistName === "All Songs") {
+            var allSongsModel = LibraryManager.getAllSongsPlaylist()
+            MediaPlayer.loadVirtualPlaylistNext(allSongsModel)
+        } else {
+            MediaPlayer.playPlaylistNext(playlistName)
+        }
+    }
+    
+    function playPlaylistLast(playlistName, isVirtualPlaylist) {
+        if (isVirtualPlaylist && playlistName === "All Songs") {
+            var allSongsModel = LibraryManager.getAllSongsPlaylist()
+            MediaPlayer.loadVirtualPlaylistLast(allSongsModel)
+        } else {
+            MediaPlayer.playPlaylistLast(playlistName)
         }
     }
 }

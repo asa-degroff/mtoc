@@ -9,6 +9,9 @@ Popup {
     property string albumArtist: ""
     property string albumTitle: ""
     property int startIndex: 0
+    property string playlistName: ""
+    property bool isPlaylist: false
+    property bool isVirtualPlaylist: false
     
     signal replaceQueue()
     signal playNext()
@@ -67,10 +70,17 @@ Popup {
         
         Label {
             Layout.fillWidth: true
-            text: "What would you like to do?"
+            text: {
+                if (root.isPlaylist) {
+                    return root.playlistName ? "Playing playlist: " + root.playlistName : "Playing playlist"
+                } else {
+                    return root.albumTitle ? "Playing: " + root.albumArtist + " - " + root.albumTitle : "What would you like to do?"
+                }
+            }
             font.pixelSize: 14
             color: "#cccccc"
             horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WordWrap
         }
         
         Item {
