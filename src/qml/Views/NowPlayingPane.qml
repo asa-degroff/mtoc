@@ -151,10 +151,12 @@ Item {
                 anchors.fill: parent
                 spacing: queueVisible ? 16 : 0
                 
-                // Left spacer for centering when queue is hidden
+                // Album art container
                 Item {
-                    Layout.preferredWidth: queueVisible ? 0 : parent.width * 0.05
+                    id: albumArtContainer
+                    Layout.preferredWidth: queueVisible ? parent.width * 0.24 : parent.width * 0.9
                     Layout.fillHeight: true
+                    Layout.alignment: queueVisible ? Qt.AlignLeft : Qt.AlignHCenter
                     
                     Behavior on Layout.preferredWidth {
                         NumberAnimation { 
@@ -162,26 +164,16 @@ Item {
                             easing.type: Easing.InOutCubic
                         }
                     }
-                }
-                
-                // Album art container
-                Item {
-                    id: albumArtContainer
-                    Layout.preferredWidth: queueVisible ? parent.width * 0.3 : parent.width * 0.9
-                    Layout.fillHeight: true
                     
-                    Behavior on Layout.preferredWidth {
-                        NumberAnimation { 
-                            duration: 300
-                            easing.type: Easing.InOutCubic
-                        }
+                    Behavior on Layout.alignment {
+                        enabled: false  // Disable animation on alignment change to prevent jumps
                     }
                     
                     // Column to show multiple album covers when queue is visible
                     Column {
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.horizontalCenter: parent.horizontalCenter
-                        width: parent.width * 0.8
+                        width: parent.width
                         height: parent.height
                         spacing: queueVisible ? 10 : 0
                         opacity: (queueVisible && uniqueAlbumCovers.length > 0) ? 1.0 : 0.0
@@ -481,19 +473,6 @@ Item {
                             }
                         }
                     }
-                    }
-                }
-                
-                // Right spacer for centering when queue is hidden
-                Item {
-                    Layout.preferredWidth: queueVisible ? 0 : parent.width * 0.05
-                    Layout.fillHeight: true
-                    
-                    Behavior on Layout.preferredWidth {
-                        NumberAnimation { 
-                            duration: 300
-                            easing.type: Easing.InOutCubic
-                        }
                     }
                 }
             }
