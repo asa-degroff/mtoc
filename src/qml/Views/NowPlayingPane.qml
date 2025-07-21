@@ -362,7 +362,7 @@ Item {
                                 color: saveQueueMouseArea.containsMouse ? Qt.rgba(0, 1, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
                                 border.width: 1
                                 border.color: Qt.rgba(1, 1, 1, 0.3)
-                                visible: MediaPlayer.queueLength > 0
+                                visible: MediaPlayer.queueLength > 0 && !MediaPlayer.isPlayingVirtualPlaylist
                                 
                                 Behavior on color {
                                     ColorAnimation { duration: 150 }
@@ -409,7 +409,7 @@ Item {
                                 color: clearQueueMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
                                 border.width: 1
                                 border.color: Qt.rgba(1, 1, 1, 0.3)
-                                visible: MediaPlayer.queueLength > 0 || MediaPlayer.canUndoClear
+                                visible: (MediaPlayer.queueLength > 0 || MediaPlayer.canUndoClear) && !MediaPlayer.isPlayingVirtualPlaylist
                                 
                                 Behavior on color {
                                     ColorAnimation { duration: 150 }

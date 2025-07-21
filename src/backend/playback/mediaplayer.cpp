@@ -3,6 +3,7 @@
 #include "backend/library/album.h"
 #include "backend/library/librarymanager.h"
 #include "backend/settings/settingsmanager.h"
+#include "backend/database/databasemanager.h"
 #include "backend/playlist/VirtualPlaylistModel.h"
 #include "backend/playlist/VirtualPlaylist.h"
 #include "backend/playlist/playlistmanager.h"
@@ -276,7 +277,16 @@ int MediaPlayer::currentQueueIndex() const
 
 int MediaPlayer::totalQueueDuration() const
 {
-    // For virtual playlists, get the total duration from the virtual playlist
+    // For "All Songs" virtual playlist, get the total duration from the database
+    // This ensures consistency with what's shown in the playlist view
+    if (m_isVirtualPlaylist && m_virtualPlaylistName == "All Songs" && m_libraryManager) {
+        auto db = m_libraryManager->databaseManager();
+        if (db) {
+            return db->getTotalDuration();
+        }
+    }
+    
+    // For other virtual playlists, get the total duration from the virtual playlist
     if (m_isVirtualPlaylist && m_virtualPlaylist) {
         return m_virtualPlaylist->totalDuration();
     }
