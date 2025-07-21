@@ -428,6 +428,9 @@ void MediaPlayer::next()
             
             if (m_shuffleIndex >= 0 && m_shuffleIndex < m_shuffleOrder.size()) {
                 m_currentQueueIndex = m_shuffleOrder[m_shuffleIndex];
+            } else {
+                qWarning() << "Invalid shuffle index after update:" << m_shuffleIndex << "shuffle order size:" << m_shuffleOrder.size();
+                return;
             }
         } else {
             // Sequential playback
@@ -510,10 +513,22 @@ void MediaPlayer::previous()
         int prevShuffleIdx = getPreviousShuffleIndex();
         if (prevShuffleIdx >= 0) {
             m_shuffleIndex = prevShuffleIdx;
-            m_currentQueueIndex = m_shuffleOrder[m_shuffleIndex];
-            Mtoc::Track* prevTrack = m_playbackQueue[m_currentQueueIndex];
-            playTrack(prevTrack);
-            emit playbackQueueChanged();
+            // Add bounds checking before accessing m_shuffleOrder
+            if (m_shuffleIndex >= 0 && m_shuffleIndex < m_shuffleOrder.size()) {
+                m_currentQueueIndex = m_shuffleOrder[m_shuffleIndex];
+                // Add bounds checking before accessing m_playbackQueue
+                if (m_currentQueueIndex >= 0 && m_currentQueueIndex < m_playbackQueue.size()) {
+                    Mtoc::Track* prevTrack = m_playbackQueue[m_currentQueueIndex];
+                    playTrack(prevTrack);
+                    emit playbackQueueChanged();
+                } else {
+                    qWarning() << "Invalid queue index in shuffle order:" << m_currentQueueIndex;
+                    seek(0);
+                }
+            } else {
+                qWarning() << "Invalid shuffle index:" << m_shuffleIndex;
+                seek(0);
+            }
         } else {
             seek(0);
         }
@@ -688,6 +703,11 @@ void MediaPlayer::removeTrackAt(int index)
             }
             emit playbackQueueChanged();
             
+            // Update shuffle order if enabled
+            if (m_shuffleEnabled) {
+                updateShuffleOrder();
+            }
+            
             // Load the track but don't auto-play if we were paused
             loadTrack(m_playbackQueue[m_currentQueueIndex], !wasPaused);
         } else if (m_currentQueueIndex > 0) {
@@ -698,6 +718,11 @@ void MediaPlayer::removeTrackAt(int index)
             }
             m_currentQueueIndex--;
             emit playbackQueueChanged();
+            
+            // Update shuffle order if enabled
+            if (m_shuffleEnabled) {
+                updateShuffleOrder();
+            }
             
             // Load the track but don't auto-play if we were paused
             loadTrack(m_playbackQueue[m_currentQueueIndex], !wasPaused);
@@ -726,6 +751,11 @@ void MediaPlayer::removeTrackAt(int index)
             trackToRemove->deleteLater();
         }
         emit playbackQueueChanged();
+    }
+    
+    // Update shuffle order if enabled
+    if (m_shuffleEnabled) {
+        updateShuffleOrder();
     }
 }
 
@@ -792,19 +822,7 @@ void MediaPlayer::removeTracks(const QList<int>& indices)
     
     // Update shuffle order if needed
     if (m_shuffleEnabled) {
-        QVector<int> newShuffleOrder;
-        for (int i = 0; i < m_shuffleOrder.size(); i++) {
-            int oldIdx = m_shuffleOrder[i];
-            if (!sortedIndices.contains(oldIdx)) {
-                // Calculate new index after removals
-                int removedBefore = 0;
-                for (int removedIdx : sortedIndices) {
-                    if (removedIdx < oldIdx) removedBefore++;
-                }
-                newShuffleOrder.append(oldIdx - removedBefore);
-            }
-        }
-        m_shuffleOrder = newShuffleOrder;
+        updateShuffleOrder();
     }
     
     // Handle playback state
@@ -1284,20 +1302,8 @@ void MediaPlayer::playTrackNext(const QVariant& trackData)
     setQueueModified(true);
     
     // Update shuffle order if enabled
-    if (m_shuffleEnabled && !m_playbackQueue.isEmpty()) {
-        // Add the new track index to shuffle order after current position
-        int newTrackIndex = insertIndex;
-        if (m_shuffleIndex >= 0 && m_shuffleIndex < m_shuffleOrder.size() - 1) {
-            m_shuffleOrder.insert(m_shuffleIndex + 1, newTrackIndex);
-            // Adjust indices after insertion
-            for (int i = m_shuffleIndex + 2; i < m_shuffleOrder.size(); ++i) {
-                if (m_shuffleOrder[i] >= newTrackIndex) {
-                    m_shuffleOrder[i]++;
-                }
-            }
-        } else {
-            m_shuffleOrder.append(newTrackIndex);
-        }
+    if (m_shuffleEnabled) {
+        updateShuffleOrder();
     }
     
     emit playbackQueueChanged();
@@ -1340,6 +1346,11 @@ void MediaPlayer::playTrackLast(const QVariant& trackData)
     
     // Mark queue as modified when adding individual tracks
     setQueueModified(true);
+    
+    // Update shuffle order if enabled
+    if (m_shuffleEnabled) {
+        updateShuffleOrder();
+    }
     
     emit playbackQueueChanged();
     
@@ -1399,6 +1410,11 @@ void MediaPlayer::playAlbumNext(const QString& artist, const QString& title)
     // Mark queue as modified when adding albums to existing queue
     setQueueModified(true);
     
+    // Update shuffle order if enabled
+    if (m_shuffleEnabled) {
+        updateShuffleOrder();
+    }
+    
     emit playbackQueueChanged();
     
     // If nothing is playing, start playback
@@ -1453,6 +1469,11 @@ void MediaPlayer::playAlbumLast(const QString& artist, const QString& title)
     
     // Mark queue as modified when adding albums to existing queue
     setQueueModified(true);
+    
+    // Update shuffle order if enabled
+    if (m_shuffleEnabled) {
+        updateShuffleOrder();
+    }
     
     emit playbackQueueChanged();
     
@@ -2215,14 +2236,45 @@ void MediaPlayer::updateShuffleOrder()
     // Regular queue handling
     // Only update if shuffle is enabled and we have tracks
     if (m_shuffleEnabled && !m_playbackQueue.isEmpty()) {
-        generateShuffleOrder();
+        // Preserve the played portion of the shuffle order
+        QList<int> playedTracks;
+        QList<int> unplayedTracks;
         
-        // After generating shuffle order, we need to find where our current track ended up
-        // and update m_shuffleIndex to that position
-        if (!m_shuffleOrder.isEmpty() && m_currentQueueIndex >= 0) {
+        // Save already played tracks (up to current position)
+        if (m_shuffleIndex >= 0 && m_shuffleIndex < m_shuffleOrder.size()) {
+            for (int i = 0; i <= m_shuffleIndex; i++) {
+                if (m_shuffleOrder[i] < m_playbackQueue.size()) {
+                    playedTracks.append(m_shuffleOrder[i]);
+                }
+            }
+        }
+        
+        // Find all tracks that haven't been played yet
+        for (int i = 0; i < m_playbackQueue.size(); i++) {
+            if (!playedTracks.contains(i)) {
+                unplayedTracks.append(i);
+            }
+        }
+        
+        // Shuffle the unplayed tracks
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::shuffle(unplayedTracks.begin(), unplayedTracks.end(), gen);
+        
+        // Rebuild shuffle order: played tracks + shuffled unplayed tracks
+        m_shuffleOrder.clear();
+        m_shuffleOrder.append(playedTracks);
+        m_shuffleOrder.append(unplayedTracks);
+        
+        // Update shuffle index to point to current track
+        if (m_currentQueueIndex >= 0) {
             int shufflePos = m_shuffleOrder.indexOf(m_currentQueueIndex);
             if (shufflePos >= 0) {
                 m_shuffleIndex = shufflePos;
+            } else {
+                // Current track was removed, reset to beginning of unplayed tracks
+                m_shuffleIndex = playedTracks.size() - 1;
+                if (m_shuffleIndex < 0) m_shuffleIndex = 0;
             }
         }
     }
