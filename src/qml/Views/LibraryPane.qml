@@ -1805,6 +1805,21 @@ Item {
                                 
                                 playPlaylistWithQueueCheck(playlistName, isVirtual, mouseX, mouseY)
                             }
+                            
+                            onPlaylistPlayRequested: function(playlistName) {
+                                var isVirtual = playlistName === "All Songs"
+                                playPlaylistWithQueueCheck(playlistName, isVirtual)
+                            }
+                            
+                            onPlaylistPlayNextRequested: function(playlistName) {
+                                var isVirtual = playlistName === "All Songs"
+                                playPlaylistNext(playlistName, isVirtual)
+                            }
+                            
+                            onPlaylistPlayLastRequested: function(playlistName) {
+                                var isVirtual = playlistName === "All Songs"
+                                playPlaylistLast(playlistName, isVirtual)
+                            }
                         }
                         }  // End of slidingContainer
                     }  // End of viewContainer

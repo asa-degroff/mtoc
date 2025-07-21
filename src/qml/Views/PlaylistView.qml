@@ -2,12 +2,16 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import Mtoc.Backend 1.0
+import "../Components"
 
 Item {
     id: root
     
     signal playlistSelected(string playlistName)
     signal playlistDoubleClicked(string playlistName, var event)
+    signal playlistPlayRequested(string playlistName)
+    signal playlistPlayNextRequested(string playlistName)
+    signal playlistPlayLastRequested(string playlistName)
     
     ListView {
         id: playlistListView
@@ -179,12 +183,22 @@ Item {
                 id: mouseArea
                 anchors.fill: parent
                 hoverEnabled: true
-                acceptedButtons: Qt.LeftButton
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
                 z: -1  // Put below other elements
+                
+                property string currentPlaylistName: modelData
+                
                 onClicked: {
-                    // Only handle clicks if not clicking on the action buttons area
-                    if (mouse.x < width - 68) {  // Account for both rename and delete buttons
-                        root.playlistSelected(modelData)
+                    if (mouse.button === Qt.LeftButton) {
+                        // Only handle clicks if not clicking on the action buttons area
+                        if (mouse.x < width - 68) {  // Account for both rename and delete buttons
+                            root.playlistSelected(modelData)
+                        }
+                    } else if (mouse.button === Qt.RightButton) {
+                        // Show context menu
+                        playlistContextMenu.playlistName = modelData
+                        playlistContextMenu.isAllSongs = modelData === "All Songs"
+                        playlistContextMenu.popup()
                     }
                 }
                 onDoubleClicked: {
@@ -208,6 +222,39 @@ Item {
             font.pixelSize: 12
             horizontalAlignment: Text.AlignHCenter
             visible: playlistListView.count === 0
+        }
+    }
+    
+    // Context menu for playlists
+    StyledMenu {
+        id: playlistContextMenu
+        
+        property string playlistName: ""
+        property bool isAllSongs: false
+        
+        MenuItem {
+            text: "Play"
+            onTriggered: {
+                root.playlistPlayRequested(playlistContextMenu.playlistName)
+            }
+        }
+        
+        MenuItem {
+            text: "Play Next"
+            visible: !playlistContextMenu.isAllSongs  // Hide for "All Songs"
+            height: visible ? implicitHeight : 0
+            onTriggered: {
+                root.playlistPlayNextRequested(playlistContextMenu.playlistName)
+            }
+        }
+        
+        MenuItem {
+            text: "Play Last"
+            visible: !playlistContextMenu.isAllSongs  // Hide for "All Songs"
+            height: visible ? implicitHeight : 0
+            onTriggered: {
+                root.playlistPlayLastRequested(playlistContextMenu.playlistName)
+            }
         }
     }
     
