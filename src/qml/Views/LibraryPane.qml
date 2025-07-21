@@ -1022,70 +1022,80 @@ Item {
                             border.width: 1
                             border.color: Qt.rgba(1, 1, 1, 0.06)
                             
-                            RowLayout {
+                            Item {
                                 anchors.fill: parent
                                 anchors.margins: 3
-                                spacing: 2  // Add small spacing between buttons
                                 
-                                // Artists button
+                                // Sliding indicator background
                                 Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    color: root.currentTab === 0 ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
+                                    id: tabIndicator
+                                    width: (parent.width - 2) / 2  // Account for spacing
+                                    height: parent.height
+                                    color: Qt.rgba(1, 1, 1, 0.08)
                                     radius: 3
+                                    x: root.currentTab === 0 ? 0 : parent.width / 2 + 1
                                     
-                                    Behavior on color {
-                                        ColorAnimation { duration: 150 }
-                                    }
-                                    
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "Artists"
-                                        font.pixelSize: 12
-                                        color: root.currentTab === 0 ? "white" : "#808080"
-                                        
-                                        Behavior on color {
-                                            ColorAnimation { duration: 150 }
-                                        }
-                                    }
-                                    
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            root.currentTab = 0
-                                            resetNavigation()
+                                    Behavior on x {
+                                        NumberAnimation { 
+                                            duration: 200
+                                            easing.type: Easing.InOutQuad
                                         }
                                     }
                                 }
                                 
-                                // Playlists button
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    color: root.currentTab === 1 ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
-                                    radius: 3
+                                // Tab buttons row
+                                RowLayout {
+                                    anchors.fill: parent
+                                    spacing: 2  // Add small spacing between buttons
                                     
-                                    Behavior on color {
-                                        ColorAnimation { duration: 150 }
-                                    }
-                                    
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "Playlists"
-                                        font.pixelSize: 12
-                                        color: root.currentTab === 1 ? "white" : "#808080"
+                                    // Artists button
+                                    Item {
+                                        Layout.fillWidth: true
+                                        Layout.fillHeight: true
                                         
-                                        Behavior on color {
-                                            ColorAnimation { duration: 150 }
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "Artists"
+                                            font.pixelSize: 12
+                                            color: root.currentTab === 0 ? "white" : "#808080"
+                                            
+                                            Behavior on color {
+                                                ColorAnimation { duration: 150 }
+                                            }
+                                        }
+                                        
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                root.currentTab = 0
+                                                resetNavigation()
+                                            }
                                         }
                                     }
                                     
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            root.currentTab = 1
+                                    // Playlists button
+                                    Item {
+                                        Layout.fillWidth: true
+                                        Layout.fillHeight: true
+                                        
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "Playlists"
+                                            font.pixelSize: 12
+                                            color: root.currentTab === 1 ? "white" : "#808080"
+                                            
+                                            Behavior on color {
+                                                ColorAnimation { duration: 150 }
+                                            }
+                                        }
+                                        
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                root.currentTab = 1
+                                            }
                                         }
                                     }
                                 }
