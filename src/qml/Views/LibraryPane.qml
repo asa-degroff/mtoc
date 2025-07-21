@@ -4274,8 +4274,24 @@ Item {
     }
     
     function playPlaylistWithQueueCheck(playlistName, isVirtualPlaylist, mouseX, mouseY) {
+        // Special handling for "All Songs" playlist
+        var isAllSongs = isVirtualPlaylist && playlistName === "All Songs"
+        
         // Check if we should show the dialog
-        if (SettingsManager.queueActionDefault === SettingsManager.Ask && MediaPlayer.isQueueModified) {
+        var shouldShowDialog = false
+        
+        if (isAllSongs) {
+            // For All Songs, show dialog if queue is modified AND (Ask is selected OR Play Next/Last is selected)
+            shouldShowDialog = MediaPlayer.isQueueModified && 
+                              (SettingsManager.queueActionDefault === SettingsManager.Ask ||
+                               SettingsManager.queueActionDefault === SettingsManager.Insert ||
+                               SettingsManager.queueActionDefault === SettingsManager.Append)
+        } else {
+            // For regular playlists, use normal logic
+            shouldShowDialog = SettingsManager.queueActionDefault === SettingsManager.Ask && MediaPlayer.isQueueModified
+        }
+        
+        if (shouldShowDialog) {
             // Show dialog for "Ask every time" setting when queue is modified
             queueActionDialog.isPlaylist = true
             queueActionDialog.playlistName = playlistName
@@ -4304,7 +4320,14 @@ Item {
             queueActionDialog.open()
         } else {
             // Apply the configured action
-            switch (SettingsManager.queueActionDefault) {
+            var effectiveAction = SettingsManager.queueActionDefault
+            
+            // For All Songs, if Play Next/Last is selected, fall back to Replace
+            if (isAllSongs && (effectiveAction === SettingsManager.Insert || effectiveAction === SettingsManager.Append)) {
+                effectiveAction = SettingsManager.Replace
+            }
+            
+            switch (effectiveAction) {
                 case SettingsManager.Replace:
                     playPlaylistReplace(playlistName, isVirtualPlaylist);
                     break;

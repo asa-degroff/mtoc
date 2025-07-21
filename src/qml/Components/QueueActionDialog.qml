@@ -70,6 +70,7 @@ Popup {
         
         Label {
             Layout.fillWidth: true
+            Layout.maximumWidth: parent.width - 16
             text: {
                 if (root.isPlaylist) {
                     return root.playlistName ? "Playing playlist: " + root.playlistName : "Playing playlist"
@@ -80,7 +81,7 @@ Popup {
             font.pixelSize: 14
             color: "#cccccc"
             horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.WordWrap
+            elide: Text.ElideMiddle
         }
         
         Item {
@@ -121,6 +122,7 @@ Popup {
                 Layout.fillWidth: true
                 text: "Play Next"
                 font.pixelSize: 14
+                visible: !(root.isVirtualPlaylist && root.playlistName === "All Songs")
                 
                 background: Rectangle {
                     color: parent.hovered ? Qt.rgba(0.25, 0.25, 0.25, 0.8) : Qt.rgba(0.2, 0.2, 0.2, 0.7)
@@ -147,6 +149,7 @@ Popup {
                 Layout.fillWidth: true
                 text: "Play Last"
                 font.pixelSize: 14
+                visible: !(root.isVirtualPlaylist && root.playlistName === "All Songs")
                 
                 background: Rectangle {
                     color: parent.hovered ? Qt.rgba(0.25, 0.25, 0.25, 0.8) : Qt.rgba(0.2, 0.2, 0.2, 0.7)
