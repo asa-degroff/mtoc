@@ -61,6 +61,19 @@ Item {
     property bool playlistEditMode: false
     property var editedPlaylistTracks: []
     property string editingPlaylistName: ""
+    property string playlistNameError: ""
+    property string playlistStatusMessage: ""
+    
+    // Timer to clear status message
+    Timer {
+        id: statusMessageTimer
+        interval: 2000
+        running: false
+        repeat: false
+        onTriggered: {
+            root.playlistStatusMessage = ""
+        }
+    }
     
     // Multi-selection state
     property var selectedTrackIndices: []
@@ -440,6 +453,7 @@ Item {
                 root.playlistEditMode = false;
                 root.editingPlaylistName = "";
                 root.editedPlaylistTracks = [];
+                root.playlistNameError = ""; // Clear any errors
             }
             
             // Validate selectedAlbum is a valid object with required string properties
@@ -1869,6 +1883,18 @@ Item {
                                             
                                             onTextChanged: {
                                                 root.editingPlaylistName = text
+                                                
+                                                // Validate the name
+                                                var trimmedName = text.trim()
+                                                if (trimmedName.length === 0) {
+                                                    root.playlistNameError = "Playlist name cannot be empty"
+                                                } else if (!/^[^<>:"/\\|?*]+$/.test(trimmedName)) {
+                                                    root.playlistNameError = "Invalid characters in playlist name"
+                                                } else if (trimmedName !== root.selectedAlbum.title && PlaylistManager.playlists.indexOf(trimmedName) !== -1) {
+                                                    root.playlistNameError = "A playlist with this name already exists"
+                                                } else {
+                                                    root.playlistNameError = ""
+                                                }
                                             }
                                             
                                             Keys.onReturnPressed: {
@@ -1908,17 +1934,29 @@ Item {
                                               (rightPane.currentAlbumTracks.length === 1 ? "1 track" : rightPane.currentAlbumTracks.length + " tracks") : ""
                                         color: "#b0b0b0"
                                         font.pixelSize: 12
-                                        visible: text !== ""
+                                        visible: text !== "" && !(root.playlistEditMode && root.playlistNameError !== "") && root.playlistStatusMessage === ""
                                     }
                                     
                                     Label {
                                         text: rightPane.currentAlbumTracks.length > 0 ? formatAlbumDuration() : ""
                                         color: "#b0b0b0"
                                         font.pixelSize: 12
-                                        visible: text !== ""
+                                        visible: text !== "" && !(root.playlistEditMode && root.playlistNameError !== "") && root.playlistStatusMessage === ""
                                     }
                                     
-                                    Item { Layout.fillWidth: true } // Spacer
+                                    Label {
+                                        text: root.playlistStatusMessage !== "" ? root.playlistStatusMessage : root.playlistNameError
+                                        color: root.playlistStatusMessage !== "" ? "#60ff60" : "#ff6060"
+                                        font.pixelSize: 12
+                                        visible: (root.playlistEditMode && root.playlistNameError !== "") || root.playlistStatusMessage !== ""
+                                        Layout.fillWidth: true
+                                        elide: Text.ElideRight
+                                    }
+                                    
+                                    Item { 
+                                        Layout.fillWidth: !root.playlistEditMode || root.playlistNameError === ""
+                                        Layout.preferredWidth: 0
+                                    } // Spacer
                                 }
                             }
                             
@@ -1960,6 +1998,8 @@ Item {
                                             root.playlistEditMode = true
                                             root.editingPlaylistName = root.selectedAlbum.title
                                             root.editedPlaylistTracks = rightPane.currentAlbumTracks.slice() // Make a copy
+                                            root.playlistNameError = "" // Clear any previous errors
+                                            root.playlistStatusMessage = "" // Clear any previous status messages
                                         }
                                     }
                                 }
@@ -2030,6 +2070,9 @@ Item {
                                             // Save the edited playlist tracks
                                             PlaylistManager.updatePlaylist(trimmedName, root.editedPlaylistTracks)
                                             root.playlistEditMode = false
+                                            root.playlistNameError = "" // Clear any errors
+                                            root.playlistStatusMessage = "Saved changes"
+                                            statusMessageTimer.restart()
                                             // Update the current view with edited tracks
                                             rightPane.currentAlbumTracks = root.editedPlaylistTracks.slice()
                                         }
@@ -2067,6 +2110,9 @@ Item {
                                             // Cancel edit mode and restore original tracks
                                             root.playlistEditMode = false
                                             root.editingPlaylistName = ""
+                                            root.playlistNameError = "" // Clear any errors
+                                            root.playlistStatusMessage = "Cancelled changes"
+                                            statusMessageTimer.restart()
                                             
                                             // Reload the original playlist tracks
                                             if (root.selectedAlbum && root.selectedAlbum.isPlaylist) {
