@@ -3325,6 +3325,10 @@ Item {
                     if (expandedArtists[bestMatch.artist]) {
                         // Already expanded, safe to scroll immediately
                         scrollToArtist(bestMatch.artist)
+                        // Select the track after scrolling
+                        Qt.callLater(function() {
+                            selectTrackByMatch(bestMatch)
+                        })
                     } else {
                         // Disable animations for expansion
                         isProgrammaticScrolling = true
@@ -3343,6 +3347,10 @@ Item {
                             // Reset flag after animation
                             Qt.callLater(function() {
                                 isProgrammaticScrolling = false
+                                // After scrolling completes and album is selected, select the track
+                                Qt.callLater(function() {
+                                    selectTrackByMatch(bestMatch)
+                                })
                             })
                         })
                     }
@@ -3494,6 +3502,29 @@ Item {
                     root.selectedTrackForInfo = tracks[i]
                 }
                 
+                break
+            }
+        }
+    }
+    
+    // Helper function to select a track based on search match
+    function selectTrackByMatch(trackMatch) {
+        if (!trackMatch || !rightPane || !rightPane.currentAlbumTracks) return
+        
+        var tracks = rightPane.currentAlbumTracks
+        for (var i = 0; i < tracks.length; i++) {
+            var track = tracks[i]
+            // Match by title and artist to ensure we get the right track
+            if (track && track.title === trackMatch.title && 
+                track.artist === trackMatch.artist) {
+                selectedTrackIndex = i
+                trackListView.currentIndex = i
+                ensureTrackVisible(i)
+                
+                // Update track info panel if visible
+                if (root.showTrackInfoPanel) {
+                    root.selectedTrackForInfo = track
+                }
                 break
             }
         }
@@ -3690,6 +3721,56 @@ Item {
                         selectedAlbumData = albums[j]
                         break
                     }
+                }
+            }
+        } else if (searchResults.bestMatch && searchResults.bestMatchType === "track") {
+            // Start with the track's artist expanded and album selected
+            var trackMatch = searchResults.bestMatch
+            if (trackMatch.artist && trackMatch.album) {
+                var artistName = trackMatch.artist
+                // Use O(1) lookup instead of O(n) linear search
+                var artistIndex = artistNameToIndex[artistName]
+                if (artistIndex !== undefined) {
+                    selectedArtistIndex = artistIndex
+                    selectedArtistName = artistName
+                    artistsListView.currentIndex = artistIndex  // Sync with ListView
+                    
+                    // Ensure artist is expanded
+                    var updatedExpanded = Object.assign({}, expandedArtists)
+                    updatedExpanded[artistName] = true
+                    expandedArtists = updatedExpanded
+                    
+                    // Find and select the album
+                    var albums = LibraryManager.getAlbumsForArtist(artistName)
+                    for (var k = 0; k < albums.length; k++) {
+                        if (albums[k].title === trackMatch.album) {
+                            selectedAlbumIndex = k
+                            selectedAlbumData = albums[k]
+                            selectedAlbum = albums[k]  // This triggers track list loading
+                            break
+                        }
+                    }
+                    
+                    // Wait for tracks to load, then select the track
+                    Qt.callLater(function() {
+                        // Find and select the track
+                        var tracks = rightPane.currentAlbumTracks
+                        for (var i = 0; i < tracks.length; i++) {
+                            if (tracks[i].title === trackMatch.title && 
+                                tracks[i].artist === trackMatch.artist) {
+                                navigationMode = "track"
+                                selectedTrackIndex = i
+                                trackListView.currentIndex = i
+                                ensureTrackVisible(i)
+                                
+                                // Update track info panel if visible
+                                if (root.showTrackInfoPanel) {
+                                    root.selectedTrackForInfo = tracks[i]
+                                }
+                                break
+                            }
+                        }
+                    })
                 }
             }
         }
