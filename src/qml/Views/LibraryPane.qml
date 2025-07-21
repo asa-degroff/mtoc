@@ -1103,19 +1103,40 @@ Item {
                         }
                     }
                     
-                    // StackLayout to switch between Artists and Playlists
-                    StackLayout {
+                    // Container for sliding animation between Artists and Playlists
+                    Item {
+                        id: viewContainer
                         anchors.top: searchRow.bottom
                         anchors.topMargin: 8
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
-                        currentIndex: root.currentTab
+                        clip: true  // Important for hiding the view that slides out
                         
-                        // Artists view
-                        ListView {
-                            id: artistsListView
-                            clip: true
+                        // Inner container that slides horizontally
+                        Item {
+                            id: slidingContainer
+                            width: parent.width * 2  // Wide enough for both views side by side
+                            height: parent.height
+                            
+                            // Animate the x position when switching tabs
+                            x: root.currentTab === 0 ? 0 : -parent.width
+                            
+                            Behavior on x {
+                                enabled: true
+                                NumberAnimation {
+                                    duration: 250
+                                    easing.type: Easing.InOutQuad
+                                }
+                            }
+                        
+                            // Artists view - positioned at x: 0
+                            ListView {
+                                id: artistsListView
+                                x: 0
+                                width: viewContainer.width
+                                height: parent.height
+                                clip: true
                             model: LibraryManager.artistModel
                             spacing: 2
                             interactive: !root.isScrollBarDragging  // Disable ListView interaction during scroll bar drag
@@ -1729,9 +1750,12 @@ Item {
                         }
                     }
                         
-                        // Playlists view
-                        PlaylistView {
-                            id: playlistView
+                            // Playlists view - positioned to the right of artists view
+                            PlaylistView {
+                                id: playlistView
+                                x: viewContainer.width  // Positioned next to artists view
+                                width: viewContainer.width
+                                height: parent.height
                             
                             onPlaylistSelected: function(playlistName) {
                                 // Handle special "All Songs" playlist
@@ -1782,7 +1806,8 @@ Item {
                                 playPlaylistWithQueueCheck(playlistName, isVirtual, mouseX, mouseY)
                             }
                         }
-                    }
+                        }  // End of slidingContainer
+                    }  // End of viewContainer
                 }
             }
 
