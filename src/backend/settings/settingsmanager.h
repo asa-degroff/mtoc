@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QSettings>
+#include <QString>
 
 class SettingsManager : public QObject
 {
@@ -12,6 +13,8 @@ class SettingsManager : public QObject
     Q_PROPERTY(bool restorePlaybackPosition READ restorePlaybackPosition WRITE setRestorePlaybackPosition NOTIFY restorePlaybackPositionChanged)
     Q_PROPERTY(bool repeatEnabled READ repeatEnabled WRITE setRepeatEnabled NOTIFY repeatEnabledChanged)
     Q_PROPERTY(bool shuffleEnabled READ shuffleEnabled WRITE setShuffleEnabled NOTIFY shuffleEnabledChanged)
+    Q_PROPERTY(int libraryActiveTab READ libraryActiveTab WRITE setLibraryActiveTab NOTIFY libraryActiveTabChanged)
+    Q_PROPERTY(QString lastSelectedAlbumId READ lastSelectedAlbumId WRITE setLastSelectedAlbumId NOTIFY lastSelectedAlbumIdChanged)
 
 public:
     enum QueueAction {
@@ -30,6 +33,8 @@ public:
     bool restorePlaybackPosition() const { return m_restorePlaybackPosition; }
     bool repeatEnabled() const { return m_repeatEnabled; }
     bool shuffleEnabled() const { return m_shuffleEnabled; }
+    int libraryActiveTab() const { return m_libraryActiveTab; }
+    QString lastSelectedAlbumId() const { return m_lastSelectedAlbumId; }
     
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -37,6 +42,8 @@ public:
     void setRestorePlaybackPosition(bool restore);
     void setRepeatEnabled(bool enabled);
     void setShuffleEnabled(bool enabled);
+    void setLibraryActiveTab(int tab);
+    void setLastSelectedAlbumId(const QString& albumId);
 
 signals:
     void queueActionDefaultChanged(QueueAction action);
@@ -44,6 +51,8 @@ signals:
     void restorePlaybackPositionChanged(bool restore);
     void repeatEnabledChanged(bool enabled);
     void shuffleEnabledChanged(bool enabled);
+    void libraryActiveTabChanged(int tab);
+    void lastSelectedAlbumIdChanged(const QString& albumId);
 
 private:
     explicit SettingsManager(QObject *parent = nullptr);
@@ -61,6 +70,8 @@ private:
     bool m_restorePlaybackPosition;
     bool m_repeatEnabled;
     bool m_shuffleEnabled;
+    int m_libraryActiveTab;
+    QString m_lastSelectedAlbumId;
 };
 
 #endif // SETTINGSMANAGER_H

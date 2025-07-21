@@ -53,6 +53,9 @@ Item {
     
     // Tab state
     property int currentTab: 0  // 0 = Artists, 1 = Playlists
+    onCurrentTabChanged: {
+        SettingsManager.libraryActiveTab = currentTab
+    }
     
     // Playlist editing state
     property bool playlistEditMode: false
@@ -346,6 +349,16 @@ Item {
         // Don't auto-select any track - start with no selection
         // Qt.callLater(autoSelectCurrentTrack)
         
+        // Restore library pane state
+        currentTab = SettingsManager.libraryActiveTab
+        
+        // Restore selected album after a delay to ensure everything is loaded
+        if (SettingsManager.lastSelectedAlbumId) {
+            Qt.callLater(function() {
+                restoreSelectedAlbum(SettingsManager.lastSelectedAlbumId)
+            })
+        }
+        
         // Initialize keyboard navigation after a small delay to ensure everything is ready
         navigationInitTimer.start()
     }
@@ -404,6 +417,11 @@ Item {
 
     onSelectedAlbumChanged: {
         try {
+            // Save selected album ID
+            if (selectedAlbum && selectedAlbum.id) {
+                SettingsManager.lastSelectedAlbumId = String(selectedAlbum.id)
+            }
+            
             // Sync navigation data when album changes
             root.selectedAlbumData = selectedAlbum
             
@@ -3172,6 +3190,47 @@ Item {
         } catch (error) {
             console.warn("Error in formatAlbumDuration:", error);
             return "";
+        }
+    }
+    
+    function restoreSelectedAlbum(albumIdStr) {
+        try {
+            var albumId = parseInt(albumIdStr)
+            if (isNaN(albumId)) return
+            
+            // Search through all albums to find the one with matching ID
+            var albums = LibraryManager.albumModel
+            for (var i = 0; i < albums.length; i++) {
+                if (albums[i].id === albumId) {
+                    var album = albums[i]
+                    
+                    // If it's a playlist, switch to playlist tab
+                    if (album.isPlaylist) {
+                        currentTab = 1
+                        // TODO: Select the playlist in playlist view
+                        return
+                    }
+                    
+                    // For regular albums, expand the artist and select the album
+                    if (album.albumArtist) {
+                        // Expand the artist
+                        var updatedExpanded = Object.assign({}, expandedArtists)
+                        updatedExpanded[album.albumArtist] = true
+                        expandedArtists = updatedExpanded
+                        
+                        // Select the album
+                        selectedAlbum = album
+                        
+                        // Jump to the album in the browser
+                        Qt.callLater(function() {
+                            albumBrowser.jumpToAlbum(album)
+                        })
+                    }
+                    return
+                }
+            }
+        } catch (error) {
+            console.warn("Error restoring selected album:", error)
         }
     }
     

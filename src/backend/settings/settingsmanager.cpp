@@ -68,6 +68,24 @@ void SettingsManager::setShuffleEnabled(bool enabled)
     }
 }
 
+void SettingsManager::setLibraryActiveTab(int tab)
+{
+    if (m_libraryActiveTab != tab) {
+        m_libraryActiveTab = tab;
+        emit libraryActiveTabChanged(tab);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setLastSelectedAlbumId(const QString& albumId)
+{
+    if (m_lastSelectedAlbumId != albumId) {
+        m_lastSelectedAlbumId = albumId;
+        emit lastSelectedAlbumIdChanged(albumId);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -82,6 +100,11 @@ void SettingsManager::loadSettings()
     m_restorePlaybackPosition = m_settings.value("restorePosition", true).toBool();
     m_repeatEnabled = m_settings.value("repeatEnabled", false).toBool();
     m_shuffleEnabled = m_settings.value("shuffleEnabled", false).toBool();
+    m_settings.endGroup();
+    
+    m_settings.beginGroup("LibraryPane");
+    m_libraryActiveTab = m_settings.value("activeTab", 0).toInt();
+    m_lastSelectedAlbumId = m_settings.value("lastSelectedAlbumId", "").toString();
     m_settings.endGroup();
     
     qDebug() << "SettingsManager: Loaded settings - Queue action:" << m_queueActionDefault 
@@ -105,6 +128,11 @@ void SettingsManager::saveSettings()
     m_settings.setValue("restorePosition", m_restorePlaybackPosition);
     m_settings.setValue("repeatEnabled", m_repeatEnabled);
     m_settings.setValue("shuffleEnabled", m_shuffleEnabled);
+    m_settings.endGroup();
+    
+    m_settings.beginGroup("LibraryPane");
+    m_settings.setValue("activeTab", m_libraryActiveTab);
+    m_settings.setValue("lastSelectedAlbumId", m_lastSelectedAlbumId);
     m_settings.endGroup();
     
     m_settings.sync();

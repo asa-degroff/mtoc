@@ -367,7 +367,7 @@ Item {
                                 Layout.preferredWidth: 30
                                 Layout.preferredHeight: 30
                                 radius: 4
-                                color: saveQueueMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(1, 1, 1, 0.05)
+                                color: saveQueueMouseArea.containsMouse ? Qt.rgba(0, 1, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
                                 border.width: 1
                                 border.color: Qt.rgba(1, 1, 1, 0.3)
                                 visible: MediaPlayer.queueLength > 0
@@ -414,7 +414,7 @@ Item {
                                 Layout.preferredWidth: 30
                                 Layout.preferredHeight: 30
                                 radius: 4
-                                color: clearQueueMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(1, 1, 1, 0.05)
+                                color: clearQueueMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
                                 border.width: 1
                                 border.color: Qt.rgba(1, 1, 1, 0.3)
                                 visible: MediaPlayer.queueLength > 0 || MediaPlayer.canUndoClear
