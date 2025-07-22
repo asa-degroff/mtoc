@@ -1055,6 +1055,25 @@ int DatabaseManager::getTotalAlbums()
     return 0;
 }
 
+int DatabaseManager::getTotalAlbumArtists()
+{
+    if (!m_db.isOpen()) return 0;
+    
+    QSqlQuery query(m_db);
+    query.prepare("SELECT COUNT(*) FROM album_artists");
+    
+    if (!query.exec()) {
+        qWarning() << "Failed to get album artist count:" << query.lastError().text();
+        return 0;
+    }
+    
+    if (query.next()) {
+        return query.value(0).toInt();
+    }
+    
+    return 0;
+}
+
 int DatabaseManager::getTotalArtists()
 {
     if (!m_db.isOpen()) return 0;

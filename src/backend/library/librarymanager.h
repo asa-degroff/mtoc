@@ -37,6 +37,7 @@ class LibraryManager : public QObject
     Q_PROPERTY(QStringList musicFoldersDisplay READ musicFoldersDisplay NOTIFY musicFoldersChanged)
     Q_PROPERTY(int trackCount READ trackCount NOTIFY trackCountChanged)
     Q_PROPERTY(int albumCount READ albumCount NOTIFY albumCountChanged)
+    Q_PROPERTY(int albumArtistCount READ albumArtistCount NOTIFY albumArtistCountChanged)
     Q_PROPERTY(int artistCount READ artistCount NOTIFY artistCountChanged)
     Q_PROPERTY(QVariantList artistModel READ artistModel NOTIFY libraryChanged)
     Q_PROPERTY(QVariantList albumModel READ albumModel NOTIFY libraryChanged)
@@ -54,6 +55,7 @@ public:
     QStringList musicFoldersDisplay() const;
     int trackCount() const;
     int albumCount() const;
+    int albumArtistCount() const;
     int artistCount() const;
     QVariantList artistModel() const;
     QVariantList albumModel() const;
@@ -122,6 +124,7 @@ signals:
     void musicFoldersChanged();
     void trackCountChanged();
     void albumCountChanged();
+    void albumArtistCountChanged();
     void artistCountChanged();
     void libraryChanged();
     void processingAlbumArtChanged();

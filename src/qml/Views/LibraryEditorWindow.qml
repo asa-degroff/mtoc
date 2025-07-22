@@ -93,6 +93,26 @@ ApplicationWindow {
                     anchors.fill: parent
                     anchors.margins: 12
                     spacing: 24
+
+                    // Album Artist count
+                    Column {
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: 4
+
+                        Label {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: LibraryManager.albumArtistCount
+                            font.pixelSize: 32
+                            font.bold: true
+                            color: "white"
+                        }
+
+                        Label {
+                            text: "Album Artists"
+                            font.pixelSize: 14
+                            color: "#cccccc"
+                        }
+                    }
                     
                     // Artists count
                     Column {

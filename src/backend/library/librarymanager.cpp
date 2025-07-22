@@ -231,6 +231,18 @@ int LibraryManager::albumCount() const
     return m_cachedAlbumCount;
 }
 
+int LibraryManager::albumArtistCount() const
+{
+    // qDebug() << "LibraryManager::albumArtistCount() called";
+    if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        // qDebug() << "LibraryManager::albumArtistCount() - database not ready, returning 0";
+        return 0;
+    }
+    int count = m_databaseManager->getTotalAlbumArtists();
+    // qDebug() << "LibraryManager::albumArtistCount() returning" << count;
+    return count;
+}
+
 int LibraryManager::artistCount() const
 {
     // qDebug() << "LibraryManager::artistCount() called";
@@ -815,6 +827,7 @@ void LibraryManager::clearLibrary()
     emit libraryChanged();
     emit trackCountChanged();
     emit albumCountChanged();
+    emit albumArtistCountChanged();
     emit artistCountChanged();
 }
 

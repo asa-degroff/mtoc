@@ -62,6 +62,7 @@ public:
     bool clearDatabase();
     int getTotalTracks();
     int getTotalAlbums();
+    int getTotalAlbumArtists();
     int getTotalArtists();
     qint64 getTotalDuration(); // Total duration in seconds
     
