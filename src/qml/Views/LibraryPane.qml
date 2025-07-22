@@ -4416,8 +4416,15 @@ Item {
                 }
                 // Update shuffle order if shuffle is enabled
                 MediaPlayer.updateShuffleOrder()
-                // Play the first track
-                MediaPlayer.playTrackAt(0)
+                
+                // If shuffle is enabled, start with a random track instead of the first
+                var startIndex = 0
+                if (MediaPlayer.shuffleEnabled && tracks.length > 0) {
+                    startIndex = Math.floor(Math.random() * tracks.length)
+                }
+                
+                // Play from the calculated start index
+                MediaPlayer.playTrackAt(startIndex)
             }
         }
     }
