@@ -851,8 +851,8 @@ Item {
                     gradient: Gradient {
                         orientation: Gradient.Vertical
                         GradientStop { position: 0.0; color: "transparent" }
-                        GradientStop { position: 0.6; color: "transparent" }
-                        GradientStop { position: 0.8; color: Qt.rgba(0, 0, 0, 0.5) }
+                        GradientStop { position: 0.7; color: "transparent" }
+                        GradientStop { position: 0.82; color: Qt.rgba(0, 0, 0, 0.5) }
                         GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 1.0) }
                     }
                 }
