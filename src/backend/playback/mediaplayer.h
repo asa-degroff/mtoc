@@ -90,6 +90,7 @@ public slots:
     void playTrack(Mtoc::Track* track);
     void playAlbum(Mtoc::Album* album, int startIndex = 0);
     Q_INVOKABLE void playAlbumByName(const QString& artist, const QString& title, int startIndex = 0);
+    Q_INVOKABLE void playPlaylist(const QString& playlistName, int startIndex = 0);
     Q_INVOKABLE void playTrackFromData(const QVariant& trackData);
     Q_INVOKABLE void playTrackNext(const QVariant& trackData);
     Q_INVOKABLE void playTrackLast(const QVariant& trackData);

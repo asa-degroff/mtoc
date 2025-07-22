@@ -1207,6 +1207,79 @@ void MediaPlayer::playAlbumByName(const QString& artist, const QString& title, i
     }
 }
 
+void MediaPlayer::playPlaylist(const QString& playlistName, int startIndex)
+{
+    qDebug() << "MediaPlayer::playPlaylist called with playlist:" << playlistName << "startIndex:" << startIndex;
+    
+    // Clear any restoration state to prevent old positions from being applied
+    clearRestorationState();
+    clearSavedPosition();
+    
+    // Get playlist tracks from PlaylistManager
+    PlaylistManager* playlistManager = PlaylistManager::instance();
+    auto trackList = playlistManager->loadPlaylist(playlistName);
+    
+    qDebug() << "Found" << trackList.size() << "tracks in playlist";
+    
+    if (trackList.isEmpty()) {
+        qWarning() << "No tracks found in playlist:" << playlistName;
+        return;
+    }
+    
+    // Clear current queue
+    clearQueue();
+    
+    // Build tracks from data and add to queue
+    for (const auto& trackData : trackList) {
+        auto trackMap = trackData.toMap();
+        QString trackTitle = trackMap.value("title").toString();
+        QString filePath = trackMap.value("filePath").toString();
+        
+        if (filePath.isEmpty()) {
+            qWarning() << "Empty filePath for track:" << trackTitle;
+            continue;
+        }
+        
+        // Create a new Track object from the data
+        Mtoc::Track* track = new Mtoc::Track(this);
+        track->setTitle(trackTitle);
+        track->setArtist(trackMap.value("artist").toString());
+        track->setAlbum(trackMap.value("album").toString());
+        track->setAlbumArtist(trackMap.value("albumArtist").toString());
+        track->setTrackNumber(trackMap.value("trackNumber").toInt());
+        track->setDuration(trackMap.value("duration").toInt());
+        track->setFileUrl(QUrl::fromLocalFile(filePath));
+        
+        m_playbackQueue.append(track);
+    }
+    
+    // Clear the queue modified flag since this is a fresh playlist load
+    setQueueModified(false);
+    
+    // Ensure startIndex is within bounds
+    startIndex = qBound(0, startIndex, m_playbackQueue.size() - 1);
+    
+    if (!m_playbackQueue.isEmpty()) {
+        m_currentQueueIndex = startIndex;
+        
+        // Generate shuffle order if shuffle is enabled
+        if (m_shuffleEnabled) {
+            generateShuffleOrder();
+            
+            // After generating shuffle order, find where our starting track ended up
+            if (!m_shuffleOrder.isEmpty() && m_currentQueueIndex >= 0) {
+                int shufflePos = m_shuffleOrder.indexOf(m_currentQueueIndex);
+                if (shufflePos >= 0) {
+                    m_shuffleIndex = shufflePos;
+                }
+            }
+        }
+        
+        emit playbackQueueChanged();
+        playTrack(m_playbackQueue[startIndex]);
+    }
+}
+
 void MediaPlayer::playTrackFromData(const QVariant& trackData)
 {
     auto trackMap = trackData.toMap();

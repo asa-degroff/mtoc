@@ -93,7 +93,7 @@ Item {
         
         onReplaceQueue: {
             if (isPlaylist) {
-                playPlaylistReplace(playlistName, isVirtualPlaylist)
+                playPlaylistReplace(playlistName, isVirtualPlaylist, startIndex)
             } else {
                 MediaPlayer.playAlbumByName(albumArtist, albumTitle, startIndex)
             }
@@ -1803,12 +1803,12 @@ Item {
                                     mouseY = globalPos.y
                                 }
                                 
-                                playPlaylistWithQueueCheck(playlistName, isVirtual, mouseX, mouseY)
+                                playPlaylistWithQueueCheck(playlistName, isVirtual, 0, mouseX, mouseY)
                             }
                             
                             onPlaylistPlayRequested: function(playlistName) {
                                 var isVirtual = playlistName === "All Songs"
-                                playPlaylistWithQueueCheck(playlistName, isVirtual)
+                                playPlaylistWithQueueCheck(playlistName, isVirtual, 0)
                             }
                             
                             onPlaylistPlayNextRequested: function(playlistName) {
@@ -2569,24 +2569,10 @@ Item {
                                             MediaPlayer.loadVirtualPlaylist(root.selectedAlbum.virtualModel)
                                             MediaPlayer.playTrackAt(index)
                                         } else if (root.selectedAlbum && root.selectedAlbum.isPlaylist) {
-                                            // For regular playlists, clear queue and play all tracks starting from this one
-                                            MediaPlayer.clearQueue()
-                                            // Debug: Check what's in trackData
-                                            console.log("Playing playlist track:", trackData.title, "Album:", trackData.album, "AlbumArtist:", trackData.albumArtist)
-                                            // Add all tracks in the correct order (starting from clicked track)
-                                            MediaPlayer.playTrackLast(trackData)
-                                            // Add remaining tracks after this one
-                                            for (var i = index + 1; i < rightPane.currentAlbumTracks.length; i++) {
-                                                MediaPlayer.playTrackLast(rightPane.currentAlbumTracks[i])
-                                            }
-                                            // Add tracks before this one to the end
-                                            for (var j = 0; j < index; j++) {
-                                                MediaPlayer.playTrackLast(rightPane.currentAlbumTracks[j])
-                                            }
-                                            // Update shuffle order if shuffle is enabled
-                                            MediaPlayer.updateShuffleOrder()
-                                            // Play the first track in queue (which is the clicked track)
-                                            MediaPlayer.playTrackAt(0)
+                                            // For regular playlists, use the same approach as albums
+                                            var globalPos = trackDelegate.mapToGlobal(mouse.x, mouse.y);
+                                            root.playPlaylistWithQueueCheck(root.selectedAlbum.title, false, index, 
+                                                                          globalPos.x, globalPos.y);
                                         } else if (root.selectedAlbum) {
                                             // Regular album - use the existing method
                                             var globalPos = trackDelegate.mapToGlobal(mouse.x, mouse.y);
@@ -4323,7 +4309,7 @@ Item {
         }
     }
     
-    function playPlaylistWithQueueCheck(playlistName, isVirtualPlaylist, mouseX, mouseY) {
+    function playPlaylistWithQueueCheck(playlistName, isVirtualPlaylist, startIndex, mouseX, mouseY) {
         // Special handling for "All Songs" playlist
         var isAllSongs = isVirtualPlaylist && playlistName === "All Songs"
         
@@ -4348,7 +4334,7 @@ Item {
             queueActionDialog.isVirtualPlaylist = isVirtualPlaylist || false
             queueActionDialog.albumArtist = ""
             queueActionDialog.albumTitle = ""
-            queueActionDialog.startIndex = 0
+            queueActionDialog.startIndex = startIndex || 0
             
             // Position dialog at cursor location with bounds checking
             if (mouseX !== undefined && mouseY !== undefined) {
@@ -4379,7 +4365,7 @@ Item {
             
             switch (effectiveAction) {
                 case SettingsManager.Replace:
-                    playPlaylistReplace(playlistName, isVirtualPlaylist);
+                    playPlaylistReplace(playlistName, isVirtualPlaylist, startIndex);
                     break;
                 case SettingsManager.Insert:
                     playPlaylistNext(playlistName, isVirtualPlaylist);
@@ -4389,43 +4375,42 @@ Item {
                     break;
                 case SettingsManager.Ask:
                     // If Ask but queue not modified, default to replace
-                    playPlaylistReplace(playlistName, isVirtualPlaylist);
+                    playPlaylistReplace(playlistName, isVirtualPlaylist, startIndex);
                     break;
             }
         }
     }
     
-    function playPlaylistReplace(playlistName, isVirtualPlaylist) {
+    function playPlaylistReplace(playlistName, isVirtualPlaylist, startIndex) {
         if (isVirtualPlaylist && playlistName === "All Songs") {
             // Get the virtual playlist model
             var allSongsModel = LibraryManager.getAllSongsPlaylist()
             // Clear queue and load virtual playlist
             MediaPlayer.clearQueue()
             MediaPlayer.loadVirtualPlaylist(allSongsModel)
-            // Start playing respecting shuffle mode
-            MediaPlayer.playVirtualPlaylist()
-        } else {
-            // Play regular playlist directly
-            var tracks = PlaylistManager.loadPlaylist(playlistName)
-            if (tracks.length > 0) {
-                // Clear queue first
-                MediaPlayer.clearQueue()
-                // Add all tracks to the queue
-                for (var i = 0; i < tracks.length; i++) {
-                    MediaPlayer.playTrackLast(tracks[i])
-                }
-                // Update shuffle order if shuffle is enabled
-                MediaPlayer.updateShuffleOrder()
-                
-                // If shuffle is enabled, start with a random track instead of the first
-                var startIndex = 0
-                if (MediaPlayer.shuffleEnabled && tracks.length > 0) {
-                    startIndex = Math.floor(Math.random() * tracks.length)
-                }
-                
-                // Play from the calculated start index
+            // For virtual playlist, handle start index differently
+            if (startIndex !== undefined && startIndex > 0) {
                 MediaPlayer.playTrackAt(startIndex)
+            } else {
+                // Start playing respecting shuffle mode
+                MediaPlayer.playVirtualPlaylist()
             }
+        } else {
+            // Play regular playlist using the new C++ method
+            // If startIndex is not provided, check shuffle mode
+            if (startIndex === undefined || startIndex === null) {
+                startIndex = 0
+                if (MediaPlayer.shuffleEnabled) {
+                    // Get track count first to calculate random index
+                    var trackCount = PlaylistManager.getPlaylistTrackCount(playlistName)
+                    if (trackCount > 0) {
+                        startIndex = Math.floor(Math.random() * trackCount)
+                    }
+                }
+            }
+            
+            // Use the new playPlaylist method which handles queue state properly
+            MediaPlayer.playPlaylist(playlistName, startIndex)
         }
     }
     
