@@ -51,41 +51,38 @@ ApplicationWindow {
                         color: "white"
                     }
                     
-                    RowLayout {
+                    Label {
+                        text: "Default action for playing an album or playlist if queue has been modified:"
+                        font.pixelSize: 14
+                        color: "#cccccc"
                         Layout.fillWidth: true
-                        spacing: 12
+                        wrapMode: Text.WordWrap
+                    }
+                    
+                    ComboBox {
+                        id: queueActionCombo
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 36
+                        model: ["Replace queue", "Play next", "Play last", "Ask every time"]
+                        currentIndex: SettingsManager.queueActionDefault
                         
-                        Label {
-                            text: "Default action when playing album if queue has been modified:"
-                            font.pixelSize: 14
-                            color: "#cccccc"
-                            Layout.preferredWidth: 250
+                        onCurrentIndexChanged: {
+                            SettingsManager.queueActionDefault = currentIndex
                         }
                         
-                        ComboBox {
-                            id: queueActionCombo
-                            Layout.fillWidth: true
-                            model: ["Replace queue", "Play next", "Play last", "Ask every time"]
-                            currentIndex: SettingsManager.queueActionDefault
-                            
-                            onCurrentIndexChanged: {
-                                SettingsManager.queueActionDefault = currentIndex
-                            }
-                            
-                            background: Rectangle {
-                                color: parent.hovered ? "#404040" : "#383838"
-                                radius: 4
-                                border.width: 1
-                                border.color: "#505050"
-                            }
-                            
-                            contentItem: Text {
-                                text: parent.displayText
-                                color: "white"
-                                font.pixelSize: 14
-                                verticalAlignment: Text.AlignVCenter
-                                leftPadding: 8
-                            }
+                        background: Rectangle {
+                            color: parent.hovered ? "#404040" : "#383838"
+                            radius: 4
+                            border.width: 1
+                            border.color: "#505050"
+                        }
+                        
+                        contentItem: Text {
+                            text: parent.displayText
+                            color: "white"
+                            font.pixelSize: 14
+                            verticalAlignment: Text.AlignVCenter
+                            leftPadding: 8
                         }
                     }
                 }
@@ -137,12 +134,11 @@ ApplicationWindow {
                             color: parent.checked ? "#4a5fba" : "#383838"
                             border.color: parent.checked ? "#5a6fca" : "#505050"
                             
-                            Rectangle {
-                                width: 12
-                                height: 12
-                                x: 4
-                                y: 4
-                                radius: 2
+                            Text {
+                                anchors.centerIn: parent
+                                text: "✓"
+                                font.pixelSize: 14
+                                font.bold: true
                                 color: "white"
                                 visible: parent.parent.checked
                             }
@@ -197,12 +193,11 @@ ApplicationWindow {
                             color: parent.checked ? "#4a5fba" : "#383838"
                             border.color: parent.checked ? "#5a6fca" : "#505050"
                             
-                            Rectangle {
-                                width: 12
-                                height: 12
-                                x: 4
-                                y: 4
-                                radius: 2
+                            Text {
+                                anchors.centerIn: parent
+                                text: "✓"
+                                font.pixelSize: 14
+                                font.bold: true
                                 color: "white"
                                 visible: parent.parent.checked
                             }
@@ -238,13 +233,13 @@ ApplicationWindow {
                     }
                     
                     Label {
-                        text: "Version 0.1"
+                        text: "Version 2.0"
                         font.pixelSize: 12
                         color: "#999999"
                     }
                     
                     Label {
-                        text: "© 2024 mtoc contributors"
+                        text: "© 2025 Asa DeGroff"
                         font.pixelSize: 12
                         color: "#999999"
                     }
@@ -264,6 +259,36 @@ ApplicationWindow {
                         color: "#999999"
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
+                    }
+
+                    Label {
+                        text: "License"
+                        font.pixelSize: 14
+                        font.bold: true
+                        color: "#cccccc"
+                    }
+
+                    Text {
+                        text: "mtoc is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. 
+                        
+mtoc is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with mtoc. If not, see: <a href=\"https://www.gnu.org/licenses/gpl-3.0.html\">https://www.gnu.org/licenses/gpl-3.0.html</a>"
+                        font.pixelSize: 12
+                        color: "#999999"
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
+                        textFormat: Text.RichText
+                        
+                        onLinkActivated: function(link) {
+                            Qt.openUrlExternally(link)
+                        }
+                        
+                        MouseArea {
+                            anchors.fill: parent
+                            acceptedButtons: Qt.NoButton
+                            cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        }
                     }
                 }
             }
