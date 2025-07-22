@@ -15,6 +15,19 @@ Item {
     property bool queueVisible: false
     property var uniqueAlbumCovers: []
     
+    // Keyboard shortcut for undo
+    Keys.onPressed: function(event) {
+        if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Z) {
+            if (MediaPlayer.canUndoClear) {
+                MediaPlayer.undoClearQueue()
+                event.accepted = true
+            }
+        }
+    }
+    
+    // Enable focus to receive keyboard events
+    focus: true
+    
     // Debounce timer for album cover updates
     Timer {
         id: albumCoverUpdateTimer
