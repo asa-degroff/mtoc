@@ -23,6 +23,35 @@ Popup {
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     
+    // Focus management
+    property int focusedButtonIndex: 0
+    property var visibleButtons: []
+    
+    // Update visible buttons list when visibility changes
+    function updateVisibleButtons() {
+        var buttons = []
+        buttons.push("replace")  // Always visible
+        if (!(isVirtualPlaylist && playlistName === "All Songs")) {
+            buttons.push("playNext")
+            buttons.push("playLast")
+        }
+        buttons.push("cancel")  // Always visible
+        visibleButtons = buttons
+        
+        // Ensure focused index is valid
+        if (focusedButtonIndex >= visibleButtons.length) {
+            focusedButtonIndex = 0
+        }
+    }
+    
+    onIsVirtualPlaylistChanged: updateVisibleButtons()
+    onPlaylistNameChanged: updateVisibleButtons()
+    onOpened: {
+        updateVisibleButtons()
+        focusedButtonIndex = 0  // Reset to first button when opened
+        root.forceActiveFocus()  // Ensure dialog receives keyboard focus
+    }
+    
     // Semi-transparent background overlay with click handler
     Overlay.modal: Rectangle {
         color: Qt.rgba(0, 0, 0, 0.3)  // Dark overlay for better contrast
@@ -56,8 +85,44 @@ Popup {
         }
     }
     
-    contentItem: ColumnLayout {
-        spacing: 12
+    contentItem: FocusScope {
+        focus: true
+        
+        // Keyboard navigation
+        Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_Up) {
+                root.focusedButtonIndex = (root.focusedButtonIndex - 1 + root.visibleButtons.length) % root.visibleButtons.length
+                event.accepted = true
+            } else if (event.key === Qt.Key_Down) {
+                root.focusedButtonIndex = (root.focusedButtonIndex + 1) % root.visibleButtons.length
+                event.accepted = true
+            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                // Activate the focused button
+                var buttonId = root.visibleButtons[root.focusedButtonIndex]
+                switch (buttonId) {
+                    case "replace":
+                        root.replaceQueue()
+                        root.close()
+                        break
+                    case "playNext":
+                        root.playNext()
+                        root.close()
+                        break
+                    case "playLast":
+                        root.playLast()
+                        root.close()
+                        break
+                    case "cancel":
+                        root.close()
+                        break
+                }
+                event.accepted = true
+            }
+        }
+        
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 12
         
         Label {
             Layout.fillWidth: true
@@ -97,11 +162,17 @@ Popup {
                 text: "Replace Queue"
                 font.pixelSize: 14
                 
+                property bool isFocused: root.focusedButtonIndex === 0 && root.visibleButtons[0] === "replace"
+                
                 background: Rectangle {
-                    color: parent.hovered ? Qt.rgba(0.23, 0.29, 0.54, 0.9) : Qt.rgba(0.16, 0.23, 0.48, 0.8)
+                    color: {
+                        if (parent.isFocused) return Qt.rgba(0.3, 0.36, 0.61, 1.0)
+                        if (parent.hovered) return Qt.rgba(0.23, 0.29, 0.54, 0.9)
+                        return Qt.rgba(0.16, 0.23, 0.48, 0.8)
+                    }
                     radius: 4
-                    border.width: 1
-                    border.color: Qt.rgba(1, 1, 1, 0.15)
+                    border.width: parent.isFocused ? 2 : 1
+                    border.color: parent.isFocused ? Qt.rgba(1, 1, 1, 0.4) : Qt.rgba(1, 1, 1, 0.15)
                 }
                 
                 contentItem: Text {
@@ -124,11 +195,20 @@ Popup {
                 font.pixelSize: 14
                 visible: !(root.isVirtualPlaylist && root.playlistName === "All Songs")
                 
+                property bool isFocused: {
+                    var btnIndex = root.visibleButtons.indexOf("playNext")
+                    return btnIndex >= 0 && root.focusedButtonIndex === btnIndex
+                }
+                
                 background: Rectangle {
-                    color: parent.hovered ? Qt.rgba(0.25, 0.25, 0.25, 0.8) : Qt.rgba(0.2, 0.2, 0.2, 0.7)
+                    color: {
+                        if (parent.isFocused) return Qt.rgba(0.35, 0.35, 0.35, 0.9)
+                        if (parent.hovered) return Qt.rgba(0.25, 0.25, 0.25, 0.8)
+                        return Qt.rgba(0.2, 0.2, 0.2, 0.7)
+                    }
                     radius: 4
-                    border.width: 1
-                    border.color: Qt.rgba(1, 1, 1, 0.1)
+                    border.width: parent.isFocused ? 2 : 1
+                    border.color: parent.isFocused ? Qt.rgba(1, 1, 1, 0.3) : Qt.rgba(1, 1, 1, 0.1)
                 }
                 
                 contentItem: Text {
@@ -151,11 +231,20 @@ Popup {
                 font.pixelSize: 14
                 visible: !(root.isVirtualPlaylist && root.playlistName === "All Songs")
                 
+                property bool isFocused: {
+                    var btnIndex = root.visibleButtons.indexOf("playLast")
+                    return btnIndex >= 0 && root.focusedButtonIndex === btnIndex
+                }
+                
                 background: Rectangle {
-                    color: parent.hovered ? Qt.rgba(0.25, 0.25, 0.25, 0.8) : Qt.rgba(0.2, 0.2, 0.2, 0.7)
+                    color: {
+                        if (parent.isFocused) return Qt.rgba(0.35, 0.35, 0.35, 0.9)
+                        if (parent.hovered) return Qt.rgba(0.25, 0.25, 0.25, 0.8)
+                        return Qt.rgba(0.2, 0.2, 0.2, 0.7)
+                    }
                     radius: 4
-                    border.width: 1
-                    border.color: Qt.rgba(1, 1, 1, 0.1)
+                    border.width: parent.isFocused ? 2 : 1
+                    border.color: parent.isFocused ? Qt.rgba(1, 1, 1, 0.3) : Qt.rgba(1, 1, 1, 0.1)
                 }
                 
                 contentItem: Text {
@@ -181,11 +270,20 @@ Popup {
                 text: "Cancel"
                 font.pixelSize: 14
                 
+                property bool isFocused: {
+                    var btnIndex = root.visibleButtons.indexOf("cancel")
+                    return btnIndex >= 0 && root.focusedButtonIndex === btnIndex
+                }
+                
                 background: Rectangle {
-                    color: parent.hovered ? Qt.rgba(0.23, 0.23, 0.23, 0.6) : Qt.rgba(0.16, 0.16, 0.16, 0.5)
+                    color: {
+                        if (parent.isFocused) return Qt.rgba(0.33, 0.33, 0.33, 0.7)
+                        if (parent.hovered) return Qt.rgba(0.23, 0.23, 0.23, 0.6)
+                        return Qt.rgba(0.16, 0.16, 0.16, 0.5)
+                    }
                     radius: 4
-                    border.width: 1
-                    border.color: Qt.rgba(1, 1, 1, 0.2)
+                    border.width: parent.isFocused ? 2 : 1
+                    border.color: parent.isFocused ? Qt.rgba(1, 1, 1, 0.4) : Qt.rgba(1, 1, 1, 0.2)
                 }
                 
                 contentItem: Text {
@@ -201,5 +299,6 @@ Popup {
                 }
             }
         }
-    }
+        }  // End of ColumnLayout
+    }  // End of FocusScope
 }
