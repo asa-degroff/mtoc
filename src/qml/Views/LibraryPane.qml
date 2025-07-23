@@ -1803,12 +1803,49 @@ Item {
                                     mouseY = globalPos.y
                                 }
                                 
-                                playPlaylistWithQueueCheck(playlistName, isVirtual, 0, mouseX, mouseY)
+                                // Calculate start index based on shuffle mode
+                                var startIndex = 0
+                                if (MediaPlayer.shuffleEnabled) {
+                                    var trackCount = 0
+                                    if (isVirtual && playlistName === "All Songs") {
+                                        // For All Songs, get count from the virtual playlist
+                                        var allSongsModel = LibraryManager.getAllSongsPlaylist()
+                                        trackCount = allSongsModel ? allSongsModel.rowCount() : 0
+                                    } else {
+                                        // For regular playlists, get count from PlaylistManager
+                                        trackCount = PlaylistManager.getPlaylistTrackCount(playlistName)
+                                    }
+                                    
+                                    if (trackCount > 0) {
+                                        startIndex = Math.floor(Math.random() * trackCount)
+                                    }
+                                }
+                                
+                                playPlaylistWithQueueCheck(playlistName, isVirtual, startIndex, mouseX, mouseY)
                             }
                             
                             onPlaylistPlayRequested: function(playlistName) {
                                 var isVirtual = playlistName === "All Songs"
-                                playPlaylistWithQueueCheck(playlistName, isVirtual, 0)
+                                
+                                // Calculate start index based on shuffle mode
+                                var startIndex = 0
+                                if (MediaPlayer.shuffleEnabled) {
+                                    var trackCount = 0
+                                    if (isVirtual && playlistName === "All Songs") {
+                                        // For All Songs, get count from the virtual playlist
+                                        var allSongsModel = LibraryManager.getAllSongsPlaylist()
+                                        trackCount = allSongsModel ? allSongsModel.rowCount() : 0
+                                    } else {
+                                        // For regular playlists, get count from PlaylistManager
+                                        trackCount = PlaylistManager.getPlaylistTrackCount(playlistName)
+                                    }
+                                    
+                                    if (trackCount > 0) {
+                                        startIndex = Math.floor(Math.random() * trackCount)
+                                    }
+                                }
+                                
+                                playPlaylistWithQueueCheck(playlistName, isVirtual, startIndex)
                             }
                             
                             onPlaylistPlayNextRequested: function(playlistName) {
