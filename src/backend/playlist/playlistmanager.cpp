@@ -765,7 +765,16 @@ bool PlaylistManager::removePlaylistFolder(const QString& path)
         return false;
     }
     
-    QDir dir(path);
+    QString pathToRemove = path;
+    
+    // Check if this is a display path - if so, get the canonical path
+    QString canonicalFromDisplay = getCanonicalPathFromDisplay(path);
+    if (!canonicalFromDisplay.isEmpty()) {
+        pathToRemove = canonicalFromDisplay;
+        qDebug() << "PlaylistManager::removePlaylistFolder() - found canonical path from display:" << pathToRemove;
+    }
+    
+    QDir dir(pathToRemove);
     QString canonicalPath = dir.canonicalPath();
     
     // Don't allow removing the default folder
@@ -951,4 +960,17 @@ QStringList PlaylistManager::playlistFoldersDisplay() const
         }
     }
     return displayPaths;
+}
+
+QString PlaylistManager::getCanonicalPathFromDisplay(const QString& displayPath) const
+{
+    // Check if any canonical path maps to this display path
+    for (auto it = m_folderDisplayPaths.begin(); it != m_folderDisplayPaths.end(); ++it) {
+        if (it.value() == displayPath) {
+            return it.key();
+        }
+    }
+    
+    // Not found in display mappings
+    return QString();
 }

@@ -143,6 +143,7 @@ private:
     void insertTrackInThread(QSqlDatabase& db, const QVariantMap& metadata);
     void insertBatchTracksInThread(QSqlDatabase& db, const QList<QVariantMap>& batchMetadata);
     void processAlbumArtInBackground();
+    QString getCanonicalPathFromDisplay(const QString& displayPath) const;
     
     // Private data
     DatabaseManager *m_databaseManager;

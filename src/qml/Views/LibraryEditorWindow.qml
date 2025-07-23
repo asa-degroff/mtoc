@@ -426,7 +426,7 @@ ApplicationWindow {
                             anchors.fill: parent
                             anchors.margins: 1  // Small margin to show the rounded corners
                             clip: true
-                            model: PlaylistManager.playlistFolders
+                            model: PlaylistManager.playlistFoldersDisplay
                             
                             delegate: Rectangle {
                                 width: ListView.view.width
@@ -457,8 +457,8 @@ ApplicationWindow {
                                     width: 20
                                     height: 20
                                     radius: 10
-                                    color: modelData === PlaylistManager.defaultPlaylistFolder ? "#4a5fba" : "#383838"
-                                    border.color: modelData === PlaylistManager.defaultPlaylistFolder ? "#5a6fca" : "#505050"
+                                    color: PlaylistManager.playlistFolders[index] === PlaylistManager.defaultPlaylistFolder ? "#4a5fba" : "#383838"
+                                    border.color: PlaylistManager.playlistFolders[index] === PlaylistManager.defaultPlaylistFolder ? "#5a6fca" : "#505050"
                                     border.width: 1
                                     Layout.alignment: Qt.AlignVCenter
                                     
@@ -468,14 +468,14 @@ ApplicationWindow {
                                         height: 8
                                         radius: 4
                                         color: "white"
-                                        visible: modelData === PlaylistManager.defaultPlaylistFolder
+                                        visible: PlaylistManager.playlistFolders[index] === PlaylistManager.defaultPlaylistFolder
                                     }
                                     
                                     MouseArea {
                                         anchors.fill: parent
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
-                                            PlaylistManager.setDefaultPlaylistFolder(modelData)
+                                            PlaylistManager.setDefaultPlaylistFolder(PlaylistManager.playlistFolders[index])
                                         }
                                     }
                                 }
@@ -489,7 +489,7 @@ ApplicationWindow {
                                 }
                                 
                                 Label {
-                                    text: modelData === PlaylistManager.defaultPlaylistFolder ? "Default" : ""
+                                    text: PlaylistManager.playlistFolders[index] === PlaylistManager.defaultPlaylistFolder ? "Default" : ""
                                     color: "#4a5fba"
                                     font.pixelSize: 12
                                     font.italic: true
@@ -501,7 +501,7 @@ ApplicationWindow {
                                     Layout.alignment: Qt.AlignVCenter  // Ensure vertical centering
                                     implicitHeight: 32
                                     implicitWidth: 80
-                                    enabled: modelData !== PlaylistManager.defaultPlaylistFolder
+                                    enabled: PlaylistManager.playlistFolders[index] !== PlaylistManager.defaultPlaylistFolder
                                     opacity: enabled ? 1.0 : 0.5
                                     
                                     background: Rectangle {
@@ -524,7 +524,7 @@ ApplicationWindow {
                                     }
                                     
                                     onClicked: {
-                                        PlaylistManager.removePlaylistFolder(modelData);
+                                        PlaylistManager.removePlaylistFolder(PlaylistManager.playlistFolders[index]);
                                     }
                                 }
                             }

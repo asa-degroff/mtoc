@@ -14,15 +14,18 @@ finish-args:
   - --socket=pulseaudio
   
   # File access - Music directory and file chooser portal
-  - --filesystem=xdg-music:ro
-  - --filesystem=host
+  - --filesystem=xdg-music:rw
+  - --filesystem=xdg-documents:rw
+  - --filesystem=home:ro
+  - --filesystem=xdg-config/mtoc:create
   
   # D-Bus access for MPRIS
   - --talk-name=org.mpris.MediaPlayer2.mtoc
   - --own-name=org.mpris.MediaPlayer2.mtoc
   
-  # Required for file dialogs
+  # Required for file dialogs and document portal
   - --talk-name=org.freedesktop.portal.FileChooser
+  - --talk-name=org.freedesktop.portal.Documents
 
 cleanup:
   - /include
@@ -61,7 +64,7 @@ modules:
       - '*.la'
 
   - name: mtoc
-    buildsystem: cmake-ninja
+    buildsystem: cmake
     config-opts:
       - -DCMAKE_BUILD_TYPE=Release
     sources:

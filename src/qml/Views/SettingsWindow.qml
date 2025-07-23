@@ -206,6 +206,101 @@ ApplicationWindow {
                 }
             }
             
+            // Playlist Settings Section
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: playlistLayout.implicitHeight + 24
+                color: "#333333"
+                radius: 4
+                
+                ColumnLayout {
+                    id: playlistLayout
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 12
+                    
+                    Label {
+                        text: "Playlist Settings"
+                        font.pixelSize: 16
+                        font.bold: true
+                        color: "white"
+                    }
+                    
+                    Label {
+                        text: "Default Playlist Folder:"
+                        font.pixelSize: 14
+                        color: "#cccccc"
+                    }
+                    
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        
+                        Label {
+                            text: {
+                                if (PlaylistManager.playlistFoldersDisplay.length > 0) {
+                                    var defaultIndex = PlaylistManager.playlistFolders.indexOf(PlaylistManager.defaultPlaylistFolder);
+                                    if (defaultIndex >= 0 && defaultIndex < PlaylistManager.playlistFoldersDisplay.length) {
+                                        return PlaylistManager.playlistFoldersDisplay[defaultIndex];
+                                    }
+                                }
+                                return PlaylistManager.defaultPlaylistFolder || "Not configured";
+                            }
+                            font.pixelSize: 13
+                            color: "white"
+                            elide: Text.ElideLeft
+                            Layout.fillWidth: true
+                            
+                            Rectangle {
+                                anchors.fill: parent
+                                anchors.margins: -4
+                                color: "transparent"
+                                border.color: "#505050"
+                                border.width: 1
+                                radius: 4
+                            }
+                        }
+                        
+                        Button {
+                            text: "Configure in Library Editor"
+                            implicitHeight: 32
+                            
+                            background: Rectangle {
+                                color: parent.down ? "#0066cc" : parent.hovered ? "#0055aa" : "#333333"
+                                border.color: parent.hovered ? "#0066cc" : "#555555"
+                                border.width: 1
+                                radius: 4
+                                
+                                Behavior on color {
+                                    ColorAnimation { duration: 150 }
+                                }
+                            }
+                            
+                            contentItem: Text {
+                                text: parent.text
+                                color: parent.hovered ? "white" : "#cccccc"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                font.pixelSize: 13
+                            }
+                            
+                            onClicked: {
+                                // Signal to main app to open library editor
+                                settingsWindow.close();
+                                // The main app should handle opening the library editor
+                            }
+                        }
+                    }
+                    
+                    Label {
+                        text: "New playlists will be saved to the default folder"
+                        font.pixelSize: 12
+                        font.italic: true
+                        color: "#999999"
+                    }
+                }
+            }
+            
             // About Section
             Rectangle {
                 Layout.fillWidth: true

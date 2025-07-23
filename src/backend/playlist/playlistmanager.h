@@ -87,6 +87,7 @@ private:
     void savePlaylistFoldersConfig();
     void loadPlaylistFoldersConfig();
     QString createDisplayPath(const QString& path) const;
+    QString getCanonicalPathFromDisplay(const QString& displayPath) const;
     
     static PlaylistManager* s_instance;
     Mtoc::LibraryManager* m_libraryManager = nullptr;

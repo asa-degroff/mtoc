@@ -295,17 +295,49 @@ bool LibraryManager::addMusicFolder(const QString &path)
             qDebug() << "Portal path matches user's Music folder:" << displayPath;
         } else {
             // Try to extract a meaningful name from the portal path
-            // Portal paths often end with the actual folder name
-            QStringList parts = path.split('/');
-            if (!parts.isEmpty()) {
-                QString lastPart = parts.last();
-                // If the last part looks like a hash, try to find a better name
-                if (lastPart.length() > 20 && !lastPart.contains('.')) {
-                    // This might be a portal hash, use a generic name
-                    displayPath = "Music Folder";
-                } else {
-                    // Use the last part as the display name
-                    displayPath = QDir::homePath() + "/" + lastPart;
+            // Portal paths can have different formats:
+            // - /run/flatpak/doc/{hash}/{folder_name}
+            // - /run/user/{uid}/doc/{hash}/{folder_name}
+            // - /run/user/{uid}/doc/{hash}
+            
+            // Try to resolve symlinks first
+            QFileInfo fileInfo(path);
+            if (fileInfo.isSymLink()) {
+                QString resolvedPath = fileInfo.symLinkTarget();
+                if (!resolvedPath.isEmpty()) {
+                    displayPath = resolvedPath;
+                    qDebug() << "Resolved symlink to:" << displayPath;
+                }
+            } else {
+                // Parse the portal path structure
+                QStringList parts = path.split('/');
+                if (parts.size() >= 5) {
+                    // Look for the actual folder name after the hash
+                    if ((parts[2] == "flatpak" && parts[3] == "doc" && parts.size() > 5) ||
+                        (parts[2] == "user" && parts[4] == "doc" && parts.size() > 6)) {
+                        // The last part should be the actual folder name
+                        QString folderName = parts.last();
+                        if (!folderName.isEmpty() && folderName.length() < 64) {
+                            // Construct a user-friendly path
+                            displayPath = QDir::homePath() + "/" + folderName;
+                        }
+                    }
+                }
+                
+                // If we still have a portal path, use the canonical path
+                if (displayPath.startsWith("/run/")) {
+                    // Check if canonical path is more meaningful
+                    if (!canonicalPath.startsWith("/run/")) {
+                        displayPath = canonicalPath;
+                    } else {
+                        // Last resort: use a generic name with the last directory component
+                        QString lastDir = QDir(canonicalPath).dirName();
+                        if (!lastDir.isEmpty() && lastDir.length() < 64) {
+                            displayPath = "Music: " + lastDir;
+                        } else {
+                            displayPath = "Music Folder";
+                        }
+                    }
                 }
             }
         }
@@ -340,7 +372,16 @@ bool LibraryManager::addMusicFolder(const QString &path)
 
 bool LibraryManager::removeMusicFolder(const QString &path)
 {
-    QDir dir(path);
+    QString pathToRemove = path;
+    
+    // Check if this is a display path - if so, get the canonical path
+    QString canonicalFromDisplay = getCanonicalPathFromDisplay(path);
+    if (!canonicalFromDisplay.isEmpty()) {
+        pathToRemove = canonicalFromDisplay;
+        qDebug() << "LibraryManager::removeMusicFolder() - found canonical path from display:" << pathToRemove;
+    }
+    
+    QDir dir(pathToRemove);
     QString canonicalPath = dir.canonicalPath();
     
     if (m_musicFolders.removeAll(canonicalPath) > 0) {
@@ -1948,6 +1989,19 @@ Track* LibraryManager::trackByPath(const QString &path) const
     }
     
     return track;
+}
+
+QString LibraryManager::getCanonicalPathFromDisplay(const QString& displayPath) const
+{
+    // Check if any canonical path maps to this display path
+    for (auto it = m_folderDisplayPaths.begin(); it != m_folderDisplayPaths.end(); ++it) {
+        if (it.value() == displayPath) {
+            return it.key();
+        }
+    }
+    
+    // Not found in display mappings
+    return QString();
 }
 
 } // namespace Mtoc
