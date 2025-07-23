@@ -47,29 +47,6 @@ cleanup:
   - '*.la'
   - '*.a'
 
-add-extensions:
-  # Mesa GL extension for AMD GPU support
-  org.freedesktop.Platform.GL:
-    directory: lib/GL
-    version: '24.08'
-    subdirectories: true
-    no-autodownload: false
-    autodelete: false
-    add-ld-path: lib
-    merge-dirs: vulkan/icd.d;glvnd/egl_vendor.d;OpenCL/vendors;lib/dri;lib/d3d;vulkan/explicit_layer.d;vulkan/implicit_layer.d
-    download-if: active-gl-driver
-    enable-if: active-gl-driver
-  
-  # Mesa Git for bleeding edge driver support (newer AMD GPUs like RDNA4)
-  org.freedesktop.Platform.GL.mesa-git:
-    directory: lib/GL/mesa-git
-    version: '24.08'
-    subdirectories: false
-    no-autodownload: false
-    autodelete: false
-    add-ld-path: lib
-    merge-dirs: vulkan/icd.d;glvnd/egl_vendor.d;OpenCL/vendors;lib/dri;lib/d3d;vulkan/explicit_layer.d;vulkan/implicit_layer.d
-
 modules:
   - name: utf8cpp
     buildsystem: cmake-ninja
