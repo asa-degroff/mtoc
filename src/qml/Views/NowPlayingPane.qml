@@ -160,26 +160,33 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             
-            RowLayout {
+            // Use manual positioning instead of RowLayout to avoid layout jumps
+            Item {
                 anchors.fill: parent
-                spacing: queueVisible ? 16 : 0
                 
                 // Album art container
                 Item {
                     id: albumArtContainer
-                    Layout.preferredWidth: queueVisible ? parent.width * 0.24 : parent.width * 0.9
-                    Layout.fillHeight: true
-                    Layout.alignment: queueVisible ? Qt.AlignLeft : Qt.AlignHCenter
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: queueVisible ? parent.width * 0.24 : parent.width * 0.9
                     
-                    Behavior on Layout.preferredWidth {
+                    // Center horizontally when queue is hidden
+                    anchors.leftMargin: queueVisible ? 0 : (parent.width - width) / 2
+                    
+                    Behavior on width {
                         NumberAnimation { 
                             duration: 300
                             easing.type: Easing.InOutCubic
                         }
                     }
                     
-                    Behavior on Layout.alignment {
-                        enabled: false  // Disable animation on alignment change to prevent jumps
+                    Behavior on anchors.leftMargin {
+                        NumberAnimation { 
+                            duration: 300
+                            easing.type: Easing.InOutCubic
+                        }
                     }
                     
                     // Column to show multiple album covers when queue is visible
@@ -308,12 +315,14 @@ Item {
                 // Queue list view
                 Item {
                     id: queueContainer
-                    Layout.preferredWidth: queueVisible ? parent.width * 0.7 - 16 : 0
-                    Layout.fillHeight: true
-                    visible: queueVisible || Layout.preferredWidth > 0
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: queueVisible ? parent.width * 0.7 - 16 : 0
+                    visible: width > 1  // Only visible once width animation starts
                     clip: true
                     
-                    Behavior on Layout.preferredWidth {
+                    Behavior on width {
                         NumberAnimation { 
                             duration: 300
                             easing.type: Easing.InOutCubic
@@ -322,7 +331,6 @@ Item {
                     
                     Rectangle {
                         anchors.fill: parent
-                        anchors.leftMargin: queueVisible ? 0 : -width
                         color: Qt.rgba(0, 0, 0, 0.3)
                         radius: 8
                         border.width: 1
@@ -336,17 +344,10 @@ Item {
                             }
                         }
                         
-                        Behavior on anchors.leftMargin {
-                            NumberAnimation { 
-                                duration: 300
-                                easing.type: Easing.InOutCubic
-                            }
-                        }
-                    
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 8
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 8
                         
                         // Queue header
                         RowLayout {
