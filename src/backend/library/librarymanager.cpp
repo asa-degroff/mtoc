@@ -802,6 +802,7 @@ void LibraryManager::onScanFinished()
     QMetaObject::invokeMethod(this, "libraryChanged", Qt::QueuedConnection);
     QMetaObject::invokeMethod(this, "trackCountChanged", Qt::QueuedConnection);
     QMetaObject::invokeMethod(this, "albumCountChanged", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(this, "albumArtistCountChanged", Qt::QueuedConnection);
     QMetaObject::invokeMethod(this, "artistCountChanged", Qt::QueuedConnection);
     
     qDebug() << "LibraryManager::onScanFinished() completed";

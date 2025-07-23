@@ -8,7 +8,7 @@ ApplicationWindow {
     id: libraryEditorWindow
     title: "Edit Library - mtoc"
     width: 600
-    height: 500
+    height: 800
     
     flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint
     
@@ -64,6 +64,26 @@ ApplicationWindow {
                 LibraryManager.addMusicFolder(path);
             } else {
                 console.error("Could not determine selected folder path");
+            }
+        }
+    }
+    
+    // Folder dialog for adding playlist folders
+    FolderDialog {
+        id: playlistFolderDialog
+        title: "Select Playlist Folder"
+        acceptLabel: "Add Folder"
+        rejectLabel: "Cancel"
+        
+        onAccepted: {
+            var path = selectedFolder.toString();
+            // Remove the file:// prefix if present
+            if (path.startsWith("file://")) {
+                path = path.substring(7);
+            }
+            
+            if (path.length > 0) {
+                PlaylistManager.addPlaylistFolder(path);
             }
         }
     }
@@ -338,10 +358,188 @@ ApplicationWindow {
                 }
             }
             
+            // Playlist folders section
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                color: "#333333"
+                radius: 4
+                
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 8
+                    
+                    RowLayout {
+                        Layout.fillWidth: true
+                        
+                        Label {
+                            text: "Playlist Folders"
+                            font.pixelSize: 16
+                            font.bold: true
+                            color: "white"
+                        }
+                        
+                        Item { Layout.fillWidth: true }
+                        
+                        Button {
+                            text: "Add Folder"
+                            implicitHeight: 32
+                            implicitWidth: 100
+                            
+                            background: Rectangle {
+                                color: parent.down ? "#0066cc" : parent.hovered ? "#0055aa" : "#333333"
+                                border.color: parent.hovered ? "#0066cc" : "#555555"
+                                border.width: 1
+                                radius: 4
+                                
+                                Behavior on color {
+                                    ColorAnimation { duration: 150 }
+                                }
+                            }
+                            
+                            contentItem: Text {
+                                text: parent.text
+                                color: parent.hovered ? "white" : "#cccccc"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                font.pixelSize: 13
+                            }
+                            
+                            onClicked: playlistFolderDialog.open()
+                        }
+                    }
+                    
+                    // Container with rounded corners for the ListView
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        
+                        Rectangle {
+                            id: playlistListBackground
+                            anchors.fill: parent
+                            color: "#2a2a2a"
+                            radius: 4
+                        }
+                        
+                        ListView {
+                            anchors.fill: parent
+                            anchors.margins: 1  // Small margin to show the rounded corners
+                            clip: true
+                            model: PlaylistManager.playlistFolders
+                            
+                            delegate: Rectangle {
+                                width: ListView.view.width
+                                height: 48  // Increased height for better spacing
+                                color: index % 2 === 0 ? "#3a3a3a" : "#353535"
+                                radius: index === 0 ? 3 : 0  // Round top corners for first item
+                                
+                                // Special handling for first and last items
+                                Rectangle {
+                                    anchors.bottom: parent.bottom
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    height: parent.radius
+                                    color: parent.color
+                                    visible: index === 0  // Only for first item to fill the corner gap
+                                }
+                            
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 12
+                                anchors.rightMargin: 12
+                                anchors.topMargin: 0
+                                anchors.bottomMargin: 0
+                                spacing: 12
+                                
+                                // Radio button / star to indicate default
+                                Rectangle {
+                                    width: 20
+                                    height: 20
+                                    radius: 10
+                                    color: modelData === PlaylistManager.defaultPlaylistFolder ? "#4a5fba" : "#383838"
+                                    border.color: modelData === PlaylistManager.defaultPlaylistFolder ? "#5a6fca" : "#505050"
+                                    border.width: 1
+                                    Layout.alignment: Qt.AlignVCenter
+                                    
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: 8
+                                        height: 8
+                                        radius: 4
+                                        color: "white"
+                                        visible: modelData === PlaylistManager.defaultPlaylistFolder
+                                    }
+                                    
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            PlaylistManager.setDefaultPlaylistFolder(modelData)
+                                        }
+                                    }
+                                }
+                                
+                                Label {
+                                    text: modelData
+                                    color: "white"
+                                    elide: Text.ElideLeft
+                                    Layout.fillWidth: true
+                                    Layout.alignment: Qt.AlignVCenter  // Ensure vertical centering
+                                }
+                                
+                                Label {
+                                    text: modelData === PlaylistManager.defaultPlaylistFolder ? "Default" : ""
+                                    color: "#4a5fba"
+                                    font.pixelSize: 12
+                                    font.italic: true
+                                    Layout.alignment: Qt.AlignVCenter
+                                }
+                                
+                                Button {
+                                    text: "Remove"
+                                    Layout.alignment: Qt.AlignVCenter  // Ensure vertical centering
+                                    implicitHeight: 32
+                                    implicitWidth: 80
+                                    enabled: modelData !== PlaylistManager.defaultPlaylistFolder
+                                    opacity: enabled ? 1.0 : 0.5
+                                    
+                                    background: Rectangle {
+                                        color: parent.enabled ? (parent.down ? "#ff3333" : parent.hovered ? "#cc0000" : "#333333") : "#333333"
+                                        border.color: parent.enabled ? (parent.hovered ? "#ff3333" : "#555555") : "#444444"
+                                        border.width: 1
+                                        radius: 4
+                                        
+                                        Behavior on color {
+                                            ColorAnimation { duration: 150 }
+                                        }
+                                    }
+                                    
+                                    contentItem: Text {
+                                        text: parent.text
+                                        color: parent.enabled ? (parent.hovered ? "white" : "#cccccc") : "#666666"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                        font.pixelSize: 13
+                                    }
+                                    
+                                    onClicked: {
+                                        PlaylistManager.removePlaylistFolder(modelData);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        ScrollIndicator.vertical: ScrollIndicator { }
+                    }
+                }
+                }
+            }
+            
             // Info text and action buttons
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 100
+                Layout.preferredHeight: 160
                 color: "#404040"
                 radius: 4
                 
@@ -351,7 +549,7 @@ ApplicationWindow {
                     spacing: 8
                     
                     Label {
-                        text: "Scan your library to add files from the chosen folders to the music collection. Restart the application to apply changes if replacing the library."
+                        text: "Scan your library to add audio files from the chosen folders to the library database. Clear and rescan to regenerate the database. \n\nAudio files are treated as read-only, changes made here only affect the database. \n\nRestart the application to apply changes if replacing the entire library."
                         color: "#cccccc"
                         font.pixelSize: 12
                         wrapMode: Text.WordWrap

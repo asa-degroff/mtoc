@@ -19,6 +19,8 @@ class PlaylistManager : public QObject
     Q_OBJECT
     Q_PROPERTY(QStringList playlists READ playlists NOTIFY playlistsChanged)
     Q_PROPERTY(QString playlistsDirectory READ playlistsDirectory NOTIFY playlistsDirectoryChanged)
+    Q_PROPERTY(QStringList playlistFolders READ playlistFolders NOTIFY playlistFoldersChanged)
+    Q_PROPERTY(QString defaultPlaylistFolder READ defaultPlaylistFolder NOTIFY defaultPlaylistFolderChanged)
     Q_PROPERTY(bool isReady READ isReady NOTIFY readyChanged)
 
 public:
@@ -27,6 +29,8 @@ public:
     // Getters
     QStringList playlists() const { return m_playlists; }
     QString playlistsDirectory() const { return m_playlistsDirectory; }
+    QStringList playlistFolders() const { return m_playlistFolders; }
+    QString defaultPlaylistFolder() const { return m_defaultPlaylistFolder; }
     bool isReady() const { return m_isReady; }
     
     void setLibraryManager(Mtoc::LibraryManager* manager);
@@ -50,10 +54,17 @@ public:
     // Initialize and refresh
     void initialize();
     Q_INVOKABLE void refreshPlaylists();
+    
+    // Playlist folder management
+    Q_INVOKABLE bool addPlaylistFolder(const QString& path);
+    Q_INVOKABLE bool removePlaylistFolder(const QString& path);
+    Q_INVOKABLE bool setDefaultPlaylistFolder(const QString& path);
 
 signals:
     void playlistsChanged();
     void playlistsDirectoryChanged();
+    void playlistFoldersChanged();
+    void defaultPlaylistFolderChanged();
     void readyChanged(bool ready);
     void playlistSaved(const QString& name);
     void playlistDeleted(const QString& name);
@@ -71,13 +82,17 @@ private:
     QString makeRelativePath(const QString& filePath) const;
     QString resolvePlaylistPath(const QString& playlistPath, const QString& playlistFile) const;
     void setReady(bool ready);
+    void savePlaylistFoldersConfig();
+    void loadPlaylistFoldersConfig();
     
     static PlaylistManager* s_instance;
     Mtoc::LibraryManager* m_libraryManager = nullptr;
     MediaPlayer* m_mediaPlayer = nullptr;
     QStringList m_playlists;
     QStringList m_specialPlaylists;
-    QString m_playlistsDirectory;
+    QString m_playlistsDirectory;  // Legacy single directory
+    QStringList m_playlistFolders;  // All playlist directories
+    QString m_defaultPlaylistFolder;  // Default directory for new playlists
     bool m_isReady = false;
 };
 

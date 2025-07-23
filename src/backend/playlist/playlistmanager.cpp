@@ -10,6 +10,11 @@
 #include <QDateTime>
 #include <QVariantMap>
 #include <QUrl>
+#include <QSettings>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QSet>
 
 using Mtoc::LibraryManager;
 using Mtoc::Track;
@@ -48,6 +53,7 @@ void PlaylistManager::initialize()
         return;
     }
     
+    loadPlaylistFoldersConfig();
     ensurePlaylistsDirectory();
     refreshPlaylists();
     setReady(true);
@@ -57,26 +63,53 @@ void PlaylistManager::ensurePlaylistsDirectory()
 {
     if (!m_libraryManager) return;
     
-    QStringList musicFolders = m_libraryManager->musicFolders();
-    if (musicFolders.isEmpty()) {
-        qWarning() << "PlaylistManager: No music folders configured";
-        return;
-    }
-    
-    // Use the first music folder as the base
-    QString baseDir = musicFolders.first();
-    m_playlistsDirectory = QDir(baseDir).absoluteFilePath("Playlists");
-    
-    QDir dir(m_playlistsDirectory);
-    if (!dir.exists()) {
-        if (!dir.mkpath(".")) {
-            qWarning() << "PlaylistManager: Failed to create playlists directory:" << m_playlistsDirectory;
-        } else {
-            qDebug() << "PlaylistManager: Created playlists directory:" << m_playlistsDirectory;
+    // If no playlist folders are configured, set up the default
+    if (m_playlistFolders.isEmpty()) {
+        QStringList musicFolders = m_libraryManager->musicFolders();
+        if (musicFolders.isEmpty()) {
+            qWarning() << "PlaylistManager: No music folders configured";
+            return;
         }
+        
+        // Use the first music folder as the base for the default playlist directory
+        QString baseDir = musicFolders.first();
+        QString defaultDir = QDir(baseDir).absoluteFilePath("Playlists");
+        
+        // Create the default directory if it doesn't exist
+        QDir dir(defaultDir);
+        if (!dir.exists()) {
+            if (!dir.mkpath(".")) {
+                qWarning() << "PlaylistManager: Failed to create default playlists directory:" << defaultDir;
+                return;
+            } else {
+                qDebug() << "PlaylistManager: Created default playlists directory:" << defaultDir;
+            }
+        }
+        
+        // Add it as the first and default playlist folder
+        m_playlistFolders.append(defaultDir);
+        m_defaultPlaylistFolder = defaultDir;
+        m_playlistsDirectory = defaultDir; // Keep legacy compatibility
+        
+        savePlaylistFoldersConfig();
+        emit playlistFoldersChanged();
+        emit defaultPlaylistFolderChanged();
+        emit playlistsDirectoryChanged();
+    } else {
+        // Ensure all configured playlist folders exist
+        for (const QString& folder : m_playlistFolders) {
+            QDir dir(folder);
+            if (!dir.exists()) {
+                if (!dir.mkpath(".")) {
+                    qWarning() << "PlaylistManager: Failed to create playlist directory:" << folder;
+                }
+            }
+        }
+        
+        // Update legacy directory to the default folder
+        m_playlistsDirectory = m_defaultPlaylistFolder;
+        emit playlistsDirectoryChanged();
     }
-    
-    emit playlistsDirectoryChanged();
 }
 
 void PlaylistManager::refreshPlaylists()
@@ -86,34 +119,42 @@ void PlaylistManager::refreshPlaylists()
     // Add special playlists first
     m_playlists.append(m_specialPlaylists);
     
-    if (m_playlistsDirectory.isEmpty()) {
+    if (m_playlistFolders.isEmpty()) {
         emit playlistsChanged();
         return;
     }
     
-    QDir dir(m_playlistsDirectory);
-    if (!dir.exists()) {
-        emit playlistsChanged();
-        return;
-    }
+    // Set to track unique playlist names across all folders
+    QSet<QString> uniquePlaylists;
     
-    // Get all .m3u files
-    QStringList filters;
-    filters << "*.m3u" << "*.m3u8";
-    dir.setNameFilters(filters);
-    dir.setSorting(QDir::Time); // Sort by modification time, newest first
-    
-    QStringList files = dir.entryList(QDir::Files);
-    for (const QString& file : files) {
-        // Remove extension for display
-        QString name = file;
-        if (name.endsWith(".m3u8")) {
-            name.chop(5);
-        } else if (name.endsWith(".m3u")) {
-            name.chop(4);
+    // Scan all playlist folders
+    for (const QString& folderPath : m_playlistFolders) {
+        QDir dir(folderPath);
+        if (!dir.exists()) {
+            continue;
         }
-        m_playlists.append(name);
+        
+        // Get all .m3u files
+        QStringList filters;
+        filters << "*.m3u" << "*.m3u8";
+        dir.setNameFilters(filters);
+        dir.setSorting(QDir::Time); // Sort by modification time, newest first
+        
+        QStringList files = dir.entryList(QDir::Files);
+        for (const QString& file : files) {
+            // Remove extension for display
+            QString name = file;
+            if (name.endsWith(".m3u8")) {
+                name.chop(5);
+            } else if (name.endsWith(".m3u")) {
+                name.chop(4);
+            }
+            uniquePlaylists.insert(name);
+        }
     }
+    
+    // Add unique playlists to the list
+    m_playlists.append(uniquePlaylists.values());
     
     emit playlistsChanged();
 }
@@ -189,14 +230,14 @@ bool PlaylistManager::saveQueueAsPlaylist()
 
 bool PlaylistManager::savePlaylist(const QVariantList& tracks, const QString& name)
 {
-    if (m_playlistsDirectory.isEmpty()) {
-        emit error("Playlists directory not configured");
+    if (m_defaultPlaylistFolder.isEmpty()) {
+        emit error("Default playlist folder not configured");
         return false;
     }
     
     QString playlistName = name.isEmpty() ? generatePlaylistName(tracks) : name;
     QString filename = playlistName + ".m3u";
-    QString filepath = QDir(m_playlistsDirectory).absoluteFilePath(filename);
+    QString filepath = QDir(m_defaultPlaylistFolder).absoluteFilePath(filename);
     
     if (writeM3UFile(filepath, tracks)) {
         refreshPlaylists();
@@ -293,6 +334,23 @@ QVariantList PlaylistManager::loadPlaylist(const QString& name)
         filename = name + ".m3u";
     }
     
+    // Search for the playlist in all configured folders
+    for (const QString& folderPath : m_playlistFolders) {
+        QString filepath = QDir(folderPath).absoluteFilePath(filename);
+        if (QFile::exists(filepath)) {
+            return readM3UFile(filepath);
+        }
+        
+        // Also try with .m3u8 extension
+        if (!filename.endsWith(".m3u8")) {
+            QString filepathM3u8 = QDir(folderPath).absoluteFilePath(name + ".m3u8");
+            if (QFile::exists(filepathM3u8)) {
+                return readM3UFile(filepathM3u8);
+            }
+        }
+    }
+    
+    // Fallback to legacy directory if not found
     QString filepath = QDir(m_playlistsDirectory).absoluteFilePath(filename);
     return readM3UFile(filepath);
 }
@@ -420,12 +478,28 @@ bool PlaylistManager::deletePlaylist(const QString& name)
         filename = name + ".m3u";
     }
     
-    QString filepath = QDir(m_playlistsDirectory).absoluteFilePath(filename);
-    
-    if (QFile::remove(filepath)) {
-        refreshPlaylists();
-        emit playlistDeleted(name);
-        return true;
+    // Search for the playlist in all configured folders
+    for (const QString& folderPath : m_playlistFolders) {
+        QString filepath = QDir(folderPath).absoluteFilePath(filename);
+        if (QFile::exists(filepath)) {
+            if (QFile::remove(filepath)) {
+                refreshPlaylists();
+                emit playlistDeleted(name);
+                return true;
+            }
+        }
+        
+        // Also try with .m3u8 extension
+        if (!filename.endsWith(".m3u8")) {
+            QString filepathM3u8 = QDir(folderPath).absoluteFilePath(name + ".m3u8");
+            if (QFile::exists(filepathM3u8)) {
+                if (QFile::remove(filepathM3u8)) {
+                    refreshPlaylists();
+                    emit playlistDeleted(name);
+                    return true;
+                }
+            }
+        }
     }
     
     emit error("Failed to delete playlist");
@@ -562,4 +636,130 @@ void PlaylistManager::setReady(bool ready)
 bool PlaylistManager::isSpecialPlaylist(const QString& name) const
 {
     return m_specialPlaylists.contains(name);
+}
+
+bool PlaylistManager::addPlaylistFolder(const QString& path)
+{
+    if (path.isEmpty()) {
+        emit error("Playlist folder path cannot be empty");
+        return false;
+    }
+    
+    // Check if folder already exists in the list
+    if (m_playlistFolders.contains(path)) {
+        emit error("Playlist folder already exists");
+        return false;
+    }
+    
+    // Create the directory if it doesn't exist
+    QDir dir(path);
+    if (!dir.exists()) {
+        if (!dir.mkpath(".")) {
+            emit error("Failed to create playlist directory: " + path);
+            return false;
+        }
+    }
+    
+    m_playlistFolders.append(path);
+    savePlaylistFoldersConfig();
+    refreshPlaylists();
+    emit playlistFoldersChanged();
+    
+    return true;
+}
+
+bool PlaylistManager::removePlaylistFolder(const QString& path)
+{
+    if (path.isEmpty()) {
+        emit error("Playlist folder path cannot be empty");
+        return false;
+    }
+    
+    // Don't allow removing the default folder
+    if (path == m_defaultPlaylistFolder) {
+        emit error("Cannot remove the default playlist folder");
+        return false;
+    }
+    
+    if (!m_playlistFolders.contains(path)) {
+        emit error("Playlist folder not found");
+        return false;
+    }
+    
+    m_playlistFolders.removeAll(path);
+    savePlaylistFoldersConfig();
+    refreshPlaylists();
+    emit playlistFoldersChanged();
+    
+    return true;
+}
+
+bool PlaylistManager::setDefaultPlaylistFolder(const QString& path)
+{
+    if (path.isEmpty()) {
+        emit error("Default playlist folder path cannot be empty");
+        return false;
+    }
+    
+    // Check if the folder is in our list
+    if (!m_playlistFolders.contains(path)) {
+        emit error("Folder must be in the playlist folders list");
+        return false;
+    }
+    
+    m_defaultPlaylistFolder = path;
+    m_playlistsDirectory = path; // Update legacy directory
+    savePlaylistFoldersConfig();
+    emit defaultPlaylistFolderChanged();
+    emit playlistsDirectoryChanged();
+    
+    return true;
+}
+
+void PlaylistManager::savePlaylistFoldersConfig()
+{
+    QSettings settings;
+    
+    // Save playlist folders as JSON array
+    QJsonArray foldersArray;
+    for (const QString& folder : m_playlistFolders) {
+        foldersArray.append(folder);
+    }
+    
+    QJsonDocument doc(foldersArray);
+    settings.setValue("playlistFolders", doc.toJson());
+    
+    // Save default playlist folder
+    settings.setValue("defaultPlaylistFolder", m_defaultPlaylistFolder);
+}
+
+void PlaylistManager::loadPlaylistFoldersConfig()
+{
+    QSettings settings;
+    
+    // Load playlist folders
+    QByteArray foldersData = settings.value("playlistFolders").toByteArray();
+    if (!foldersData.isEmpty()) {
+        QJsonDocument doc = QJsonDocument::fromJson(foldersData);
+        if (doc.isArray()) {
+            QJsonArray foldersArray = doc.array();
+            m_playlistFolders.clear();
+            for (const QJsonValue& value : foldersArray) {
+                if (value.isString()) {
+                    m_playlistFolders.append(value.toString());
+                }
+            }
+        }
+    }
+    
+    // Load default playlist folder
+    QString defaultFolder = settings.value("defaultPlaylistFolder").toString();
+    if (!defaultFolder.isEmpty() && m_playlistFolders.contains(defaultFolder)) {
+        m_defaultPlaylistFolder = defaultFolder;
+        m_playlistsDirectory = defaultFolder; // Update legacy directory
+    } else if (!m_playlistFolders.isEmpty()) {
+        // If no default or invalid default, use the first folder
+        m_defaultPlaylistFolder = m_playlistFolders.first();
+        m_playlistsDirectory = m_defaultPlaylistFolder;
+    }
 }
