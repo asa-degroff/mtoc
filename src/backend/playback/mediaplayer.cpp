@@ -1613,6 +1613,11 @@ void MediaPlayer::playPlaylistNext(const QString& playlistName)
     // Mark queue as modified when adding playlists to existing queue
     setQueueModified(true);
     
+    // Update shuffle order if enabled
+    if (m_shuffleEnabled) {
+        updateShuffleOrder();
+    }
+    
     emit playbackQueueChanged();
     
     // If nothing is playing, start playback
@@ -1665,6 +1670,11 @@ void MediaPlayer::playPlaylistLast(const QString& playlistName)
     
     // Mark queue as modified when adding playlists to existing queue
     setQueueModified(true);
+    
+    // Update shuffle order if enabled
+    if (m_shuffleEnabled) {
+        updateShuffleOrder();
+    }
     
     emit playbackQueueChanged();
     
