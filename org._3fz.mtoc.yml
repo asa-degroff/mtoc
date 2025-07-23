@@ -1,6 +1,6 @@
 app-id: org._3fz.mtoc
 runtime: org.kde.Platform
-runtime-version: '6.7'
+runtime-version: '6.9'
 sdk: org.kde.Sdk
 command: mtoc_app
 finish-args:
@@ -9,6 +9,18 @@ finish-args:
   - --socket=fallback-x11
   - --share=ipc
   - --device=dri
+  
+  # GPU acceleration support
+  - --device=all
+  - --share=network
+  
+  # Environment variables for Qt rendering
+  # Allow runtime to choose best backend (OpenGL/Vulkan)
+  - --env=QT_QPA_PLATFORMTHEME=kde
+  
+  # AMD GPU optimization
+  - --env=AMD_VULKAN_ICD=RADV
+  - --env=MESA_LOADER_DRIVER_OVERRIDE=radeonsi
   
   # Audio
   - --socket=pulseaudio
@@ -34,6 +46,29 @@ cleanup:
   - /share/pkgconfig
   - '*.la'
   - '*.a'
+
+add-extensions:
+  # Mesa GL extension for AMD GPU support
+  org.freedesktop.Platform.GL:
+    directory: lib/GL
+    version: '24.08'
+    subdirectories: true
+    no-autodownload: false
+    autodelete: false
+    add-ld-path: lib
+    merge-dirs: vulkan/icd.d;glvnd/egl_vendor.d;OpenCL/vendors;lib/dri;lib/d3d;vulkan/explicit_layer.d;vulkan/implicit_layer.d
+    download-if: active-gl-driver
+    enable-if: active-gl-driver
+  
+  # Mesa Git for bleeding edge driver support (newer AMD GPUs like RDNA4)
+  org.freedesktop.Platform.GL.mesa-git:
+    directory: lib/GL/mesa-git
+    version: '24.08'
+    subdirectories: false
+    no-autodownload: false
+    autodelete: false
+    add-ld-path: lib
+    merge-dirs: vulkan/icd.d;glvnd/egl_vendor.d;OpenCL/vendors;lib/dri;lib/d3d;vulkan/explicit_layer.d;vulkan/implicit_layer.d
 
 modules:
   - name: utf8cpp
@@ -63,6 +98,7 @@ modules:
       - /lib/pkgconfig
       - '*.la'
 
+  # Add mesa-utils for debugging
   - name: mtoc
     buildsystem: cmake
     config-opts:
