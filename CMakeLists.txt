@@ -12,7 +12,7 @@ include(GNUInstallDirs)
 # Enable qDebug output even in release builds
 add_definitions(-DQT_MESSAGELOGCONTEXT -DQT_DEBUG)
 
-find_package(Qt6 COMPONENTS Core Quick Qml Multimedia DBus Concurrent Widgets Sql REQUIRED)
+find_package(Qt6 COMPONENTS Core Quick QuickEffects Qml Multimedia DBus Concurrent Widgets Sql REQUIRED)
 # find_package(TagLib REQUIRED) # This failed, reverting to pkg-config
 
 find_package(PkgConfig REQUIRED) # Ensure PkgConfig is found
@@ -88,6 +88,7 @@ target_link_libraries(mtoc_app
     PRIVATE
     Qt6::Core
     Qt6::Quick
+    Qt6::QuickEffects
     Qt6::Qml
     Qt6::Multimedia
     Qt6::DBus
