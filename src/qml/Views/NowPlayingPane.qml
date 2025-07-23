@@ -167,13 +167,16 @@ Item {
                 // Album art container
                 Item {
                     id: albumArtContainer
-                    anchors.left: parent.left
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
                     width: queueVisible ? parent.width * 0.24 : parent.width * 0.9
                     
-                    // Center horizontally when queue is hidden
-                    anchors.leftMargin: queueVisible ? 0 : (parent.width - width) / 2
+                    // Calculate target width for proper x position calculation
+                    property real targetWidth: queueVisible ? parent.width * 0.24 : parent.width * 0.9
+                    
+                    // Position based on queue visibility - centered when hidden, left-aligned when visible
+                    // Use targetWidth instead of current width to ensure smooth simultaneous animation
+                    x: queueVisible ? 0 : (parent.width - targetWidth) / 2
                     
                     Behavior on width {
                         NumberAnimation { 
@@ -182,7 +185,7 @@ Item {
                         }
                     }
                     
-                    Behavior on anchors.leftMargin {
+                    Behavior on x {
                         NumberAnimation { 
                             duration: 300
                             easing.type: Easing.InOutCubic
@@ -319,10 +322,18 @@ Item {
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
                     width: queueVisible ? parent.width * 0.7 - 16 : 0
-                    visible: width > 1  // Only visible once width animation starts
+                    opacity: queueVisible ? 1.0 : 0.0
+                    visible: opacity > 0 || width > 1  // Stay visible during animations
                     clip: true
                     
                     Behavior on width {
+                        NumberAnimation { 
+                            duration: 300
+                            easing.type: Easing.InOutCubic
+                        }
+                    }
+                    
+                    Behavior on opacity {
                         NumberAnimation { 
                             duration: 300
                             easing.type: Easing.InOutCubic
@@ -335,14 +346,6 @@ Item {
                         radius: 8
                         border.width: 1
                         border.color: Qt.rgba(1, 1, 1, 0.1)
-                        opacity: queueVisible ? 1.0 : 0.0
-                        
-                        Behavior on opacity {
-                            NumberAnimation { 
-                                duration: 300
-                                easing.type: Easing.InOutCubic
-                            }
-                        }
                         
                         ColumnLayout {
                             anchors.fill: parent
