@@ -15,6 +15,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QSet>
+#include <QStandardPaths>
 
 using Mtoc::LibraryManager;
 using Mtoc::Track;
@@ -297,11 +298,36 @@ QString PlaylistManager::makeRelativePath(const QString& filePath) const
     
     QStringList musicFolders = m_libraryManager->musicFolders();
     QString playlistDir = QFileInfo(m_playlistsDirectory).canonicalFilePath();
+    QString canonicalFilePath = QFileInfo(filePath).canonicalFilePath();
+    
+    // For flatpak portal paths, try to convert to regular home paths for better portability
+    QString pathToWrite = filePath;
+    if (filePath.startsWith("/run/flatpak/doc/") || filePath.startsWith("/run/user/")) {
+        // Check if this corresponds to the user's Music folder
+        QString homeMusicPath = QStandardPaths::writableLocation(QStandardPaths::MusicLocation);
+        QString musicCanonical = QFileInfo(homeMusicPath).canonicalFilePath();
+        
+        // Find which music folder this file belongs to
+        for (const QString& musicFolder : musicFolders) {
+            QString musicFolderCanonical = QFileInfo(musicFolder).canonicalFilePath();
+            if (canonicalFilePath.startsWith(musicFolderCanonical)) {
+                // If this music folder is a portal path but corresponds to the user's Music folder
+                if ((musicFolder.startsWith("/run/flatpak/doc/") || musicFolder.startsWith("/run/user/")) &&
+                    QDir(musicFolderCanonical).exists()) {
+                    // Try to reconstruct the regular home path
+                    QString relativePart = QDir(musicFolderCanonical).relativeFilePath(canonicalFilePath);
+                    pathToWrite = QDir(homeMusicPath).absoluteFilePath(relativePart);
+                    canonicalFilePath = QFileInfo(pathToWrite).canonicalFilePath();
+                    qDebug() << "PlaylistManager: Converted portal path to home path for playlist:" << pathToWrite;
+                }
+                break;
+            }
+        }
+    }
     
     // Check if file is within any music folder
     for (const QString& musicFolder : musicFolders) {
         QString canonicalMusicFolder = QFileInfo(musicFolder).canonicalFilePath();
-        QString canonicalFilePath = QFileInfo(filePath).canonicalFilePath();
         
         if (canonicalFilePath.startsWith(canonicalMusicFolder)) {
             // Calculate relative path from playlist directory
@@ -316,8 +342,8 @@ QString PlaylistManager::makeRelativePath(const QString& filePath) const
         }
     }
     
-    // Use absolute path if not in music folders or too many levels up
-    return filePath;
+    // Use the processed path (either converted from portal or original)
+    return pathToWrite;
 }
 
 QVariantList PlaylistManager::loadPlaylist(const QString& name)
@@ -365,6 +391,8 @@ QVariantList PlaylistManager::readM3UFile(const QString& filepath)
         return tracks;
     }
     
+    qDebug() << "PlaylistManager: Reading playlist file:" << filepath;
+    
     QTextStream stream(&file);
     stream.setEncoding(QStringConverter::Utf8);
     
@@ -404,10 +432,62 @@ QVariantList PlaylistManager::readM3UFile(const QString& filepath)
             // This is a file path
             QString resolvedPath = resolvePlaylistPath(line, filepath);
             
-            if (!resolvedPath.isEmpty() && QFile::exists(resolvedPath)) {
+            if (!resolvedPath.isEmpty()) {
+                // Check if file exists first
+                if (!QFile::exists(resolvedPath)) {
+                    qDebug() << "PlaylistManager: File does not exist:" << resolvedPath;
+                    qDebug() << "  - Original line from playlist:" << line;
+                    
+                    // Reset for next track
+                    currentTitle.clear();
+                    currentArtist.clear();
+                    currentAlbum.clear();
+                    currentAlbumArtist.clear();
+                    currentDuration = 0;
+                    continue;
+                }
                 // Try to get track info from library
                 if (m_libraryManager) {
+                    // First try with the resolved path as-is
                     Mtoc::Track* track = m_libraryManager->trackByPath(resolvedPath);
+                    
+                    // If not found, try with canonical path (important for flatpak)
+                    if (!track) {
+                        QString canonicalPath = QFileInfo(resolvedPath).canonicalFilePath();
+                        if (canonicalPath != resolvedPath) {
+                            qDebug() << "PlaylistManager: Trying canonical path:" << canonicalPath;
+                            track = m_libraryManager->trackByPath(canonicalPath);
+                        }
+                    }
+                    
+                    // If still not found and we're in flatpak, the database might have portal paths
+                    // Try to find a matching file in the music folders
+                    if (!track && (resolvedPath.startsWith("/home/") || resolvedPath.startsWith("/"))) {
+                        QStringList musicFolders = m_libraryManager->musicFolders();
+                        for (const QString& musicFolder : musicFolders) {
+                            // Check if this music folder is a portal path
+                            if (musicFolder.startsWith("/run/flatpak/doc/") || musicFolder.startsWith("/run/user/")) {
+                                // Try to match the file based on relative path within music folder
+                                QString musicFolderCanonical = QFileInfo(musicFolder).canonicalFilePath();
+                                
+                                // Extract the relative part of the resolved path
+                                // For example: /home/user/Music/artist/song.mp3 -> artist/song.mp3
+                                QString homeMusicPath = QStandardPaths::writableLocation(QStandardPaths::MusicLocation);
+                                if (resolvedPath.startsWith(homeMusicPath)) {
+                                    QString relativePart = QDir(homeMusicPath).relativeFilePath(resolvedPath);
+                                    QString portalPath = QDir(musicFolderCanonical).absoluteFilePath(relativePart);
+                                    
+                                    qDebug() << "PlaylistManager: Trying portal path:" << portalPath;
+                                    track = m_libraryManager->trackByPath(portalPath);
+                                    if (track) {
+                                        qDebug() << "PlaylistManager: Found track using portal path mapping";
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
                     if (track) {
                         QVariantMap trackMap;
                         trackMap["filePath"] = track->filePath();
@@ -423,6 +503,8 @@ QVariantList PlaylistManager::readM3UFile(const QString& filepath)
                         continue;
                     } else {
                         qDebug() << "PlaylistManager: Track not found in library:" << resolvedPath;
+                        qDebug() << "  - Original line from playlist:" << line;
+                        qDebug() << "  - Music folders:" << m_libraryManager->musicFolders();
                     }
                 }
                 
@@ -578,6 +660,7 @@ int PlaylistManager::getPlaylistTrackCount(const QString& name)
     }
     
     QVariantList tracks = loadPlaylist(name);
+    qDebug() << "PlaylistManager: Track count for playlist" << name << ":" << tracks.size();
     return tracks.size();
 }
 
@@ -645,14 +728,16 @@ bool PlaylistManager::addPlaylistFolder(const QString& path)
         return false;
     }
     
+    QDir dir(path);
+    QString canonicalPath = dir.canonicalPath();
+    
     // Check if folder already exists in the list
-    if (m_playlistFolders.contains(path)) {
+    if (m_playlistFolders.contains(canonicalPath)) {
         emit error("Playlist folder already exists");
         return false;
     }
     
     // Create the directory if it doesn't exist
-    QDir dir(path);
     if (!dir.exists()) {
         if (!dir.mkpath(".")) {
             emit error("Failed to create playlist directory: " + path);
@@ -660,7 +745,12 @@ bool PlaylistManager::addPlaylistFolder(const QString& path)
         }
     }
     
-    m_playlistFolders.append(path);
+    // Create display path for the folder
+    QString displayPath = createDisplayPath(path);
+    
+    m_playlistFolders.append(canonicalPath);
+    m_folderDisplayPaths[canonicalPath] = displayPath;
+    
     savePlaylistFoldersConfig();
     refreshPlaylists();
     emit playlistFoldersChanged();
@@ -675,18 +765,22 @@ bool PlaylistManager::removePlaylistFolder(const QString& path)
         return false;
     }
     
+    QDir dir(path);
+    QString canonicalPath = dir.canonicalPath();
+    
     // Don't allow removing the default folder
-    if (path == m_defaultPlaylistFolder) {
+    if (canonicalPath == m_defaultPlaylistFolder) {
         emit error("Cannot remove the default playlist folder");
         return false;
     }
     
-    if (!m_playlistFolders.contains(path)) {
+    if (!m_playlistFolders.contains(canonicalPath)) {
         emit error("Playlist folder not found");
         return false;
     }
     
-    m_playlistFolders.removeAll(path);
+    m_playlistFolders.removeAll(canonicalPath);
+    m_folderDisplayPaths.remove(canonicalPath);
     savePlaylistFoldersConfig();
     refreshPlaylists();
     emit playlistFoldersChanged();
@@ -731,6 +825,14 @@ void PlaylistManager::savePlaylistFoldersConfig()
     
     // Save default playlist folder
     settings.setValue("defaultPlaylistFolder", m_defaultPlaylistFolder);
+    
+    // Save display paths mapping
+    settings.beginGroup("playlistFolderDisplayPaths");
+    settings.remove(""); // Clear the group
+    for (auto it = m_folderDisplayPaths.begin(); it != m_folderDisplayPaths.end(); ++it) {
+        settings.setValue(it.key(), it.value());
+    }
+    settings.endGroup();
 }
 
 void PlaylistManager::loadPlaylistFoldersConfig()
@@ -752,6 +854,17 @@ void PlaylistManager::loadPlaylistFoldersConfig()
         }
     }
     
+    // Load display paths mapping
+    settings.beginGroup("playlistFolderDisplayPaths");
+    QStringList keys = settings.childKeys();
+    for (const QString& key : keys) {
+        QString displayPath = settings.value(key).toString();
+        if (!displayPath.isEmpty()) {
+            m_folderDisplayPaths[key] = displayPath;
+        }
+    }
+    settings.endGroup();
+    
     // Load default playlist folder
     QString defaultFolder = settings.value("defaultPlaylistFolder").toString();
     if (!defaultFolder.isEmpty() && m_playlistFolders.contains(defaultFolder)) {
@@ -762,4 +875,80 @@ void PlaylistManager::loadPlaylistFoldersConfig()
         m_defaultPlaylistFolder = m_playlistFolders.first();
         m_playlistsDirectory = m_defaultPlaylistFolder;
     }
+}
+
+QString PlaylistManager::createDisplayPath(const QString& path) const
+{
+    QDir dir(path);
+    QString canonicalPath = dir.canonicalPath();
+    
+    // For portal paths, try to create a more user-friendly display path
+    if (path.startsWith("/run/flatpak/doc/") || path.startsWith("/run/user/")) {
+        // Check if this is the user's Documents folder
+        QString documentsPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+        if (canonicalPath == QDir(documentsPath).canonicalPath()) {
+            return documentsPath;
+        }
+        
+        // Check if this is in the user's Music folder
+        QString musicPath = QStandardPaths::writableLocation(QStandardPaths::MusicLocation);
+        QString musicCanonical = QDir(musicPath).canonicalPath();
+        if (canonicalPath.startsWith(musicCanonical)) {
+            QString relativePath = QDir(musicCanonical).relativeFilePath(canonicalPath);
+            return QDir(musicPath).absoluteFilePath(relativePath);
+        }
+        
+        // Try to resolve symlinks
+        QFileInfo fileInfo(path);
+        if (fileInfo.isSymLink()) {
+            QString resolvedPath = fileInfo.symLinkTarget();
+            if (!resolvedPath.isEmpty()) {
+                return resolvedPath;
+            }
+        }
+        
+        // Parse the portal path structure
+        QStringList parts = path.split('/');
+        if (parts.size() >= 5) {
+            // Look for the actual folder name after the hash
+            if ((parts[2] == "flatpak" && parts[3] == "doc" && parts.size() > 5) ||
+                (parts[2] == "user" && parts[4] == "doc" && parts.size() > 6)) {
+                // The last part should be the actual folder name
+                QString folderName = parts.last();
+                if (!folderName.isEmpty() && folderName.length() < 64) {
+                    // Construct a user-friendly path
+                    return QDir::homePath() + "/" + folderName;
+                }
+            }
+        }
+        
+        // If we still have a portal path, use the canonical path
+        if (!canonicalPath.startsWith("/run/")) {
+            return canonicalPath;
+        }
+        
+        // Last resort: use a generic name with the last directory component
+        QString lastDir = QDir(canonicalPath).dirName();
+        if (!lastDir.isEmpty() && lastDir.length() < 64) {
+            return "Playlists: " + lastDir;
+        }
+        return "Playlist Folder";
+    }
+    
+    // For non-portal paths, return as-is
+    return path;
+}
+
+QStringList PlaylistManager::playlistFoldersDisplay() const
+{
+    QStringList displayPaths;
+    for (const QString& folder : m_playlistFolders) {
+        if (m_folderDisplayPaths.contains(folder)) {
+            displayPaths.append(m_folderDisplayPaths[folder]);
+        } else {
+            // Fallback to creating display path on the fly
+            displayPaths.append(createDisplayPath(folder));
+        }
+    }
+    return displayPaths;
 }

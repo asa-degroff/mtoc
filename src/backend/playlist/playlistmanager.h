@@ -20,6 +20,7 @@ class PlaylistManager : public QObject
     Q_PROPERTY(QStringList playlists READ playlists NOTIFY playlistsChanged)
     Q_PROPERTY(QString playlistsDirectory READ playlistsDirectory NOTIFY playlistsDirectoryChanged)
     Q_PROPERTY(QStringList playlistFolders READ playlistFolders NOTIFY playlistFoldersChanged)
+    Q_PROPERTY(QStringList playlistFoldersDisplay READ playlistFoldersDisplay NOTIFY playlistFoldersChanged)
     Q_PROPERTY(QString defaultPlaylistFolder READ defaultPlaylistFolder NOTIFY defaultPlaylistFolderChanged)
     Q_PROPERTY(bool isReady READ isReady NOTIFY readyChanged)
 
@@ -30,6 +31,7 @@ public:
     QStringList playlists() const { return m_playlists; }
     QString playlistsDirectory() const { return m_playlistsDirectory; }
     QStringList playlistFolders() const { return m_playlistFolders; }
+    QStringList playlistFoldersDisplay() const;
     QString defaultPlaylistFolder() const { return m_defaultPlaylistFolder; }
     bool isReady() const { return m_isReady; }
     
@@ -84,6 +86,7 @@ private:
     void setReady(bool ready);
     void savePlaylistFoldersConfig();
     void loadPlaylistFoldersConfig();
+    QString createDisplayPath(const QString& path) const;
     
     static PlaylistManager* s_instance;
     Mtoc::LibraryManager* m_libraryManager = nullptr;
@@ -93,6 +96,7 @@ private:
     QString m_playlistsDirectory;  // Legacy single directory
     QStringList m_playlistFolders;  // All playlist directories
     QString m_defaultPlaylistFolder;  // Default directory for new playlists
+    QHash<QString, QString> m_folderDisplayPaths;  // Maps canonical paths to display paths
     bool m_isReady = false;
 };
 
