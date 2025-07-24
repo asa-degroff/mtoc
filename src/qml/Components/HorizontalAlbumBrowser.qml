@@ -326,8 +326,8 @@ Item {
                 id: snapAnimation
                 target: listView
                 property: "contentX"
-                duration: 200
-                easing.type: Easing.OutCubic
+                duration: 300
+                easing.type: Easing.OutQuad
                 onStopped: {
                     root.isSnapping = false
                     // Emit signal when snap animation completes and we have an album
@@ -658,14 +658,14 @@ Item {
                             enabled: absDistance < 200 // Only animate near center
                             NumberAnimation {
                                 duration: 300
-                                easing.type: Easing.OutCubic 
+                                easing.type: Easing.OutQuad
                             }
                         }
                         Behavior on yScale {
                             enabled: absDistance < 200 // Only animate near center
                             NumberAnimation { 
                                 duration: 300
-                                easing.type: Easing.OutCubic 
+                                easing.type: Easing.OutQuad
                             }
                         }
                     },
