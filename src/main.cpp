@@ -144,13 +144,13 @@ int main(int argc, char *argv[])
     qmlRegisterType<Mtoc::Track>("Mtoc.Backend", 1, 0, "Track");
     qmlRegisterType<Mtoc::Album>("Mtoc.Backend", 1, 0, "Album");
     
-    // Create objects on heap without parenting to engine since we manage lifetime manually
-    SystemInfo *systemInfo = new SystemInfo();
+    // Create objects and parent them to the QML engine for automatic cleanup
+    SystemInfo *systemInfo = new SystemInfo(&engine);
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "SystemInfo", systemInfo);
 
     // Create LibraryManager first to see if it's the issue
     qDebug() << "Main: Creating LibraryManager...";
-    Mtoc::LibraryManager *libraryManager = new Mtoc::LibraryManager();
+    Mtoc::LibraryManager *libraryManager = new Mtoc::LibraryManager(&engine);
     qDebug() << "Main: LibraryManager created successfully";
     
     qDebug() << "Main: Registering LibraryManager with QML...";
@@ -158,18 +158,19 @@ int main(int argc, char *argv[])
     qDebug() << "Main: LibraryManager registered";
     
     // MetadataExtractor might not need to be a singleton since it's used by LibraryManager
-    Mtoc::MetadataExtractor *metadataExtractor = new Mtoc::MetadataExtractor();
+    Mtoc::MetadataExtractor *metadataExtractor = new Mtoc::MetadataExtractor(&engine);
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MetadataExtractor", metadataExtractor);
     
     // Register SettingsManager singleton
     qDebug() << "Main: Registering SettingsManager...";
     SettingsManager *settingsManager = SettingsManager::instance();
+    settingsManager->setParent(&engine);  // Parent to engine for cleanup
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "SettingsManager", settingsManager);
     qDebug() << "Main: SettingsManager registered";
     
     // Create and register MediaPlayer
     qDebug() << "Main: Creating MediaPlayer...";
-    MediaPlayer *mediaPlayer = new MediaPlayer();
+    MediaPlayer *mediaPlayer = new MediaPlayer(&engine);
     mediaPlayer->setLibraryManager(libraryManager);
     mediaPlayer->setSettingsManager(settingsManager);
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MediaPlayer", mediaPlayer);
@@ -178,6 +179,7 @@ int main(int argc, char *argv[])
     // Register PlaylistManager singleton
     qDebug() << "Main: Creating PlaylistManager...";
     PlaylistManager *playlistManager = PlaylistManager::instance();
+    playlistManager->setParent(&engine);  // Parent to engine for cleanup
     playlistManager->setLibraryManager(libraryManager);
     playlistManager->setMediaPlayer(mediaPlayer);
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "PlaylistManager", playlistManager);
@@ -226,33 +228,21 @@ int main(int argc, char *argv[])
         // Note: Carousel position is automatically saved when it changes
         // The QML timer handles this, no need for explicit save here
         
-        // Explicitly delete objects in the correct order before Qt's automatic cleanup
-        // This ensures database is not closed while other objects might still need it
+        // Only delete objects that are NOT registered with QML
+        // QML-registered singletons will be cleaned up by the QML engine
         delete mprisManager;
         mprisManager = nullptr;
         
-        delete mediaPlayer;
-        mediaPlayer = nullptr;
-        
-        // Remove the album art provider before deleting library manager
+        // Remove the album art provider before QML cleanup
         engine.removeImageProvider("albumart");
         
-        // Delete PlaylistManager singleton
-        delete playlistManager;
-        playlistManager = nullptr;
-        
-        delete libraryManager;
-        libraryManager = nullptr;
-        
-        delete metadataExtractor;
-        metadataExtractor = nullptr;
-        
-        // Delete SettingsManager singleton - it saves settings in destructor
-        delete settingsManager;
-        settingsManager = nullptr;
-        
-        delete systemInfo;
-        systemInfo = nullptr;
+        // Do NOT delete QML-registered singletons here - let QML engine handle them:
+        // - mediaPlayer
+        // - playlistManager  
+        // - libraryManager
+        // - metadataExtractor
+        // - settingsManager
+        // - systemInfo
         
         // Process any pending deletions before returning
         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);

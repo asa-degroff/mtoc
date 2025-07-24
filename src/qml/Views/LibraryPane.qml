@@ -254,19 +254,24 @@ Item {
             collapsedArtistCleanupTimers[artistName].destroy()
         }
         
-        // Create a new timer for cleanup
+        // Create a new timer for cleanup with proper parent
         var cleanupTimer = Qt.createQmlObject(
-            'import QtQuick 2.15; Timer { interval: ' + cleanupDelayMs + '; running: true; repeat: false }',
+            'import QtQuick 2.15; Timer { interval: ' + cleanupDelayMs + '; running: true; repeat: false; parent: root }',
             root
         )
         
         cleanupTimer.triggered.connect(function() {
+            // Check if root still exists before accessing properties
+            if (!root) return
+            
             // Clean up this artist's data if still collapsed
-            if (!expandedArtists[artistName]) {
+            if (expandedArtists && !expandedArtists[artistName]) {
                 delete artistAlbumCache[artistName]
             }
             // Clean up the timer itself
-            delete collapsedArtistCleanupTimers[artistName]
+            if (collapsedArtistCleanupTimers) {
+                delete collapsedArtistCleanupTimers[artistName]
+            }
             cleanupTimer.destroy()
         })
         
