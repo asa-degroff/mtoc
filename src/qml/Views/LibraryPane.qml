@@ -256,7 +256,7 @@ Item {
         
         // Create a new timer for cleanup with proper parent
         var cleanupTimer = Qt.createQmlObject(
-            'import QtQuick 2.15; Timer { interval: ' + cleanupDelayMs + '; running: true; repeat: false; parent: root }',
+            'import QtQuick 2.15; Timer { interval: ' + cleanupDelayMs + '; running: true; repeat: false }',
             root
         )
         

@@ -1305,6 +1305,15 @@ QSqlDatabase DatabaseManager::createThreadConnection(const QString& connectionNa
     query.exec("PRAGMA mmap_size = 268435456");
     query.exec("PRAGMA page_size = 4096");
     
+    // Force WAL checkpoint to ensure this connection sees all committed data
+    query.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+    
+    // Enable read uncommitted to see latest data from other connections
+    query.exec("PRAGMA read_uncommitted = 1");
+    
+    qDebug() << "[DatabaseManager] Created thread connection:" << connectionName 
+             << "WAL checkpoint result:" << query.lastError().text();
+    
     return db;
 }
 

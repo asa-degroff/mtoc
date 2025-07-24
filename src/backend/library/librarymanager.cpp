@@ -381,10 +381,27 @@ bool LibraryManager::removeMusicFolder(const QString &path)
         qDebug() << "LibraryManager::removeMusicFolder() - found canonical path from display:" << pathToRemove;
     }
     
+    // Try to get canonical path from the input
     QDir dir(pathToRemove);
     QString canonicalPath = dir.canonicalPath();
     
-    if (m_musicFolders.removeAll(canonicalPath) > 0) {
+    // If canonical path resolution failed or path doesn't exist, 
+    // try to match against existing folders directly
+    bool removed = false;
+    if (canonicalPath.isEmpty() || !dir.exists()) {
+        // Try direct match against stored paths
+        for (const QString &folder : m_musicFolders) {
+            if (folder == path || m_folderDisplayPaths.value(folder) == path) {
+                canonicalPath = folder;
+                removed = m_musicFolders.removeAll(canonicalPath) > 0;
+                break;
+            }
+        }
+    } else {
+        removed = m_musicFolders.removeAll(canonicalPath) > 0;
+    }
+    
+    if (removed) {
         // Remove display path mapping
         m_folderDisplayPaths.remove(canonicalPath);
         
@@ -492,16 +509,26 @@ void LibraryManager::scanInBackground()
         return;
     }
     
-    try {
-        qDebug() << "About to start database transaction...";
-        // Start transaction in the background thread
-        QSqlQuery query(db);
-        if (!query.exec("BEGIN TRANSACTION")) {
-            qWarning() << "Failed to start database transaction:" << query.lastError().text();
-            DatabaseManager::removeThreadConnection(connectionName);
-            return;
+    // Force WAL checkpoint to ensure this thread connection sees all committed data
+    {
+        QSqlQuery checkpointQuery(db);
+        checkpointQuery.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+        qDebug() << "[scanInBackground] Performed WAL checkpoint to sync with main database";
+    }
+    
+    // Log how many tracks this connection sees
+    {
+        QSqlQuery countQuery(db);
+        if (countQuery.exec("SELECT COUNT(*) FROM tracks")) {
+            if (countQuery.next()) {
+                qDebug() << "[scanInBackground] Thread connection sees" << countQuery.value(0).toInt() << "tracks in database";
+            }
         }
-        qDebug() << "Transaction started successfully";
+    }
+    
+    try {
+        // Note: Removed transaction wrapper to fix issue with new files not being detected
+        // Each database operation will be auto-committed individually
         
         // Find all music files
         QStringList allFiles;
@@ -623,11 +650,13 @@ void LibraryManager::scanInBackground()
                 if (!checkQuery.exec()) {
                     qWarning() << "Failed to check track existence:" << checkQuery.lastError().text();
                 } else if (checkQuery.next()) {
-                    // qDebug() << "Track already exists in database, skipping:" << filePath;
+                    // Track already exists in database
+                    qDebug() << "[" << connectionName << "] Track already exists in database, skipping:" << filePath;
                     m_filesScanned++;
                     continue;
                 } else {
                     // Track not in database, will process
+                    qDebug() << "[" << connectionName << "] New track found, will process:" << filePath;
                 }
             }
             
@@ -737,31 +766,13 @@ void LibraryManager::scanInBackground()
             batchMetadata.clear();
         }
         
-        // Commit the transaction if not cancelled
-        if (!m_cancelRequested) {
-            QSqlQuery commitQuery(db);
-            if (!commitQuery.exec("COMMIT")) {
-                qWarning() << "Failed to commit database transaction:" << commitQuery.lastError().text();
-            } else {
-                qDebug() << "Successfully committed database transaction";
-            }
-        } else {
-            // Rollback if cancelled
-            QSqlQuery rollbackQuery(db);
-            rollbackQuery.exec("ROLLBACK");
-        }
+        // No longer using transactions - each operation auto-commits
         
         qDebug() << "scanInBackground() completed successfully";
     } catch (const std::exception& e) {
         qCritical() << "Exception in scanInBackground():" << e.what();
-        // Rollback transaction on error
-        QSqlQuery rollbackQuery(db);
-        rollbackQuery.exec("ROLLBACK");
     } catch (...) {
         qCritical() << "Unknown exception in scanInBackground()";
-        // Rollback transaction on error
-        QSqlQuery rollbackQuery(db);
-        rollbackQuery.exec("ROLLBACK");
     }
     
     // Clean up thread-local database connection
