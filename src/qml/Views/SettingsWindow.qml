@@ -83,6 +83,67 @@ ApplicationWindow {
                             font.pixelSize: 14
                             verticalAlignment: Text.AlignVCenter
                             leftPadding: 8
+                            rightPadding: 30  // Leave space for indicator
+                        }
+                        
+                        indicator: Canvas {
+                            x: parent.width - width - 8
+                            y: parent.height / 2 - height / 2
+                            width: 12
+                            height: 8
+                            contextType: "2d"
+                            
+                            onPaint: {
+                                var ctx = getContext("2d")
+                                ctx.reset()
+                                ctx.moveTo(0, 0)
+                                ctx.lineTo(width, 0)
+                                ctx.lineTo(width / 2, height)
+                                ctx.closePath()
+                                ctx.fillStyle = "#cccccc"
+                                ctx.fill()
+                            }
+                        }
+                        
+                        popup: Popup {
+                            y: parent.height + 2
+                            width: parent.width
+                            implicitHeight: contentItem.implicitHeight + 2
+                            padding: 1
+                            
+                            contentItem: ListView {
+                                clip: true
+                                implicitHeight: contentHeight
+                                model: parent.visible ? queueActionCombo.delegateModel : null
+                                currentIndex: queueActionCombo.highlightedIndex
+                                
+                                ScrollIndicator.vertical: ScrollIndicator { }
+                            }
+                            
+                            background: Rectangle {
+                                color: "#2a2a2a"
+                                border.color: "#505050"
+                                border.width: 1
+                                radius: 4
+                            }
+                        }
+                        
+                        delegate: ItemDelegate {
+                            width: queueActionCombo.width
+                            height: 36
+                            
+                            contentItem: Text {
+                                text: modelData
+                                color: parent.hovered ? "white" : "#cccccc"
+                                font.pixelSize: 14
+                                verticalAlignment: Text.AlignVCenter
+                                leftPadding: 8
+                            }
+                            
+                            background: Rectangle {
+                                color: parent.hovered ? "#4a5fba" : "transparent"
+                                radius: 2
+                            }
                         }
                     }
                 }
@@ -134,13 +195,24 @@ ApplicationWindow {
                             color: parent.checked ? "#4a5fba" : "#383838"
                             border.color: parent.checked ? "#5a6fca" : "#505050"
                             
-                            Text {
-                                anchors.centerIn: parent
-                                text: "✓"
-                                font.pixelSize: 14
-                                font.bold: true
-                                color: "white"
+                            Canvas {
+                                anchors.fill: parent
+                                anchors.margins: 4
                                 visible: parent.parent.checked
+                                
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.reset()
+                                    ctx.strokeStyle = "white"
+                                    ctx.lineWidth = 2
+                                    ctx.lineCap = "round"
+                                    ctx.lineJoin = "round"
+                                    ctx.beginPath()
+                                    ctx.moveTo(width * 0.2, height * 0.5)
+                                    ctx.lineTo(width * 0.45, height * 0.75)
+                                    ctx.lineTo(width * 0.8, height * 0.25)
+                                    ctx.stroke()
+                                }
                             }
                         }
                     }
@@ -193,13 +265,24 @@ ApplicationWindow {
                             color: parent.checked ? "#4a5fba" : "#383838"
                             border.color: parent.checked ? "#5a6fca" : "#505050"
                             
-                            Text {
-                                anchors.centerIn: parent
-                                text: "✓"
-                                font.pixelSize: 14
-                                font.bold: true
-                                color: "white"
+                            Canvas {
+                                anchors.fill: parent
+                                anchors.margins: 4
                                 visible: parent.parent.checked
+                                
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.reset()
+                                    ctx.strokeStyle = "white"
+                                    ctx.lineWidth = 2
+                                    ctx.lineCap = "round"
+                                    ctx.lineJoin = "round"
+                                    ctx.beginPath()
+                                    ctx.moveTo(width * 0.2, height * 0.5)
+                                    ctx.lineTo(width * 0.45, height * 0.75)
+                                    ctx.lineTo(width * 0.8, height * 0.25)
+                                    ctx.stroke()
+                                }
                             }
                         }
                     }
