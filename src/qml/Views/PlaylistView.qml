@@ -6,12 +6,111 @@ import "../Components"
 
 Item {
     id: root
+    focus: true
+    
+    // Keyboard navigation state
+    property int keyboardSelectedIndex: -1
     
     signal playlistSelected(string playlistName)
     signal playlistDoubleClicked(string playlistName, var event)
     signal playlistPlayRequested(string playlistName)
     signal playlistPlayNextRequested(string playlistName)
     signal playlistPlayLastRequested(string playlistName)
+    signal navigateToTracks()  // Signal to move focus to track list
+    
+    // Keyboard navigation handler
+    Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Down) {
+            // Navigate down
+            if (keyboardSelectedIndex === -1 && playlistListView.count > 0) {
+                // First navigation down selects first item
+                keyboardSelectedIndex = 0
+                ensureKeyboardSelectedVisible()
+            } else if (keyboardSelectedIndex < playlistListView.count - 1) {
+                keyboardSelectedIndex++
+                ensureKeyboardSelectedVisible()
+            }
+            event.accepted = true
+        } else if (event.key === Qt.Key_Up) {
+            // Navigate up
+            if (keyboardSelectedIndex > 0) {
+                keyboardSelectedIndex--
+                ensureKeyboardSelectedVisible()
+            }
+            event.accepted = true
+        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+            // Select/activate playlist
+            if (keyboardSelectedIndex >= 0 && keyboardSelectedIndex < playlistListView.count) {
+                var playlistName = PlaylistManager.playlists[keyboardSelectedIndex]
+                root.playlistSelected(playlistName)
+                // Navigate to track list after selecting
+                root.navigateToTracks()
+            }
+            event.accepted = true
+        } else if (event.key === Qt.Key_Space) {
+            // Play playlist
+            if (keyboardSelectedIndex >= 0 && keyboardSelectedIndex < playlistListView.count) {
+                var playlistName = PlaylistManager.playlists[keyboardSelectedIndex]
+                root.playlistDoubleClicked(playlistName, null)
+            }
+            event.accepted = true
+        } else if (event.key === Qt.Key_Escape) {
+            // Clear selection
+            keyboardSelectedIndex = -1
+            event.accepted = true
+        } else if (event.key === Qt.Key_Right) {
+            // Navigate to track list if a playlist is selected
+            if (keyboardSelectedIndex >= 0 && keyboardSelectedIndex < playlistListView.count) {
+                root.navigateToTracks()
+            }
+            event.accepted = true
+        }
+    }
+    
+    // Function to ensure keyboard selected item is visible
+    function ensureKeyboardSelectedVisible() {
+        if (keyboardSelectedIndex < 0 || keyboardSelectedIndex >= playlistListView.count) {
+            return
+        }
+        
+        // Calculate the position of the selected item (60 is item height, 4 is spacing)
+        var itemY = keyboardSelectedIndex * (60 + 4)
+        var visibleHeight = playlistListView.height
+        var currentY = playlistListView.contentY
+        
+        // Check if the item is fully visible
+        var itemTop = itemY
+        var itemBottom = itemY + 60
+        var viewTop = currentY
+        var viewBottom = currentY + visibleHeight
+        
+        var targetY = -1
+        
+        // If item is above the visible area, scroll to show it at the top with some margin
+        if (itemTop < viewTop) {
+            targetY = Math.max(0, itemTop - 10)
+        }
+        // If item is below the visible area, scroll to show it at the bottom with some margin
+        else if (itemBottom > viewBottom) {
+            targetY = itemBottom - visibleHeight + 10
+        }
+        
+        // Only scroll if needed
+        if (targetY >= 0) {
+            scrollAnimation.stop()
+            scrollAnimation.to = targetY
+            scrollAnimation.start()
+        }
+    }
+    
+    // Smooth scrolling animation
+    NumberAnimation {
+        id: scrollAnimation
+        target: playlistListView
+        property: "contentY"
+        duration: 200
+        easing.type: Easing.InOutQuad
+    }
     
     ListView {
         id: playlistListView
@@ -23,10 +122,18 @@ Item {
         delegate: Rectangle {
             width: ListView.view.width - 12  // Account for scrollbar
             height: 60
-            color: mouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(1, 1, 1, 0.03)
+            color: {
+                if (index === root.keyboardSelectedIndex) {
+                    return Qt.rgba(0.25, 0.32, 0.71, 0.15)  // Keyboard selected
+                } else if (mouseArea.containsMouse) {
+                    return Qt.rgba(1, 1, 1, 0.06)  // Hover
+                } else {
+                    return Qt.rgba(1, 1, 1, 0.03)  // Default
+                }
+            }
             radius: 6
             border.width: 1
-            border.color: Qt.rgba(1, 1, 1, 0.06)
+            border.color: index === root.keyboardSelectedIndex ? Qt.rgba(0.25, 0.32, 0.71, 0.3) : Qt.rgba(1, 1, 1, 0.06)
             
             Behavior on color {
                 ColorAnimation { duration: 150 }
@@ -189,13 +296,18 @@ Item {
                 property string currentPlaylistName: modelData
                 
                 onClicked: {
+                    // Ensure the playlist view has focus for keyboard navigation
+                    root.forceActiveFocus()
+                    
                     if (mouse.button === Qt.LeftButton) {
                         // Only handle clicks if not clicking on the action buttons area
                         if (mouse.x < width - 68) {  // Account for both rename and delete buttons
+                            root.keyboardSelectedIndex = index
                             root.playlistSelected(modelData)
                         }
                     } else if (mouse.button === Qt.RightButton) {
                         // Show context menu
+                        root.keyboardSelectedIndex = index
                         playlistContextMenu.playlistName = modelData
                         playlistContextMenu.isAllSongs = modelData === "All Songs"
                         playlistContextMenu.popup()
@@ -586,6 +698,16 @@ Item {
                     }
                 }
             }
+        }
+    }
+    
+    // Background mouse area to capture clicks and set focus
+    MouseArea {
+        anchors.fill: parent
+        z: -1
+        onPressed: {
+            root.forceActiveFocus()
+            mouse.accepted = false  // Let the click propagate to items
         }
     }
     

@@ -126,10 +126,11 @@ Item {
     property bool isScrollBarDragging: false
     
     // Navigation state for keyboard controls
-    property string navigationMode: "none"  // "none", "artist", "album", "track"
+    property string navigationMode: "none"  // "none", "artist", "album", "track", "playlist"
     property int selectedArtistIndex: -1
     property int selectedAlbumIndex: -1
     property int selectedTrackIndex: -1
+    property int selectedPlaylistIndex: -1
     property string selectedArtistName: ""
     property var selectedAlbumData: null
     
@@ -1070,6 +1071,11 @@ Item {
                                             onClicked: {
                                                 root.currentTab = 0
                                                 resetNavigation()
+                                                // Start artist navigation when switching to Artists tab
+                                                root.forceActiveFocus()
+                                                if (LibraryManager.artistModel.length > 0) {
+                                                    startArtistNavigation()
+                                                }
                                             }
                                         }
                                     }
@@ -1095,6 +1101,17 @@ Item {
                                             cursorShape: Qt.PointingHandCursor
                                             onClicked: {
                                                 root.currentTab = 1
+                                                resetNavigation()
+                                                // Start playlist navigation when switching to Playlists tab
+                                                root.forceActiveFocus()
+                                                if (PlaylistManager.playlists.length > 0) {
+                                                    navigationMode = "playlist"
+                                                    selectedPlaylistIndex = 0
+                                                    if (playlistView) {
+                                                        playlistView.forceActiveFocus()
+                                                        playlistView.keyboardSelectedIndex = 0
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -1291,6 +1308,14 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 
                                 onClicked: {
+                                    // Ensure the library pane has focus for keyboard navigation
+                                    root.forceActiveFocus();
+                                    
+                                    // Update navigation state to artist mode
+                                    root.navigationMode = "artist";
+                                    root.selectedArtistIndex = index;
+                                    root.selectedArtistName = artistData.name;
+                                    
                                     // Toggle expansion state
                                     var currentState = root.expandedArtists[artistData.name] || false;
                                     var newExpandedState = !currentState;
@@ -1856,6 +1881,16 @@ Item {
                             onPlaylistPlayLastRequested: function(playlistName) {
                                 var isVirtual = playlistName === "All Songs"
                                 playPlaylistLast(playlistName, isVirtual)
+                            }
+                            
+                            onNavigateToTracks: {
+                                // Move focus to track list when right arrow is pressed in playlist view
+                                if (rightPane.currentAlbumTracks.length > 0) {
+                                    root.navigationMode = "track"
+                                    root.selectedTrackIndex = -1  // Don't auto-select first track
+                                    trackListView.currentIndex = -1
+                                    root.forceActiveFocus()
+                                }
                             }
                         }
                         }  // End of slidingContainer
@@ -2551,6 +2586,9 @@ Item {
                                     enabled: !root.playlistEditMode // Disable in edit mode to allow drag/delete
                                     
                                     onClicked: function(mouse) {
+                                        // Ensure the library pane has focus for keyboard navigation
+                                        root.forceActiveFocus();
+                                        
                                         if (mouse.button === Qt.LeftButton) {
                                             if (mouse.modifiers & Qt.ControlModifier) {
                                                 // Ctrl+Click: Toggle selection
@@ -4028,12 +4066,26 @@ Item {
                 selectedAlbumData = null
             }
         } else if (navigationMode === "track") {
-            // From track list, go back to album navigation
-            navigationMode = "album"
-            selectedTrackIndex = -1
-            trackListView.currentIndex = -1
+            // Check if we're in the Playlists tab
+            if (currentTab === 1) {
+                // From track list in Playlists tab, go back to playlist navigation
+                navigationMode = "playlist"
+                selectedTrackIndex = -1
+                trackListView.currentIndex = -1
+                // Focus the playlist view
+                if (playlistView) {
+                    playlistView.forceActiveFocus()
+                }
+            } else {
+                // From track list in Artists tab, go back to album navigation
+                navigationMode = "album"
+                selectedTrackIndex = -1
+                trackListView.currentIndex = -1
+            }
         } else if (navigationMode === "artist") {
             // Already at leftmost navigation level
+        } else if (navigationMode === "playlist") {
+            // Already at leftmost navigation level in Playlists tab
         }
     }
     
