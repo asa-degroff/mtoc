@@ -335,19 +335,25 @@ Item {
                     width: progressSlider.availableWidth - progressSlider.handle.width
                     height: implicitHeight
                     radius: 5
-                    color: "white"
-                    opacity: 0.2
+                    gradient: Gradient {
+                        orientation: Gradient.Vertical
+                        GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.15) }
+                        GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.17) }
+                        GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0.19) }
+                    }
+                    opacity: 0.8
                     
                     Rectangle {
                         width: progressSlider.visualPosition * parent.width
                         height: parent.height
-                        radius: 6
+                        radius: 5
+                        opacity: 0.6
                         
                         gradient: Gradient {
                             orientation: Gradient.Vertical
-                            GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.95) }
-                            GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.85) }
-                            GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0.75) }
+                            GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.8) }
+                            GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.6) }
+                            GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0.35) }
                         }
                     }
                 }
@@ -368,7 +374,7 @@ Item {
                     }
                     
                     Behavior on scale {
-                        NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+                        NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
                     }
                     
                     Image {
@@ -379,7 +385,7 @@ Item {
                         sourceSize.width: width * 2
                         sourceSize.height: height * 2
                         smooth: true
-                        antialiasing: false
+                        antialiasing: true
                     }
                     
                     Timer {
