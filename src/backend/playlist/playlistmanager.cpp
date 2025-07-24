@@ -31,6 +31,8 @@ PlaylistManager::PlaylistManager(QObject *parent)
 
 PlaylistManager::~PlaylistManager()
 {
+    qDebug() << "[PlaylistManager::~PlaylistManager] Destructor called";
+    s_instance = nullptr;
 }
 
 PlaylistManager* PlaylistManager::instance()

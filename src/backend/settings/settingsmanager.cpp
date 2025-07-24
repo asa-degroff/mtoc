@@ -12,7 +12,10 @@ SettingsManager::SettingsManager(QObject *parent)
 
 SettingsManager::~SettingsManager()
 {
+    qDebug() << "[SettingsManager::~SettingsManager] Destructor called, saving settings...";
     saveSettings();
+    s_instance = nullptr;
+    qDebug() << "[SettingsManager::~SettingsManager] Cleanup complete";
 }
 
 SettingsManager* SettingsManager::instance()

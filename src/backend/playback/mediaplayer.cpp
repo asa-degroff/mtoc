@@ -51,6 +51,15 @@ MediaPlayer::MediaPlayer(QObject *parent)
 
 MediaPlayer::~MediaPlayer()
 {
+    qDebug() << "[MediaPlayer::~MediaPlayer] Destructor called, cleaning up...";
+    
+    // Stop the save state timer
+    if (m_saveStateTimer) {
+        m_saveStateTimer->stop();
+        m_saveStateTimer->deleteLater();
+        m_saveStateTimer = nullptr;
+    }
+    
     // Cancel any pending restoration
     if (m_restoreConnection) {
         disconnect(m_restoreConnection);
@@ -62,6 +71,7 @@ MediaPlayer::~MediaPlayer()
     
     // Final cache statistics
     qDebug() << "[MediaPlayer::~MediaPlayer] Final QPixmapCache limit:" << QPixmapCache::cacheLimit() / 1024 << "MB";
+    qDebug() << "[MediaPlayer::~MediaPlayer] Cleanup complete";
 }
 
 void MediaPlayer::setLibraryManager(Mtoc::LibraryManager* manager)

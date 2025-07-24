@@ -237,13 +237,19 @@ int main(int argc, char *argv[])
         // Remove the album art provider before deleting library manager
         engine.removeImageProvider("albumart");
         
+        // Delete PlaylistManager singleton
+        delete playlistManager;
+        playlistManager = nullptr;
+        
         delete libraryManager;
         libraryManager = nullptr;
         
         delete metadataExtractor;
         metadataExtractor = nullptr;
         
-        // SettingsManager is a singleton, don't delete it
+        // Delete SettingsManager singleton - it saves settings in destructor
+        delete settingsManager;
+        settingsManager = nullptr;
         
         delete systemInfo;
         systemInfo = nullptr;
@@ -258,5 +264,19 @@ int main(int argc, char *argv[])
     int result = app.exec();
     
     qDebug() << "Main: Event loop ended with result:" << result;
+    
+    // Additional cleanup after event loop ends
+    // This ensures Qt's automatic cleanup has completed
+    qDebug() << "Main: Performing final cleanup...";
+    
+    // Ensure all timers are stopped
+    if (mediaPlayer) {
+        mediaPlayer->saveState();
+    }
+    
+    // Give Qt time to process any final events
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+    
+    qDebug() << "Main: Application exit complete";
     return result;
 }

@@ -27,7 +27,18 @@ AudioEngine::AudioEngine(QObject *parent)
 
 AudioEngine::~AudioEngine()
 {
+    qDebug() << "[AudioEngine::~AudioEngine] Destructor called, cleaning up...";
+    
+    // Ensure timer is deleted
+    if (m_positionTimer) {
+        m_positionTimer->stop();
+        m_positionTimer->deleteLater();
+        m_positionTimer = nullptr;
+    }
+    
     cleanupPipeline();
+    
+    qDebug() << "[AudioEngine::~AudioEngine] Cleanup complete";
 }
 
 void AudioEngine::initializePipeline()

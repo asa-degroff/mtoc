@@ -26,6 +26,7 @@ class PlaylistManager : public QObject
 
 public:
     static PlaylistManager* instance();
+    ~PlaylistManager();
     
     // Getters
     QStringList playlists() const { return m_playlists; }
@@ -75,7 +76,6 @@ signals:
 
 private:
     explicit PlaylistManager(QObject *parent = nullptr);
-    ~PlaylistManager();
     
     void ensurePlaylistsDirectory();
     QString generatePlaylistName(const QVariantList& tracks) const;

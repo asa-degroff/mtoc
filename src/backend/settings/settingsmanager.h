@@ -26,6 +26,7 @@ public:
     Q_ENUM(QueueAction)
 
     static SettingsManager* instance();
+    ~SettingsManager();
     
     // Getters
     QueueAction queueActionDefault() const { return m_queueActionDefault; }
@@ -56,7 +57,6 @@ signals:
 
 private:
     explicit SettingsManager(QObject *parent = nullptr);
-    ~SettingsManager();
     
     void loadSettings();
     void saveSettings();
