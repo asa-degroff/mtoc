@@ -22,6 +22,9 @@ ListView {
     property var selectedTrackIndices: []
     property int lastSelectedIndex: -1
     
+    // Keyboard navigation state
+    property int keyboardSelectedIndex: -1
+    
     signal trackDoubleClicked(int index)
     signal removeTrackRequested(int index)
     signal removeTracksRequested(var indices)
@@ -38,10 +41,35 @@ ListView {
                 selectedTrackIndices = selectedTrackIndices.slice() // Force binding update
                 event.accepted = true
             }
+        } else if (event.key === Qt.Key_Down) {
+            // Navigate down
+            if (keyboardSelectedIndex === -1 && count > 0) {
+                // First navigation down selects first track
+                keyboardSelectedIndex = 0
+                ensureKeyboardSelectedVisible()
+            } else if (keyboardSelectedIndex < count - 1) {
+                keyboardSelectedIndex++
+                ensureKeyboardSelectedVisible()
+            }
+            event.accepted = true
+        } else if (event.key === Qt.Key_Up) {
+            // Navigate up
+            if (keyboardSelectedIndex > 0) {
+                keyboardSelectedIndex--
+                ensureKeyboardSelectedVisible()
+            }
+            event.accepted = true
+        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+            // Play selected track
+            if (keyboardSelectedIndex >= 0 && keyboardSelectedIndex < count) {
+                trackDoubleClicked(keyboardSelectedIndex)
+            }
+            event.accepted = true
         } else if (event.key === Qt.Key_Escape) {
             // Clear selection
             selectedTrackIndices = []
             lastSelectedIndex = -1
+            keyboardSelectedIndex = -1
             event.accepted = true
         } else if (event.key === Qt.Key_Delete && selectedTrackIndices.length > 0) {
             // Delete selected tracks
@@ -190,6 +218,46 @@ ListView {
         }
     }
     
+    function ensureKeyboardSelectedVisible() {
+        if (keyboardSelectedIndex < 0 || keyboardSelectedIndex >= count) {
+            return;
+        }
+        
+        // Calculate the position of the selected track
+        var itemY = keyboardSelectedIndex * (45 + spacing); // 45 is delegate height
+        var visibleHeight = height;
+        var currentY = contentY;
+        
+        // Check if the item is fully visible
+        var itemTop = itemY;
+        var itemBottom = itemY + 45;
+        var viewTop = currentY;
+        var viewBottom = currentY + visibleHeight;
+        
+        var targetY = -1;
+        
+        // If item is above the visible area, scroll to show it at the top with some margin
+        if (itemTop < viewTop) {
+            targetY = Math.max(0, itemTop - 10);
+        }
+        // If item is below the visible area, scroll to show it at the bottom with some margin
+        else if (itemBottom > viewBottom) {
+            targetY = itemBottom - visibleHeight + 10;
+        }
+        
+        // Only scroll if needed
+        if (targetY >= 0) {
+            isProgrammaticScrolling = true;
+            
+            // Stop any existing animation first
+            if (scrollAnimation.running) {
+                scrollAnimation.stop();
+            }
+            scrollAnimation.to = targetY;
+            scrollAnimation.start();
+        }
+    }
+    
     // Smooth scrolling animation
     NumberAnimation {
         id: scrollAnimation
@@ -232,6 +300,7 @@ ListView {
         // Clear selection when queue changes
         selectedTrackIndices = [];
         lastSelectedIndex = -1;
+        keyboardSelectedIndex = -1;
     }
     
     clip: true
@@ -246,6 +315,8 @@ ListView {
         color: {
             if (root.selectedTrackIndices.indexOf(index) !== -1) {
                 return Qt.rgba(0.25, 0.32, 0.71, 0.35)  // Selected
+            } else if (index === root.keyboardSelectedIndex) {
+                return Qt.rgba(0.25, 0.32, 0.71, 0.15)  // Keyboard selected
             } else if (index === root.currentPlayingIndex) {
                 return Qt.rgba(0.25, 0.32, 0.71, 0.25)  // Currently playing
             } else if (queueItemMouseArea.containsMouse) {
@@ -543,6 +614,7 @@ ListView {
                         // Regular click: Select only this track
                         root.selectedTrackIndices = [index]
                         root.lastSelectedIndex = index
+                        root.keyboardSelectedIndex = index
                     }
                 }
             }
