@@ -159,6 +159,7 @@ Popup {
             
             Button {
                 Layout.fillWidth: true
+                Layout.preferredHeight: 36
                 text: "Replace Queue"
                 font.pixelSize: 14
                 
@@ -191,6 +192,7 @@ Popup {
             
             Button {
                 Layout.fillWidth: true
+                Layout.preferredHeight: 36
                 text: "Play Next"
                 font.pixelSize: 14
                 visible: !(root.isVirtualPlaylist && root.playlistName === "All Songs")
@@ -227,6 +229,7 @@ Popup {
             
             Button {
                 Layout.fillWidth: true
+                Layout.preferredHeight: 36
                 text: "Play Last"
                 font.pixelSize: 14
                 visible: !(root.isVirtualPlaylist && root.playlistName === "All Songs")
@@ -267,6 +270,7 @@ Popup {
             
             Button {
                 Layout.fillWidth: true
+                Layout.preferredHeight: 36
                 text: "Cancel"
                 font.pixelSize: 14
                 
