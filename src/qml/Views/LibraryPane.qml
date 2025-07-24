@@ -2897,19 +2897,13 @@ Item {
                                 color: Qt.rgba(1, 1, 1, 0.1)
                             }
                             
-                            // Scrollable content area
-                            ScrollView {
+                            // Content area
+                            Item {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
-                                clip: true
                                 
-                                contentWidth: availableWidth
-                                
-                                ScrollBar.vertical: ScrollBar {
-                                    policy: ScrollBar.AsNeeded
-                                }
                                 ColumnLayout {
-                                    width: parent.width
+                                    anchors.fill: parent
                                     spacing: 2
                                     
                                     // Full-width section for Artist, Album, Album Artist
