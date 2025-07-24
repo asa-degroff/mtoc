@@ -4206,13 +4206,25 @@ Item {
         } else if (navigationMode === "track") {
             // Play the selected track
             if (selectedAlbumData && selectedTrackIndex >= 0) {
-                // For keyboard navigation, position dialog at the selected track
-                var trackItem = trackListView.itemAtIndex(selectedTrackIndex);
-                if (trackItem) {
-                    var globalPos = trackItem.mapToGlobal(trackItem.width / 2, trackItem.height / 2);
-                    root.playAlbumWithQueueCheck(selectedAlbumData.albumArtist, selectedAlbumData.title, selectedTrackIndex, globalPos.x, globalPos.y);
+                // Check if this is a playlist
+                if (selectedAlbumData.isPlaylist) {
+                    // Handle playlist playback
+                    var trackItem = trackListView.itemAtIndex(selectedTrackIndex);
+                    if (trackItem) {
+                        var globalPos = trackItem.mapToGlobal(trackItem.width / 2, trackItem.height / 2);
+                        root.playPlaylistWithQueueCheck(selectedAlbumData.title, selectedAlbumData.isVirtualPlaylist || false, selectedTrackIndex, globalPos.x, globalPos.y);
+                    } else {
+                        root.playPlaylistWithQueueCheck(selectedAlbumData.title, selectedAlbumData.isVirtualPlaylist || false, selectedTrackIndex);
+                    }
                 } else {
-                    root.playAlbumWithQueueCheck(selectedAlbumData.albumArtist, selectedAlbumData.title, selectedTrackIndex);
+                    // Handle regular album playback
+                    var trackItem = trackListView.itemAtIndex(selectedTrackIndex);
+                    if (trackItem) {
+                        var globalPos = trackItem.mapToGlobal(trackItem.width / 2, trackItem.height / 2);
+                        root.playAlbumWithQueueCheck(selectedAlbumData.albumArtist, selectedAlbumData.title, selectedTrackIndex, globalPos.x, globalPos.y);
+                    } else {
+                        root.playAlbumWithQueueCheck(selectedAlbumData.albumArtist, selectedAlbumData.title, selectedTrackIndex);
+                    }
                 }
             }
         }

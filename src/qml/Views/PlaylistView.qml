@@ -47,13 +47,6 @@ Item {
                 root.navigateToTracks()
             }
             event.accepted = true
-        } else if (event.key === Qt.Key_Space) {
-            // Play playlist
-            if (keyboardSelectedIndex >= 0 && keyboardSelectedIndex < playlistListView.count) {
-                var playlistName = PlaylistManager.playlists[keyboardSelectedIndex]
-                root.playlistDoubleClicked(playlistName, null)
-            }
-            event.accepted = true
         } else if (event.key === Qt.Key_Escape) {
             // Clear selection
             keyboardSelectedIndex = -1
