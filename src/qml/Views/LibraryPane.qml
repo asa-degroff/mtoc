@@ -2812,7 +2812,9 @@ Item {
                             if (root.showTrackSelector) {
                                 // Calculate height based on search results
                                 var baseHeight = 52 // Header with toggle button and search bar
-                                var resultsHeight = Math.min(root.trackSelectorResults.length * 60, 300) // Max 5 results visible
+                                var resultsHeight = root.trackSelectorResults.length > 0 
+                                    ? Math.min(root.trackSelectorResults.length * 60, 300) + 16 // Max 5 results visible, plus more padding
+                                    : 50 // Height for "Type to search" message
                                 return baseHeight + resultsHeight
                             } else {
                                 return 52
@@ -2941,8 +2943,9 @@ Item {
                                 }
                                 
                                 delegate: Rectangle {
-                                    width: ListView.view.width
+                                    width: ListView.view.width - 8 // Account for margins
                                     height: 56
+                                    anchors.horizontalCenter: parent.horizontalCenter
                                     color: trackItemMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.1) : "transparent"
                                     radius: 4
                                     
@@ -3031,14 +3034,27 @@ Item {
                             }
                             
                             // Empty state when searching
-                            Label {
+                            Item {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
-                                text: root.trackSelectorSearchTerm.trim().length > 0 ? "No tracks found" : "Type to search for tracks"
-                                color: "#808080"
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
                                 visible: root.showTrackSelector && root.trackSelectorResults.length === 0
+                                
+                                Label {
+                                    anchors.centerIn: parent
+                                    text: root.trackSelectorSearchTerm.trim().length > 0 ? "No tracks found" : "Type to search for tracks"
+                                    color: "#808080"
+                                    font.pixelSize: 14
+                                    
+                                    // Fade in animation
+                                    opacity: parent.visible ? 1.0 : 0.0
+                                    
+                                    Behavior on opacity {
+                                        NumberAnimation {
+                                            duration: 200
+                                            easing.type: Easing.InOutCubic
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
