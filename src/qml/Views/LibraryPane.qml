@@ -1959,6 +1959,16 @@ Item {
                 onCurrentAlbumTracksChanged: {
                     if (trackListView) {
                         trackListView.currentIndex = -1
+                        
+                        // If we're in playlist edit mode and tracks were just added, scroll to bottom
+                        if (root.playlistEditMode && root.editedPlaylistTracks.length > 0) {
+                            Qt.callLater(function() {
+                                var lastIndex = currentAlbumTracks.length - 1
+                                if (lastIndex >= 0) {
+                                    trackListView.positionViewAtIndex(lastIndex, ListView.End)
+                                }
+                            })
+                        }
                     }
                 }
 
@@ -3017,16 +3027,7 @@ Item {
                                                     
                                                     // Update the view immediately so the track is visible
                                                     rightPane.currentAlbumTracks = root.editedPlaylistTracks.slice()
-                                                    
-                                                    // Scroll to show the newly added track
-                                                    Qt.callLater(function() {
-                                                        var newIndex = root.editedPlaylistTracks.length - 1
-                                                        if (trackListView && newIndex >= 0) {
-                                                            trackListView.positionViewAtIndex(newIndex, ListView.End)
-                                                            // Optional: Use smooth scrolling if ensureTrackVisible is preferred
-                                                            // root.ensureTrackVisible(newIndex)
-                                                        }
-                                                    })
+                                                    // The rightPane's onCurrentAlbumTracksChanged will handle scrolling
                                                     
                                                     // Keep the selector open for adding more tracks
                                                     // Only clear the search term to show they can search for more
@@ -4062,7 +4063,9 @@ Item {
         var currentPos = trackListView.contentY
         
         // Use positionViewAtIndex to calculate where we need to scroll
-        trackListView.positionViewAtIndex(index, ListView.Contain)
+        // For the last item, use ListView.End to show it at the bottom
+        var isLastItem = index === rightPane.currentAlbumTracks.length - 1
+        trackListView.positionViewAtIndex(index, isLastItem ? ListView.End : ListView.Contain)
         var destPos = trackListView.contentY
         
         // Only animate if we need to scroll
