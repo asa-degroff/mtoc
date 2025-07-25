@@ -759,6 +759,23 @@ void LibraryManager::scanInBackground()
             }
         }
         
+        // Process any remaining extraction futures that haven't been processed
+        if (!extractionFutures.isEmpty() && !m_cancelRequested) {
+            qDebug() << "Processing remaining" << extractionFutures.size() << "extraction futures";
+            for (const QFuture<QVariantMap> &f : extractionFutures) {
+                QVariantMap metadata = f.result();
+                if (metadata.value("valid", false).toBool()) {
+                    batchMetadata.append(metadata);
+                } else {
+                    QString error = metadata.value("error", "Invalid metadata").toString();
+                    if (!error.isEmpty() && error != "Invalid metadata") {
+                        qWarning() << "Error extracting metadata from" << metadata.value("filePath").toString() << ":" << error;
+                    }
+                }
+            }
+            extractionFutures.clear();
+        }
+        
         // Process any remaining items in the batch
         if (!batchMetadata.isEmpty() && !m_cancelRequested) {
             qDebug() << "Processing final batch with" << batchMetadata.size() << "tracks";
@@ -768,12 +785,25 @@ void LibraryManager::scanInBackground()
         
         // No longer using transactions - each operation auto-commits
         
-        qDebug() << "scanInBackground() completed successfully";
+        // Log final track count in this connection
+        {
+            QSqlQuery finalCountQuery(db);
+            if (finalCountQuery.exec("SELECT COUNT(*) FROM tracks")) {
+                if (finalCountQuery.next()) {
+                    qDebug() << "[scanInBackground] Final track count in database:" << finalCountQuery.value(0).toInt();
+                }
+            }
+        }
+        
+        qDebug() << "scanInBackground() completed successfully - scanned" << m_filesScanned << "files";
     } catch (const std::exception& e) {
         qCritical() << "Exception in scanInBackground():" << e.what();
     } catch (...) {
         qCritical() << "Unknown exception in scanInBackground()";
     }
+    
+    // Close database before removing connection
+    db.close();
     
     // Clean up thread-local database connection
     DatabaseManager::removeThreadConnection(connectionName);
@@ -1546,6 +1576,10 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         return;
     }
     
+    qDebug() << "[insertBatchTracksInThread] Starting to insert batch of" << batchMetadata.size() << "tracks";
+    int successCount = 0;
+    int failCount = 0;
+    
     // Use maps to cache artist/album lookups within this batch
     QHash<QString, int> artistCache;
     QHash<QString, int> albumArtistCache;
@@ -1724,8 +1758,14 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         
         if (!trackInsert.exec()) {
             qWarning() << "Failed to insert track:" << filePath << "-" << trackInsert.lastError().text();
+            failCount++;
+        } else {
+            successCount++;
         }
     }
+    
+    qDebug() << "[insertBatchTracksInThread] Batch complete - Successfully inserted" << successCount 
+             << "tracks, failed" << failCount << "tracks";
 }
 
 void LibraryManager::processAlbumArtInBackground()
@@ -1765,6 +1805,7 @@ void LibraryManager::processAlbumArtInBackground()
         
         if (!albumQuery.exec()) {
             qWarning() << "Failed to query albums without art:" << albumQuery.lastError().text();
+            db.close();
             DatabaseManager::removeThreadConnection(connectionName);
             return;
         }
@@ -1785,10 +1826,14 @@ void LibraryManager::processAlbumArtInBackground()
             albumsToProcess.append(info);
         }
         
+        // Explicitly finish the query to release resources
+        albumQuery.finish();
+        
         int totalAlbums = albumsToProcess.size();
         
         if (totalAlbums == 0) {
             qDebug() << "LibraryManager::processAlbumArtInBackground() - No albums need art processing";
+            db.close();
             DatabaseManager::removeThreadConnection(connectionName);
             // Clear processing flag
             QMetaObject::invokeMethod(this, [this]() {
@@ -1817,6 +1862,7 @@ void LibraryManager::processAlbumArtInBackground()
             
             if (trackQuery.exec() && trackQuery.next()) {
                 QString filePath = trackQuery.value(0).toString();
+                trackQuery.finish();  // Finish query before processing
                 
                 try {
                     // Extract album art from this track
@@ -1908,6 +1954,9 @@ void LibraryManager::processAlbumArtInBackground()
     } catch (...) {
         qCritical() << "Unknown exception in processAlbumArtInBackground()";
     }
+    
+    // Close database before removing connection
+    db.close();
     
     // Clean up thread-local database connection
     DatabaseManager::removeThreadConnection(connectionName);

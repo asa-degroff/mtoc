@@ -1319,6 +1319,15 @@ QSqlDatabase DatabaseManager::createThreadConnection(const QString& connectionNa
 
 void DatabaseManager::removeThreadConnection(const QString& connectionName)
 {
+    // Get the database connection
+    {
+        QSqlDatabase db = QSqlDatabase::database(connectionName, false);
+        if (db.isValid() && db.isOpen()) {
+            // Close the connection before removing it
+            db.close();
+        }
+    }
+    // Remove the connection from Qt's registry
     QSqlDatabase::removeDatabase(connectionName);
 }
 
