@@ -2953,9 +2953,8 @@ Item {
                                 }
                                 
                                 delegate: Rectangle {
-                                    width: ListView.view.width - 8 // Account for margins
+                                    width: ListView.view.width
                                     height: 56
-                                    anchors.horizontalCenter: parent.horizontalCenter
                                     color: trackItemMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.1) : "transparent"
                                     radius: 4
                                     
