@@ -395,17 +395,13 @@ Item {
     }
     
     Component.onDestruction: {
-        // Clean up all timers
         if (expandCollapseDebounceTimer) {
             expandCollapseDebounceTimer.stop()
-            expandCollapseDebounceTimer.destroy()
         }
         
-        // Clean up all artist cleanup timers
         for (var artist in collapsedArtistCleanupTimers) {
             if (collapsedArtistCleanupTimers[artist]) {
                 collapsedArtistCleanupTimers[artist].stop()
-                collapsedArtistCleanupTimers[artist].destroy()
             }
         }
     }
