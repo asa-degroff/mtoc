@@ -57,19 +57,8 @@ Item {
         // Mark that we're destroying to prevent any further operations
         isDestroying = true
         
-        // Stop all timers immediately
+        // Only stop timers that are direct children of root
         savePositionTimer.stop()
-        gcTimer.stop()
-        velocityTimer.stop()
-        snapIndexTimer.stop()
-        centerAlbumTimer.stop()
-        scrollEndTimer.stop()
-        
-        // Stop any animations
-        snapAnimation.stop()
-        
-        // Ensure ListView doesn't try to update
-        listView.model = 0
         
         // Clear data structures
         sortedAlbumIndices = []
@@ -282,6 +271,21 @@ Item {
             // Enable delegate recycling and limit cache to prevent memory leaks
             reuseItems: true
             cacheBuffer: 440  // Reduced to 2 items on each side (220px * 2)
+            
+            Component.onDestruction: {
+                // Stop all ListView's timers
+                gcTimer.stop()
+                velocityTimer.stop()
+                snapIndexTimer.stop()
+                centerAlbumTimer.stop()
+                scrollEndTimer.stop()
+                
+                // Stop animations
+                snapAnimation.stop()
+                
+                // Clear model to prevent further updates
+                model = 0
+            }
             
             // Garbage collection timer for long scrolling sessions
             Timer {
