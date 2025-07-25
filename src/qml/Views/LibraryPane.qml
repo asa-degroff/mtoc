@@ -3015,8 +3015,21 @@ Item {
                                                     }
                                                     root.editedPlaylistTracks.push(modelData)
                                                     
-                                                    // Clear search and close selector
-                                                    root.showTrackSelector = false
+                                                    // Update the view immediately so the track is visible
+                                                    rightPane.currentAlbumTracks = root.editedPlaylistTracks.slice()
+                                                    
+                                                    // Scroll to show the newly added track
+                                                    Qt.callLater(function() {
+                                                        var newIndex = root.editedPlaylistTracks.length - 1
+                                                        if (trackListView && newIndex >= 0) {
+                                                            trackListView.positionViewAtIndex(newIndex, ListView.End)
+                                                            // Optional: Use smooth scrolling if ensureTrackVisible is preferred
+                                                            // root.ensureTrackVisible(newIndex)
+                                                        }
+                                                    })
+                                                    
+                                                    // Keep the selector open for adding more tracks
+                                                    // Only clear the search term to show they can search for more
                                                     root.trackSelectorSearchTerm = ""
                                                     root.trackSelectorResults = []
                                                 }
