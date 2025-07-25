@@ -11,6 +11,7 @@
 #include <QLocale>
 #include <QDir>
 #include <QStandardPaths>
+#include <QWindow>
 
 #include "backend/systeminfo.h"
 #include "backend/utility/metadataextractor.h"
@@ -217,6 +218,15 @@ int main(int argc, char *argv[])
     QObject::connect(&app, &QApplication::aboutToQuit, [&]() {
         qDebug() << "Main: Application about to quit, performing cleanup...";
         
+        // First, close all top-level windows to trigger QML cleanup
+        const auto topLevelWindows = QGuiApplication::topLevelWindows();
+        for (QWindow *window : topLevelWindows) {
+            window->close();
+        }
+        
+        // Process events to allow QML components to clean up naturally
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+        
         // Save playback state before cleanup
         if (mediaPlayer) {
             mediaPlayer->saveState();
@@ -233,13 +243,13 @@ int main(int argc, char *argv[])
         // Note: Carousel position is automatically saved when it changes
         // The QML timer handles this, no need for explicit save here
         
+        // Now it's safe to remove the image provider after QML cleanup
+        engine.removeImageProvider("albumart");
+        
         // Only delete objects that are NOT registered with QML
         // QML-registered singletons will be cleaned up by the QML engine
         delete mprisManager;
         mprisManager = nullptr;
-        
-        // Remove the album art provider before QML cleanup
-        engine.removeImageProvider("albumart");
         
         // Do NOT delete QML-registered singletons here - let QML engine handle them:
         // - mediaPlayer

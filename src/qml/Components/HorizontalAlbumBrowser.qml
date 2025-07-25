@@ -311,7 +311,7 @@ Item {
                 repeat: true
                 running: false
                 onTriggered: {
-                    if (isDestroying) {
+                    if (isDestroying || !listView) {
                         velocityTimer.stop()
                         return
                     }
@@ -375,7 +375,7 @@ Item {
                 running: false
                 property int targetIndex: -1
                 onTriggered: {
-                    if (!isDestroying && targetIndex >= 0) {
+                    if (!isDestroying && targetIndex >= 0 && listView) {
                         listView.currentIndex = targetIndex
                     }
                 }
@@ -937,12 +937,17 @@ Item {
                                 }
                             ]
                             
+                            // Clear sourceItem when component is destroyed
+                            Component.onDestruction: {
+                                sourceItem = null
+                            }
+                            
                             // Update reflection when album image changes
                             Connections {
                                 target: root.isDestroying ? null : albumImage
                                 enabled: !root.isDestroying
                                 function onStatusChanged() {
-                                    if (!root.isDestroying && albumImage.status === Image.Ready && reflection) {
+                                    if (!root.isDestroying && albumImage && albumImage.status === Image.Ready && reflection) {
                                         reflection.scheduleUpdate()
                                     }
                                 }
