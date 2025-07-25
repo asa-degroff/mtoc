@@ -1,52 +1,62 @@
 # mtoc - Visual Music Library
 
-mtoc is a music player and library browser for Linux that emphasizes smooth, continuous browsing experiences with album artwork at the forefront. Built with modern C++, Qt6, and QML, it combines high performance with an engaging visual interface. 
+mtoc is a visually-rich music player and library browser for Linux that emphasizes smooth, continuous browsing experiences with album artwork at the forefront. 
 
 ![mtoc Music Player](resources/banner/mtoc-banner.png)
 
 ## Features
 
-### 🎨 Album Browsing
-- **Carousel-style horizontal browser** with 3D perspective effects
-- Albums tilt and overlap smoothly as you browse
-- Mouse wheel, click + drag, and touchpad are all supported with smooth, intuitive tracking
+### Album Browsing
+Album browsing is core to the experience. mtoc is made for the music fan who likes to flip through CDs or records and look at the pictures before deciding what to listen to. The album carousel interface presents your album covers on a slick reflective shelf, with responsive, satisfying animations as you flip through them in a linear fashion.
+- Mouse wheel, click + drag, and touchpad are all supported
 - Uses efficient thumbnail artwork with intelligent caching
 - Responsive search finds artists, albums, and tracks
 
-### 🚀 High Performance
-- Hardware-accelerated rendering using OpenGL/Qt RHI
-- Efficient memory management with QML delegates
+### High Performance
+Performance is a core design principle. mtoc aims for visual appeal and and continuity in browsing. 
+- Hardware-accelerated rendering
+- MVC architecture fine-tuned for efficiency
 - Asynchronous metadata extraction and image loading
 - Optimized for smooth scrolling and searching even with thousands of albums
 
-### 📚 Library Management
-- Automatic library scanning
+### Library Management
+The library editor lets you select one or multiple directories to scan for music, and optionally specify additional directories for .m3u playlist files. 
 - Supported formats: MP3, MP4/M4A (including iTunes-encoded AAC and ALAC), FLAC, OGG Vorbis, Opus
 - Metadata extraction using TagLib 2.0
 - Smart organization by artist, album, and year
 - Embedded album artwork extraction
 - SQLite database for fast library access
 
-### 🎵 Playback Features
+### Queueing features
+Tracks, albums, and playlists can be enqueued from the library, either added up next, or appended to the end of the queue, through the right-click context menu. The queue supports modification: delete, multi-select and delete, reorder through drag-and-drop. 
+
+### Playlists
+Playlist creation in mtoc starts out with creating a queue. When you have a queue that you like, the save button writes its contents to a new .m3u playlist in your default playlist directory. Playlists can be renamned, and the track order changed through a drag and drop interface. 
+
+### Playback Modes
+mtoc features shuffle and repeat modes. Shuffle uses a modified Fisher-Yates algorithm that incorporates newly enqueued tracks as you go. 
+
+### Playback Features
 - GStreamer-based audio engine
 - Gapless audio support for seamless album listening
 - Standard controls: play/pause, previous/next, seek
-- Playback state persistence: saves your playback state between restarts so you can pick up where you left off
 
-### 🖥️ Desktop Integration
-- Full MPRIS support for media keys and system controls
+### State Persistence
+mtoc saves your playback state including your queue, current track, and position, so that you can pick up where you left off after restarting the app. 
+
+### Desktop Integration
+- Full MPRIS 2 support for media keys and system controls
 
 ### System Requirements
 - Linux with X11/Wayland
 - OpenGL/GPU acceleration recommended
-- 4GB RAM and solid state storage recommended
+- Solid state storage recommended
+- 4GB system RAM recommended. Typical usage for mtoc remains under ~350MB, but may go as high as 1GB if you push it by loading all tracks in a large library and skipping through them quickly. 
 
 ## Getting Started
 
-Note: mtoc is currently developed and tested on Fedora 42. Support for other distributions is experiemental and may require additional configuration not detailed here.
-
 #### Dependencies
-- Qt6 >= 6.2 (Core, Quick, Qml, Multimedia, DBus, Concurrent, Widgets, Sql)
+- Qt6 >= 6.7 (Core, Quick, Qml, Multimedia, DBus, Concurrent, Widgets, Sql)
 - CMake >= 3.16
 - TagLib >= 2.0
 - GStreamer >= 1.0
@@ -109,20 +119,10 @@ mtoc_app  # Now available in system PATH
 On first launch, mtoc will feature an empty library. Click "Edit Library" and add the folder containing your music. The default folder is ~/Music. You can add or remove any directories you want to scan. Press scan, and mtoc will then scan and index your music collection, extracting metadata and album artwork.
 
 
-### Library Management
-
-Access the library editor through the settings to:
-- Add or remove music directories
-- Trigger library rescans
-- Clear the library when needed
-- Rescan the library after adding, removing, or editing the files in your chosen directory to have the current versions populate the library. 
-
 ### Usage Tips
 - mtoc works best with music that contains embedded artwork and is tagged by album artist. In this absence of the album artist tag, the artist tag will be used, potentially resulting in albums being broken up. 
 
 ## Architecture
-
-mtoc uses a modern, modular MVC architecture:
 
 - **Backend (C++)**
   - `LibraryManager`: Music collection scanning and organization
