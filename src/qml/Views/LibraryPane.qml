@@ -2985,10 +2985,14 @@ Item {
                                             
                                             Label {
                                                 Layout.fillWidth: true
-                                                text: modelData.artist || "Unknown Artist"
+                                                text: {
+                                                    var artist = modelData.artist || "Unknown Artist"
+                                                    var album = modelData.album || "Unknown Album"
+                                                    return artist + " - " + album
+                                                }
                                                 font.pixelSize: 12
                                                 color: "#808080"
-                                                elide: Text.ElideRight
+                                                elide: Text.ElideMiddle
                                             }
                                         }
                                         
