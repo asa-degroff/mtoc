@@ -602,6 +602,23 @@ Item {
         SettingsWindow {}
     }
     
+    // Function to close all child windows
+    function closeAllWindows() {
+        console.log("LibraryPane: Closing all child windows")
+        
+        if (libraryEditorWindow && libraryEditorWindow.visible) {
+            console.log("LibraryPane: Closing library editor window")
+            libraryEditorWindow.close()
+            libraryEditorWindow = null
+        }
+        
+        if (settingsWindow && settingsWindow.visible) {
+            console.log("LibraryPane: Closing settings window")
+            settingsWindow.close()
+            settingsWindow = null
+        }
+    }
+    
     // Blurred background
     BlurredBackground {
         id: blurredBg
@@ -713,6 +730,13 @@ Item {
                         // Create floating window if it doesn't exist or was closed
                         if (!libraryEditorWindow || !libraryEditorWindow.visible) {
                             libraryEditorWindow = libraryEditorWindowComponent.createObject(null);
+                            
+                            // Add cleanup handler for when window is closed manually
+                            libraryEditorWindow.onClosing.connect(function() {
+                                console.log("LibraryPane: Library editor window closed manually")
+                                libraryEditorWindow = null
+                            })
+                            
                             libraryEditorWindow.show();
                         } else {
                             // Bring existing window to front
@@ -772,6 +796,13 @@ Item {
                         // Create floating window if it doesn't exist or was closed
                         if (!settingsWindow || !settingsWindow.visible) {
                             settingsWindow = settingsWindowComponent.createObject(null);
+                            
+                            // Add cleanup handler for when window is closed manually
+                            settingsWindow.onClosing.connect(function() {
+                                console.log("LibraryPane: Settings window closed manually")
+                                settingsWindow = null
+                            })
+                            
                             settingsWindow.show();
                         } else {
                             // Bring existing window to front

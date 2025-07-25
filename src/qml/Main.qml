@@ -18,6 +18,12 @@ ApplicationWindow {
     // Save state when window is closing
     onClosing: function(close) {
         console.log("Main.qml: Window closing, saving playback state");
+        
+        // Close all child windows first
+        if (libraryPane && libraryPane.closeAllWindows) {
+            libraryPane.closeAllWindows();
+        }
+        
         if (MediaPlayer) {
             MediaPlayer.saveState();
         }
