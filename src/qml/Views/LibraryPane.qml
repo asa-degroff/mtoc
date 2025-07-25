@@ -122,6 +122,11 @@ Item {
     property real trackInfoPanelY: 184  // Start off-screen (below)
     property bool trackInfoPanelAnimating: false
     
+    // Track selector state (for adding tracks to playlists)
+    property bool showTrackSelector: false
+    property string trackSelectorSearchTerm: ""
+    property var trackSelectorResults: []
+    
     // Scroll bar state tracking
     property bool isScrollBarDragging: false
     
@@ -2797,6 +2802,247 @@ Item {
                         ScrollIndicator.vertical: ScrollIndicator { }
                     }
                     
+                    // Add track button/selector (shown in playlist edit mode)
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: {
+                            if (!root.playlistEditMode || !root.selectedAlbum || !root.selectedAlbum.isPlaylist) {
+                                return 0
+                            }
+                            if (root.showTrackSelector) {
+                                // Calculate height based on search results
+                                var baseHeight = 52 // Header with toggle button and search bar
+                                var resultsHeight = Math.min(root.trackSelectorResults.length * 60, 300) // Max 5 results visible
+                                return baseHeight + resultsHeight
+                            } else {
+                                return 52
+                            }
+                        }
+                        Layout.topMargin: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist ? 8 : 0
+                        color: Qt.rgba(1, 1, 1, 0.05)
+                        radius: 6
+                        visible: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist
+                        clip: true
+                        
+                        Behavior on Layout.preferredHeight {
+                            NumberAnimation {
+                                duration: 300
+                                easing.type: Easing.InOutCubic
+                            }
+                        }
+                        
+                        ColumnLayout {
+                            anchors.fill: parent
+                            spacing: 0
+                            
+                            // Header with toggle button and search bar
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 52
+                                Layout.leftMargin: 8
+                                Layout.rightMargin: 8
+                                Layout.topMargin: 8
+                                Layout.bottomMargin: 8
+                                spacing: 8
+                                
+                                // Spacer when collapsed
+                                Item {
+                                    Layout.fillWidth: true
+                                    visible: !root.showTrackSelector
+                                }
+                                
+                                // Search bar (visible when expanded)
+                                SearchBar {
+                                    id: trackSelectorSearchBar
+                                    Layout.fillWidth: true
+                                    visible: root.showTrackSelector
+                                    opacity: visible ? 1.0 : 0.0
+                                    text: root.trackSelectorSearchTerm
+                                    placeholderText: "Search for tracks to add..."
+                                    
+                                    Behavior on opacity {
+                                        NumberAnimation { duration: 150 }
+                                    }
+                                    
+                                    onTextChanged: {
+                                        root.trackSelectorSearchTerm = text
+                                    }
+                                    
+                                    onSearchRequested: {
+                                        root.performTrackSearch()
+                                    }
+                                    
+                                    onClearRequested: {
+                                        root.trackSelectorSearchTerm = ""
+                                        root.trackSelectorResults = []
+                                    }
+                                }
+                                
+                                // Toggle button (+ when collapsed, × when expanded)
+                                Rectangle {
+                                    Layout.preferredWidth: 36
+                                    Layout.preferredHeight: 36
+                                    radius: 4
+                                    color: toggleButtonMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(1, 1, 1, 0.08)
+                                    border.width: 1
+                                    border.color: Qt.rgba(1, 1, 1, 0.2)
+                                    
+                                    Behavior on color {
+                                        ColorAnimation { duration: 150 }
+                                    }
+                                    
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: root.showTrackSelector ? "×" : "+"
+                                        font.pixelSize: root.showTrackSelector ? 24 : 20
+                                        font.bold: true
+                                        color: "white"
+                                        
+                                        Behavior on font.pixelSize {
+                                            NumberAnimation { duration: 150 }
+                                        }
+                                    }
+                                    
+                                    MouseArea {
+                                        id: toggleButtonMouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (root.showTrackSelector) {
+                                                // Close
+                                                root.showTrackSelector = false
+                                                root.trackSelectorSearchTerm = ""
+                                                root.trackSelectorResults = []
+                                            } else {
+                                                // Open
+                                                root.showTrackSelector = true
+                                                trackSelectorSearchBar.forceActiveFocus()
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Search results
+                            ListView {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                Layout.leftMargin: 8
+                                Layout.rightMargin: 8
+                                Layout.bottomMargin: 8
+                                model: root.trackSelectorResults
+                                spacing: 4
+                                clip: true
+                                visible: root.showTrackSelector && root.trackSelectorResults.length > 0
+                                
+                                ScrollBar.vertical: ScrollBar {
+                                    policy: ScrollBar.AsNeeded
+                                }
+                                
+                                delegate: Rectangle {
+                                    width: ListView.view.width
+                                    height: 56
+                                    color: trackItemMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.1) : "transparent"
+                                    radius: 4
+                                    
+                                    Behavior on color {
+                                        ColorAnimation { duration: 150 }
+                                    }
+                                    
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 8
+                                        anchors.rightMargin: 8
+                                        spacing: 12
+                                        
+                                        // Track info
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 2
+                                            
+                                            Label {
+                                                Layout.fillWidth: true
+                                                text: modelData.title || "Unknown Title"
+                                                font.pixelSize: 14
+                                                font.weight: Font.Medium
+                                                color: "white"
+                                                elide: Text.ElideRight
+                                            }
+                                            
+                                            Label {
+                                                Layout.fillWidth: true
+                                                text: modelData.artist || "Unknown Artist"
+                                                font.pixelSize: 12
+                                                color: "#808080"
+                                                elide: Text.ElideRight
+                                            }
+                                        }
+                                        
+                                        // Add button
+                                        Rectangle {
+                                            Layout.preferredWidth: 32
+                                            Layout.preferredHeight: 32
+                                            radius: 4
+                                            color: addResultMouseArea.containsMouse ? Qt.rgba(0, 1, 0, 0.3) : Qt.rgba(1, 1, 1, 0.1)
+                                            border.width: 1
+                                            border.color: Qt.rgba(1, 1, 1, 0.2)
+                                            
+                                            Behavior on color {
+                                                ColorAnimation { duration: 150 }
+                                            }
+                                            
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: "+"
+                                                font.pixelSize: 20
+                                                font.bold: true
+                                                color: "white"
+                                            }
+                                            
+                                            MouseArea {
+                                                id: addResultMouseArea
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    // Add track to playlist
+                                                    if (!root.editedPlaylistTracks) {
+                                                        root.editedPlaylistTracks = []
+                                                    }
+                                                    root.editedPlaylistTracks.push(modelData)
+                                                    
+                                                    // Clear search and close selector
+                                                    root.showTrackSelector = false
+                                                    root.trackSelectorSearchTerm = ""
+                                                    root.trackSelectorResults = []
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    MouseArea {
+                                        id: trackItemMouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        acceptedButtons: Qt.NoButton
+                                    }
+                                }
+                            }
+                            
+                            // Empty state when searching
+                            Label {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                text: root.trackSelectorSearchTerm.trim().length > 0 ? "No tracks found" : "Type to search for tracks"
+                                color: "#808080"
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                visible: root.showTrackSelector && root.trackSelectorResults.length === 0
+                            }
+                        }
+                    }
+                    
                     // Track info panel
                     Rectangle {
                         id: trackInfoPanel
@@ -3292,6 +3538,7 @@ Item {
                             }
                         }
                     }
+                    
 
                     // Message for when no tracks are available or no album selected
                     Label {
@@ -4561,5 +4808,24 @@ Item {
         } else {
             MediaPlayer.playPlaylistLast(playlistName)
         }
+    }
+    
+    // Function to perform track search for track selector
+    function performTrackSearch() {
+        if (root.trackSelectorSearchTerm.trim().length === 0) {
+            root.trackSelectorResults = []
+            return
+        }
+        
+        // Get search results from LibraryManager (search all and filter to tracks only)
+        var allResults = LibraryManager.searchAll(root.trackSelectorSearchTerm)
+        var trackResults = []
+        
+        // Filter to include only tracks from the search results
+        if (allResults && allResults.tracks) {
+            trackResults = allResults.tracks
+        }
+        
+        root.trackSelectorResults = trackResults
     }
 }
