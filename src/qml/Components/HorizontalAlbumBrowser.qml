@@ -56,6 +56,17 @@ Item {
     Component.onDestruction: {
         // Mark that we're destroying to prevent any further operations
         isDestroying = true
+        
+        // Stop animations
+        snapAnimation.stop()
+        contentXBehavior.enabled = false
+        
+        // Stop all timers to prevent callbacks during destruction
+        savePositionTimer.stop()
+        velocityTimer.stop()
+        snapIndexTimer.stop()
+        centerAlbumTimer.stop()
+        scrollEndTimer.stop()
     }
     
     // Timer to save position after user stops scrolling
@@ -359,6 +370,8 @@ Item {
                 duration: 300
                 easing.type: Easing.OutQuad
                 onStopped: {
+                    if (root.isDestroying) return
+                    
                     root.isSnapping = false
                     // Emit signal when snap animation completes and we have an album
                     if (root.isUserScrolling && root.selectedAlbum) {
@@ -696,14 +709,14 @@ Item {
                         yScale: scaleAmount
                         
                         Behavior on xScale {
-                            enabled: absDistance < 200 // Only animate near center
+                            enabled: absDistance < 200 && !root.isDestroying // Only animate near center and not during destruction
                             NumberAnimation {
                                 duration: 300
                                 easing.type: Easing.OutQuad
                             }
                         }
                         Behavior on yScale {
-                            enabled: absDistance < 200 // Only animate near center
+                            enabled: absDistance < 200 && !root.isDestroying // Only animate near center and not during destruction
                             NumberAnimation { 
                                 duration: 300
                                 easing.type: Easing.OutQuad
