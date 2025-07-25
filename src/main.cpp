@@ -217,9 +217,8 @@ int main(int argc, char *argv[])
     QObject::connect(&app, &QApplication::aboutToQuit, [&]() {
         qDebug() << "Main: Application about to quit, performing cleanup...";
         
-        // First stop all playback
+        // Save playback state before cleanup
         if (mediaPlayer) {
-            mediaPlayer->stop();
             mediaPlayer->saveState();
         }
         
