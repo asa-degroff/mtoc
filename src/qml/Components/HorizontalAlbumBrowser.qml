@@ -271,8 +271,9 @@ Item {
             // Cached value for delegate optimization - calculated once per frame
             readonly property real viewCenterX: width / 2
             
-            // Enable delegate recycling and limit cache to prevent memory leaks
-            reuseItems: true
+            // Disable delegate recycling to prevent segmentation faults related to destroyed items
+            // Use a little more memory if you have to, it's not significant
+            reuseItems: false
             cacheBuffer: 440  // Reduced to 2 items on each side (220px * 2)
             
             // Garbage collection timer for long scrolling sessions
