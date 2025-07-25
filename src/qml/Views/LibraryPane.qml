@@ -2552,14 +2552,25 @@ Item {
                                         font.pixelSize: 12
                                         Layout.preferredWidth: 25
                                         horizontalAlignment: Text.AlignRight
-                                        visible: !root.playlistEditMode || !root.selectedAlbum || !root.selectedAlbum.isPlaylist
+                                        visible: root.selectedAlbum && !root.selectedAlbum.isPlaylist
                                     }
 
-                                    Label { // Track Title
-                                        text: trackData.title || "Unknown Track"
+                                    // Track Title - shows different format for albums vs playlists
+                                    Label {
+                                        text: {
+                                            if (root.selectedAlbum && root.selectedAlbum.isPlaylist) {
+                                                // For playlists, show "Title - Album"
+                                                var title = trackData.title || "Unknown Track"
+                                                var album = trackData.album || "Unknown Album"
+                                                return title + " - " + album
+                                            } else {
+                                                // For albums, show just the title
+                                                return trackData.title || "Unknown Track"
+                                            }
+                                        }
                                         color: "white"
                                         font.pixelSize: 13
-                                        elide: Text.ElideRight
+                                        elide: root.selectedAlbum && root.selectedAlbum.isPlaylist ? Text.ElideMiddle : Text.ElideRight
                                         Layout.fillWidth: true
                                     }
 
