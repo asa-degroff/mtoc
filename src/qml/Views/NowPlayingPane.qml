@@ -154,6 +154,7 @@ Item {
         anchors.fill: parent
         anchors.margins: Math.max(16, parent.height * 0.04)  // Dynamic margins: 4% of height, min 16px
         spacing: Math.max(8, parent.height * 0.02)  // Dynamic spacing: 2% of height, min 8px
+        visible: LibraryManager.trackCount > 0
         
         // Album art and queue container
         Item {
@@ -638,6 +639,50 @@ Item {
         
         Item {
             Layout.preferredHeight: Math.max(24, parent.height * 0.01)  // Dynamic bottom spacing
+        }
+    }
+    
+    // Empty library placeholder
+    Item {
+        anchors.fill: parent
+        visible: LibraryManager.trackCount === 0
+        
+        MouseArea {
+            id: placeholderMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            
+            onClicked: {
+                if (root.libraryPane && root.libraryPane.openLibraryEditor) {
+                    root.libraryPane.openLibraryEditor()
+                }
+            }
+            
+            Column {
+                anchors.centerIn: parent
+                spacing: 20
+                
+                Label {
+                    text: "No Music"
+                    font.pixelSize: 32
+                    font.bold: true
+                    color: "white"
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
+                
+                Label {
+                    text: "Add a folder and scan to build your library"
+                    font.pixelSize: 16
+                    color: placeholderMouseArea.containsMouse ? "white" : Qt.rgba(1, 1, 1, 0.7)
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    font.underline: placeholderMouseArea.containsMouse
+                    
+                    Behavior on color {
+                        ColorAnimation { duration: 150 }
+                    }
+                }
+            }
         }
     }
 }

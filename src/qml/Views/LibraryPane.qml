@@ -619,6 +619,25 @@ Item {
         }
     }
     
+    // Function to open library editor window
+    function openLibraryEditor() {
+        if (!libraryEditorWindow || !libraryEditorWindow.visible) {
+            libraryEditorWindow = libraryEditorWindowComponent.createObject(null);
+            
+            // Add cleanup handler for when window is closed manually
+            libraryEditorWindow.onClosing.connect(function() {
+                console.log("LibraryPane: Library editor window closed manually")
+                libraryEditorWindow = null
+            })
+            
+            libraryEditorWindow.show();
+        } else {
+            // Bring existing window to front
+            libraryEditorWindow.raise();
+            libraryEditorWindow.requestActivate();
+        }
+    }
+    
     // Blurred background
     BlurredBackground {
         id: blurredBg
@@ -727,22 +746,7 @@ Item {
                         ColorAnimation { duration: 150 }
                     }
                     onClicked: {
-                        // Create floating window if it doesn't exist or was closed
-                        if (!libraryEditorWindow || !libraryEditorWindow.visible) {
-                            libraryEditorWindow = libraryEditorWindowComponent.createObject(null);
-                            
-                            // Add cleanup handler for when window is closed manually
-                            libraryEditorWindow.onClosing.connect(function() {
-                                console.log("LibraryPane: Library editor window closed manually")
-                                libraryEditorWindow = null
-                            })
-                            
-                            libraryEditorWindow.show();
-                        } else {
-                            // Bring existing window to front
-                            libraryEditorWindow.raise();
-                            libraryEditorWindow.requestActivate();
-                        }
+                        openLibraryEditor()
                     }
                 }
                 
