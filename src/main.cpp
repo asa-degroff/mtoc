@@ -217,12 +217,18 @@ int main(int argc, char *argv[])
     QObject::connect(&app, &QApplication::aboutToQuit, [&]() {
         qDebug() << "Main: Application about to quit, performing cleanup...";
         
-        // Save playback state before quitting
-        mediaPlayer->saveState();
+        // First stop all playback
+        if (mediaPlayer) {
+            mediaPlayer->stop();
+            mediaPlayer->saveState();
+        }
         
-        // Cancel any ongoing scans
-        if (libraryManager->isScanning()) {
-            libraryManager->cancelScan();
+        // Cancel any ongoing scans or background operations
+        if (libraryManager) {
+            if (libraryManager->isScanning()) {
+                libraryManager->cancelScan();
+            }
+            // This will wait for album art processing to complete
         }
         
         // Note: Carousel position is automatically saved when it changes

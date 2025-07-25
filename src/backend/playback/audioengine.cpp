@@ -2,6 +2,7 @@
 #include <QTimer>
 #include <QDebug>
 #include <QUrl>
+#include <QPointer>
 
 bool AudioEngine::s_gstInitialized = false;
 
@@ -32,8 +33,18 @@ AudioEngine::~AudioEngine()
     // Ensure timer is deleted
     if (m_positionTimer) {
         m_positionTimer->stop();
-        m_positionTimer->deleteLater();
+        delete m_positionTimer;  // Use delete instead of deleteLater in destructor
         m_positionTimer = nullptr;
+    }
+    
+    // Stop playback before cleanup
+    if (m_pipeline) {
+        gst_element_set_state(m_pipeline, GST_STATE_NULL);
+        // Wait for state change to complete
+        GstStateChangeReturn ret = gst_element_get_state(m_pipeline, nullptr, nullptr, GST_SECOND);
+        if (ret == GST_STATE_CHANGE_FAILURE) {
+            qWarning() << "[AudioEngine::~AudioEngine] Failed to stop pipeline cleanly";
+        }
     }
     
     cleanupPipeline();
@@ -173,15 +184,18 @@ void AudioEngine::seek(qint64 position)
     // For paused state, also schedule a position query after a short delay
     // This handles cases where ASYNC_DONE might not be received
     if (m_state == State::Paused) {
-        QTimer::singleShot(100, this, [this, position]() {
+        // Use a QPointer to ensure the object is still valid when the timer fires
+        QPointer<AudioEngine> self = this;
+        QTimer::singleShot(100, this, [self, position]() {
+            if (!self) return;  // Object was destroyed
             // Only emit if we're still waiting for this seek to complete
-            if (m_seekPending && m_seekTarget == position) {
+            if (self->m_seekPending && self->m_seekTarget == position) {
                 // Query actual position from GStreamer
-                qint64 actualPos = this->position();
+                qint64 actualPos = self->position();
                 // Only emit if position is reasonable (not 0 unless we're actually at the start)
                 if (actualPos > 0 || position < 1000) {
-                    emit positionChanged(actualPos);
-                    m_seekPending = false;
+                    emit self->positionChanged(actualPos);
+                    self->m_seekPending = false;
                 }
             }
         });

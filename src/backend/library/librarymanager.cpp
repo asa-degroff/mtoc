@@ -115,6 +115,15 @@ LibraryManager::~LibraryManager()
         m_scanFuture.waitForFinished();
     }
     
+    // Cancel album art processing if running
+    if (m_processingAlbumArt) {
+        qDebug() << "LibraryManager: Album art processing still running, waiting...";
+        m_cancelRequested = true;
+        // Wait for all thread pool tasks to complete
+        QThreadPool::globalInstance()->waitForDone();
+        qDebug() << "LibraryManager: Album art processing stopped";
+    }
+    
     // Clear track cache
     {
         QMutexLocker locker(&m_trackCacheMutex);
@@ -1849,6 +1858,12 @@ void LibraryManager::processAlbumArtInBackground()
         
         // Process albums from the list
         for (const AlbumInfo& albumInfo : albumsToProcess) {
+            // Check if we should stop processing
+            if (m_cancelRequested) {
+                qDebug() << "LibraryManager: Album art processing cancelled";
+                break;
+            }
+            
             int albumId = albumInfo.id;
             QString albumTitle = albumInfo.title;
             QString albumArtist = albumInfo.albumArtist;

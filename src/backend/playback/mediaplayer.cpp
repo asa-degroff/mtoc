@@ -18,6 +18,7 @@
 #include <QVariantList>
 #include <QVariantMap>
 #include <QPixmapCache>
+#include <QPointer>
 #include <algorithm>
 #include <random>
 
@@ -602,14 +603,18 @@ void MediaPlayer::loadTrack(Mtoc::Track* track, bool autoPlay)
         emit durationChanged(track->duration() * 1000);
         
         // Also emit after a short delay to ensure QML bindings are updated
-        QTimer::singleShot(100, this, [this, track]() {
-            if (m_currentTrack == track && track->duration() > 0) {
-                qDebug() << "MediaPlayer: Re-emitting duration after delay:" << track->duration() * 1000 << "ms";
-                emit durationChanged(track->duration() * 1000);
+        // Use QPointer to ensure object validity
+        QPointer<MediaPlayer> self = this;
+        QPointer<Mtoc::Track> trackPtr = track;
+        QTimer::singleShot(100, this, [self, trackPtr]() {
+            if (!self || !trackPtr) return;  // Object was destroyed
+            if (self->m_currentTrack == trackPtr && trackPtr->duration() > 0) {
+                qDebug() << "MediaPlayer: Re-emitting duration after delay:" << trackPtr->duration() * 1000 << "ms";
+                emit self->durationChanged(trackPtr->duration() * 1000);
                 
                 // Re-emit position to update progress bar visual position
-                if (m_savedPosition > 0) {
-                    emit savedPositionChanged(m_savedPosition);
+                if (self->m_savedPosition > 0) {
+                    emit self->savedPositionChanged(self->m_savedPosition);
                 }
             }
         });
