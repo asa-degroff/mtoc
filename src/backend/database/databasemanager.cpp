@@ -609,6 +609,8 @@ QVariantList DatabaseManager::getAllTracks(int limit, int offset)
         "LEFT JOIN artists a ON t.artist_id = a.id "
         "LEFT JOIN albums al ON t.album_id = al.id "
         "LEFT JOIN album_artists aa ON al.album_artist_id = aa.id "
+        "WHERE t.title IS NOT NULL AND t.title != '' "
+        "AND (a.name IS NOT NULL AND a.name != '' OR t.artist_id IS NULL) "
         "ORDER BY aa.name COLLATE NOCASE, al.title COLLATE NOCASE, "
         "t.disc_number, t.track_number, t.title COLLATE NOCASE";
     
@@ -664,7 +666,13 @@ int DatabaseManager::getTrackCount()
     }
     
     QSqlQuery query(m_db);
-    query.prepare("SELECT COUNT(*) FROM tracks");
+    // Match the filtering criteria used in getAllTracks
+    query.prepare(
+        "SELECT COUNT(*) FROM tracks t "
+        "LEFT JOIN artists a ON t.artist_id = a.id "
+        "WHERE t.title IS NOT NULL AND t.title != '' "
+        "AND (a.name IS NOT NULL AND a.name != '' OR t.artist_id IS NULL)"
+    );
     
     if (query.exec() && query.next()) {
         return query.value(0).toInt();
@@ -1098,7 +1106,13 @@ qint64 DatabaseManager::getTotalDuration()
     if (!m_db.isOpen()) return 0;
     
     QSqlQuery query(m_db);
-    query.exec("SELECT SUM(duration) FROM tracks");
+    // Match the filtering criteria used in getAllTracks
+    query.exec(
+        "SELECT SUM(t.duration) FROM tracks t "
+        "LEFT JOIN artists a ON t.artist_id = a.id "
+        "WHERE t.title IS NOT NULL AND t.title != '' "
+        "AND (a.name IS NOT NULL AND a.name != '' OR t.artist_id IS NULL)"
+    );
     
     if (query.next()) {
         return query.value(0).toLongLong();
