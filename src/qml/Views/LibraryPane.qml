@@ -2497,7 +2497,7 @@ Item {
                                     }
 
                                     Label { // Track Number
-                                        text: trackData.trackNumber ? String(trackData.trackNumber).padStart(2, '0') : "--"
+                                        text: trackData.trackNumber ? String(trackData.trackNumber).padStart(1, '0') : "--"
                                         color: "#aaaaaa"
                                         font.pixelSize: 12
                                         Layout.preferredWidth: 25
