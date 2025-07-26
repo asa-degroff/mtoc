@@ -14,6 +14,8 @@ Item {
     property var libraryPane: null
     property bool queueVisible: false
     property var uniqueAlbumCovers: []
+    property bool showPlaylistSavedMessage: false
+    property string savedPlaylistName: ""
     
     // Keyboard shortcut for undo
     Keys.onPressed: function(event) {
@@ -36,8 +38,25 @@ Item {
         onTriggered: updateUniqueAlbumCovers()
     }
     
+    // Timer to hide playlist saved message
+    Timer {
+        id: playlistSavedMessageTimer
+        interval: 2500
+        repeat: false
+        onTriggered: {
+            showPlaylistSavedMessage = false
+        }
+    }
+    
     Component.onCompleted: {
         updateUniqueAlbumCovers()
+        
+        // Connect to playlist saved signal
+        PlaylistManager.playlistSaved.connect(function(name) {
+            savedPlaylistName = name
+            showPlaylistSavedMessage = true
+            playlistSavedMessageTimer.restart()
+        })
     }
     
     // Get up to 3 unique album covers from the queue, starting with current track
@@ -367,9 +386,18 @@ Item {
                             Item { Layout.fillWidth: true }
                             
                             Label {
-                                text: MediaPlayer.queueLength + " track" + (MediaPlayer.queueLength !== 1 ? "s" : "") + ", " + formatQueueDuration(MediaPlayer.totalQueueDuration)
+                                text: showPlaylistSavedMessage ? "Playlist Saved" : 
+                                      MediaPlayer.queueLength + " track" + (MediaPlayer.queueLength !== 1 ? "s" : "") + ", " + formatQueueDuration(MediaPlayer.totalQueueDuration)
                                 font.pixelSize: 12
-                                color: "#808080"
+                                color: showPlaylistSavedMessage ? "#60ff60" : "#808080"
+                                
+                                Behavior on color {
+                                    ColorAnimation { duration: 200 }
+                                }
+                                
+                                Behavior on opacity {
+                                    NumberAnimation { duration: 200 }
+                                }
                             }
                             
                             // Save queue button
