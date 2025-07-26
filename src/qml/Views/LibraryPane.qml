@@ -200,6 +200,7 @@ Item {
         }
     }
     
+    
     // Layout stabilization timer for dynamic scrolling
     Timer {
         id: layoutStabilizationTimer
@@ -2968,11 +2969,12 @@ Item {
                                             if (root.showTrackSelector) {
                                                 // Close
                                                 root.showTrackSelector = false
-                                                root.trackSelectorSearchTerm = ""
-                                                root.trackSelectorResults = []
+                                                // Don't clear data immediately - let it fade out with the animation
                                             } else {
                                                 // Open
                                                 root.showTrackSelector = true
+                                                root.trackSelectorSearchTerm = ""
+                                                root.trackSelectorResults = []
                                                 trackSelectorSearchBar.forceActiveFocus()
                                             }
                                         }
@@ -3098,23 +3100,22 @@ Item {
                             Item {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
-                                visible: root.showTrackSelector && root.trackSelectorResults.length === 0
+                                Layout.preferredHeight: 50
+                                visible: root.trackSelectorResults.length === 0
+                                opacity: root.showTrackSelector ? 1.0 : 0.0
+                                
+                                Behavior on opacity {
+                                    NumberAnimation {
+                                        duration: 200
+                                        easing.type: Easing.InOutCubic
+                                    }
+                                }
                                 
                                 Label {
                                     anchors.centerIn: parent
                                     text: root.trackSelectorSearchTerm.trim().length > 0 ? "No tracks found" : "Type to search for tracks"
                                     color: "#808080"
                                     font.pixelSize: 14
-                                    
-                                    // Fade in animation
-                                    opacity: parent.visible ? 1.0 : 0.0
-                                    
-                                    Behavior on opacity {
-                                        NumberAnimation {
-                                            duration: 200
-                                            easing.type: Easing.InOutCubic
-                                        }
-                                    }
                                 }
                             }
                         }
