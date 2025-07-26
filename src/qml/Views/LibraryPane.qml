@@ -2929,12 +2929,17 @@ Item {
                                     }
                                 }
                                 
-                                // Toggle button (+ when collapsed, × when expanded)
+                                // Toggle button using cancel.svg icon
                                 Rectangle {
                                     Layout.preferredWidth: 36
                                     Layout.preferredHeight: 36
                                     radius: 4
-                                    color: toggleButtonMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(1, 1, 1, 0.08)
+                                    color: {
+                                        if (toggleButtonMouseArea.containsMouse) {
+                                            return root.showTrackSelector ? Qt.rgba(1, 0, 0, 0.3) : Qt.rgba(1, 1, 1, 0.15)
+                                        }
+                                        return Qt.rgba(1, 1, 1, 0.08)
+                                    }
                                     border.width: 1
                                     border.color: Qt.rgba(1, 1, 1, 0.2)
                                     
@@ -2942,14 +2947,16 @@ Item {
                                         ColorAnimation { duration: 150 }
                                     }
                                     
-                                    Text {
+                                    Image {
                                         anchors.centerIn: parent
-                                        text: root.showTrackSelector ? "×" : "+"
-                                        font.pixelSize: root.showTrackSelector ? 24 : 20
-                                        font.bold: true
-                                        color: "white"
+                                        width: 18
+                                        height: 18
+                                        source: "qrc:/resources/icons/cancel.svg"
+                                        sourceSize.width: 36
+                                        sourceSize.height: 36
+                                        rotation: root.showTrackSelector ? 0 : 45  // 45 degrees for plus sign
                                         
-                                        Behavior on font.pixelSize {
+                                        Behavior on rotation {
                                             NumberAnimation { duration: 150 }
                                         }
                                     }
@@ -3034,7 +3041,7 @@ Item {
                                             }
                                         }
                                         
-                                        // Add button
+                                        // Add button with green hover
                                         Rectangle {
                                             Layout.preferredWidth: 32
                                             Layout.preferredHeight: 32
@@ -3047,12 +3054,13 @@ Item {
                                                 ColorAnimation { duration: 150 }
                                             }
                                             
-                                            Text {
+                                            Image {
                                                 anchors.centerIn: parent
-                                                text: "+"
-                                                font.pixelSize: 20
-                                                font.bold: true
-                                                color: "white"
+                                                width: 16
+                                                height: 16
+                                                source: "qrc:/resources/icons/add.svg"
+                                                sourceSize.width: 32
+                                                sourceSize.height: 32
                                             }
                                             
                                             MouseArea {
@@ -3083,6 +3091,7 @@ Item {
                                     MouseArea {
                                         id: trackItemMouseArea
                                         anchors.fill: parent
+                                        anchors.rightMargin: 44  // Leave space for the add button
                                         hoverEnabled: true
                                         acceptedButtons: Qt.NoButton
                                     }
