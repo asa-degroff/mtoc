@@ -288,7 +288,7 @@ Item {
                 
                 property string currentPlaylistName: modelData
                 
-                onClicked: {
+                onClicked: function(mouse) {
                     // Ensure the playlist view has focus for keyboard navigation
                     root.forceActiveFocus()
                     
@@ -306,7 +306,7 @@ Item {
                         playlistContextMenu.popup()
                     }
                 }
-                onDoubleClicked: {
+                onDoubleClicked: function(mouse) {
                     // Only handle double clicks if not clicking on the action buttons area
                     if (mouse.x < width - 68) {  // Account for both rename and delete buttons
                         root.playlistDoubleClicked(modelData, mouse)

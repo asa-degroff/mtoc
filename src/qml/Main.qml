@@ -42,7 +42,7 @@ ApplicationWindow {
             // No need to hide anything
         }
         
-        onResizeCompleted: {
+        onResizeCompleted: function(newWidth, newHeight) {
             // Apply new dimensions to content
             mainContent.width = newWidth
             mainContent.height = newHeight
