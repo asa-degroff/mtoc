@@ -527,7 +527,7 @@ Item {
         // Track information
         ColumnLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.max(60, parent.height * 0.08)  // Dynamic height: 8% of parent, min 60px
+            Layout.preferredHeight: 60
             spacing: 2
             
             // Track title (clickable - jumps to album)
@@ -646,7 +646,7 @@ Item {
         // Playback controls
         PlaybackControls {
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.max(80, parent.height * 0.06)  // Dynamic height: 12% of parent, min 80px
+            Layout.preferredHeight: 80
             
             queueVisible: root.queueVisible
             
@@ -666,7 +666,7 @@ Item {
         }
         
         Item {
-            Layout.preferredHeight: Math.max(24, parent.height * 0.01)  // Dynamic bottom spacing
+            Layout.preferredHeight: 24
         }
     }
     

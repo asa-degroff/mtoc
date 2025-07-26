@@ -1035,9 +1035,7 @@ Item {
                         // Search bar at 60% width
                         SearchBar {
                             id: searchBar
-                            Layout.fillWidth: false
-                            Layout.preferredWidth: parent.width * 0.58  // Slightly less than 60% to account for spacing
-                            Layout.preferredHeight: parent.height
+                            Layout.preferredWidth: parent.width * 0.58
                             placeholderText: "Search library..."
                             z: 1
                         
@@ -2184,7 +2182,7 @@ Item {
                             // Edit/Save/Cancel buttons for playlists
                             Item {
                                 Layout.preferredWidth: childrenRect.width
-                                Layout.preferredHeight: parent.height
+                                Layout.fillHeight: true
                                 visible: root.selectedAlbum && root.selectedAlbum.isPlaylist === true
                                 
                                 Row {
@@ -2356,8 +2354,7 @@ Item {
                     ListView {
                         id: trackListView
                         Layout.fillWidth: true
-                        Layout.fillHeight: !root.showTrackInfoPanel || root.trackInfoPanelY > 10
-                        Layout.preferredHeight: root.showTrackInfoPanel && root.trackInfoPanelY < 10 ? parent.height - 60 - 180 - 24 : -1  // Album header - info panel - spacing
+                        Layout.fillHeight: true
                         clip: true
                         model: root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist ? root.selectedAlbum.virtualModel : rightPane.currentAlbumTracks
                         visible: (root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist) || rightPane.currentAlbumTracks.length > 0
@@ -3394,7 +3391,6 @@ Item {
                                         // Left column: Track, Year, Genre
                                         ColumnLayout {
                                             Layout.fillWidth: true
-                                            Layout.preferredWidth: parent.width / 2
                                             spacing: 2
                                             
                                             // Track Number
@@ -3467,7 +3463,6 @@ Item {
                                         // Right column: Duration, Format, File Size
                                         ColumnLayout {
                                             Layout.fillWidth: true
-                                            Layout.preferredWidth: parent.width / 2
                                             spacing: 2
                                             
                                             // Duration
