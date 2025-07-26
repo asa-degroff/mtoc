@@ -16,6 +16,7 @@
 #include <QJsonObject>
 #include <QSet>
 #include <QStandardPaths>
+#include <algorithm>
 
 using Mtoc::LibraryManager;
 using Mtoc::Track;
@@ -127,8 +128,8 @@ void PlaylistManager::refreshPlaylists()
         return;
     }
     
-    // Set to track unique playlist names across all folders
-    QSet<QString> uniquePlaylists;
+    // Use a map to track unique playlists with their most recent modification time
+    QMap<QString, QDateTime> playlistDates;
     
     // Scan all playlist folders
     for (const QString& folderPath : m_playlistFolders) {
@@ -141,23 +142,41 @@ void PlaylistManager::refreshPlaylists()
         QStringList filters;
         filters << "*.m3u" << "*.m3u8";
         dir.setNameFilters(filters);
-        dir.setSorting(QDir::Time); // Sort by modification time, newest first
         
-        QStringList files = dir.entryList(QDir::Files);
-        for (const QString& file : files) {
+        QFileInfoList fileInfos = dir.entryInfoList(QDir::Files);
+        for (const QFileInfo& fileInfo : fileInfos) {
             // Remove extension for display
-            QString name = file;
+            QString name = fileInfo.fileName();
             if (name.endsWith(".m3u8")) {
                 name.chop(5);
             } else if (name.endsWith(".m3u")) {
                 name.chop(4);
             }
-            uniquePlaylists.insert(name);
+            
+            // Keep the most recent modification time if playlist exists in multiple folders
+            QDateTime modTime = fileInfo.lastModified();
+            if (!playlistDates.contains(name) || modTime > playlistDates[name]) {
+                playlistDates[name] = modTime;
+            }
         }
     }
     
-    // Add unique playlists to the list
-    m_playlists.append(uniquePlaylists.values());
+    // Sort playlists by modification time (newest first)
+    QList<QPair<QDateTime, QString>> sortedPlaylists;
+    for (auto it = playlistDates.begin(); it != playlistDates.end(); ++it) {
+        sortedPlaylists.append(qMakePair(it.value(), it.key()));
+    }
+    
+    // Sort by date in descending order (newest first)
+    std::sort(sortedPlaylists.begin(), sortedPlaylists.end(),
+              [](const QPair<QDateTime, QString>& a, const QPair<QDateTime, QString>& b) {
+                  return a.first > b.first;
+              });
+    
+    // Add sorted playlists to the list
+    for (const auto& pair : sortedPlaylists) {
+        m_playlists.append(pair.second);
+    }
     
     emit playlistsChanged();
 }
