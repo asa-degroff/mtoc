@@ -47,6 +47,8 @@ Item {
     property var artistAlbumCache: ({})  // Cache for artist's albums: { "artistName": { "albumTitle": albumObject } }
     property var artistAlbumIndexCache: ({})  // Cache for album indices: { "artistName": { "albumTitle": index } }
     property var currentTrackIndexMap: ({})  // Map for current album's tracks: { "title|artist": index }
+    property var currentTrackFilePathMap: ({})  // Map for current album's tracks by file path: { "filePath": index }
+    property var albumIdToIndexMap: ({})  // Map for all albums by ID: { albumId: index }
     property var collapsedArtistCleanupTimers: ({})  // Timers for cleaning up collapsed artist data
     property int cleanupDelayMs: 30000  // Clean up artist data 30 seconds after collapse
     property var expandCollapseDebounceTimer: null  // Debounce timer for expansion/collapse
@@ -383,8 +385,9 @@ Item {
             var encodedAlbum = encodeURIComponent(MediaPlayer.currentTrack.album)
             thumbnailUrl = "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/thumbnail"
         }
-        // Build initial artist index mapping
+        // Build initial index mappings
         updateArtistIndexMapping()
+        updateAlbumIdMapping()
         // Initialize track info panel as hidden
         trackInfoPanelY = 184  // Start off-screen
         // Don't auto-select any track - start with no selection
@@ -421,12 +424,14 @@ Item {
         target: LibraryManager
         function onLibraryChanged() {
             updateArtistIndexMapping()
+            updateAlbumIdMapping()
             // Clear caches when library changes
             searchResultsCache = {}
             albumDurationCache = {}
             artistAlbumCache = {}
             artistAlbumIndexCache = {}
             currentTrackIndexMap = {}
+            currentTrackFilePathMap = {}
         }
     }
     
@@ -452,6 +457,18 @@ Item {
         artistNameToIndex = mapping
         console.log("updateArtistIndexMapping: Mapping complete, sample entries:", 
                    Object.keys(mapping).slice(0, 3).map(function(k) { return k + ":" + mapping[k] }).join(", "))
+    }
+    
+    // Function to build album ID to index mapping for O(1) lookups
+    function updateAlbumIdMapping() {
+        var mapping = {}
+        var albums = LibraryManager.albumModel
+        for (var i = 0; i < albums.length; i++) {
+            if (albums[i] && albums[i].id !== undefined) {
+                mapping[albums[i].id] = i
+            }
+        }
+        albumIdToIndexMap = mapping
     }
 
     onSelectedAlbumChanged: {
@@ -1978,16 +1995,23 @@ Item {
                         }
                     }
                     
-                    // Build track index map for O(1) lookups
+                    // Build track index maps for O(1) lookups
                     var indexMap = {}
+                    var filePathMap = {}
                     for (var i = 0; i < currentAlbumTracks.length; i++) {
                         var track = currentAlbumTracks[i]
-                        if (track && track.title && track.artist) {
-                            var key = track.title + "|" + track.artist
-                            indexMap[key] = i
+                        if (track) {
+                            if (track.title && track.artist) {
+                                var key = track.title + "|" + track.artist
+                                indexMap[key] = i
+                            }
+                            if (track.filePath) {
+                                filePathMap[track.filePath] = i
+                            }
                         }
                     }
                     root.currentTrackIndexMap = indexMap
+                    root.currentTrackFilePathMap = filePathMap
                 }
 
                 ColumnLayout {
@@ -3736,35 +3760,33 @@ Item {
             var albumId = parseInt(albumIdStr)
             if (isNaN(albumId)) return
             
-            // Search through all albums to find the one with matching ID
-            var albums = LibraryManager.albumModel
-            for (var i = 0; i < albums.length; i++) {
-                if (albums[i].id === albumId) {
-                    var album = albums[i]
-                    
-                    // If it's a playlist, switch to playlist tab
-                    if (album.isPlaylist) {
-                        currentTab = 1
-                        // TODO: Select the playlist in playlist view
-                        return
-                    }
-                    
-                    // For regular albums, expand the artist and select the album
-                    if (album.albumArtist) {
-                        // Expand the artist
-                        var updatedExpanded = Object.assign({}, expandedArtists)
-                        updatedExpanded[album.albumArtist] = true
-                        expandedArtists = updatedExpanded
-                        
-                        // Select the album
-                        selectedAlbum = album
-                        
-                        // Jump to the album in the browser
-                        Qt.callLater(function() {
-                            albumBrowser.jumpToAlbum(album)
-                        })
-                    }
+            // Use O(1) lookup from album ID map
+            var albumIndex = albumIdToIndexMap[albumId]
+            if (albumIndex !== undefined) {
+                var album = LibraryManager.albumModel[albumIndex]
+                if (!album) return
+                
+                // If it's a playlist, switch to playlist tab
+                if (album.isPlaylist) {
+                    currentTab = 1
+                    // TODO: Select the playlist in playlist view
                     return
+                }
+                
+                // For regular albums, expand the artist and select the album
+                if (album.albumArtist) {
+                    // Expand the artist
+                    var updatedExpanded = Object.assign({}, expandedArtists)
+                    updatedExpanded[album.albumArtist] = true
+                    expandedArtists = updatedExpanded
+                    
+                    // Select the album
+                    selectedAlbum = album
+                    
+                    // Jump to the album in the browser
+                    Qt.callLater(function() {
+                        albumBrowser.jumpToAlbum(album)
+                    })
                 }
             }
         } catch (error) {
@@ -3908,12 +3930,15 @@ Item {
                 highlightedArtist = bestMatch.artist
                 
                 // Try to find and select the album
-                var albums = LibraryManager.getAlbumsForArtist(bestMatch.artist)
-                for (var i = 0; i < albums.length; i++) {
-                    if (albums[i].title === bestMatch.album) {
-                        selectedAlbum = albums[i]
-                        break
-                    }
+                // Ensure album cache is populated
+                if (!artistAlbumCache[bestMatch.artist]) {
+                    updateAlbumCacheForArtist(bestMatch.artist)
+                }
+                
+                // Use O(1) lookup from cache
+                var albumMap = artistAlbumCache[bestMatch.artist]
+                if (albumMap && albumMap[bestMatch.album]) {
+                    selectedAlbum = albumMap[bestMatch.album]
                 }
                 
                 // Only scroll and expand if not actively navigating
@@ -4077,26 +4102,23 @@ Item {
         if (!MediaPlayer.currentTrack || !rightPane || !rightPane.currentAlbumTracks) return
         
         var currentTrack = MediaPlayer.currentTrack
-        var tracks = rightPane.currentAlbumTracks
         
-        // Find the index of the currently playing track in the track list
-        for (var i = 0; i < tracks.length; i++) {
-            if (tracks[i] && tracks[i].filePath === currentTrack.filePath) {
-                console.log("Auto-selecting track at index:", i)
-                
-                // Update selection
-                selectedTrackIndex = i
-                if (trackListView) {
-                    trackListView.currentIndex = i
-                    ensureTrackVisible(i)
-                }
-                
-                // Update track info panel if visible
-                if (root.showTrackInfoPanel) {
-                    root.selectedTrackForInfo = tracks[i]
-                }
-                
-                break
+        // Use O(1) lookup from file path map
+        var trackIndex = root.currentTrackFilePathMap[currentTrack.filePath]
+        
+        if (trackIndex !== undefined) {
+            console.log("Auto-selecting track at index:", trackIndex)
+            
+            // Update selection
+            selectedTrackIndex = trackIndex
+            if (trackListView) {
+                trackListView.currentIndex = trackIndex
+                ensureTrackVisible(trackIndex)
+            }
+            
+            // Update track info panel if visible
+            if (root.showTrackInfoPanel && rightPane.currentAlbumTracks[trackIndex]) {
+                root.selectedTrackForInfo = rightPane.currentAlbumTracks[trackIndex]
             }
         }
     }
