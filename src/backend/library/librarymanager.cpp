@@ -511,17 +511,22 @@ void LibraryManager::scanInBackground()
     
     // Create a thread-local database connection
     QString connectionName = QString("ScanThread_%1").arg(quintptr(QThread::currentThreadId()));
-    QSqlDatabase db = DatabaseManager::createThreadConnection(connectionName);
     
-    if (!db.isOpen()) {
-        qCritical() << "Failed to create thread database connection";
-        return;
-    }
+    // Scope the database connection to ensure proper cleanup
+    {
+        QSqlDatabase db = DatabaseManager::createThreadConnection(connectionName);
+        
+        if (!db.isOpen()) {
+            qCritical() << "Failed to create thread database connection";
+            DatabaseManager::removeThreadConnection(connectionName);
+            return;
+        }
     
     // Force WAL checkpoint to ensure this thread connection sees all committed data
     {
         QSqlQuery checkpointQuery(db);
         checkpointQuery.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+        checkpointQuery.finish();
         qDebug() << "[scanInBackground] Performed WAL checkpoint to sync with main database";
     }
     
@@ -533,11 +538,13 @@ void LibraryManager::scanInBackground()
                 qDebug() << "[scanInBackground] Thread connection sees" << countQuery.value(0).toInt() << "tracks in database";
             }
         }
+        countQuery.finish();
     }
     
     try {
         // Note: Removed transaction wrapper to fix issue with new files not being detected
         // Each database operation will be auto-committed individually
+        
         
         // Find all music files
         QStringList allFiles;
@@ -570,6 +577,7 @@ void LibraryManager::scanInBackground()
                     existingTracksInDB.append(pathQuery.value(0).toString());
                 }
             }
+            pathQuery.finish();
         }
         qDebug() << "Found" << existingTracksInDB.size() << "tracks in database";
         
@@ -601,6 +609,7 @@ void LibraryManager::scanInBackground()
                 } else {
                     qDebug() << "Removed deleted file from database:" << deletedFile;
                 }
+                deleteQuery.finish();
             }
             
             // Clean up orphaned albums, album artists, and artists after deleting tracks
@@ -616,6 +625,7 @@ void LibraryManager::scanInBackground()
                     qDebug() << "Deleted" << deletedAlbums << "orphaned albums";
                 }
             }
+            cleanupQuery.finish();
             
             // Delete album artists that have no albums
             if (!cleanupQuery.exec("DELETE FROM album_artists WHERE id NOT IN (SELECT DISTINCT album_artist_id FROM albums WHERE album_artist_id IS NOT NULL)")) {
@@ -662,11 +672,13 @@ void LibraryManager::scanInBackground()
                     // Track already exists in database
                     qDebug() << "[" << connectionName << "] Track already exists in database, skipping:" << filePath;
                     m_filesScanned++;
+                    checkQuery.finish();
                     continue;
                 } else {
                     // Track not in database, will process
                     qDebug() << "[" << connectionName << "] New track found, will process:" << filePath;
                 }
+                checkQuery.finish();
             }
             
             // Queue metadata extraction for parallel processing
@@ -802,17 +814,23 @@ void LibraryManager::scanInBackground()
                     qDebug() << "[scanInBackground] Final track count in database:" << finalCountQuery.value(0).toInt();
                 }
             }
+            finalCountQuery.finish();
         }
         
         qDebug() << "scanInBackground() completed successfully - scanned" << m_filesScanned << "files";
+        
     } catch (const std::exception& e) {
         qCritical() << "Exception in scanInBackground():" << e.what();
     } catch (...) {
         qCritical() << "Unknown exception in scanInBackground()";
     }
     
-    // Close database before removing connection
-    db.close();
+        // Close database before removing connection
+        db.close();
+    } // End of database scope
+    
+    // Add a small delay to ensure all queries are fully released
+    QThread::msleep(10);
     
     // Clean up thread-local database connection
     DatabaseManager::removeThreadConnection(connectionName);
@@ -1444,16 +1462,22 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
         query.bindValue(":name", artistName);
         
         if (query.exec() && query.next()) {
-            return query.value(0).toInt();
+            int id = query.value(0).toInt();
+            query.finish();
+            return id;
         }
+        query.finish();
         
         // Insert new artist
         query.prepare("INSERT INTO artists (name) VALUES (:name)");
         query.bindValue(":name", artistName);
         
         if (query.exec()) {
-            return query.lastInsertId().toInt();
+            int id = query.lastInsertId().toInt();
+            query.finish();
+            return id;
         }
+        query.finish();
         
         return 0;
     };
@@ -1469,16 +1493,22 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
         query.bindValue(":name", albumArtistName);
         
         if (query.exec() && query.next()) {
-            return query.value(0).toInt();
+            int id = query.value(0).toInt();
+            query.finish();
+            return id;
         }
+        query.finish();
         
         // Insert new album artist
         query.prepare("INSERT INTO album_artists (name) VALUES (:name)");
         query.bindValue(":name", albumArtistName);
         
         if (query.exec()) {
-            return query.lastInsertId().toInt();
+            int id = query.lastInsertId().toInt();
+            query.finish();
+            return id;
         }
+        query.finish();
         
         return 0;
     };
@@ -1501,6 +1531,7 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
         
         if (query.exec() && query.next()) {
             int existingAlbumId = query.value(0).toInt();
+            query.finish();
             
             // Update year if provided and not already set
             if (albumYear > 0) {
@@ -1509,10 +1540,12 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
                 updateQuery.bindValue(":year", albumYear);
                 updateQuery.bindValue(":id", existingAlbumId);
                 updateQuery.exec();
+                updateQuery.finish();
             }
             
             return existingAlbumId;
         }
+        query.finish();
         
         // Insert new album with year
         query.prepare("INSERT INTO albums (title, album_artist_id, year) VALUES (:title, :artist_id, :year)");
@@ -1521,8 +1554,11 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
         query.bindValue(":year", albumYear > 0 ? albumYear : QVariant());
         
         if (query.exec()) {
-            return query.lastInsertId().toInt();
+            int id = query.lastInsertId().toInt();
+            query.finish();
+            return id;
         }
+        query.finish();
         
         return 0;
     };
@@ -1577,6 +1613,7 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
         qWarning() << "SQL:" << query.lastQuery();
         qWarning() << "Bound values:" << query.boundValues();
     }
+    query.finish();
 }
 
 void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVariantMap>& batchMetadata)
@@ -1609,8 +1646,10 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         if (query.exec() && query.next()) {
             int id = query.value(0).toInt();
             artistCache[artistName] = id;
+            query.finish();
             return id;
         }
+        query.finish();
         
         // Insert new artist
         query.prepare("INSERT INTO artists (name) VALUES (:name)");
@@ -1619,8 +1658,10 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         if (query.exec()) {
             int id = query.lastInsertId().toInt();
             artistCache[artistName] = id;
+            query.finish();
             return id;
         }
+        query.finish();
         
         return 0;
     };
@@ -1639,8 +1680,10 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         if (query.exec() && query.next()) {
             int id = query.value(0).toInt();
             albumArtistCache[albumArtistName] = id;
+            query.finish();
             return id;
         }
+        query.finish();
         
         // Insert new album artist
         query.prepare("INSERT INTO album_artists (name) VALUES (:name)");
@@ -1649,8 +1692,10 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         if (query.exec()) {
             int id = query.lastInsertId().toInt();
             albumArtistCache[albumArtistName] = id;
+            query.finish();
             return id;
         }
+        query.finish();
         
         return 0;
     };
@@ -1678,6 +1723,7 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         if (query.exec() && query.next()) {
             int existingAlbumId = query.value(0).toInt();
             albumCache[key] = existingAlbumId;
+            query.finish();
             
             // Update year if provided and not already set
             if (albumYear > 0) {
@@ -1686,10 +1732,12 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
                 updateQuery.bindValue(":year", albumYear);
                 updateQuery.bindValue(":id", existingAlbumId);
                 updateQuery.exec();
+                updateQuery.finish();
             }
             
             return existingAlbumId;
         }
+        query.finish();
         
         // Insert new album with year
         query.prepare("INSERT INTO albums (title, album_artist_id, year) VALUES (:title, :artist_id, :year)");
@@ -1700,8 +1748,10 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         if (query.exec()) {
             int id = query.lastInsertId().toInt();
             albumCache[key] = id;
+            query.finish();
             return id;
         }
+        query.finish();
         
         return 0;
     };
@@ -1773,6 +1823,9 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         }
     }
     
+    // Finish the prepared query to release resources
+    trackInsert.finish();
+    
     qDebug() << "[insertBatchTracksInThread] Batch complete - Successfully inserted" << successCount 
              << "tracks, failed" << failCount << "tracks";
 }
@@ -1789,17 +1842,21 @@ void LibraryManager::processAlbumArtInBackground()
     
     // Create a thread-local database connection
     QString connectionName = QString("AlbumArtThread_%1").arg(quintptr(QThread::currentThreadId()));
-    QSqlDatabase db = DatabaseManager::createThreadConnection(connectionName);
     
-    if (!db.isOpen()) {
-        qCritical() << "Failed to create thread database connection for album art processing";
-        // Clear processing flag
-        QMetaObject::invokeMethod(this, [this]() {
-            m_processingAlbumArt = false;
-            emit processingAlbumArtChanged();
-        }, Qt::QueuedConnection);
-        return;
-    }
+    // Scope the database connection to ensure proper cleanup
+    {
+        QSqlDatabase db = DatabaseManager::createThreadConnection(connectionName);
+        
+        if (!db.isOpen()) {
+            qCritical() << "Failed to create thread database connection for album art processing";
+            DatabaseManager::removeThreadConnection(connectionName);
+            // Clear processing flag
+            QMetaObject::invokeMethod(this, [this]() {
+                m_processingAlbumArt = false;
+                emit processingAlbumArtChanged();
+            }, Qt::QueuedConnection);
+            return;
+        }
     
     try {
         // Get all albums that don't have album art yet
@@ -1842,6 +1899,7 @@ void LibraryManager::processAlbumArtInBackground()
         
         if (totalAlbums == 0) {
             qDebug() << "LibraryManager::processAlbumArtInBackground() - No albums need art processing";
+            
             db.close();
             DatabaseManager::removeThreadConnection(connectionName);
             // Clear processing flag
@@ -1919,6 +1977,7 @@ void LibraryManager::processAlbumArtInBackground()
                                 qDebug() << "Successfully processed album art for:" << albumTitle;
                                 processedCount++;
                             }
+                            artInsert.finish();
                         }
                     }
                     
@@ -1970,8 +2029,12 @@ void LibraryManager::processAlbumArtInBackground()
         qCritical() << "Unknown exception in processAlbumArtInBackground()";
     }
     
-    // Close database before removing connection
-    db.close();
+        // Close database before removing connection
+        db.close();
+    } // End of database scope
+    
+    // Add a small delay to ensure all queries are fully released
+    QThread::msleep(10);
     
     // Clean up thread-local database connection
     DatabaseManager::removeThreadConnection(connectionName);

@@ -655,7 +655,7 @@ Item {
             
             // Add cleanup handler for when window is closed manually
             libraryEditorWindow.onClosing.connect(function() {
-                console.log("LibraryPane: Library editor window closed manually")
+                //console.log("LibraryPane: Library editor window closed manually")
                 libraryEditorWindow = null
             })
             
@@ -832,7 +832,7 @@ Item {
                             
                             // Add cleanup handler for when window is closed manually
                             settingsWindow.onClosing.connect(function() {
-                                console.log("LibraryPane: Settings window closed manually")
+                                //console.log("LibraryPane: Settings window closed manually")
                                 settingsWindow = null
                             })
                             
