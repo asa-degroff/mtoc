@@ -2556,22 +2556,55 @@ Item {
                                     }
 
                                     // Track Title - shows different format for albums vs playlists
-                                    Label {
-                                        text: {
-                                            if (root.selectedAlbum && root.selectedAlbum.isPlaylist) {
-                                                // For playlists, show "Title - Album"
-                                                var title = trackData.title || "Unknown Track"
-                                                var album = trackData.album || "Unknown Album"
-                                                return title + " - " + album
-                                            } else {
-                                                // For albums, show just the title
-                                                return trackData.title || "Unknown Track"
+                                    Item {
+                                        Layout.fillWidth: true
+                                        implicitHeight: 20
+                                        
+                                        property bool isPlaylist: root.selectedAlbum && root.selectedAlbum.isPlaylist === true
+                                        
+                                        // For albums - simple title
+                                        Label {
+                                            anchors.fill: parent
+                                            text: trackData.title || "Unknown Track"
+                                            color: "white"
+                                            font.pixelSize: 13
+                                            elide: Text.ElideRight
+                                            visible: !parent.isPlaylist
+                                        }
+                                        
+                                        // For playlists - title and artist with special spacing
+                                        Row {
+                                            anchors.fill: parent
+                                            spacing: 0
+                                            visible: parent.isPlaylist
+                                            
+                                            // Track title - takes natural width, no artificial limit
+                                            Label {
+                                                id: playlistTrackTitle
+                                                text: trackData.title || "Unknown Track"
+                                                color: "white"
+                                                font.pixelSize: 13
+                                                width: Math.min(implicitWidth + 20, parent.width - 50) // Take what's needed, leave space for album
+                                                elide: Text.ElideRight
+                                                clip: true
+                                            }
+                                            
+                                            // Spacer to position artist at 50% or further right if title is long
+                                            Item {
+                                                width: Math.max(0, parent.width * 0.5 - playlistTrackTitle.width)
+                                                height: 1
+                                            }
+                                            
+                                            // Artist name - takes remaining space
+                                            Label {
+                                                text: trackData.artist || "Unknown Artist"
+                                                color: "#808080"
+                                                font.pixelSize: 13
+                                                width: parent.width - playlistTrackTitle.width - parent.spacing
+                                                elide: Text.ElideRight
+                                                clip: true
                                             }
                                         }
-                                        color: "white"
-                                        font.pixelSize: 13
-                                        elide: root.selectedAlbum && root.selectedAlbum.isPlaylist ? Text.ElideMiddle : Text.ElideRight
-                                        Layout.fillWidth: true
                                     }
 
                                     // Now Playing Indicator
