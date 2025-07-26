@@ -1065,6 +1065,12 @@ void MediaPlayer::clearQueue()
         clearVirtualPlaylist();
     }
     
+    // Clear playlist name
+    if (!m_currentPlaylistName.isEmpty()) {
+        m_currentPlaylistName.clear();
+        emit currentPlaylistNameChanged(m_currentPlaylistName);
+    }
+    
     // Clean up any tracks we created
     for (auto track : m_playbackQueue) {
         if (track && track->parent() == this) {
@@ -1243,6 +1249,12 @@ void MediaPlayer::playPlaylist(const QString& playlistName, int startIndex)
     
     // Clear current queue
     clearQueue();
+    
+    // Set the current playlist name
+    if (m_currentPlaylistName != playlistName) {
+        m_currentPlaylistName = playlistName;
+        emit currentPlaylistNameChanged(m_currentPlaylistName);
+    }
     
     // Build tracks from data and add to queue
     for (const auto& trackData : trackList) {
@@ -1825,9 +1837,9 @@ void MediaPlayer::saveState()
     // Get the duration
     qint64 trackDuration = duration(); // This already handles both track and engine duration
     
-    // Prepare queue data if queue is modified
+    // Prepare queue data if queue is modified or playing a playlist
     QVariantList queueData;
-    if (m_isQueueModified && !m_playbackQueue.isEmpty()) {
+    if ((m_isQueueModified || !m_currentPlaylistName.isEmpty()) && !m_playbackQueue.isEmpty()) {
         for (Mtoc::Track* track : m_playbackQueue) {
             if (track) {
                 QVariantMap trackMap;
@@ -1843,10 +1855,17 @@ void MediaPlayer::saveState()
         }
     }
     
+    // Add playlist info if playing a playlist
+    QVariantMap playlistInfo;
+    if (!m_currentPlaylistName.isEmpty()) {
+        playlistInfo["playlistName"] = m_currentPlaylistName;
+    }
+    
     // Save the state
     m_libraryManager->savePlaybackState(filePath, currentPosition, 
                                         albumArtist, albumTitle, trackIndex, trackDuration,
-                                        m_isQueueModified, queueData, virtualPlaylistInfo);
+                                        m_isQueueModified || !m_currentPlaylistName.isEmpty(), 
+                                        queueData, virtualPlaylistInfo, playlistInfo);
     
     // qDebug() << "MediaPlayer::saveState - saved state for track:" << m_currentTrack->title()
     //         << "position:" << currentPosition << "ms"
@@ -1997,6 +2016,30 @@ void MediaPlayer::restoreState()
                 qWarning() << "MediaPlayer::restoreState - Failed to get All Songs playlist";
                 // Fall through to regular restoration
             }
+        }
+        
+        // Check if we're restoring a playlist
+        QString playlistName = state["playlistName"].toString();
+        if (!playlistName.isEmpty()) {
+            qDebug() << "MediaPlayer::restoreState - Restoring playlist:" << playlistName;
+            
+            // Use playPlaylist which will set up the queue properly
+            playPlaylist(playlistName, trackIndex);
+            
+            // Override the auto-play behavior to restore position instead
+            if (m_restoreConnection) {
+                disconnect(m_restoreConnection);
+            }
+            
+            m_restoreConnection = connect(m_audioEngine.get(), &AudioEngine::durationChanged, this, [this]() {
+                if (m_audioEngine->duration() > 0) {
+                    disconnect(m_restoreConnection);
+                    m_restoreConnection = QMetaObject::Connection();
+                    onTrackLoadedForRestore();
+                }
+            });
+            
+            return; // Don't continue to other restoration paths
         }
         
         // If we have a modified queue, restore it

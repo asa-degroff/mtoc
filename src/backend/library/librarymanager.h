@@ -111,7 +111,8 @@ public:
                                        const QString &albumArtist, const QString &albumTitle, 
                                        int trackIndex, qint64 duration,
                                        bool queueModified = false, const QVariantList &queue = QVariantList(),
-                                       const QVariantMap &virtualPlaylistInfo = QVariantMap());
+                                       const QVariantMap &virtualPlaylistInfo = QVariantMap(),
+                                       const QVariantMap &playlistInfo = QVariantMap());
     Q_INVOKABLE QVariantMap loadPlaybackState() const;
     Q_INVOKABLE void clearPlaybackState();
 

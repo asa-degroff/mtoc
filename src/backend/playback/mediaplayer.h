@@ -40,6 +40,7 @@ class MediaPlayer : public QObject
     Q_PROPERTY(bool shuffleEnabled READ shuffleEnabled WRITE setShuffleEnabled NOTIFY shuffleEnabledChanged)
     Q_PROPERTY(bool isPlayingVirtualPlaylist READ isPlayingVirtualPlaylist NOTIFY playbackQueueChanged)
     Q_PROPERTY(QString virtualPlaylistName READ virtualPlaylistName NOTIFY virtualPlaylistNameChanged)
+    Q_PROPERTY(QString currentPlaylistName READ currentPlaylistName NOTIFY currentPlaylistNameChanged)
 
 public:
     enum State {
@@ -76,6 +77,7 @@ public:
     bool shuffleEnabled() const { return m_shuffleEnabled; }
     bool isPlayingVirtualPlaylist() const { return m_isVirtualPlaylist; }
     QString virtualPlaylistName() const { return m_virtualPlaylistName; }
+    QString currentPlaylistName() const { return m_currentPlaylistName; }
 
 public slots:
     void play();
@@ -138,6 +140,7 @@ signals:
     void repeatEnabledChanged(bool enabled);
     void shuffleEnabledChanged(bool enabled);
     void virtualPlaylistNameChanged(const QString& name);
+    void currentPlaylistNameChanged(const QString& name);
 
 private slots:
     void periodicStateSave();
@@ -197,6 +200,9 @@ private:
     
     // Virtual playlist support
     Mtoc::VirtualPlaylist* m_virtualPlaylist = nullptr;
+    
+    // Playlist tracking
+    QString m_currentPlaylistName;
     bool m_isVirtualPlaylist = false;
     QString m_virtualPlaylistName;
     int m_virtualCurrentIndex = -1;

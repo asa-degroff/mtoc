@@ -1280,7 +1280,8 @@ void LibraryManager::savePlaybackState(const QString &filePath, qint64 position,
                                        const QString &albumArtist, const QString &albumTitle, 
                                        int trackIndex, qint64 duration,
                                        bool queueModified, const QVariantList &queue,
-                                       const QVariantMap &virtualPlaylistInfo)
+                                       const QVariantMap &virtualPlaylistInfo,
+                                       const QVariantMap &playlistInfo)
 {
     QSettings settings;
     settings.beginGroup("playbackState");
@@ -1309,6 +1310,13 @@ void LibraryManager::savePlaybackState(const QString &filePath, qint64 position,
         settings.setValue("trackAlbumArtist", virtualPlaylistInfo.value("trackAlbumArtist"));
     } else {
         settings.setValue("isVirtualPlaylist", false);
+    }
+    
+    // Save playlist info if present
+    if (!playlistInfo.isEmpty() && playlistInfo.contains("playlistName")) {
+        settings.setValue("playlistName", playlistInfo.value("playlistName"));
+    } else {
+        settings.remove("playlistName");
     }
     
     // Save queue info if modified
@@ -1377,6 +1385,12 @@ QVariantMap LibraryManager::loadPlaybackState() const
                 state["trackArtist"] = settings.value("trackArtist").toString();
                 state["trackAlbum"] = settings.value("trackAlbum").toString();
                 state["trackAlbumArtist"] = settings.value("trackAlbumArtist").toString();
+            }
+            
+            // Load playlist info if present
+            QString playlistName = settings.value("playlistName").toString();
+            if (!playlistName.isEmpty()) {
+                state["playlistName"] = playlistName;
             }
             
             // Load queue info
