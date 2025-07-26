@@ -2,7 +2,7 @@
 
 mtoc is a visually-rich music player and library browser for Linux that emphasizes smooth, continuous browsing experiences with album artwork at the forefront. 
 
-![mtoc Music Player](resources/banner/mtoc-banner.png)
+![mtoc Music Player](resources/banner/mtoc-banner.avif)
 
 ## Features
 
@@ -65,6 +65,9 @@ mtoc saves your position in the interface as well playback state including your 
 - 4GB system RAM recommended. Typical usage for mtoc remains under ~350MB, but may go as high as 1GB if you push it by loading all tracks in a large library and skipping through them quickly. 
 
 ## Getting Started
+
+#### Note
+Official packages are currently only maintained for Fedora 41+. 
 
 #### Dependencies
 - Qt6 >= 6.7 (Core, Quick, Qml, Multimedia, DBus, Concurrent, Widgets, Sql)
@@ -160,19 +163,10 @@ On first launch, mtoc will feature an empty library. Click "Edit Library" (or th
   - Deferred window reloading for efficiency
 
 ## Roadmap
+The following features are in development or planned for a future release: 
 
-### 1.x
-- Touchscreen, small screen, and Steam Deck controller support
-- Keybaord navigation
-- Additional list sort options
-- M3U playlist support including playback and editing
-- Settings window with additional options
-
-### >= 2.0
-- Metadata editor
-- Integrated CD ripper
-- Integrated library sync utility
-- Rich podcast library with RSS support, streaming, and downloading
+- Gamepad input support for steam deck and similar devices
+- Podcast library with streaming and online search
 
 ## License
 
