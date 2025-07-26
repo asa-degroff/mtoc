@@ -2940,8 +2940,6 @@ Item {
                                         }
                                         return Qt.rgba(1, 1, 1, 0.08)
                                     }
-                                    border.width: 1
-                                    border.color: Qt.rgba(1, 1, 1, 0.2)
                                     
                                     Behavior on color {
                                         ColorAnimation { duration: 150 }
@@ -2954,7 +2952,7 @@ Item {
                                         source: "qrc:/resources/icons/cancel.svg"
                                         sourceSize.width: 36
                                         sourceSize.height: 36
-                                        rotation: root.showTrackSelector ? 0 : 45  // 45 degrees for plus sign
+                                        rotation: root.showTrackSelector ? 0 : -45  // 45 degrees for plus sign
                                         
                                         Behavior on rotation {
                                             NumberAnimation { duration: 150 }
@@ -3047,8 +3045,6 @@ Item {
                                             Layout.preferredHeight: 32
                                             radius: 4
                                             color: addResultMouseArea.containsMouse ? Qt.rgba(0, 1, 0, 0.3) : Qt.rgba(1, 1, 1, 0.1)
-                                            border.width: 1
-                                            border.color: Qt.rgba(1, 1, 1, 0.2)
                                             
                                             Behavior on color {
                                                 ColorAnimation { duration: 150 }
