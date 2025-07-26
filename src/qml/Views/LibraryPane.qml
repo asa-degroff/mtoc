@@ -3957,13 +3957,10 @@ Item {
     }
     
     function scrollToArtist(artistName) {
-        // Find the artist in the list and scroll to it
-        var artists = LibraryManager.artistModel
-        for (var i = 0; i < artists.length; i++) {
-            if (artists[i].name === artistName) {
-                scrollToArtistIndex(i, true)
-                break
-            }
+        // Use O(1) lookup instead of O(n) search
+        var artistIndex = artistNameToIndex[artistName]
+        if (artistIndex !== undefined) {
+            scrollToArtistIndex(artistIndex, true)
         }
     }
     
@@ -4008,7 +4005,7 @@ Item {
     
     // Helper function to scroll to an artist index with optional smooth animation
     function scrollToArtistIndex(index, smooth) {
-        console.log("scrollToArtistIndex called with index:", index, "smooth:", smooth)
+        //console.log("scrollToArtistIndex called with index:", index, "smooth:", smooth)
         if (index < 0 || index >= LibraryManager.artistModel.length) {
             console.log("scrollToArtistIndex: Invalid index")
             return
@@ -4037,7 +4034,7 @@ Item {
             artistsListView.positionViewAtIndex(targetIndex, ListView.Beginning)
             var destPos = artistsListView.contentY
             
-            console.log("scrollToArtistIndex: Current:", currentPos, "Destination:", destPos)
+            //console.log("scrollToArtistIndex: Current:", currentPos, "Destination:", destPos)
 
             // Only animate if we need to move
             if (Math.abs(destPos - currentPos) > 1) {
@@ -4108,21 +4105,18 @@ Item {
     function selectTrackByMatch(trackMatch) {
         if (!trackMatch || !rightPane || !rightPane.currentAlbumTracks) return
         
-        var tracks = rightPane.currentAlbumTracks
-        for (var i = 0; i < tracks.length; i++) {
-            var track = tracks[i]
-            // Match by title and artist to ensure we get the right track
-            if (track && track.title === trackMatch.title && 
-                track.artist === trackMatch.artist) {
-                selectedTrackIndex = i
-                trackListView.currentIndex = i
-                ensureTrackVisible(i)
-                
-                // Update track info panel if visible
-                if (root.showTrackInfoPanel) {
-                    root.selectedTrackForInfo = track
-                }
-                break
+        // Use O(1) lookup from track index map
+        var trackKey = trackMatch.title + "|" + trackMatch.artist
+        var trackIndex = root.currentTrackIndexMap[trackKey]
+        
+        if (trackIndex !== undefined && rightPane.currentAlbumTracks[trackIndex]) {
+            selectedTrackIndex = trackIndex
+            trackListView.currentIndex = trackIndex
+            ensureTrackVisible(trackIndex)
+            
+            // Update track info panel if visible
+            if (root.showTrackInfoPanel) {
+                root.selectedTrackForInfo = rightPane.currentAlbumTracks[trackIndex]
             }
         }
     }
