@@ -2572,37 +2572,32 @@ Item {
                                             visible: !parent.isPlaylist
                                         }
                                         
-                                        // For playlists - title and artist with special spacing
-                                        Row {
+                                        // For playlists - title and artist with proper layout
+                                        RowLayout {
                                             anchors.fill: parent
-                                            spacing: 0
+                                            spacing: 8
                                             visible: parent.isPlaylist
                                             
-                                            // Track title - takes natural width, no artificial limit
+                                            // Track title - prioritized, takes space it needs
                                             Label {
-                                                id: playlistTrackTitle
                                                 text: trackData.title || "Unknown Track"
                                                 color: "white"
                                                 font.pixelSize: 13
-                                                width: Math.min(implicitWidth + 20, parent.width - 50) // Take what's needed, leave space for album
                                                 elide: Text.ElideRight
-                                                clip: true
+                                                Layout.fillWidth: false
+                                                Layout.preferredWidth: implicitWidth
+                                                Layout.maximumWidth: parent.width * 0.7 // Max 70% to leave room for artist
                                             }
                                             
-                                            // Spacer to position artist at 50% or further right if title is long
-                                            Item {
-                                                width: Math.max(0, parent.width * 0.5 - playlistTrackTitle.width)
-                                                height: 1
-                                            }
-                                            
-                                            // Artist name - takes remaining space
+                                            // Artist name - gets remaining space, truncated as needed
                                             Label {
                                                 text: trackData.artist || "Unknown Artist"
                                                 color: "#808080"
                                                 font.pixelSize: 13
-                                                width: parent.width - playlistTrackTitle.width - parent.spacing
                                                 elide: Text.ElideRight
-                                                clip: true
+                                                Layout.fillWidth: true
+                                                Layout.alignment: Qt.AlignRight
+                                                horizontalAlignment: Text.AlignRight
                                             }
                                         }
                                     }
