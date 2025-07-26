@@ -2009,13 +2009,15 @@ Item {
                                             
                                             Label {
                                                 id: trackListHeader
-                                                anchors.fill: parent
+                                                anchors.centerIn: parent
+                                                width: parent.width
                                                 text: rightPane.albumTitleText
                                                 color: albumTitleMouseArea.containsMouse ? "#ffffff" : "#e0e0e0"
                                                 font.pixelSize: 16
                                                 font.bold: true
                                                 elide: Text.ElideRight
                                                 wrapMode: Text.NoWrap
+                                                verticalAlignment: Text.AlignVCenter
                                             }
                                             
                                             MouseArea {
@@ -2046,6 +2048,11 @@ Item {
                                             selectByMouse: true
                                             selectionColor: Qt.rgba(0, 0.5, 1, 0.3)
                                             selectedTextColor: "white"
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            topPadding: 0
+                                            bottomPadding: 0
+                                            leftPadding: 6
+                                            rightPadding: 6
                                             
                                             background: Rectangle {
                                                 color: titleTextField.activeFocus ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(1, 1, 1, 0.05)
@@ -2134,10 +2141,14 @@ Item {
                             }
                             
                             // Edit/Save/Cancel buttons for playlists
-                            Row {
-                                spacing: 4
+                            Item {
+                                Layout.preferredWidth: childrenRect.width
+                                Layout.preferredHeight: parent.height
                                 visible: root.selectedAlbum && root.selectedAlbum.isPlaylist === true
-                                Layout.alignment: Qt.AlignVCenter
+                                
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: 4
                                 
                                 // Edit button (shown when not in edit mode)
                                 Rectangle {
@@ -2295,6 +2306,7 @@ Item {
                                             }
                                         }
                                     }
+                                }
                                 }
                             }
                         }
@@ -2994,9 +3006,7 @@ Item {
                                 clip: true
                                 visible: root.showTrackSelector && root.trackSelectorResults.length > 0
                                 
-                                ScrollBar.vertical: ScrollBar {
-                                    policy: ScrollBar.AsNeeded
-                                }
+                                ScrollIndicator.vertical: ScrollIndicator { }
                                 
                                 delegate: Rectangle {
                                     width: ListView.view.width
