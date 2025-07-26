@@ -45,6 +45,8 @@ Item {
     property url pendingThumbnailUrl: ""  // Buffer for thumbnail URL changes
     property var artistNameToIndex: ({})  // Cache for artist name to index mapping
     property var artistAlbumCache: ({})  // Cache for artist's albums: { "artistName": { "albumTitle": albumObject } }
+    property var artistAlbumIndexCache: ({})  // Cache for album indices: { "artistName": { "albumTitle": index } }
+    property var currentTrackIndexMap: ({})  // Map for current album's tracks: { "title|artist": index }
     property var collapsedArtistCleanupTimers: ({})  // Timers for cleaning up collapsed artist data
     property int cleanupDelayMs: 30000  // Clean up artist data 30 seconds after collapse
     property var expandCollapseDebounceTimer: null  // Debounce timer for expansion/collapse
@@ -273,6 +275,7 @@ Item {
             // Clean up this artist's data if still collapsed
             if (expandedArtists && !expandedArtists[artistName]) {
                 delete artistAlbumCache[artistName]
+                delete artistAlbumIndexCache[artistName]
             }
             // Clean up the timer itself
             if (collapsedArtistCleanupTimers) {
@@ -307,6 +310,7 @@ Item {
         
         artistsToClean.forEach(function(artist) {
             delete artistAlbumCache[artist]
+            delete artistAlbumIndexCache[artist]
         })
         
         // Clean up search results cache based on expiry time
@@ -421,6 +425,8 @@ Item {
             searchResultsCache = {}
             albumDurationCache = {}
             artistAlbumCache = {}
+            artistAlbumIndexCache = {}
+            currentTrackIndexMap = {}
         }
     }
     
@@ -1206,7 +1212,7 @@ Item {
                     flickDeceleration: root.isScrollBarDragging ? 1500 : 8000
                     maximumFlickVelocity: root.isScrollBarDragging ? 1000 : 2750
                     
-                    // Smooth scrolling with bounds
+                    // Smooth scrolling with bounds - remove to allow elastic overscroll in artist list
                     boundsMovement: Flickable.StopAtBounds
                     boundsBehavior: Flickable.StopAtBounds
                     
@@ -1971,6 +1977,17 @@ Item {
                             })
                         }
                     }
+                    
+                    // Build track index map for O(1) lookups
+                    var indexMap = {}
+                    for (var i = 0; i < currentAlbumTracks.length; i++) {
+                        var track = currentAlbumTracks[i]
+                        if (track && track.title && track.artist) {
+                            var key = track.title + "|" + track.artist
+                            indexMap[key] = i
+                        }
+                    }
+                    root.currentTrackIndexMap = indexMap
                 }
 
                 ColumnLayout {
@@ -2353,7 +2370,7 @@ Item {
                         flickDeceleration: 8000
                         maximumFlickVelocity: 2750
                         
-                        // Smooth scrolling with bounds
+                        // Smooth scrolling with bounds - remove to allow elastic overscroll in track list
                         boundsMovement: Flickable.StopAtBounds
                         boundsBehavior: Flickable.StopAtBounds
                         
@@ -4296,13 +4313,18 @@ Item {
                 
                 // Switch to album navigation
                 navigationMode = "album"
-                var albums = LibraryManager.getAlbumsForArtist(artistName)
-                for (var j = 0; j < albums.length; j++) {
-                    if (albums[j].title === searchResults.bestMatch.title) {
-                        selectedAlbumIndex = j
-                        selectedAlbumData = albums[j]
-                        break
-                    }
+                
+                // Ensure album cache is populated
+                if (!artistAlbumCache[artistName]) {
+                    updateAlbumCacheForArtist(artistName)
+                }
+                
+                // Use O(1) lookup from cache
+                var albumMap = artistAlbumCache[artistName]
+                var indexMap = artistAlbumIndexCache[artistName]
+                if (albumMap && indexMap && albumMap[searchResults.bestMatch.title] !== undefined) {
+                    selectedAlbumData = albumMap[searchResults.bestMatch.title]
+                    selectedAlbumIndex = indexMap[searchResults.bestMatch.title]
                 }
             }
         } else if (searchResults.bestMatch && searchResults.bestMatchType === "track") {
@@ -4323,33 +4345,35 @@ Item {
                     expandedArtists = updatedExpanded
                     
                     // Find and select the album
-                    var albums = LibraryManager.getAlbumsForArtist(artistName)
-                    for (var k = 0; k < albums.length; k++) {
-                        if (albums[k].title === trackMatch.album) {
-                            selectedAlbumIndex = k
-                            selectedAlbumData = albums[k]
-                            selectedAlbum = albums[k]  // This triggers track list loading
-                            break
-                        }
+                    // Ensure album cache is populated
+                    if (!artistAlbumCache[artistName]) {
+                        updateAlbumCacheForArtist(artistName)
+                    }
+                    
+                    // Use O(1) lookup from cache
+                    var albumMap = artistAlbumCache[artistName]
+                    var indexMap = artistAlbumIndexCache[artistName]
+                    if (albumMap && indexMap && albumMap[trackMatch.album] !== undefined) {
+                        selectedAlbumData = albumMap[trackMatch.album]
+                        selectedAlbumIndex = indexMap[trackMatch.album]
+                        selectedAlbum = selectedAlbumData  // This triggers track list loading
                     }
                     
                     // Wait for tracks to load, then select the track
                     Qt.callLater(function() {
-                        // Find and select the track
-                        var tracks = rightPane.currentAlbumTracks
-                        for (var i = 0; i < tracks.length; i++) {
-                            if (tracks[i].title === trackMatch.title && 
-                                tracks[i].artist === trackMatch.artist) {
-                                navigationMode = "track"
-                                selectedTrackIndex = i
-                                trackListView.currentIndex = i
-                                ensureTrackVisible(i)
-                                
-                                // Update track info panel if visible
-                                if (root.showTrackInfoPanel) {
-                                    root.selectedTrackForInfo = tracks[i]
-                                }
-                                break
+                        // Use O(1) lookup from track index map
+                        var trackKey = trackMatch.title + "|" + trackMatch.artist
+                        var trackIndex = root.currentTrackIndexMap[trackKey]
+                        
+                        if (trackIndex !== undefined) {
+                            navigationMode = "track"
+                            selectedTrackIndex = trackIndex
+                            trackListView.currentIndex = trackIndex
+                            ensureTrackVisible(trackIndex)
+                            
+                            // Update track info panel if visible
+                            if (root.showTrackInfoPanel && rightPane.currentAlbumTracks[trackIndex]) {
+                                root.selectedTrackForInfo = rightPane.currentAlbumTracks[trackIndex]
                             }
                         }
                     })
@@ -4685,13 +4709,16 @@ Item {
         if (!albums) return
         
         var albumMap = {}
+        var indexMap = {}
         for (var i = 0; i < albums.length; i++) {
             if (albums[i] && albums[i].title) {
                 albumMap[albums[i].title] = albums[i]
+                indexMap[albums[i].title] = i
             }
         }
         
         artistAlbumCache[artistName] = albumMap
+        artistAlbumIndexCache[artistName] = indexMap
     }
     
     function jumpToAlbum(artistName, albumTitle) {
