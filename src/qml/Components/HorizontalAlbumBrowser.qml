@@ -266,7 +266,9 @@ Item {
             clip: false                 // Disable clipping to allow rotated albums to show
             maximumFlickVelocity: 1500  // Limit scroll speed
             flickDeceleration: 3000     // Faster deceleration
-            boundsBehavior: Flickable.StopAtBounds  // Ensure we can reach the bounds
+            // Ensure we can reach the bounds - remove to allow elastic overscroll
+            // Removing this interfers with the cusom touchpad/click+drag scrolling logic, making the first item unreachable
+            boundsBehavior: Flickable.StopAtBounds
             
             // Cached value for delegate optimization - calculated once per frame
             readonly property real viewCenterX: width / 2

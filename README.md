@@ -7,10 +7,17 @@ mtoc is a visually-rich music player and library browser for Linux that emphasiz
 ## Features
 
 ### Album Browsing
-Album browsing is core to the experience. mtoc is made for the music fan who likes to flip through CDs or records and look at the pictures before deciding what to listen to. The album carousel interface presents your album covers on a slick reflective shelf, with responsive, satisfying animations as you flip through them in a linear fashion.
-- Mouse wheel, click + drag, and touchpad are all supported
-- Uses efficient thumbnail artwork with intelligent caching
-- Responsive search finds artists, albums, and tracks
+Album browsing is core to the experience. mtoc is made for the music fan who likes to flip through CDs or records and look at the pictures before deciding what to listen to. The album carousel interface presents your album covers on a slick reflective shelf, with responsive, satisfying animations as you flip through them in a linear fashion. Mouse wheel, click + drag, and touchpad are all supported, with direct content manipulation for a smooth touchpad experience. 
+
+### Layout and Navigation
+mtoc features a user-friendly "bento box" layout that places the album art, playback and queue in the largest section, with the carousel, artists/playlists column, and tracklist column on the left. 
+
+The artists list features album artists sorted alphabetically. An artist can be expanded to reveal their albums, represented in a thumbnail grid, and sorted by year. The tracklist for the current album selection occupies the right column. Continuous navigation is enabled between interface elements by links that animate scrolling to and revealing the selection in its relevant list. 
+
+Keyboard navigation is featured in all lists, jumping between lists, and for search. You can perform the essential functions of searching for and playing music without lifting a hand. 
+
+### Library Features
+A responsive search function finds artists, albums, and tracks, jumping to and selecting the relevant item in the list. 
 
 ### High Performance
 Performance is a core design principle. mtoc aims for visual appeal and and continuity in browsing. 
@@ -18,20 +25,24 @@ Performance is a core design principle. mtoc aims for visual appeal and and cont
 - MVC architecture fine-tuned for efficiency
 - Asynchronous metadata extraction and image loading
 - Optimized for smooth scrolling and searching even with thousands of albums
+#### Implementation Guidelines
+- Cache data generously to avoid disk access
+- Use constant time cache lookups instead of for loops wherever possible
 
 ### Library Management
 The library editor lets you select one or multiple directories to scan for music, and optionally specify additional directories for .m3u playlist files. 
 - Supported formats: MP3, MP4/M4A (including iTunes-encoded AAC and ALAC), FLAC, OGG Vorbis, Opus
 - Metadata extraction using TagLib 2.0
-- Smart organization by artist, album, and year
 - Embedded album artwork extraction
 - SQLite database for fast library access
 
 ### Queueing features
-Tracks, albums, and playlists can be enqueued from the library, either added up next, or appended to the end of the queue, through the right-click context menu. The queue supports modification: delete, multi-select and delete, reorder through drag-and-drop. 
+Tracks, albums, and playlists can be enqueued from the library, either added up next, or appended to the end of the queue, through the right-click context menu. Multi-selection of tracks for queueing is supported. The queue supports modification: delete, multi-select and delete, reorder through drag-and-drop. 
 
 ### Playlists
-Playlist creation in mtoc starts out with creating a queue. When you have a queue that you like, the save button writes its contents to a new .m3u playlist in your default playlist directory. Playlists can be renamned, and the track order changed through a drag and drop interface. 
+Playlist creation in mtoc starts out with creating a queue. When you have a queue that you like, the save button writes its contents to a new .m3u playlist in your default playlist directory. The playlist editor can be used to add, remove, and reorder tracks in playlists. 
+
+The provided All Songs virtual playlist is automatically updated and can be used to play your entire library sequentially or on shuffle. 
 
 ### Playback Modes
 mtoc features shuffle and repeat modes. Shuffle uses a modified Fisher-Yates algorithm that incorporates newly enqueued tracks as you go. 
@@ -42,7 +53,7 @@ mtoc features shuffle and repeat modes. Shuffle uses a modified Fisher-Yates alg
 - Standard controls: play/pause, previous/next, seek
 
 ### State Persistence
-mtoc saves your playback state including your queue, current track, and position, so that you can pick up where you left off after restarting the app. 
+mtoc saves your position in the interface as well playback state including your queue, current track, and position, so that you can pick up where you left off after restarting the app. 
 
 ### Desktop Integration
 - Full MPRIS 2 support for media keys and system controls
@@ -87,7 +98,7 @@ sudo apt install qt6-base-dev qt6-multimedia-dev qt6-declarative-dev \
 sudo dnf install qt6-qtbase-devel qt6-qtmultimedia-devel qt6-qtdeclarative-devel \
                  taglib-devel gstreamer1-devel pkgconfig cmake gcc-c++
 
-# Arch Linux/SteamOS:
+# Arch Linux:
 sudo pacman -S qt6-base qt6-multimedia qt6-declarative qt6-svg qt6-tools \
                taglib gstreamer cmake pkgconf base-devel
 
@@ -115,12 +126,16 @@ mtoc_app  # Now available in system PATH
 ## Usage
 
 ### First Run
-
-On first launch, mtoc will feature an empty library. Click "Edit Library" and add the folder containing your music. The default folder is ~/Music. You can add or remove any directories you want to scan. Press scan, and mtoc will then scan and index your music collection, extracting metadata and album artwork.
-
+On first launch, mtoc will feature an empty library. Click "Edit Library" (or the link provided in the placeholder) and add the folder containing your music. The default folder is ~/Music. You can add or remove any directories you want to scan. Press scan, and mtoc will then scan and index your music collection, extracting metadata and album artwork.
 
 ### Usage Tips
-- mtoc works best with music that contains embedded artwork and is tagged by album artist. In this absence of the album artist tag, the artist tag will be used, potentially resulting in albums being broken up. 
+- mtoc works best with well-tagged music libraries. At a minimum, all tracks should have a title, artist, and album artist to be properly displayed and sorted. 
+- mtoc may not suit libraries that contain a lot of singles. Tracks are grouped by album, and libraries with a high track:album ratio may make the interface feel cluttered. 
+
+### Out of Scope
+- mtoc is not a tag editor and will not fix broken metadata. 
+- mtoc treats all music files as read-only. As such, writing tags like rating and play count is not supported. 
+- mtoc does not have any online features. 
 
 ## Architecture
 
@@ -143,12 +158,6 @@ On first launch, mtoc will feature an empty library. Click "Edit Library" and ad
   - Hardware-accelerated rendering
   - Responsive two-pane layout
   - Deferred window reloading for efficiency
-
-## Performance Tips
-
-For the best experience:
-
-**GPU Acceleration**: Ensure your GPU drivers are properly installed
 
 ## Roadmap
 
