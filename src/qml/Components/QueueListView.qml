@@ -385,7 +385,7 @@ ListView {
         Behavior on slideX {
             enabled: !root.isRapidSkipping
             NumberAnimation { 
-                duration: 300
+                duration: 200
                 easing.type: Easing.InOutQuad
             }
         }
