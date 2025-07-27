@@ -9,7 +9,7 @@ mtoc is a visually-rich music player and library browser for Linux that emphasiz
 ### Album Browsing
 Album browsing is core to the experience. mtoc is made for the music fan who likes to flip through CDs or records and look at the pictures before deciding what to listen to. The album carousel interface presents your album covers on a slick reflective shelf, with responsive, satisfying animations as you flip through them in a linear fashion. Mouse wheel, click + drag, and touchpad are all supported, with direct content manipulation for a smooth touchpad experience. 
 
-![carousel animation](resources/banner/carousel-animation.webm)
+![carousel animation](resources/banner/carousel-animation.webm.mp4)
 
 ### Layout and Navigation
 mtoc features a user-friendly "bento box" layout that places the album art, playback and queue in the largest section, with the carousel, artists/playlists column, and tracklist column on the left. 
