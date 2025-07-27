@@ -2,7 +2,7 @@
 
 mtoc is a visually-rich music player and library browser for Linux that emphasizes smooth, continuous browsing experiences with album artwork at the forefront. 
 
-![mtoc Music Player](resources/banner/mtoc-banner.png)
+![mtoc Music Player](resources/banner/mtoc-banner.avif)
 
 # Features
 
@@ -165,7 +165,7 @@ On first launch, mtoc will feature an empty library. Click "Edit Library" (or th
   - Responsive two-pane layout
   - Deferred window reloading for efficiency
 
-  See ![ARCHITECTURE.md](/ARCHITECTURE.md) for details. 
+  See [ARCHITECTURE.md](/ARCHITECTURE.md) for details. 
 
 ## Roadmap
 The following features are in development or planned for a future release: 
