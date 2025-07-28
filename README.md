@@ -1,6 +1,6 @@
 # mtoc - Visual Music Library
 
-mtoc is a visually-rich music player and library browser for Linux that emphasizes smooth, continuous browsing experiences with album artwork at the forefront. 
+mtoc (music table of contents) is a visually-rich music player and library browser for Linux that emphasizes smooth, continuous browsing experiences with album artwork at the forefront. 
 
 ![mtoc Music Player](resources/banner/mtoc-banner.avif)
 
@@ -186,5 +186,7 @@ This project is licensed under the GPL v3 License - see the LICENSE file for det
 ## Contact
 
 Project Link: [https://github.com/asa-degroff/mtoc](https://github.com/asa-degroff/mtoc)
+
+Official Website: [mtoc.3fz.org](https://mtoc.3fz.org)
 
 email: asa@3fz.org
