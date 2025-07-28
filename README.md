@@ -2,7 +2,7 @@
 
 mtoc (music table of contents) is a visually-rich music player and library browser for Linux that emphasizes smooth, continuous browsing experiences with album artwork at the forefront. 
 
-![mtoc Music Player](resources/banner/mtoc-banner.avif)
+![mtoc Music Player](resources/banner/main-screenshot.avif)
 
 # Features
 
