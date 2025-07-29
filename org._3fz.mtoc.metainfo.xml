@@ -2,10 +2,10 @@
 <component type="desktop-application">
   <id>org._3fz.mtoc</id>
   <launchable type="desktop-id">org._3fz.mtoc.desktop</launchable>
-  <name>mtoc</name>
+  <name>Mtoc</name>
   <summary>Visual Music Library</summary>
   <description>
-    <p>mtoc is a visually-rich music player and library browser that emphasizes a smooth, continuous experience with album artwork at the forefront.</p>
+    <p>Mtoc is a visually-rich music player and library browser that emphasizes a smooth, continuous experience with album artwork at the forefront.</p>
     <ul>
       <li>Animated, visual browsing made for music fans who enjoy flipping through albums</li>
       <li>Library browsing with smart organizaiton and responsive search</li>
@@ -18,12 +18,34 @@
       <li>GStreamer-based playback engine with support for a wide variety of formats and gapless playback</li>
     </ul>
   </description>
+  <branding>
+    <color type="primary" scheme_preference="light">#d1bdff</color>
+    <color type="primary" scheme_preference="dark">#392a5a</color>
+  </branding>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0+</project_license>
-  <url type="homepage">https://github.com/asa-degroff/mtoc</url>
+  <url type="homepage">https://mtoc.3fz.org</url>
   <content_rating type="oars-1.1" />
+  <requires>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </requires>
   <releases>
     <release version="2.0" date="2025-07-28">
+      <description>
+        <p>Functional overhaul expanding library management, playback features, and interface</p>
+        <ul>
+          <li>Support for queue management and context menus for queue actions</li>
+          <li>M3U playlist support</li>
+          <li>APlaylist management with saving and editing playlist</li>
+          <li>Shuffle and repeat modes</li>
+          <li>All Songs virtual playlist for playback of the entire library</li>
+          <li>Track info panel</li>
+          <li>State persistence between sessions for queue, playback state, and interface selection</li>
+          <li>New animations throughout the interface</li>
+        </ul>
+      </description>
+      <download type="installer" arch="x86_64">
     </release>
   </releases>
   <screenshots>
