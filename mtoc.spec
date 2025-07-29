@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        1.2.2
+Version:        2.0
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -52,6 +52,9 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %{_datadir}/pixmaps/%{name}.png
 
 %changelog
+* Mon Jul 28 2025 Asa DeGroff <asa@3fz.org> 2.0-1
+- 
+
 * Mon Jul 28 2025 Asa DeGroff <asa@3fz.org> 1.2.2-1
 - metainfo (asa@3fz.org)
 - add functionality to restore last selected playlist and update settings
