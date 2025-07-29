@@ -814,30 +814,15 @@ Item {
                 property real distance: itemCenterX - listView.viewCenterX
                 property real absDistance: Math.abs(distance)
                 
-                // Update reflection when position changes
+                // Update reflection when position changes (handles recycling case)
                 onXChanged: {
-                    if (!root.isDestroying && reflection) {
-                        var shouldHaveReflection = absDistance < 800
-                        var hasReflection = reflection.sourceItem !== null
-                        
-                        if (shouldHaveReflection !== hasReflection) {
-                            // State changed - update reflection
-                            reflection.sourceItem = shouldHaveReflection ? albumContainer : null
-                            
-                            // If we just enabled reflection and image is ready, schedule update
-                            if (shouldHaveReflection && reflection.sourceItem && albumImage.status === Image.Ready) {
-                                reflection.scheduleUpdate()
+                    if (!root.isDestroying && reflection && reflection.live && reflection.sourceItem) {
+                        // Set back to static mode after recycling position update
+                        Qt.callLater(function() {
+                            if (reflection) {
+                                reflection.live = false
                             }
-                        }
-                        
-                        // Set back to static mode if it was in live mode (from recycling)
-                        if (reflection.live && reflection.sourceItem) {
-                            Qt.callLater(function() {
-                                if (reflection) {
-                                    reflection.live = false
-                                }
-                            })
-                        }
+                        })
                     }
                 }
                 
@@ -872,8 +857,7 @@ Item {
                 }
                 
                 // Optimization: Skip expensive calculations for far-away items
-                property bool isNearCenter: absDistance < 800
-                property bool isVisible: isNearCenter
+                property bool isVisible: absDistance < 800
                 
                 // Track if this delegate is actively being scrolled to
                 property bool isTargetDelegate: listView.currentIndex === index
@@ -1150,8 +1134,8 @@ Item {
                         ShaderEffectSource {
                             id: reflection
                             anchors.fill: parent
-                            sourceItem: (!root.isDestroying && absDistance < 800) ? albumContainer : null  // Only visible items get reflections
-                            visible: !root.isDestroying && absDistance < 800  // Cover all visible albums in max width
+                            sourceItem: null  // Managed by Connections element
+                            visible: sourceItem !== null  // Only visible when sourceItem is set
                             live: false  // Static reflection for better performance
                             recursive: false
                             // Capture the bottom portion of the album for reflection
