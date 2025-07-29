@@ -68,6 +68,8 @@ class MediaPlayer2PlayerAdaptor : public QDBusAbstractAdaptor
     Q_PROPERTY(bool CanPause READ canPause)
     Q_PROPERTY(bool CanSeek READ canSeek)
     Q_PROPERTY(bool CanControl READ canControl)
+    Q_PROPERTY(QString LoopStatus READ loopStatus WRITE setLoopStatus)
+    Q_PROPERTY(bool Shuffle READ shuffle WRITE setShuffle)
 
 public:
     explicit MediaPlayer2PlayerAdaptor(MediaPlayer *parent);
@@ -88,6 +90,10 @@ public:
     bool canPause() const { return true; }
     bool canSeek() const { return true; }
     bool canControl() const { return true; }
+    QString loopStatus() const;
+    void setLoopStatus(const QString &status);
+    bool shuffle() const;
+    void setShuffle(bool shuffle);
 
 public slots:
     void Next();
@@ -125,6 +131,8 @@ private slots:
     void onPositionChanged(qint64 position);
     void onVolumeChanged(float volume);
     void onCurrentTrackChanged(Mtoc::Track *track);
+    void onRepeatEnabledChanged(bool enabled);
+    void onShuffleEnabledChanged(bool enabled);
 
 private:
     void updateMetadata();

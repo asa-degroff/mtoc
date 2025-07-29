@@ -66,6 +66,10 @@ private:
     
     QTimer *m_positionTimer = nullptr;
     
+    // Seek tracking
+    bool m_seekPending = false;
+    qint64 m_seekTarget = 0;
+    
     static bool s_gstInitialized;
 };
 

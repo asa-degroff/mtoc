@@ -2,6 +2,7 @@
 #include <QTimer>
 #include <QDebug>
 #include <QUrl>
+#include <QPointer>
 
 bool AudioEngine::s_gstInitialized = false;
 
@@ -27,7 +28,28 @@ AudioEngine::AudioEngine(QObject *parent)
 
 AudioEngine::~AudioEngine()
 {
+    qDebug() << "[AudioEngine::~AudioEngine] Destructor called, cleaning up...";
+    
+    // Ensure timer is deleted
+    if (m_positionTimer) {
+        m_positionTimer->stop();
+        delete m_positionTimer;  // Use delete instead of deleteLater in destructor
+        m_positionTimer = nullptr;
+    }
+    
+    // Stop playback before cleanup
+    if (m_pipeline) {
+        gst_element_set_state(m_pipeline, GST_STATE_NULL);
+        // Wait for state change to complete
+        GstStateChangeReturn ret = gst_element_get_state(m_pipeline, nullptr, nullptr, GST_SECOND);
+        if (ret == GST_STATE_CHANGE_FAILURE) {
+            qWarning() << "[AudioEngine::~AudioEngine] Failed to stop pipeline cleanly";
+        }
+    }
+    
     cleanupPipeline();
+    
+    qDebug() << "[AudioEngine::~AudioEngine] Cleanup complete";
 }
 
 void AudioEngine::initializePipeline()
@@ -111,6 +133,8 @@ void AudioEngine::play()
     if (gst_element_set_state(m_pipeline, GST_STATE_PLAYING) != GST_STATE_CHANGE_FAILURE) {
         setState(State::Playing);
         m_positionTimer->start();
+        // Clear any pending seek state when resuming playback
+        m_seekPending = false;
     }
 }
 
@@ -146,9 +170,36 @@ void AudioEngine::seek(qint64 position)
         return;
     }
     
+    // Track that we're seeking
+    m_seekPending = true;
+    m_seekTarget = position;
+    
     gst_element_seek_simple(m_pipeline, GST_FORMAT_TIME, 
                            static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT),
                            position * GST_MSECOND);
+    
+    // Emit target position immediately for UI responsiveness
+    emit positionChanged(position);
+    
+    // For paused state, also schedule a position query after a short delay
+    // This handles cases where ASYNC_DONE might not be received
+    if (m_state == State::Paused) {
+        // Use a QPointer to ensure the object is still valid when the timer fires
+        QPointer<AudioEngine> self = this;
+        QTimer::singleShot(100, this, [self, position]() {
+            if (!self) return;  // Object was destroyed
+            // Only emit if we're still waiting for this seek to complete
+            if (self->m_seekPending && self->m_seekTarget == position) {
+                // Query actual position from GStreamer
+                qint64 actualPos = self->position();
+                // Only emit if position is reasonable (not 0 unless we're actually at the start)
+                if (actualPos > 0 || position < 1000) {
+                    emit self->positionChanged(actualPos);
+                    self->m_seekPending = false;
+                }
+            }
+        });
+    }
 }
 
 qint64 AudioEngine::position() const
@@ -249,6 +300,15 @@ gboolean AudioEngine::busCallback(GstBus *bus, GstMessage *message, gpointer dat
         }
         break;
     }
+    
+    case GST_MESSAGE_ASYNC_DONE:
+        // Async operation (like seek) completed
+        if (engine->m_seekPending) {
+            engine->m_seekPending = false;
+            // Query and emit the actual position after seek completes
+            emit engine->positionChanged(engine->position());
+        }
+        break;
     
     default:
         break;

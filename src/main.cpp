@@ -11,6 +11,7 @@
 #include <QLocale>
 #include <QDir>
 #include <QStandardPaths>
+#include <QWindow>
 
 #include "backend/systeminfo.h"
 #include "backend/utility/metadataextractor.h"
@@ -20,81 +21,41 @@
 #include "backend/library/album.h"
 #include "backend/playback/mediaplayer.h"
 #include "backend/system/mprismanager.h"
+#include "backend/settings/settingsmanager.h"
+#include "backend/playlist/playlistmanager.h"
 
-// Message handler to redirect qDebug output to file and console
+// Message handler to show only QML console.log messages
 void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
-    // Filter out Qt internal event messages
-    if (type == QtDebugMsg) {
-        if (msg.contains("QEvent::") || 
-            msg.contains("QEventPoint") || 
-            msg.contains("localPos:") ||
-            msg.contains("scenePos:") ||
-            msg.contains("wasHovering") ||
-            msg.contains("isHovering") ||
-            msg.contains("QQuickRectangle") ||
-            msg.contains("geometry=") ||
-            msg.contains("considering signature") ||
-            msg.contains("QQuickItem::") ||
-            msg.contains("HorizontalAlbumBrowser_QMLTYPE")) {
-            return; // Skip Qt internal debug messages
-        }
-        
-        // Show messages from our components and test messages
-        if (!msg.contains("MetadataExtractor") && 
-            !msg.contains("DatabaseManager") &&
-            !msg.contains("LibraryManager") &&
-            !msg.contains("MediaPlayer") &&
-            !msg.contains("MPRIS") &&
-            !msg.contains("Main:") &&
-            !msg.contains("DEBUG TEST") && 
-            !msg.contains("STDOUT TEST") && 
-            !msg.contains("STDERR TEST") &&
-            !msg.contains("qml:") &&  // Include QML console.log messages
-            !msg.contains("Track") &&  // Include track-related messages
-            !msg.contains("Album")) {  // Include album-related messages
-            return; // Skip other unwanted debug messages
-        }
-    }
+    // Temporarily show all messages to debug console.log
+    // Check if it's a QML message
+    bool isQmlMessage = msg.startsWith("qml:") || (context.file && QString(context.file).endsWith(".qml"));
     
-    // Open a file for logging in the app data directory
-    QString dataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QDir().mkpath(dataPath); // Ensure the directory exists
-    QFile logFile(QDir(dataPath).filePath("debug_log.txt"));
-    // Try to open the file with writing and appending permissions
-    if (!logFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
-        fprintf(stderr, "Failed to open log file!\n");
-        return;
-    }
-    
-    QTextStream stream(&logFile);
-    QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
-    
-    // Format based on message type
-    QString txt;
+    // Format the output simply for console
     switch (type) {
         case QtDebugMsg:
-            txt = QString("[%1] Debug: %2").arg(timestamp).arg(msg);
+            if (isQmlMessage) {
+                fprintf(stderr, "[QML Debug] %s\n", qPrintable(msg));
+            } else if (msg.contains("jumpToArtist") || msg.contains("scrollToArtistIndex") || 
+                      msg.contains("calculateArtistPosition") || msg.contains("updateArtistIndexMapping") ||
+                      msg.contains("MediaPlayer::") || msg.contains("PlaylistManager::")) {
+                // Also show our specific debug messages even if not properly prefixed
+                fprintf(stderr, "[Debug] %s\n", qPrintable(msg));
+            }
             break;
         case QtInfoMsg:
-            txt = QString("[%1] Info: %2").arg(timestamp).arg(msg);
+            fprintf(stderr, "Info: %s\n", qPrintable(msg));
             break;
         case QtWarningMsg:
-            txt = QString("[%1] Warning: %2").arg(timestamp).arg(msg);
+            // Always show warnings, they're important
+            fprintf(stderr, "[Warning] %s\n", qPrintable(msg));
             break;
         case QtCriticalMsg:
-            txt = QString("[%1] Critical: %2").arg(timestamp).arg(msg);
+            fprintf(stderr, "Critical: %s\n", qPrintable(msg));
             break;
         case QtFatalMsg:
-            txt = QString("[%1] Fatal: %2").arg(timestamp).arg(msg);
-            break;
+            fprintf(stderr, "Fatal: %s\n", qPrintable(msg));
+            abort();
     }
-    
-    // Write to file
-    stream << txt << "\n";
-    logFile.close();
-    
-    // Also output to console
-    fprintf(stderr, "%s\n", qPrintable(txt));
 }
 
 int main(int argc, char *argv[])
@@ -160,8 +121,13 @@ int main(int argc, char *argv[])
         app.setWindowIcon(QIcon(":/resources/icons/mtoc-icon-512.png"));
     }
     
-    // pixmap cache size for album art (128MB)
-    QPixmapCache::setCacheLimit(128 * 1024);
+    // Configure pixmap cache for album art
+    // Start with a conservative limit and monitor usage
+    int initialCacheSize = 128 * 1024; // 128MB initial limit
+    QPixmapCache::setCacheLimit(initialCacheSize);
+    
+    // Log cache configuration
+    qDebug() << "QPixmapCache configured with limit:" << initialCacheSize / 1024 << "MB";
 
     QQmlApplicationEngine engine;
 
@@ -179,13 +145,13 @@ int main(int argc, char *argv[])
     qmlRegisterType<Mtoc::Track>("Mtoc.Backend", 1, 0, "Track");
     qmlRegisterType<Mtoc::Album>("Mtoc.Backend", 1, 0, "Album");
     
-    // Create objects on heap without parenting to engine since we manage lifetime manually
-    SystemInfo *systemInfo = new SystemInfo();
+    // Create objects and parent them to the QML engine for automatic cleanup
+    SystemInfo *systemInfo = new SystemInfo(&engine);
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "SystemInfo", systemInfo);
 
     // Create LibraryManager first to see if it's the issue
     qDebug() << "Main: Creating LibraryManager...";
-    Mtoc::LibraryManager *libraryManager = new Mtoc::LibraryManager();
+    Mtoc::LibraryManager *libraryManager = new Mtoc::LibraryManager(&engine);
     qDebug() << "Main: LibraryManager created successfully";
     
     qDebug() << "Main: Registering LibraryManager with QML...";
@@ -193,15 +159,32 @@ int main(int argc, char *argv[])
     qDebug() << "Main: LibraryManager registered";
     
     // MetadataExtractor might not need to be a singleton since it's used by LibraryManager
-    Mtoc::MetadataExtractor *metadataExtractor = new Mtoc::MetadataExtractor();
+    Mtoc::MetadataExtractor *metadataExtractor = new Mtoc::MetadataExtractor(&engine);
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MetadataExtractor", metadataExtractor);
+    
+    // Register SettingsManager singleton
+    qDebug() << "Main: Registering SettingsManager...";
+    SettingsManager *settingsManager = SettingsManager::instance();
+    settingsManager->setParent(&engine);  // Parent to engine for cleanup
+    qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "SettingsManager", settingsManager);
+    qDebug() << "Main: SettingsManager registered";
     
     // Create and register MediaPlayer
     qDebug() << "Main: Creating MediaPlayer...";
-    MediaPlayer *mediaPlayer = new MediaPlayer();
+    MediaPlayer *mediaPlayer = new MediaPlayer(&engine);
     mediaPlayer->setLibraryManager(libraryManager);
+    mediaPlayer->setSettingsManager(settingsManager);
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MediaPlayer", mediaPlayer);
     qDebug() << "Main: MediaPlayer registered";
+    
+    // Register PlaylistManager singleton
+    qDebug() << "Main: Creating PlaylistManager...";
+    PlaylistManager *playlistManager = PlaylistManager::instance();
+    playlistManager->setParent(&engine);  // Parent to engine for cleanup
+    playlistManager->setLibraryManager(libraryManager);
+    playlistManager->setMediaPlayer(mediaPlayer);
+    qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "PlaylistManager", playlistManager);
+    qDebug() << "Main: PlaylistManager registered";
     
     // Create and initialize MPRIS manager for system media control integration
     qDebug() << "Main: Creating MPRIS manager...";
@@ -235,36 +218,46 @@ int main(int argc, char *argv[])
     QObject::connect(&app, &QApplication::aboutToQuit, [&]() {
         qDebug() << "Main: Application about to quit, performing cleanup...";
         
-        // Save playback state before quitting
-        mediaPlayer->saveState();
+        // First, close all top-level windows to trigger QML cleanup
+        const auto topLevelWindows = QGuiApplication::topLevelWindows();
+        for (QWindow *window : topLevelWindows) {
+            window->close();
+        }
         
-        // Cancel any ongoing scans
-        if (libraryManager->isScanning()) {
-            libraryManager->cancelScan();
+        // Process events to allow QML components to clean up naturally
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+        
+        // Save playback state before cleanup
+        if (mediaPlayer) {
+            mediaPlayer->saveState();
+        }
+        
+        // Cancel any ongoing scans or background operations
+        if (libraryManager) {
+            if (libraryManager->isScanning()) {
+                libraryManager->cancelScan();
+            }
+            // This will wait for album art processing to complete
         }
         
         // Note: Carousel position is automatically saved when it changes
         // The QML timer handles this, no need for explicit save here
         
-        // Explicitly delete objects in the correct order before Qt's automatic cleanup
-        // This ensures database is not closed while other objects might still need it
+        // Now it's safe to remove the image provider after QML cleanup
+        engine.removeImageProvider("albumart");
+        
+        // Only delete objects that are NOT registered with QML
+        // QML-registered singletons will be cleaned up by the QML engine
         delete mprisManager;
         mprisManager = nullptr;
         
-        delete mediaPlayer;
-        mediaPlayer = nullptr;
-        
-        // Remove the album art provider before deleting library manager
-        engine.removeImageProvider("albumart");
-        
-        delete libraryManager;
-        libraryManager = nullptr;
-        
-        delete metadataExtractor;
-        metadataExtractor = nullptr;
-        
-        delete systemInfo;
-        systemInfo = nullptr;
+        // Do NOT delete QML-registered singletons here - let QML engine handle them:
+        // - mediaPlayer
+        // - playlistManager  
+        // - libraryManager
+        // - metadataExtractor
+        // - settingsManager
+        // - systemInfo
         
         // Process any pending deletions before returning
         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
@@ -276,5 +269,19 @@ int main(int argc, char *argv[])
     int result = app.exec();
     
     qDebug() << "Main: Event loop ended with result:" << result;
+    
+    // Additional cleanup after event loop ends
+    // This ensures Qt's automatic cleanup has completed
+    qDebug() << "Main: Performing final cleanup...";
+    
+    // Ensure all timers are stopped
+    if (mediaPlayer) {
+        mediaPlayer->saveState();
+    }
+    
+    // Give Qt time to process any final events
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+    
+    qDebug() << "Main: Application exit complete";
     return result;
 }

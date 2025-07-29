@@ -4,11 +4,16 @@
         <file>src/qml/Components/BlurredBackground.qml</file>
         <file>src/qml/Components/HorizontalAlbumBrowser.qml</file>
         <file>src/qml/Components/PlaybackControls.qml</file>
+        <file>src/qml/Components/QueueListView.qml</file>
+        <file>src/qml/Components/QueueActionDialog.qml</file>
         <file>src/qml/Components/ResizeHandler.qml</file>
         <file>src/qml/Components/SearchBar.qml</file>
+        <file>src/qml/Components/StyledMenu.qml</file>
+        <file>src/qml/Components/StyledMenuSeparator.qml</file>
         <file>src/qml/Components/ThumbnailGridDelegate.qml</file>
         <file>src/qml/Views/LibraryPane.qml</file>
         <file>src/qml/Views/LibraryEditorWindow.qml</file>
+        <file>src/qml/Views/SettingsWindow.qml</file>
         <file>src/qml/Views/NowPlayingPane.qml</file>
         <file>src/qml/Views/PlaylistView.qml</file>
         <file>src/qml/Constants.qml</file>
@@ -30,5 +35,19 @@
         <file>resources/icons/skip-button-pressed.svg</file>
         <file>resources/icons/drag-handle-normal.svg</file>
         <file>resources/icons/drag-handle-pressed.svg</file>
+        <file>resources/icons/close-button.svg</file>
+        <file>resources/icons/queue.svg</file>
+        <file>resources/icons/shuffle.svg</file>
+        <file>resources/icons/repeat.svg</file>
+        <file>resources/icons/list-drag-handle.svg</file>
+        <file>resources/icons/trash-can-closed-lid.svg</file>
+        <file>resources/icons/trash-can-open-lid.svg</file>
+        <file>resources/icons/bomb.svg</file>
+        <file>resources/icons/undo.svg</file>
+        <file>resources/icons/save.svg</file>
+        <file>resources/icons/edit.svg</file>
+        <file>resources/icons/cancel.svg</file>
+        <file>resources/icons/text-input.svg</file>
+        <file>resources/icons/add.svg</file>
     </qresource>
 </RCC>

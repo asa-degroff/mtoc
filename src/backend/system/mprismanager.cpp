@@ -164,6 +164,52 @@ bool MediaPlayer2PlayerAdaptor::canGoPrevious() const
            state == MediaPlayer::PausedState;
 }
 
+QString MediaPlayer2PlayerAdaptor::loopStatus() const
+{
+    if (!m_mediaPlayer) return "None";
+    
+    // mtoc only supports playlist repeat, not track repeat
+    return m_mediaPlayer->repeatEnabled() ? "Playlist" : "None";
+}
+
+void MediaPlayer2PlayerAdaptor::setLoopStatus(const QString &status)
+{
+    if (!m_mediaPlayer) return;
+    
+    if (status == "Playlist") {
+        m_mediaPlayer->setRepeatEnabled(true);
+    } else if (status == "None") {
+        m_mediaPlayer->setRepeatEnabled(false);
+    } else if (status == "Track") {
+        // When KDE cycles to "Track", immediately cycle to "None" since we don't support track repeat
+        m_mediaPlayer->setRepeatEnabled(false);
+        // Force an immediate property update to show "None" status
+        QVariantMap changedProperties;
+        changedProperties["LoopStatus"] = QString("None");
+        if (m_mprisManager) {
+            QDBusMessage signal = QDBusMessage::createSignal(
+                "/org/mpris/MediaPlayer2",
+                "org.freedesktop.DBus.Properties",
+                "PropertiesChanged"
+            );
+            signal << "org.mpris.MediaPlayer2.Player" << changedProperties << QStringList();
+            QDBusConnection::sessionBus().send(signal);
+        }
+    }
+}
+
+bool MediaPlayer2PlayerAdaptor::shuffle() const
+{
+    return m_mediaPlayer ? m_mediaPlayer->shuffleEnabled() : false;
+}
+
+void MediaPlayer2PlayerAdaptor::setShuffle(bool shuffle)
+{
+    if (m_mediaPlayer) {
+        m_mediaPlayer->setShuffleEnabled(shuffle);
+    }
+}
+
 void MediaPlayer2PlayerAdaptor::Next()
 {
     qDebug() << "MPRIS: Next() called via D-Bus";
@@ -299,6 +345,8 @@ bool MprisManager::initialize()
             changedProperties["CanGoPrevious"] = m_playerAdaptor->canGoPrevious();
             emitPropertiesChanged("org.mpris.MediaPlayer2.Player", changedProperties);
         });
+        connect(m_mediaPlayer, &MediaPlayer::repeatEnabledChanged, this, &MprisManager::onRepeatEnabledChanged);
+        connect(m_mediaPlayer, &MediaPlayer::shuffleEnabledChanged, this, &MprisManager::onShuffleEnabledChanged);
 
         // Connect adaptor signals to application actions
         connect(m_mprisAdaptor, &MediaPlayer2Adaptor::quitRequested, 
@@ -378,6 +426,22 @@ void MprisManager::onCurrentTrackChanged(Mtoc::Track *track)
 {
     Q_UNUSED(track)
     updateMetadata();
+}
+
+void MprisManager::onRepeatEnabledChanged(bool enabled)
+{
+    Q_UNUSED(enabled)
+    QVariantMap changedProperties;
+    changedProperties["LoopStatus"] = m_playerAdaptor->loopStatus();
+    emitPropertiesChanged("org.mpris.MediaPlayer2.Player", changedProperties);
+}
+
+void MprisManager::onShuffleEnabledChanged(bool enabled)
+{
+    Q_UNUSED(enabled)
+    QVariantMap changedProperties;
+    changedProperties["Shuffle"] = m_playerAdaptor->shuffle();
+    emitPropertiesChanged("org.mpris.MediaPlayer2.Player", changedProperties);
 }
 
 void MprisManager::updateMetadata()

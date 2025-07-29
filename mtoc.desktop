@@ -1,5 +1,5 @@
 [Desktop Entry]
-Version=1.2.1
+Version=2.0
 Type=Application
 Name=mtoc
 GenericName=Music Player
@@ -7,6 +7,6 @@ Comment=Visual Music Library
 Exec=mtoc_app
 Icon=mtoc
 Terminal=false
-Categories=AudioVideo;Audio;Player;Qt;
+Categories=AudioVideo;Audio;Player;
 Keywords=Music;Player;Audio;Library;
 StartupNotify=true

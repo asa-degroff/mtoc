@@ -115,6 +115,26 @@ LibraryManager::~LibraryManager()
         m_scanFuture.waitForFinished();
     }
     
+    // Cancel album art processing if running
+    if (m_processingAlbumArt) {
+        qDebug() << "LibraryManager: Album art processing still running, waiting...";
+        m_cancelRequested = true;
+        // Wait for all thread pool tasks to complete
+        QThreadPool::globalInstance()->waitForDone();
+        qDebug() << "LibraryManager: Album art processing stopped";
+    }
+    
+    // Clear track cache
+    {
+        QMutexLocker locker(&m_trackCacheMutex);
+        qDeleteAll(m_trackCache);
+        m_trackCache.clear();
+    }
+    
+    // Delete virtual playlist objects
+    delete m_allSongsPlaylistModel;
+    delete m_allSongsPlaylist;
+    
     // Ensure all models are cleared before database cleanup
     m_allTracksModel->clear();
     m_allAlbumsModel->clear();
@@ -220,6 +240,18 @@ int LibraryManager::albumCount() const
     return m_cachedAlbumCount;
 }
 
+int LibraryManager::albumArtistCount() const
+{
+    // qDebug() << "LibraryManager::albumArtistCount() called";
+    if (!m_databaseManager || !m_databaseManager->isOpen()) {
+        // qDebug() << "LibraryManager::albumArtistCount() - database not ready, returning 0";
+        return 0;
+    }
+    int count = m_databaseManager->getTotalAlbumArtists();
+    // qDebug() << "LibraryManager::albumArtistCount() returning" << count;
+    return count;
+}
+
 int LibraryManager::artistCount() const
 {
     // qDebug() << "LibraryManager::artistCount() called";
@@ -272,17 +304,49 @@ bool LibraryManager::addMusicFolder(const QString &path)
             qDebug() << "Portal path matches user's Music folder:" << displayPath;
         } else {
             // Try to extract a meaningful name from the portal path
-            // Portal paths often end with the actual folder name
-            QStringList parts = path.split('/');
-            if (!parts.isEmpty()) {
-                QString lastPart = parts.last();
-                // If the last part looks like a hash, try to find a better name
-                if (lastPart.length() > 20 && !lastPart.contains('.')) {
-                    // This might be a portal hash, use a generic name
-                    displayPath = "Music Folder";
-                } else {
-                    // Use the last part as the display name
-                    displayPath = QDir::homePath() + "/" + lastPart;
+            // Portal paths can have different formats:
+            // - /run/flatpak/doc/{hash}/{folder_name}
+            // - /run/user/{uid}/doc/{hash}/{folder_name}
+            // - /run/user/{uid}/doc/{hash}
+            
+            // Try to resolve symlinks first
+            QFileInfo fileInfo(path);
+            if (fileInfo.isSymLink()) {
+                QString resolvedPath = fileInfo.symLinkTarget();
+                if (!resolvedPath.isEmpty()) {
+                    displayPath = resolvedPath;
+                    qDebug() << "Resolved symlink to:" << displayPath;
+                }
+            } else {
+                // Parse the portal path structure
+                QStringList parts = path.split('/');
+                if (parts.size() >= 5) {
+                    // Look for the actual folder name after the hash
+                    if ((parts[2] == "flatpak" && parts[3] == "doc" && parts.size() > 5) ||
+                        (parts[2] == "user" && parts[4] == "doc" && parts.size() > 6)) {
+                        // The last part should be the actual folder name
+                        QString folderName = parts.last();
+                        if (!folderName.isEmpty() && folderName.length() < 64) {
+                            // Construct a user-friendly path
+                            displayPath = QDir::homePath() + "/" + folderName;
+                        }
+                    }
+                }
+                
+                // If we still have a portal path, use the canonical path
+                if (displayPath.startsWith("/run/")) {
+                    // Check if canonical path is more meaningful
+                    if (!canonicalPath.startsWith("/run/")) {
+                        displayPath = canonicalPath;
+                    } else {
+                        // Last resort: use a generic name with the last directory component
+                        QString lastDir = QDir(canonicalPath).dirName();
+                        if (!lastDir.isEmpty() && lastDir.length() < 64) {
+                            displayPath = "Music: " + lastDir;
+                        } else {
+                            displayPath = "Music Folder";
+                        }
+                    }
                 }
             }
         }
@@ -317,10 +381,36 @@ bool LibraryManager::addMusicFolder(const QString &path)
 
 bool LibraryManager::removeMusicFolder(const QString &path)
 {
-    QDir dir(path);
+    QString pathToRemove = path;
+    
+    // Check if this is a display path - if so, get the canonical path
+    QString canonicalFromDisplay = getCanonicalPathFromDisplay(path);
+    if (!canonicalFromDisplay.isEmpty()) {
+        pathToRemove = canonicalFromDisplay;
+        qDebug() << "LibraryManager::removeMusicFolder() - found canonical path from display:" << pathToRemove;
+    }
+    
+    // Try to get canonical path from the input
+    QDir dir(pathToRemove);
     QString canonicalPath = dir.canonicalPath();
     
-    if (m_musicFolders.removeAll(canonicalPath) > 0) {
+    // If canonical path resolution failed or path doesn't exist, 
+    // try to match against existing folders directly
+    bool removed = false;
+    if (canonicalPath.isEmpty() || !dir.exists()) {
+        // Try direct match against stored paths
+        for (const QString &folder : m_musicFolders) {
+            if (folder == path || m_folderDisplayPaths.value(folder) == path) {
+                canonicalPath = folder;
+                removed = m_musicFolders.removeAll(canonicalPath) > 0;
+                break;
+            }
+        }
+    } else {
+        removed = m_musicFolders.removeAll(canonicalPath) > 0;
+    }
+    
+    if (removed) {
         // Remove display path mapping
         m_folderDisplayPaths.remove(canonicalPath);
         
@@ -421,23 +511,40 @@ void LibraryManager::scanInBackground()
     
     // Create a thread-local database connection
     QString connectionName = QString("ScanThread_%1").arg(quintptr(QThread::currentThreadId()));
-    QSqlDatabase db = DatabaseManager::createThreadConnection(connectionName);
     
-    if (!db.isOpen()) {
-        qCritical() << "Failed to create thread database connection";
-        return;
-    }
-    
-    try {
-        qDebug() << "About to start database transaction...";
-        // Start transaction in the background thread
-        QSqlQuery query(db);
-        if (!query.exec("BEGIN TRANSACTION")) {
-            qWarning() << "Failed to start database transaction:" << query.lastError().text();
+    // Scope the database connection to ensure proper cleanup
+    {
+        QSqlDatabase db = DatabaseManager::createThreadConnection(connectionName);
+        
+        if (!db.isOpen()) {
+            qCritical() << "Failed to create thread database connection";
             DatabaseManager::removeThreadConnection(connectionName);
             return;
         }
-        qDebug() << "Transaction started successfully";
+    
+    // Force WAL checkpoint to ensure this thread connection sees all committed data
+    {
+        QSqlQuery checkpointQuery(db);
+        checkpointQuery.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+        checkpointQuery.finish();
+        qDebug() << "[scanInBackground] Performed WAL checkpoint to sync with main database";
+    }
+    
+    // Log how many tracks this connection sees
+    {
+        QSqlQuery countQuery(db);
+        if (countQuery.exec("SELECT COUNT(*) FROM tracks")) {
+            if (countQuery.next()) {
+                qDebug() << "[scanInBackground] Thread connection sees" << countQuery.value(0).toInt() << "tracks in database";
+            }
+        }
+        countQuery.finish();
+    }
+    
+    try {
+        // Note: Removed transaction wrapper to fix issue with new files not being detected
+        // Each database operation will be auto-committed individually
+        
         
         // Find all music files
         QStringList allFiles;
@@ -470,6 +577,7 @@ void LibraryManager::scanInBackground()
                     existingTracksInDB.append(pathQuery.value(0).toString());
                 }
             }
+            pathQuery.finish();
         }
         qDebug() << "Found" << existingTracksInDB.size() << "tracks in database";
         
@@ -501,6 +609,7 @@ void LibraryManager::scanInBackground()
                 } else {
                     qDebug() << "Removed deleted file from database:" << deletedFile;
                 }
+                deleteQuery.finish();
             }
             
             // Clean up orphaned albums, album artists, and artists after deleting tracks
@@ -516,6 +625,7 @@ void LibraryManager::scanInBackground()
                     qDebug() << "Deleted" << deletedAlbums << "orphaned albums";
                 }
             }
+            cleanupQuery.finish();
             
             // Delete album artists that have no albums
             if (!cleanupQuery.exec("DELETE FROM album_artists WHERE id NOT IN (SELECT DISTINCT album_artist_id FROM albums WHERE album_artist_id IS NOT NULL)")) {
@@ -559,12 +669,16 @@ void LibraryManager::scanInBackground()
                 if (!checkQuery.exec()) {
                     qWarning() << "Failed to check track existence:" << checkQuery.lastError().text();
                 } else if (checkQuery.next()) {
-                    // qDebug() << "Track already exists in database, skipping:" << filePath;
+                    // Track already exists in database
+                    qDebug() << "[" << connectionName << "] Track already exists in database, skipping:" << filePath;
                     m_filesScanned++;
+                    checkQuery.finish();
                     continue;
                 } else {
                     // Track not in database, will process
+                    qDebug() << "[" << connectionName << "] New track found, will process:" << filePath;
                 }
+                checkQuery.finish();
             }
             
             // Queue metadata extraction for parallel processing
@@ -666,6 +780,23 @@ void LibraryManager::scanInBackground()
             }
         }
         
+        // Process any remaining extraction futures that haven't been processed
+        if (!extractionFutures.isEmpty() && !m_cancelRequested) {
+            qDebug() << "Processing remaining" << extractionFutures.size() << "extraction futures";
+            for (const QFuture<QVariantMap> &f : extractionFutures) {
+                QVariantMap metadata = f.result();
+                if (metadata.value("valid", false).toBool()) {
+                    batchMetadata.append(metadata);
+                } else {
+                    QString error = metadata.value("error", "Invalid metadata").toString();
+                    if (!error.isEmpty() && error != "Invalid metadata") {
+                        qWarning() << "Error extracting metadata from" << metadata.value("filePath").toString() << ":" << error;
+                    }
+                }
+            }
+            extractionFutures.clear();
+        }
+        
         // Process any remaining items in the batch
         if (!batchMetadata.isEmpty() && !m_cancelRequested) {
             qDebug() << "Processing final batch with" << batchMetadata.size() << "tracks";
@@ -673,32 +804,33 @@ void LibraryManager::scanInBackground()
             batchMetadata.clear();
         }
         
-        // Commit the transaction if not cancelled
-        if (!m_cancelRequested) {
-            QSqlQuery commitQuery(db);
-            if (!commitQuery.exec("COMMIT")) {
-                qWarning() << "Failed to commit database transaction:" << commitQuery.lastError().text();
-            } else {
-                qDebug() << "Successfully committed database transaction";
+        // No longer using transactions - each operation auto-commits
+        
+        // Log final track count in this connection
+        {
+            QSqlQuery finalCountQuery(db);
+            if (finalCountQuery.exec("SELECT COUNT(*) FROM tracks")) {
+                if (finalCountQuery.next()) {
+                    qDebug() << "[scanInBackground] Final track count in database:" << finalCountQuery.value(0).toInt();
+                }
             }
-        } else {
-            // Rollback if cancelled
-            QSqlQuery rollbackQuery(db);
-            rollbackQuery.exec("ROLLBACK");
+            finalCountQuery.finish();
         }
         
-        qDebug() << "scanInBackground() completed successfully";
+        qDebug() << "scanInBackground() completed successfully - scanned" << m_filesScanned << "files";
+        
     } catch (const std::exception& e) {
         qCritical() << "Exception in scanInBackground():" << e.what();
-        // Rollback transaction on error
-        QSqlQuery rollbackQuery(db);
-        rollbackQuery.exec("ROLLBACK");
     } catch (...) {
         qCritical() << "Unknown exception in scanInBackground()";
-        // Rollback transaction on error
-        QSqlQuery rollbackQuery(db);
-        rollbackQuery.exec("ROLLBACK");
     }
+    
+        // Close database before removing connection
+        db.close();
+    } // End of database scope
+    
+    // Add a small delay to ensure all queries are fully released
+    QThread::msleep(10);
     
     // Clean up thread-local database connection
     DatabaseManager::removeThreadConnection(connectionName);
@@ -779,6 +911,7 @@ void LibraryManager::onScanFinished()
     QMetaObject::invokeMethod(this, "libraryChanged", Qt::QueuedConnection);
     QMetaObject::invokeMethod(this, "trackCountChanged", Qt::QueuedConnection);
     QMetaObject::invokeMethod(this, "albumCountChanged", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(this, "albumArtistCountChanged", Qt::QueuedConnection);
     QMetaObject::invokeMethod(this, "artistCountChanged", Qt::QueuedConnection);
     
     qDebug() << "LibraryManager::onScanFinished() completed";
@@ -804,6 +937,7 @@ void LibraryManager::clearLibrary()
     emit libraryChanged();
     emit trackCountChanged();
     emit albumCountChanged();
+    emit albumArtistCountChanged();
     emit artistCountChanged();
 }
 
@@ -880,13 +1014,11 @@ void LibraryManager::syncWithDatabase(const QString &filePath)
 // Data access methods
 TrackModel* LibraryManager::allTracksModel() const
 {
-    // TODO: Implement loading tracks from database into model
     return m_allTracksModel;
 }
 
 AlbumModel* LibraryManager::allAlbumsModel() const
 {
-    // TODO: Implement loading albums from database into model
     return m_allAlbumsModel;
 }
 
@@ -995,8 +1127,6 @@ TrackModel* LibraryManager::searchTracks(const QString &query) const
     TrackModel *model = new TrackModel(const_cast<LibraryManager*>(this));
     QVariantList results = m_databaseManager->searchTracks(query);
     
-    // TODO: Convert QVariantList to Track objects and add to model
-    
     return model;
 }
 
@@ -1004,7 +1134,6 @@ TrackModel* LibraryManager::searchTracks(const QString &query) const
 
 TrackModel* LibraryManager::tracksForArtist(const QString &artistName) const
 {
-    // TODO: Implement
     return new TrackModel(const_cast<LibraryManager*>(this));
 }
 
@@ -1039,7 +1168,6 @@ AlbumModel* LibraryManager::albumsForArtist(const QString &artistName) const
 
 TrackModel* LibraryManager::tracksForAlbum(const QString &albumTitle, const QString &artistName) const
 {
-    // TODO: Implement
     return new TrackModel(const_cast<LibraryManager*>(this));
 }
 
@@ -1060,13 +1188,11 @@ QVariantList LibraryManager::getTracksForAlbumAsVariantList(const QString &artis
 
 AlbumModel* LibraryManager::searchAlbums(const QString &query) const
 {
-    // TODO: Implement proper AlbumModel search
     return new AlbumModel(const_cast<LibraryManager*>(this));
 }
 
 QStringList LibraryManager::searchArtists(const QString &query) const
 {
-    // TODO: Implement proper artist search
     return QStringList();
 }
 
@@ -1079,21 +1205,14 @@ QVariantMap LibraryManager::searchAll(const QString &query) const
     return m_databaseManager->searchAll(query);
 }
 
-Track* LibraryManager::trackByPath(const QString &path) const
-{
-    // TODO: Implement database lookup
-    return nullptr;
-}
 
 Album* LibraryManager::albumByTitle(const QString &title, const QString &artistName) const
 {
-    // TODO: Implement database lookup
     return nullptr;
 }
 
 Artist* LibraryManager::artistByName(const QString &name) const
 {
-    // TODO: Implement database lookup
     return nullptr;
 }
 
@@ -1103,9 +1222,6 @@ QVariantList LibraryManager::getAlbumsPaginated(int offset, int limit) const
         return QVariantList();
     }
     
-    // Delegate to database manager with pagination
-    // TODO: Add pagination support to DatabaseManager
-    // For now, return empty list
     qDebug() << "LibraryManager::getAlbumsPaginated - offset:" << offset << "limit:" << limit;
     return QVariantList();
 }
@@ -1134,16 +1250,12 @@ QVariantList LibraryManager::getLightweightAlbumModel() const
         return QVariantList();
     }
     
-    // For now, check album count and decide strategy
     int totalAlbums = albumCount();
     
     if (totalAlbums < 1000) {
         // For small libraries, use the full model
         return albumModel();
     } else {
-        // For large libraries, we should implement a lightweight query
-        // that only fetches essential album data (id, title, artist, year, hasArt)
-        // TODO: Implement lightweight query in DatabaseManager
         qWarning() << "Large library (" << totalAlbums << " albums) - lightweight model not yet implemented";
         return QVariantList();
     }
@@ -1166,7 +1278,10 @@ int LibraryManager::loadCarouselPosition() const
 
 void LibraryManager::savePlaybackState(const QString &filePath, qint64 position, 
                                        const QString &albumArtist, const QString &albumTitle, 
-                                       int trackIndex, qint64 duration)
+                                       int trackIndex, qint64 duration,
+                                       bool queueModified, const QVariantList &queue,
+                                       const QVariantMap &virtualPlaylistInfo,
+                                       const QVariantMap &playlistInfo)
 {
     QSettings settings;
     settings.beginGroup("playbackState");
@@ -1180,6 +1295,51 @@ void LibraryManager::savePlaybackState(const QString &filePath, qint64 position,
     settings.setValue("trackIndex", trackIndex);
     settings.setValue("savedTime", QDateTime::currentDateTime());
     
+    // Save virtual playlist info if present
+    if (!virtualPlaylistInfo.isEmpty() && virtualPlaylistInfo.value("isVirtualPlaylist", false).toBool()) {
+        settings.setValue("isVirtualPlaylist", true);
+        settings.setValue("virtualPlaylistType", virtualPlaylistInfo.value("virtualPlaylistType"));
+        settings.setValue("virtualTrackIndex", virtualPlaylistInfo.value("virtualTrackIndex"));
+        settings.setValue("virtualShuffleIndex", virtualPlaylistInfo.value("virtualShuffleIndex"));
+        settings.setValue("shuffleEnabled", virtualPlaylistInfo.value("shuffleEnabled"));
+        
+        // Save track metadata
+        settings.setValue("trackTitle", virtualPlaylistInfo.value("trackTitle"));
+        settings.setValue("trackArtist", virtualPlaylistInfo.value("trackArtist"));
+        settings.setValue("trackAlbum", virtualPlaylistInfo.value("trackAlbum"));
+        settings.setValue("trackAlbumArtist", virtualPlaylistInfo.value("trackAlbumArtist"));
+    } else {
+        settings.setValue("isVirtualPlaylist", false);
+    }
+    
+    // Save playlist info if present
+    if (!playlistInfo.isEmpty() && playlistInfo.contains("playlistName")) {
+        settings.setValue("playlistName", playlistInfo.value("playlistName"));
+    } else {
+        settings.remove("playlistName");
+    }
+    
+    // Save queue info if modified
+    settings.setValue("queueModified", queueModified);
+    if (queueModified && !queue.isEmpty()) {
+        settings.beginWriteArray("queue");
+        for (int i = 0; i < queue.size(); ++i) {
+            settings.setArrayIndex(i);
+            QVariantMap trackData = queue[i].toMap();
+            settings.setValue("filePath", trackData["filePath"]);
+            settings.setValue("title", trackData["title"]);
+            settings.setValue("artist", trackData["artist"]);
+            settings.setValue("album", trackData["album"]);
+            settings.setValue("albumArtist", trackData["albumArtist"]);
+            settings.setValue("trackNumber", trackData["trackNumber"]);
+            settings.setValue("duration", trackData["duration"]);
+        }
+        settings.endArray();
+    } else {
+        // Clear any existing queue data if queue is not modified
+        settings.remove("queue");
+    }
+    
     settings.endGroup();
     settings.sync(); // Force immediate write to disk
     
@@ -1187,7 +1347,9 @@ void LibraryManager::savePlaybackState(const QString &filePath, qint64 position,
     //          << "position:" << position << "ms"
     //          << "duration:" << duration << "ms"
     //          << "album:" << albumArtist << "-" << albumTitle 
-    //          << "track:" << trackIndex;
+    //          << "track:" << trackIndex
+    //          << "queueModified:" << queueModified
+    //          << "queueSize:" << queue.size();
 }
 
 QVariantMap LibraryManager::loadPlaybackState() const
@@ -1210,8 +1372,58 @@ QVariantMap LibraryManager::loadPlaybackState() const
             state["trackIndex"] = settings.value("trackIndex", -1).toInt();
             state["savedTime"] = settings.value("savedTime").toDateTime();
             
+            // Load virtual playlist info if present
+            state["isVirtualPlaylist"] = settings.value("isVirtualPlaylist", false).toBool();
+            if (state["isVirtualPlaylist"].toBool()) {
+                state["virtualPlaylistType"] = settings.value("virtualPlaylistType").toString();
+                state["virtualTrackIndex"] = settings.value("virtualTrackIndex").toInt();
+                state["virtualShuffleIndex"] = settings.value("virtualShuffleIndex").toInt();
+                state["shuffleEnabled"] = settings.value("shuffleEnabled").toBool();
+                
+                // Load track metadata
+                state["trackTitle"] = settings.value("trackTitle").toString();
+                state["trackArtist"] = settings.value("trackArtist").toString();
+                state["trackAlbum"] = settings.value("trackAlbum").toString();
+                state["trackAlbumArtist"] = settings.value("trackAlbumArtist").toString();
+            }
+            
+            // Load playlist info if present
+            QString playlistName = settings.value("playlistName").toString();
+            if (!playlistName.isEmpty()) {
+                state["playlistName"] = playlistName;
+            }
+            
+            // Load queue info
+            state["queueModified"] = settings.value("queueModified", false).toBool();
+            
+            if (state["queueModified"].toBool()) {
+                QVariantList queue;
+                int queueSize = settings.beginReadArray("queue");
+                for (int i = 0; i < queueSize; ++i) {
+                    settings.setArrayIndex(i);
+                    QVariantMap trackData;
+                    trackData["filePath"] = settings.value("filePath").toString();
+                    trackData["title"] = settings.value("title").toString();
+                    trackData["artist"] = settings.value("artist").toString();
+                    trackData["album"] = settings.value("album").toString();
+                    trackData["albumArtist"] = settings.value("albumArtist").toString();
+                    trackData["trackNumber"] = settings.value("trackNumber").toInt();
+                    trackData["duration"] = settings.value("duration").toInt();
+                    
+                    // Only add to queue if file still exists
+                    QFileInfo trackFile(trackData["filePath"].toString());
+                    if (trackFile.exists()) {
+                        queue.append(trackData);
+                    }
+                }
+                settings.endArray();
+                state["queue"] = queue;
+            }
+            
             //qDebug() << "LibraryManager: Loaded playback state - file:" << filePath
-            //         << "position:" << state["position"].toLongLong() << "ms";
+            //         << "position:" << state["position"].toLongLong() << "ms"
+            //         << "queueModified:" << state["queueModified"].toBool()
+            //         << "queueSize:" << state["queue"].toList().size();
         } else {
             qDebug() << "LibraryManager: Saved track no longer exists:" << filePath;
             // Clear the invalid saved state
@@ -1224,6 +1436,17 @@ QVariantMap LibraryManager::loadPlaybackState() const
     settings.endGroup();
     
     return state;
+}
+
+void LibraryManager::clearPlaybackState()
+{
+    QSettings settings;
+    settings.beginGroup("playbackState");
+    settings.remove(""); // Removes all keys in this group
+    settings.endGroup();
+    settings.sync();
+    
+    qDebug() << "LibraryManager: Cleared playback state";
 }
 
 void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& metadata)
@@ -1253,16 +1476,22 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
         query.bindValue(":name", artistName);
         
         if (query.exec() && query.next()) {
-            return query.value(0).toInt();
+            int id = query.value(0).toInt();
+            query.finish();
+            return id;
         }
+        query.finish();
         
         // Insert new artist
         query.prepare("INSERT INTO artists (name) VALUES (:name)");
         query.bindValue(":name", artistName);
         
         if (query.exec()) {
-            return query.lastInsertId().toInt();
+            int id = query.lastInsertId().toInt();
+            query.finish();
+            return id;
         }
+        query.finish();
         
         return 0;
     };
@@ -1278,16 +1507,22 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
         query.bindValue(":name", albumArtistName);
         
         if (query.exec() && query.next()) {
-            return query.value(0).toInt();
+            int id = query.value(0).toInt();
+            query.finish();
+            return id;
         }
+        query.finish();
         
         // Insert new album artist
         query.prepare("INSERT INTO album_artists (name) VALUES (:name)");
         query.bindValue(":name", albumArtistName);
         
         if (query.exec()) {
-            return query.lastInsertId().toInt();
+            int id = query.lastInsertId().toInt();
+            query.finish();
+            return id;
         }
+        query.finish();
         
         return 0;
     };
@@ -1310,6 +1545,7 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
         
         if (query.exec() && query.next()) {
             int existingAlbumId = query.value(0).toInt();
+            query.finish();
             
             // Update year if provided and not already set
             if (albumYear > 0) {
@@ -1318,10 +1554,12 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
                 updateQuery.bindValue(":year", albumYear);
                 updateQuery.bindValue(":id", existingAlbumId);
                 updateQuery.exec();
+                updateQuery.finish();
             }
             
             return existingAlbumId;
         }
+        query.finish();
         
         // Insert new album with year
         query.prepare("INSERT INTO albums (title, album_artist_id, year) VALUES (:title, :artist_id, :year)");
@@ -1330,8 +1568,11 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
         query.bindValue(":year", albumYear > 0 ? albumYear : QVariant());
         
         if (query.exec()) {
-            return query.lastInsertId().toInt();
+            int id = query.lastInsertId().toInt();
+            query.finish();
+            return id;
         }
+        query.finish();
         
         return 0;
     };
@@ -1386,6 +1627,7 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
         qWarning() << "SQL:" << query.lastQuery();
         qWarning() << "Bound values:" << query.boundValues();
     }
+    query.finish();
 }
 
 void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVariantMap>& batchMetadata)
@@ -1393,6 +1635,10 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
     if (batchMetadata.isEmpty() || m_cancelRequested) {
         return;
     }
+    
+    qDebug() << "[insertBatchTracksInThread] Starting to insert batch of" << batchMetadata.size() << "tracks";
+    int successCount = 0;
+    int failCount = 0;
     
     // Use maps to cache artist/album lookups within this batch
     QHash<QString, int> artistCache;
@@ -1414,8 +1660,10 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         if (query.exec() && query.next()) {
             int id = query.value(0).toInt();
             artistCache[artistName] = id;
+            query.finish();
             return id;
         }
+        query.finish();
         
         // Insert new artist
         query.prepare("INSERT INTO artists (name) VALUES (:name)");
@@ -1424,8 +1672,10 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         if (query.exec()) {
             int id = query.lastInsertId().toInt();
             artistCache[artistName] = id;
+            query.finish();
             return id;
         }
+        query.finish();
         
         return 0;
     };
@@ -1444,8 +1694,10 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         if (query.exec() && query.next()) {
             int id = query.value(0).toInt();
             albumArtistCache[albumArtistName] = id;
+            query.finish();
             return id;
         }
+        query.finish();
         
         // Insert new album artist
         query.prepare("INSERT INTO album_artists (name) VALUES (:name)");
@@ -1454,8 +1706,10 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         if (query.exec()) {
             int id = query.lastInsertId().toInt();
             albumArtistCache[albumArtistName] = id;
+            query.finish();
             return id;
         }
+        query.finish();
         
         return 0;
     };
@@ -1483,6 +1737,7 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         if (query.exec() && query.next()) {
             int existingAlbumId = query.value(0).toInt();
             albumCache[key] = existingAlbumId;
+            query.finish();
             
             // Update year if provided and not already set
             if (albumYear > 0) {
@@ -1491,10 +1746,12 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
                 updateQuery.bindValue(":year", albumYear);
                 updateQuery.bindValue(":id", existingAlbumId);
                 updateQuery.exec();
+                updateQuery.finish();
             }
             
             return existingAlbumId;
         }
+        query.finish();
         
         // Insert new album with year
         query.prepare("INSERT INTO albums (title, album_artist_id, year) VALUES (:title, :artist_id, :year)");
@@ -1505,8 +1762,10 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         if (query.exec()) {
             int id = query.lastInsertId().toInt();
             albumCache[key] = id;
+            query.finish();
             return id;
         }
+        query.finish();
         
         return 0;
     };
@@ -1572,8 +1831,17 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         
         if (!trackInsert.exec()) {
             qWarning() << "Failed to insert track:" << filePath << "-" << trackInsert.lastError().text();
+            failCount++;
+        } else {
+            successCount++;
         }
     }
+    
+    // Finish the prepared query to release resources
+    trackInsert.finish();
+    
+    qDebug() << "[insertBatchTracksInThread] Batch complete - Successfully inserted" << successCount 
+             << "tracks, failed" << failCount << "tracks";
 }
 
 void LibraryManager::processAlbumArtInBackground()
@@ -1588,17 +1856,21 @@ void LibraryManager::processAlbumArtInBackground()
     
     // Create a thread-local database connection
     QString connectionName = QString("AlbumArtThread_%1").arg(quintptr(QThread::currentThreadId()));
-    QSqlDatabase db = DatabaseManager::createThreadConnection(connectionName);
     
-    if (!db.isOpen()) {
-        qCritical() << "Failed to create thread database connection for album art processing";
-        // Clear processing flag
-        QMetaObject::invokeMethod(this, [this]() {
-            m_processingAlbumArt = false;
-            emit processingAlbumArtChanged();
-        }, Qt::QueuedConnection);
-        return;
-    }
+    // Scope the database connection to ensure proper cleanup
+    {
+        QSqlDatabase db = DatabaseManager::createThreadConnection(connectionName);
+        
+        if (!db.isOpen()) {
+            qCritical() << "Failed to create thread database connection for album art processing";
+            DatabaseManager::removeThreadConnection(connectionName);
+            // Clear processing flag
+            QMetaObject::invokeMethod(this, [this]() {
+                m_processingAlbumArt = false;
+                emit processingAlbumArtChanged();
+            }, Qt::QueuedConnection);
+            return;
+        }
     
     try {
         // Get all albums that don't have album art yet
@@ -1613,6 +1885,7 @@ void LibraryManager::processAlbumArtInBackground()
         
         if (!albumQuery.exec()) {
             qWarning() << "Failed to query albums without art:" << albumQuery.lastError().text();
+            db.close();
             DatabaseManager::removeThreadConnection(connectionName);
             return;
         }
@@ -1633,10 +1906,15 @@ void LibraryManager::processAlbumArtInBackground()
             albumsToProcess.append(info);
         }
         
+        // Explicitly finish the query to release resources
+        albumQuery.finish();
+        
         int totalAlbums = albumsToProcess.size();
         
         if (totalAlbums == 0) {
             qDebug() << "LibraryManager::processAlbumArtInBackground() - No albums need art processing";
+            
+            db.close();
             DatabaseManager::removeThreadConnection(connectionName);
             // Clear processing flag
             QMetaObject::invokeMethod(this, [this]() {
@@ -1652,6 +1930,12 @@ void LibraryManager::processAlbumArtInBackground()
         
         // Process albums from the list
         for (const AlbumInfo& albumInfo : albumsToProcess) {
+            // Check if we should stop processing
+            if (m_cancelRequested) {
+                qDebug() << "LibraryManager: Album art processing cancelled";
+                break;
+            }
+            
             int albumId = albumInfo.id;
             QString albumTitle = albumInfo.title;
             QString albumArtist = albumInfo.albumArtist;
@@ -1665,6 +1949,7 @@ void LibraryManager::processAlbumArtInBackground()
             
             if (trackQuery.exec() && trackQuery.next()) {
                 QString filePath = trackQuery.value(0).toString();
+                trackQuery.finish();  // Finish query before processing
                 
                 try {
                     // Extract album art from this track
@@ -1706,6 +1991,7 @@ void LibraryManager::processAlbumArtInBackground()
                                 qDebug() << "Successfully processed album art for:" << albumTitle;
                                 processedCount++;
                             }
+                            artInsert.finish();
                         }
                     }
                     
@@ -1757,6 +2043,13 @@ void LibraryManager::processAlbumArtInBackground()
         qCritical() << "Unknown exception in processAlbumArtInBackground()";
     }
     
+        // Close database before removing connection
+        db.close();
+    } // End of database scope
+    
+    // Add a small delay to ensure all queries are fully released
+    QThread::msleep(10);
+    
     // Clean up thread-local database connection
     DatabaseManager::removeThreadConnection(connectionName);
     
@@ -1765,6 +2058,102 @@ void LibraryManager::processAlbumArtInBackground()
         m_processingAlbumArt = false;
         emit processingAlbumArtChanged();
     }, Qt::QueuedConnection);
+}
+
+VirtualPlaylistModel* LibraryManager::getAllSongsPlaylist()
+{
+    if (!m_allSongsPlaylistModel) {
+        // Create virtual playlist on first access
+        m_allSongsPlaylist = new VirtualPlaylist(m_databaseManager, this);
+        m_allSongsPlaylistModel = new VirtualPlaylistModel(this);
+        m_allSongsPlaylistModel->setVirtualPlaylist(m_allSongsPlaylist);
+        
+        // Start loading tracks asynchronously
+        m_allSongsPlaylist->loadAllTracks();
+    }
+    
+    return m_allSongsPlaylistModel;
+}
+
+bool LibraryManager::isTrackInLibrary(const QString &filePath) const
+{
+    if (filePath.isEmpty()) {
+        return false;
+    }
+    
+    // Check cache first
+    {
+        QMutexLocker locker(&m_trackCacheMutex);
+        if (m_trackCache.contains(filePath)) {
+            return true;
+        }
+    }
+    
+    // Check database
+    return m_databaseManager->trackExists(filePath);
+}
+
+Track* LibraryManager::trackByPath(const QString &path) const
+{
+    if (path.isEmpty() || !m_databaseManager || !m_databaseManager->isOpen()) {
+        return nullptr;
+    }
+    
+    // Check cache first
+    {
+        QMutexLocker locker(&m_trackCacheMutex);
+        if (m_trackCache.contains(path)) {
+            return m_trackCache.value(path);
+        }
+    }
+    
+    // Not in cache, load from database
+    int trackId = m_databaseManager->getTrackIdByPath(path);
+    if (trackId <= 0) {
+        return nullptr;
+    }
+    
+    QVariantMap trackData = m_databaseManager->getTrack(trackId);
+    if (trackData.isEmpty()) {
+        return nullptr;
+    }
+    
+    // Create new track object using fromMetadata with this as parent
+    Track* track = Track::fromMetadata(trackData, const_cast<LibraryManager*>(this));
+    
+    // Add to cache with size limit
+    {
+        QMutexLocker locker(&m_trackCacheMutex);
+        
+        // If cache is full, remove oldest entries (simple FIFO)
+        if (m_trackCache.size() >= MAX_TRACK_CACHE_SIZE) {
+            // Remove about 10% of cache
+            int toRemove = MAX_TRACK_CACHE_SIZE / 10;
+            auto it = m_trackCache.begin();
+            while (toRemove > 0 && it != m_trackCache.end()) {
+                delete it.value();
+                it = m_trackCache.erase(it);
+                toRemove--;
+            }
+        }
+        
+        m_trackCache.insert(path, track);
+    }
+    
+    return track;
+}
+
+QString LibraryManager::getCanonicalPathFromDisplay(const QString& displayPath) const
+{
+    // Check if any canonical path maps to this display path
+    for (auto it = m_folderDisplayPaths.begin(); it != m_folderDisplayPaths.end(); ++it) {
+        if (it.value() == displayPath) {
+            return it.key();
+        }
+    }
+    
+    // Not found in display mappings
+    return QString();
 }
 
 } // namespace Mtoc

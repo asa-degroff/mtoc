@@ -17,6 +17,13 @@ Item {
     signal previousClicked()
     signal nextClicked()
     signal seekRequested(real position)
+    signal queueToggled()
+    signal repeatToggled()
+    signal shuffleToggled()
+    
+    property bool queueVisible: false
+    property bool repeatEnabled: MediaPlayer.repeatEnabled
+    property bool shuffleEnabled: MediaPlayer.shuffleEnabled
     
     function formatTime(milliseconds) {
         if (isNaN(milliseconds) || milliseconds < 0) {
@@ -80,6 +87,92 @@ Item {
             Layout.rightMargin: 0
             spacing: Math.max(12, parent.width * 0.02)  // Dynamic spacing: 2% of width, min 12px
             
+            // Repeat/Shuffle pill container
+            Rectangle {
+                Layout.preferredWidth: 75
+                Layout.preferredHeight: 31
+                Layout.alignment: Qt.AlignVCenter
+                radius: 25
+                color: Qt.rgba(1, 1, 1, 0.05)
+                border.color: Qt.rgba(1, 1, 1, 0.2)
+                border.width: 1
+                
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 2
+                    spacing: 0
+                    
+                    // Repeat button
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 2
+                            radius: parent.height / 2
+                            color: root.repeatEnabled ? Qt.rgba(1, 1, 1, 0.2) : "transparent"
+                            
+                            Behavior on color {
+                                ColorAnimation { duration: 200 }
+                            }
+                        }
+                        
+                        IconButton {
+                            anchors.centerIn: parent
+                            width: 18
+                            height: 18
+                            iconSource: "qrc:/resources/icons/repeat.svg"
+                            opacity: root.repeatEnabled ? 1.0 : 0.6
+                            onClicked: root.repeatToggled()
+                            
+                            Behavior on opacity {
+                                NumberAnimation { duration: 200 }
+                            }
+                        }
+                    }
+                    
+                    // Divider
+                    Rectangle {
+                        Layout.preferredWidth: 1
+                        Layout.fillHeight: true
+                        Layout.topMargin: 8
+                        Layout.bottomMargin: 8
+                        color: Qt.rgba(1, 1, 1, 0.2)
+                    }
+                    
+                    // Shuffle button
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 2
+                            radius: parent.height / 2
+                            color: root.shuffleEnabled ? Qt.rgba(1, 1, 1, 0.2) : "transparent"
+                            
+                            Behavior on color {
+                                ColorAnimation { duration: 200 }
+                            }
+                        }
+                        
+                        IconButton {
+                            anchors.centerIn: parent
+                            width: 20
+                            height: 20
+                            iconSource: "qrc:/resources/icons/shuffle.svg"
+                            opacity: root.shuffleEnabled ? 1.0 : 0.6
+                            onClicked: root.shuffleToggled()
+                            
+                            Behavior on opacity {
+                                NumberAnimation { duration: 200 }
+                            }
+                        }
+                    }
+                }
+            }
+            
             Item { Layout.fillWidth: true }
             
             IconButton {
@@ -116,6 +209,28 @@ Item {
             }
             
             Item { Layout.fillWidth: true }
+            
+            // Queue button container (matching repeat/shuffle width)
+            Item {
+                Layout.preferredWidth: 75
+                Layout.preferredHeight: 31
+                Layout.alignment: Qt.AlignVCenter
+                
+                // Queue button
+                IconButton {
+                    id: queueButton
+                    anchors.centerIn: parent
+                    width: 30
+                    height: 30
+                    iconSource: "qrc:/resources/icons/queue.svg"
+                    opacity: root.queueVisible ? 1.0 : 0.6
+                    onClicked: root.queueToggled()
+                    
+                    Behavior on opacity {
+                        NumberAnimation { duration: 200 }
+                    }
+                }
+            }
         }
         
         // Progress bar with time labels
@@ -220,19 +335,25 @@ Item {
                     width: progressSlider.availableWidth - progressSlider.handle.width
                     height: implicitHeight
                     radius: 5
-                    color: "white"
-                    opacity: 0.1
+                    gradient: Gradient {
+                        orientation: Gradient.Vertical
+                        GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.15) }
+                        GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.17) }
+                        GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0.19) }
+                    }
+                    opacity: 0.8
                     
                     Rectangle {
                         width: progressSlider.visualPosition * parent.width
                         height: parent.height
-                        radius: 6
+                        radius: 5
+                        opacity: 0.6
                         
                         gradient: Gradient {
                             orientation: Gradient.Vertical
-                            GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.95) }
-                            GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.85) }
-                            GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0.75) }
+                            GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.8) }
+                            GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.6) }
+                            GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0.35) }
                         }
                     }
                 }
@@ -253,7 +374,7 @@ Item {
                     }
                     
                     Behavior on scale {
-                        NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+                        NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
                     }
                     
                     Image {
@@ -264,7 +385,7 @@ Item {
                         sourceSize.width: width * 2
                         sourceSize.height: height * 2
                         smooth: true
-                        antialiasing: false
+                        antialiasing: true
                     }
                     
                     Timer {

@@ -22,6 +22,8 @@
 #include "../utility/metadataextractor.h"
 #include "../database/databasemanager.h"
 #include "albumartmanager.h"
+#include "../playlist/VirtualPlaylist.h"
+#include "../playlist/VirtualPlaylistModel.h"
 
 namespace Mtoc {
 
@@ -35,6 +37,7 @@ class LibraryManager : public QObject
     Q_PROPERTY(QStringList musicFoldersDisplay READ musicFoldersDisplay NOTIFY musicFoldersChanged)
     Q_PROPERTY(int trackCount READ trackCount NOTIFY trackCountChanged)
     Q_PROPERTY(int albumCount READ albumCount NOTIFY albumCountChanged)
+    Q_PROPERTY(int albumArtistCount READ albumArtistCount NOTIFY albumArtistCountChanged)
     Q_PROPERTY(int artistCount READ artistCount NOTIFY artistCountChanged)
     Q_PROPERTY(QVariantList artistModel READ artistModel NOTIFY libraryChanged)
     Q_PROPERTY(QVariantList albumModel READ albumModel NOTIFY libraryChanged)
@@ -52,6 +55,7 @@ public:
     QStringList musicFoldersDisplay() const;
     int trackCount() const;
     int albumCount() const;
+    int albumArtistCount() const;
     int artistCount() const;
     QVariantList artistModel() const;
     QVariantList albumModel() const;
@@ -91,6 +95,10 @@ public:
     Q_INVOKABLE Album* albumByTitle(const QString &title, const QString &artistName = QString()) const;
     Q_INVOKABLE Artist* artistByName(const QString &name) const;
     
+    // Virtual playlist support
+    Q_INVOKABLE VirtualPlaylistModel* getAllSongsPlaylist();
+    Q_INVOKABLE bool isTrackInLibrary(const QString &filePath) const;
+    
     // Access to database manager (for image provider)
     DatabaseManager* databaseManager() const { return m_databaseManager; }
     
@@ -101,8 +109,12 @@ public:
     // Playback state persistence methods
     Q_INVOKABLE void savePlaybackState(const QString &filePath, qint64 position, 
                                        const QString &albumArtist, const QString &albumTitle, 
-                                       int trackIndex, qint64 duration);
+                                       int trackIndex, qint64 duration,
+                                       bool queueModified = false, const QVariantList &queue = QVariantList(),
+                                       const QVariantMap &virtualPlaylistInfo = QVariantMap(),
+                                       const QVariantMap &playlistInfo = QVariantMap());
     Q_INVOKABLE QVariantMap loadPlaybackState() const;
+    Q_INVOKABLE void clearPlaybackState();
 
 signals:
     void scanningChanged();
@@ -113,6 +125,7 @@ signals:
     void musicFoldersChanged();
     void trackCountChanged();
     void albumCountChanged();
+    void albumArtistCountChanged();
     void artistCountChanged();
     void libraryChanged();
     void processingAlbumArtChanged();
@@ -131,6 +144,7 @@ private:
     void insertTrackInThread(QSqlDatabase& db, const QVariantMap& metadata);
     void insertBatchTracksInThread(QSqlDatabase& db, const QList<QVariantMap>& batchMetadata);
     void processAlbumArtInBackground();
+    QString getCanonicalPathFromDisplay(const QString& displayPath) const;
     
     // Private data
     DatabaseManager *m_databaseManager;
@@ -147,6 +161,15 @@ private:
     mutable bool m_albumCountCacheValid;
     mutable QVariantList m_cachedArtistModel;  // Cache for artist model
     mutable bool m_artistModelCacheValid;
+    
+    // Track cache for efficiency
+    mutable QHash<QString, Track*> m_trackCache;  // FilePath -> Track
+    mutable QMutex m_trackCacheMutex;
+    static const int MAX_TRACK_CACHE_SIZE = 1000;  // Limit cache size
+    
+    // Virtual playlist support
+    VirtualPlaylist* m_allSongsPlaylist = nullptr;
+    VirtualPlaylistModel* m_allSongsPlaylistModel = nullptr;
     
     // Models for UI
     TrackModel *m_allTracksModel;

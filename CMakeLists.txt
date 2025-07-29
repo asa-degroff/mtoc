@@ -12,7 +12,7 @@ include(GNUInstallDirs)
 # Enable qDebug output even in release builds
 add_definitions(-DQT_MESSAGELOGCONTEXT -DQT_DEBUG)
 
-find_package(Qt6 COMPONENTS Core Quick Qml Multimedia DBus Concurrent Widgets Sql REQUIRED)
+find_package(Qt6 COMPONENTS Core Quick QuickEffects Qml Multimedia DBus Concurrent Widgets Sql REQUIRED)
 # find_package(TagLib REQUIRED) # This failed, reverting to pkg-config
 
 find_package(PkgConfig REQUIRED) # Ensure PkgConfig is found
@@ -58,6 +58,15 @@ set(PROJECT_SOURCES
         src/backend/playback/audioengine.cpp
         src/backend/playback/mediaplayer.h
         src/backend/playback/mediaplayer.cpp
+        src/backend/playlist/playlistmanager.h
+        src/backend/playlist/playlistmanager.cpp
+        src/backend/playlist/VirtualTrackData.h
+        src/backend/playlist/VirtualPlaylist.h
+        src/backend/playlist/VirtualPlaylist.cpp
+        src/backend/playlist/VirtualPlaylistModel.h
+        src/backend/playlist/VirtualPlaylistModel.cpp
+        src/backend/settings/settingsmanager.h
+        src/backend/settings/settingsmanager.cpp
         src/backend/system/mprismanager.h
         src/backend/system/mprismanager.cpp
         src/backend/utility/metadataextractor.h
@@ -79,6 +88,7 @@ target_link_libraries(mtoc_app
     PRIVATE
     Qt6::Core
     Qt6::Quick
+    Qt6::QuickEffects
     Qt6::Qml
     Qt6::Multimedia
     Qt6::DBus

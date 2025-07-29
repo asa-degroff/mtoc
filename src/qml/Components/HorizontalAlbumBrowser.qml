@@ -16,8 +16,36 @@ Item {
     property real scrollVelocity: 0
     property real accumulatedDelta: 0
     property bool isSnapping: false
+    property bool isUserScrolling: false
     
     signal albumClicked(var album)
+    signal centerAlbumChanged(var album)
+    
+    // Track component destruction state
+    property bool isDestroying: false
+    
+    // Queue action dialog
+    QueueActionDialog {
+        id: queueActionDialog
+        
+        onReplaceQueue: {
+            if (!root.isDestroying && MediaPlayer) {
+                MediaPlayer.playAlbumByName(albumArtist, albumTitle, startIndex)
+            }
+        }
+        
+        onPlayNext: {
+            if (!root.isDestroying && MediaPlayer) {
+                MediaPlayer.playAlbumNext(albumArtist, albumTitle)
+            }
+        }
+        
+        onPlayLast: {
+            if (!root.isDestroying && MediaPlayer) {
+                MediaPlayer.playAlbumLast(albumArtist, albumTitle)
+            }
+        }
+    }
     
     Component.onCompleted: {
         updateSortedIndices()
@@ -25,13 +53,29 @@ Item {
         restoreCarouselPosition()
     }
     
+    Component.onDestruction: {
+        // Mark that we're destroying to prevent any further operations
+        isDestroying = true
+        
+        // Stop animations
+        snapAnimation.stop()
+        contentXBehavior.enabled = false
+        
+        // Stop all timers to prevent callbacks during destruction
+        savePositionTimer.stop()
+        velocityTimer.stop()
+        snapIndexTimer.stop()
+        centerAlbumTimer.stop()
+        scrollEndTimer.stop()
+    }
+    
     // Timer to save position after user stops scrolling
     Timer {
         id: savePositionTimer
-        interval: 3000  // Save 3 seconds after user stops scrolling
+        interval: 250  // Save 250ms after user stops scrolling
         running: false
         onTriggered: {
-            if (selectedAlbum && selectedAlbum.id) {
+            if (!isDestroying && selectedAlbum && selectedAlbum.id && LibraryManager) {
                 LibraryManager.saveCarouselPosition(selectedAlbum.id)
             }
         }
@@ -39,13 +83,16 @@ Item {
     
     Connections {
         target: LibraryManager
+        enabled: !isDestroying
         function onLibraryChanged() {
+            if (isDestroying) return
+            
             // Save current position before updating
             var currentAlbumId = selectedAlbum ? selectedAlbum.id : -1
             updateSortedIndices()
             
             // Try to restore to the same album if it still exists
-            if (currentAlbumId > 0) {
+            if (currentAlbumId > 0 && LibraryManager) {
                 var sourceAlbums = LibraryManager.albumModel
                 for (var i = 0; i < sourceAlbums.length; i++) {
                     if (sourceAlbums[i].id === currentAlbumId) {
@@ -61,6 +108,8 @@ Item {
     }
     
     function updateSortedIndices() {
+        if (isDestroying || !LibraryManager) return
+        
         var sourceAlbums = LibraryManager.albumModel
         // Create array of indices with album data for sorting
         var indexedAlbums = []
@@ -116,6 +165,8 @@ Item {
     }
     
     function restoreCarouselPosition() {
+        if (isDestroying || !LibraryManager) return
+        
         var savedAlbumId = LibraryManager.loadCarouselPosition()
         if (savedAlbumId > 0) {
             // Find the album with this ID and jump to it
@@ -144,14 +195,16 @@ Item {
             if (sortedIndex !== undefined && sortedIndex >= 0 && sortedIndex < sortedAlbumIndices.length) {
                 // Get the actual album to ensure it still exists
                 var albumIndex = sortedAlbumIndices[sortedIndex]
-                var sourceAlbums = LibraryManager.albumModel
-                if (albumIndex < sourceAlbums.length) {
-                    var currentAlbum = sourceAlbums[albumIndex]
-                    if (currentAlbum && currentAlbum.id === album.id) {
-                        // Animate to the new index instead of jumping
-                        listView.currentIndex = sortedIndex
-                        selectedAlbum = currentAlbum
-                        return
+                if (LibraryManager) {
+                    var sourceAlbums = LibraryManager.albumModel
+                        if (albumIndex < sourceAlbums.length) {
+                        var currentAlbum = sourceAlbums[albumIndex]
+                        if (currentAlbum && currentAlbum.id === album.id) {
+                            // Animate to the new index instead of jumping
+                            listView.currentIndex = sortedIndex
+                            selectedAlbum = currentAlbum
+                            return
+                        }
                     }
                 }
             }
@@ -213,13 +266,16 @@ Item {
             clip: false                 // Disable clipping to allow rotated albums to show
             maximumFlickVelocity: 1500  // Limit scroll speed
             flickDeceleration: 3000     // Faster deceleration
-            boundsBehavior: Flickable.StopAtBounds  // Ensure we can reach the bounds
+            // Ensure we can reach the bounds - remove to allow elastic overscroll
+            // Removing this interfers with the cusom touchpad/click+drag scrolling logic, making the first item unreachable
+            boundsBehavior: Flickable.StopAtBounds
             
             // Cached value for delegate optimization - calculated once per frame
             readonly property real viewCenterX: width / 2
             
-            // Enable delegate recycling and limit cache to prevent memory leaks
-            reuseItems: true
+            // Disable delegate recycling to prevent segmentation faults related to destroyed items
+            // Use a little more memory if you have to, it's not significant
+            reuseItems: false
             cacheBuffer: 440  // Reduced to 2 items on each side (220px * 2)
             
             // Garbage collection timer for long scrolling sessions
@@ -229,16 +285,27 @@ Item {
                 running: false
                 repeat: true
                 onTriggered: {
-                    // Force garbage collection by clearing unused image cache
-                    gc()
+                    if (!isDestroying) {
+                        // Force garbage collection by clearing unused image cache
+                        gc()
+                    }
                 }
             }
             
-            onMovementStarted: gcTimer.running = true
+            onMovementStarted: {
+                gcTimer.running = true
+                root.isUserScrolling = true
+            }
             onMovementEnded: {
                 gcTimer.running = false
                 // Final cleanup after scrolling stops
                 gcTimer.triggered()
+                
+                // Emit signal when user scrolling stops and we have an album
+                if (root.isUserScrolling && root.selectedAlbum) {
+                    root.centerAlbumChanged(root.selectedAlbum)
+                }
+                root.isUserScrolling = false
             }
             
             // Smooth velocity animation for touchpad scrolling
@@ -258,6 +325,11 @@ Item {
                 repeat: true
                 running: false
                 onTriggered: {
+                    if (isDestroying || !listView) {
+                        velocityTimer.stop()
+                        return
+                    }
+                    
                     if (Math.abs(root.scrollVelocity) > 0.5 && !root.isSnapping) {
                         listView.contentX += root.scrollVelocity
                         root.scrollVelocity *= 0.95  // Damping factor
@@ -298,10 +370,17 @@ Item {
                 id: snapAnimation
                 target: listView
                 property: "contentX"
-                duration: 200
-                easing.type: Easing.OutCubic
+                duration: 300
+                easing.type: Easing.OutQuad
                 onStopped: {
+                    if (root.isDestroying) return
+                    
                     root.isSnapping = false
+                    // Emit signal when snap animation completes and we have an album
+                    if (root.isUserScrolling && root.selectedAlbum) {
+                        root.centerAlbumChanged(root.selectedAlbum)
+                    }
+                    root.isUserScrolling = false
                 }
             }
             
@@ -312,8 +391,20 @@ Item {
                 running: false
                 property int targetIndex: -1
                 onTriggered: {
-                    if (targetIndex >= 0) {
+                    if (!isDestroying && targetIndex >= 0 && listView) {
                         listView.currentIndex = targetIndex
+                    }
+                }
+            }
+            
+            // Timer to emit centerAlbumChanged after currentIndex changes (for mouse wheel/keyboard)
+            Timer {
+                id: centerAlbumTimer
+                interval: 100  // Wait for animation to complete
+                running: false
+                onTriggered: {
+                    if (!isDestroying && root.selectedAlbum) {
+                        root.centerAlbumChanged(root.selectedAlbum)
                     }
                 }
             }
@@ -324,6 +415,11 @@ Item {
                 interval: 100  // Wait 100ms after last scroll event
                 running: false
                 onTriggered: {
+                    if (isDestroying) {
+                        scrollEndTimer.stop()
+                        return
+                    }
+                    
                     // If velocity is very low or zero, snap to nearest album
                     if (Math.abs(root.scrollVelocity) < 0.5 && !root.isSnapping) {
                         root.isSnapping = true
@@ -339,18 +435,28 @@ Item {
                         // Update current index
                         snapIndexTimer.targetIndex = targetIndex
                         snapIndexTimer.start()
+                    } else if (!root.isSnapping && root.isUserScrolling && root.selectedAlbum) {
+                        // If we're not snapping but finished scrolling, emit the signal
+                        root.centerAlbumChanged(root.selectedAlbum)
+                        root.isUserScrolling = false
                     }
                 }
             }
                     
             onCurrentIndexChanged: {
-                if (currentIndex >= 0 && currentIndex < sortedAlbumIndices.length) {
+                if (!isDestroying && currentIndex >= 0 && currentIndex < sortedAlbumIndices.length) {
                     root.currentIndex = currentIndex
                     var albumIndex = sortedAlbumIndices[currentIndex]
-                    root.selectedAlbum = LibraryManager.albumModel[albumIndex]
+                    if (LibraryManager && LibraryManager.albumModel) {
+                        root.selectedAlbum = LibraryManager.albumModel[albumIndex]
+                    }
                     
                     // Save position after a delay
                     savePositionTimer.restart()
+                    
+                    // Emit centerAlbumChanged for mouse wheel and keyboard navigation
+                    // Use a timer to debounce and ensure it fires after the animation
+                    centerAlbumTimer.restart()
                 }
             }
             
@@ -358,7 +464,15 @@ Item {
             MouseArea {
                 anchors.fill: parent
                 propagateComposedEvents: true
+                onClicked: {
+                    // Take focus when clicked
+                    listView.forceActiveFocus()
+                    mouse.accepted = false  // Let the click propagate to album items
+                }
                 onWheel: function(wheel) {
+                    // Mark as user scrolling
+                    root.isUserScrolling = true
+                    
                     // Different behavior for touchpad vs mouse wheel
                     if (wheel.pixelDelta.y !== 0 || wheel.pixelDelta.x !== 0) {
                         // Touchpad - use direct content manipulation for smooth scrolling
@@ -424,19 +538,59 @@ Item {
             }
             
             // Keyboard navigation
-            focus: true
             activeFocusOnTab: true
             
-            Keys.onLeftPressed: listView.decrementCurrentIndex()
-            Keys.onRightPressed: listView.incrementCurrentIndex()
-            Keys.onSpacePressed: {
-                if (selectedAlbum) {
-                    root.albumClicked(selectedAlbum)
+            // Only handle keyboard events when this component has active focus
+            Keys.enabled: activeFocus
+            Keys.onLeftPressed: function(event) {
+                if (activeFocus) {
+                    listView.decrementCurrentIndex()
+                    event.accepted = true
                 }
             }
-            Keys.onReturnPressed: {
-                if (selectedAlbum) {
+            Keys.onRightPressed: function(event) {
+                if (activeFocus) {
+                    listView.incrementCurrentIndex()
+                    event.accepted = true
+                }
+            }
+            Keys.onSpacePressed: function(event) {
+                if (activeFocus && selectedAlbum) {
                     root.albumClicked(selectedAlbum)
+                    event.accepted = true
+                }
+            }
+            Keys.onReturnPressed: function(event) {
+                if (activeFocus && selectedAlbum) {
+                    root.albumClicked(selectedAlbum)
+                    event.accepted = true
+                }
+            }
+            Keys.onEscapePressed: function(event) {
+                if (activeFocus) {
+                    // Return focus to parent (library pane)
+                    if (parent && parent.parent) {
+                        parent.parent.forceActiveFocus()
+                    }
+                    event.accepted = true
+                }
+            }
+            Keys.onUpPressed: function(event) {
+                if (activeFocus) {
+                    // Transfer focus back to library pane and let it handle the up key
+                    if (parent && parent.parent) {
+                        parent.parent.forceActiveFocus()
+                    }
+                    event.accepted = false  // Let the event propagate to library pane
+                }
+            }
+            Keys.onDownPressed: function(event) {
+                if (activeFocus) {
+                    // Transfer focus back to library pane and let it handle the down key
+                    if (parent && parent.parent) {
+                        parent.parent.forceActiveFocus()
+                    }
+                    event.accepted = false  // Let the event propagate to library pane
                 }
             }
             
@@ -448,8 +602,12 @@ Item {
                 // Get the actual album data from the model using sorted index
                 property int sortedIndex: index
                 property int albumIndex: sortedIndex < sortedAlbumIndices.length ? sortedAlbumIndices[sortedIndex] : -1
-                property var albumData: albumIndex >= 0 && albumIndex < LibraryManager.albumModel.length ? 
-                                       LibraryManager.albumModel[albumIndex] : null
+                property var albumData: {
+                    if (root.isDestroying || albumIndex < 0 || !LibraryManager || !LibraryManager.albumModel) {
+                        return null
+                    }
+                    return albumIndex < LibraryManager.albumModel.length ? LibraryManager.albumModel[albumIndex] : null
+                }
                 
                 // Handle delegate recycling
                 ListView.onReused: {
@@ -554,17 +712,17 @@ Item {
                         yScale: scaleAmount
                         
                         Behavior on xScale {
-                            enabled: absDistance < 200 // Only animate near center
+                            enabled: absDistance < 200 && !root.isDestroying // Only animate near center and not during destruction
                             NumberAnimation {
                                 duration: 300
-                                easing.type: Easing.OutCubic 
+                                easing.type: Easing.OutQuad
                             }
                         }
                         Behavior on yScale {
-                            enabled: absDistance < 200 // Only animate near center
+                            enabled: absDistance < 200 && !root.isDestroying // Only animate near center and not during destruction
                             NumberAnimation { 
                                 duration: 300
-                                easing.type: Easing.OutCubic 
+                                easing.type: Easing.OutQuad
                             }
                         }
                     },
@@ -610,7 +768,7 @@ Item {
                         Image {
                             id: albumImage
                             anchors.fill: parent
-                            source: (albumData && albumData.hasArt && albumData.id) ? "image://albumart/" + albumData.id + "/thumbnail" : ""
+                            source: (albumData && albumData.hasArt && albumData.id) ? "image://albumart/" + albumData.id + "/thumbnail/400" : ""
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
                             antialiasing: true
@@ -648,13 +806,123 @@ Item {
                         
                         MouseArea {
                             anchors.fill: parent
-                            onClicked: {
-                                listView.currentIndex = index
-                                root.albumClicked(albumData)
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            onClicked: function(mouse) {
+                                if (mouse.button === Qt.LeftButton) {
+                                    listView.currentIndex = index
+                                    root.albumClicked(albumData)
+                                } else if (mouse.button === Qt.RightButton) {
+                                    // Show context menu
+                                    albumContextMenu.popup()
+                                }
                             }
-                            onDoubleClicked: {
-                                // Play the album on double-click
-                                MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, 0)
+                            onDoubleClicked: function(mouse) {
+                                if (mouse.button === Qt.LeftButton) {
+                                    // If shuffle is enabled, start with a random track instead of the first
+                                    var startIndex = 0;
+                                    if (MediaPlayer && MediaPlayer.shuffleEnabled && albumData && albumData.trackCount > 0) {
+                                        startIndex = Math.floor(Math.random() * albumData.trackCount);
+                                    }
+                                    
+                                    // Check if we should show the dialog
+                                    if (SettingsManager && MediaPlayer && SettingsManager.queueActionDefault === SettingsManager.Ask && MediaPlayer.isQueueModified) {
+                                        // Show dialog for "Ask every time" setting when queue is modified
+                                        queueActionDialog.albumArtist = albumData.albumArtist
+                                        queueActionDialog.albumTitle = albumData.title
+                                        queueActionDialog.startIndex = startIndex
+                                        
+                                        // Position dialog at album center
+                                        var globalPos = parent.mapToGlobal(parent.width / 2, parent.height / 2)
+                                        queueActionDialog.x = globalPos.x - queueActionDialog.width / 2
+                                        queueActionDialog.y = globalPos.y - queueActionDialog.height / 2
+                                        
+                                        queueActionDialog.open()
+                                    } else if (SettingsManager && MediaPlayer) {
+                                        // Apply the configured action
+                                        switch (SettingsManager.queueActionDefault) {
+                                            case SettingsManager.Replace:
+                                                MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, startIndex);
+                                                break;
+                                            case SettingsManager.Insert:
+                                                MediaPlayer.playAlbumNext(albumData.albumArtist, albumData.title);
+                                                break;
+                                            case SettingsManager.Append:
+                                                MediaPlayer.playAlbumLast(albumData.albumArtist, albumData.title);
+                                                break;
+                                            case SettingsManager.Ask:
+                                                // If Ask but queue not modified, default to replace
+                                                MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, startIndex);
+                                                break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        StyledMenu {
+                            id: albumContextMenu
+                            
+                            MenuItem {
+                                text: "Play"
+                                onTriggered: {
+                                    if (albumData) {
+                                        // If shuffle is enabled, start with a random track instead of the first
+                                        var startIndex = 0;
+                                        if (MediaPlayer && MediaPlayer.shuffleEnabled && albumData.trackCount > 0) {
+                                            startIndex = Math.floor(Math.random() * albumData.trackCount);
+                                        }
+                                        
+                                        // Check if we should show the dialog
+                                        if (SettingsManager && MediaPlayer && SettingsManager.queueActionDefault === SettingsManager.Ask && MediaPlayer.isQueueModified) {
+                                            // Show dialog for "Ask every time" setting when queue is modified
+                                            queueActionDialog.albumArtist = albumData.albumArtist
+                                            queueActionDialog.albumTitle = albumData.title
+                                            queueActionDialog.startIndex = startIndex
+                                            
+                                            // Position dialog at album center
+                                            var globalPos = albumContainer.mapToGlobal(albumContainer.width / 2, albumContainer.height / 2)
+                                            queueActionDialog.x = globalPos.x - queueActionDialog.width / 2
+                                            queueActionDialog.y = globalPos.y - queueActionDialog.height / 2
+                                            
+                                            queueActionDialog.open()
+                                        } else if (SettingsManager && MediaPlayer) {
+                                            // Apply the configured action
+                                            switch (SettingsManager.queueActionDefault) {
+                                                case SettingsManager.Replace:
+                                                    MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, startIndex);
+                                                    break;
+                                                case SettingsManager.Insert:
+                                                    MediaPlayer.playAlbumNext(albumData.albumArtist, albumData.title);
+                                                    break;
+                                                case SettingsManager.Append:
+                                                    MediaPlayer.playAlbumLast(albumData.albumArtist, albumData.title);
+                                                    break;
+                                                case SettingsManager.Ask:
+                                                    // If Ask but queue not modified, default to replace
+                                                    MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, startIndex);
+                                                    break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            MenuItem {
+                                text: "Play Next"
+                                onTriggered: {
+                                    if (albumData && MediaPlayer) {
+                                        MediaPlayer.playAlbumNext(albumData.albumArtist, albumData.title)
+                                    }
+                                }
+                            }
+                            
+                            MenuItem {
+                                text: "Play Last"
+                                onTriggered: {
+                                    if (albumData && MediaPlayer) {
+                                        MediaPlayer.playAlbumLast(albumData.albumArtist, albumData.title)
+                                    }
+                                }
                             }
                         }
                     }
@@ -672,8 +940,8 @@ Item {
                         ShaderEffectSource {
                             id: reflection
                             anchors.fill: parent
-                            sourceItem: albumContainer  // Always keep the source
-                            visible: absDistance < 800  // Cover all visible albums in max width
+                            sourceItem: root.isDestroying ? null : albumContainer  // Clear source on destruction
+                            visible: !root.isDestroying && absDistance < 800  // Cover all visible albums in max width
                             live: false  // Static reflection for better performance
                             recursive: false
                             // Capture the bottom portion of the album for reflection
@@ -685,11 +953,17 @@ Item {
                                 }
                             ]
                             
+                            // Clear sourceItem when component is destroyed
+                            Component.onDestruction: {
+                                sourceItem = null
+                            }
+                            
                             // Update reflection when album image changes
                             Connections {
-                                target: albumImage
+                                target: root.isDestroying ? null : albumImage
+                                enabled: !root.isDestroying
                                 function onStatusChanged() {
-                                    if (albumImage.status === Image.Ready) {
+                                    if (!root.isDestroying && albumImage && albumImage.status === Image.Ready && reflection) {
                                         reflection.scheduleUpdate()
                                     }
                                 }

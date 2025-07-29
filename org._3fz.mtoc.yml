@@ -1,6 +1,6 @@
 app-id: org._3fz.mtoc
 runtime: org.kde.Platform
-runtime-version: '6.7'
+runtime-version: '6.9'
 sdk: org.kde.Sdk
 command: mtoc_app
 finish-args:
@@ -10,19 +10,34 @@ finish-args:
   - --share=ipc
   - --device=dri
   
+  # GPU acceleration support
+  - --device=all
+  - --share=network
+  
+  # Environment variables for Qt rendering
+  # Allow runtime to choose best backend (OpenGL/Vulkan)
+  - --env=QT_QPA_PLATFORMTHEME=kde
+  
+  # AMD GPU optimization
+  - --env=AMD_VULKAN_ICD=RADV
+  - --env=MESA_LOADER_DRIVER_OVERRIDE=radeonsi
+  
   # Audio
   - --socket=pulseaudio
   
   # File access - Music directory and file chooser portal
-  - --filesystem=xdg-music:ro
-  - --filesystem=host
+  - --filesystem=xdg-music:rw
+  - --filesystem=xdg-documents:rw
+  - --filesystem=home:ro
+  - --filesystem=xdg-config/mtoc:create
   
   # D-Bus access for MPRIS
   - --talk-name=org.mpris.MediaPlayer2.mtoc
   - --own-name=org.mpris.MediaPlayer2.mtoc
   
-  # Required for file dialogs
+  # Required for file dialogs and document portal
   - --talk-name=org.freedesktop.portal.FileChooser
+  - --talk-name=org.freedesktop.portal.Documents
 
 cleanup:
   - /include
@@ -60,8 +75,9 @@ modules:
       - /lib/pkgconfig
       - '*.la'
 
+  # Add mesa-utils for debugging
   - name: mtoc
-    buildsystem: cmake-ninja
+    buildsystem: cmake
     config-opts:
       - -DCMAKE_BUILD_TYPE=Release
     sources:

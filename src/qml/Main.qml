@@ -18,6 +18,12 @@ ApplicationWindow {
     // Save state when window is closing
     onClosing: function(close) {
         console.log("Main.qml: Window closing, saving playback state");
+        
+        // Close all child windows first
+        if (libraryPane && libraryPane.closeAllWindows) {
+            libraryPane.closeAllWindows();
+        }
+        
         if (MediaPlayer) {
             MediaPlayer.saveState();
         }
@@ -36,7 +42,7 @@ ApplicationWindow {
             // No need to hide anything
         }
         
-        onResizeCompleted: {
+        onResizeCompleted: function(newWidth, newHeight) {
             // Apply new dimensions to content
             mainContent.width = newWidth
             mainContent.height = newHeight
@@ -119,6 +125,10 @@ ApplicationWindow {
     // Restore playback state when application is fully loaded
     Component.onCompleted: {
         console.log("Main.qml: Window loaded");
+        
+        // Give focus to library pane for keyboard navigation
+        libraryPane.forceActiveFocus();
+        
         // Wait for MediaPlayer to be ready before restoring state
         if (MediaPlayer.isReady) {
             console.log("Main.qml: MediaPlayer is ready, restoring playback state");
@@ -127,6 +137,14 @@ ApplicationWindow {
             console.log("Main.qml: MediaPlayer not ready yet, waiting...");
             // MediaPlayer will handle restoration when it becomes ready
             MediaPlayer.restoreState();
+        }
+    }
+    
+    // Global keyboard shortcut for search
+    Shortcut {
+        sequence: StandardKey.Find  // Ctrl+F on Linux, Cmd+F on macOS
+        onActivated: {
+            libraryPane.focusSearchBar()
         }
     }
 }

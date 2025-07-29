@@ -6,6 +6,7 @@
 #include <QDebug>
 #include <QVariant>
 #include <QMutexLocker>
+#include <QThread>
 
 namespace Mtoc {
 
@@ -482,6 +483,7 @@ bool DatabaseManager::deleteTracksByFolderPath(const QString& folderPath)
 
 QVariantMap DatabaseManager::getTrack(int trackId)
 {
+    QMutexLocker locker(&m_databaseMutex);
     QVariantMap track;
     if (!m_db.isOpen()) return track;
     
@@ -521,6 +523,7 @@ QVariantList DatabaseManager::getTracksByAlbumAndArtist(const QString& albumTitl
 {
     // qDebug() << "[DatabaseManager::getTracksByAlbumAndArtist] Called with album:" << albumTitle << "artist:" << albumArtistName;
     
+    QMutexLocker locker(&m_databaseMutex);
     QVariantList tracks;
     if (!m_db.isOpen()) {
         qWarning() << "[DatabaseManager::getTracksByAlbumAndArtist] Database is not open!";
@@ -556,6 +559,7 @@ QVariantList DatabaseManager::getTracksByAlbumAndArtist(const QString& albumTitl
             track["trackNumber"] = query.value("track_number");
             track["discNumber"] = query.value("disc_number");
             track["duration"] = query.value("duration");
+            track["fileSize"] = query.value("file_size");
             tracks.append(track);
         }
     } else {
@@ -563,6 +567,119 @@ QVariantList DatabaseManager::getTracksByAlbumAndArtist(const QString& albumTitl
         logError("Get tracks by album and artist", query);
     }
     return tracks;
+}
+
+QVariantList DatabaseManager::getAllTracks(int limit, int offset)
+{
+    QVariantList tracks;
+    
+    // Check if we're in the main thread or a worker thread
+    bool isMainThread = (QThread::currentThread() == this->thread());
+    QSqlDatabase db;
+    QString connectionName;
+    
+    if (isMainThread) {
+        // Use the main connection with mutex protection
+        QMutexLocker locker(&m_databaseMutex);
+        if (!m_db.isOpen()) {
+            qWarning() << "[DatabaseManager::getAllTracks] Database is not open!";
+            return tracks;
+        }
+        db = m_db;
+    } else {
+        // Create a thread-specific connection for background threads
+        connectionName = QString("MtocThread_%1").arg(quintptr(QThread::currentThreadId()));
+        if (QSqlDatabase::contains(connectionName)) {
+            db = QSqlDatabase::database(connectionName);
+        } else {
+            db = createThreadConnection(connectionName);
+        }
+        
+        if (!db.isOpen()) {
+            qWarning() << "[DatabaseManager::getAllTracks] Failed to open thread database!";
+            return tracks;
+        }
+    }
+    
+    QSqlQuery query(db);
+    QString queryStr = 
+        "SELECT t.*, a.name as artist_name, al.title as album_title, "
+        "aa.name as album_artist_name "
+        "FROM tracks t "
+        "LEFT JOIN artists a ON t.artist_id = a.id "
+        "LEFT JOIN albums al ON t.album_id = al.id "
+        "LEFT JOIN album_artists aa ON al.album_artist_id = aa.id "
+        "WHERE t.title IS NOT NULL AND t.title != '' "
+        "AND (a.name IS NOT NULL AND a.name != '' OR t.artist_id IS NULL) "
+        "ORDER BY aa.name COLLATE NOCASE, al.title COLLATE NOCASE, "
+        "t.disc_number, t.track_number, t.title COLLATE NOCASE";
+    
+    if (limit > 0) {
+        queryStr += " LIMIT :limit";
+        if (offset > 0) {
+            queryStr += " OFFSET :offset";
+        }
+    }
+    
+    query.prepare(queryStr);
+    
+    if (limit > 0) {
+        query.bindValue(":limit", limit);
+        if (offset > 0) {
+            query.bindValue(":offset", offset);
+        }
+    }
+    
+    if (query.exec()) {
+        while (query.next()) {
+            QVariantMap track;
+            track["id"] = query.value("id");
+            track["filePath"] = query.value("file_path");
+            track["title"] = query.value("title");
+            track["artist"] = query.value("artist_name");
+            track["album"] = query.value("album_title");
+            track["albumArtist"] = query.value("album_artist_name");
+            track["genre"] = query.value("genre");
+            track["year"] = query.value("year");
+            track["trackNumber"] = query.value("track_number");
+            track["discNumber"] = query.value("disc_number");
+            track["duration"] = query.value("duration");
+            track["fileSize"] = query.value("file_size");
+            track["lastPlayed"] = query.value("last_played");
+            track["playCount"] = query.value("play_count");
+            track["rating"] = query.value("rating");
+            tracks.append(track);
+        }
+    } else {
+        qWarning() << "[DatabaseManager::getAllTracks] Query execution failed!";
+        logError("Get all tracks", query);
+    }
+    
+    return tracks;
+}
+
+int DatabaseManager::getTrackCount()
+{
+    if (!m_db.isOpen()) {
+        qWarning() << "[DatabaseManager::getTrackCount] Database is not open!";
+        return 0;
+    }
+    
+    QSqlQuery query(m_db);
+    // Match the filtering criteria used in getAllTracks
+    query.prepare(
+        "SELECT COUNT(*) FROM tracks t "
+        "LEFT JOIN artists a ON t.artist_id = a.id "
+        "WHERE t.title IS NOT NULL AND t.title != '' "
+        "AND (a.name IS NOT NULL AND a.name != '' OR t.artist_id IS NULL)"
+    );
+    
+    if (query.exec() && query.next()) {
+        return query.value(0).toInt();
+    }
+    
+    logError("Get track count", query);
+    return 0;
 }
 
 int DatabaseManager::insertOrGetArtist(const QString& artistName)
@@ -946,6 +1063,25 @@ int DatabaseManager::getTotalAlbums()
     return 0;
 }
 
+int DatabaseManager::getTotalAlbumArtists()
+{
+    if (!m_db.isOpen()) return 0;
+    
+    QSqlQuery query(m_db);
+    query.prepare("SELECT COUNT(*) FROM album_artists");
+    
+    if (!query.exec()) {
+        qWarning() << "Failed to get album artist count:" << query.lastError().text();
+        return 0;
+    }
+    
+    if (query.next()) {
+        return query.value(0).toInt();
+    }
+    
+    return 0;
+}
+
 int DatabaseManager::getTotalArtists()
 {
     if (!m_db.isOpen()) return 0;
@@ -970,7 +1106,13 @@ qint64 DatabaseManager::getTotalDuration()
     if (!m_db.isOpen()) return 0;
     
     QSqlQuery query(m_db);
-    query.exec("SELECT SUM(duration) FROM tracks");
+    // Match the filtering criteria used in getAllTracks
+    query.exec(
+        "SELECT SUM(t.duration) FROM tracks t "
+        "LEFT JOIN artists a ON t.artist_id = a.id "
+        "WHERE t.title IS NOT NULL AND t.title != '' "
+        "AND (a.name IS NOT NULL AND a.name != '' OR t.artist_id IS NULL)"
+    );
     
     if (query.next()) {
         return query.value(0).toLongLong();
@@ -1177,11 +1319,29 @@ QSqlDatabase DatabaseManager::createThreadConnection(const QString& connectionNa
     query.exec("PRAGMA mmap_size = 268435456");
     query.exec("PRAGMA page_size = 4096");
     
+    // Force WAL checkpoint to ensure this connection sees all committed data
+    query.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+    
+    // Enable read uncommitted to see latest data from other connections
+    query.exec("PRAGMA read_uncommitted = 1");
+    
+    qDebug() << "[DatabaseManager] Created thread connection:" << connectionName 
+             << "WAL checkpoint result:" << query.lastError().text();
+    
     return db;
 }
 
 void DatabaseManager::removeThreadConnection(const QString& connectionName)
 {
+    // Get the database connection
+    {
+        QSqlDatabase db = QSqlDatabase::database(connectionName, false);
+        if (db.isValid() && db.isOpen()) {
+            // Close the connection before removing it
+            db.close();
+        }
+    }
+    // Remove the connection from Qt's registry
     QSqlDatabase::removeDatabase(connectionName);
 }
 
