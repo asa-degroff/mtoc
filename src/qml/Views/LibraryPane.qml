@@ -449,18 +449,18 @@ Item {
     
     // Function to build artist name to index mapping for O(1) lookups
     function updateArtistIndexMapping() {
-        console.log("updateArtistIndexMapping called")
+        //console.log("updateArtistIndexMapping called")
         var mapping = {}
         var artists = LibraryManager.artistModel
-        console.log("updateArtistIndexMapping: Total artists:", artists.length)
+        //console.log("updateArtistIndexMapping: Total artists:", artists.length)
         for (var i = 0; i < artists.length; i++) {
             if (artists[i] && artists[i].name) {
                 mapping[artists[i].name] = i
             }
         }
         artistNameToIndex = mapping
-        console.log("updateArtistIndexMapping: Mapping complete, sample entries:", 
-                   Object.keys(mapping).slice(0, 3).map(function(k) { return k + ":" + mapping[k] }).join(", "))
+        // console.log("updateArtistIndexMapping: Mapping complete, sample entries:", 
+        //            Object.keys(mapping).slice(0, 3).map(function(k) { return k + ":" + mapping[k] }).join(", "))
     }
     
     // Function to build album ID to index mapping for O(1) lookups
