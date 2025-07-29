@@ -48,6 +48,70 @@ Item {
         }
     }
     
+    // Shared context menu for all album items
+    StyledMenu {
+        id: sharedAlbumContextMenu
+        property var currentAlbumData: null
+        
+        MenuItem {
+            text: "Play"
+            onTriggered: {
+                if (sharedAlbumContextMenu.currentAlbumData) {
+                    var albumData = sharedAlbumContextMenu.currentAlbumData
+                    // If shuffle is enabled, start with a random track instead of the first
+                    var startIndex = 0;
+                    if (MediaPlayer && MediaPlayer.shuffleEnabled && albumData.trackCount > 0) {
+                        startIndex = Math.floor(Math.random() * albumData.trackCount);
+                    }
+                    
+                    // Check if we should show the dialog
+                    if (SettingsManager && MediaPlayer && SettingsManager.queueActionDefault === SettingsManager.Ask && MediaPlayer.isQueueModified) {
+                        // Show dialog for "Ask every time" setting when queue is modified
+                        queueActionDialog.albumArtist = albumData.albumArtist
+                        queueActionDialog.albumTitle = albumData.title
+                        queueActionDialog.startIndex = startIndex
+                        queueActionDialog.open()
+                    } else if (SettingsManager && MediaPlayer) {
+                        // Apply the configured action
+                        switch (SettingsManager.queueActionDefault) {
+                            case SettingsManager.Replace:
+                                MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, startIndex);
+                                break;
+                            case SettingsManager.Insert:
+                                MediaPlayer.playAlbumNext(albumData.albumArtist, albumData.title);
+                                break;
+                            case SettingsManager.Append:
+                                MediaPlayer.playAlbumLast(albumData.albumArtist, albumData.title);
+                                break;
+                            case SettingsManager.Ask:
+                                // If Ask but queue not modified, default to replace
+                                MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, startIndex);
+                                break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        MenuItem {
+            text: "Play Next"
+            onTriggered: {
+                if (sharedAlbumContextMenu.currentAlbumData && MediaPlayer) {
+                    MediaPlayer.playAlbumNext(sharedAlbumContextMenu.currentAlbumData.albumArtist, sharedAlbumContextMenu.currentAlbumData.title)
+                }
+            }
+        }
+        
+        MenuItem {
+            text: "Play Last"
+            onTriggered: {
+                if (sharedAlbumContextMenu.currentAlbumData && MediaPlayer) {
+                    MediaPlayer.playAlbumLast(sharedAlbumContextMenu.currentAlbumData.albumArtist, sharedAlbumContextMenu.currentAlbumData.title)
+                }
+            }
+        }
+    }
+    
     Component.onCompleted: {
         updateSortedIndices()
         // Restore carousel position after indices are sorted
@@ -704,27 +768,47 @@ Item {
                 
                 // Handle delegate recycling with proper state reset
                 ListView.onReused: {
-                    // Reset all state when delegate is recycled
-                    albumImage.source = ""  // Clear old image first
-                    
-                    // Force property bindings to re-evaluate
-                    Qt.callLater(function() {
-                        if (!root.isDestroying && albumData) {
-                            // Re-bind the image source after clearing
-                            albumImage.source = Qt.binding(function() {
-                                return (albumData && albumData.hasArt && albumData.id) ? 
-                                    "image://albumart/" + albumData.id + "/thumbnail/400" : ""
-                            })
-                        }
-                    })
-                    
                     // Reset any animation states
                     if (snapAnimation.running) snapAnimation.stop()
                     
                     // Clear reflection source to prevent stale reflections
-                    if (reflection && reflection.sourceItem) {
+                    if (reflection) {
                         reflection.sourceItem = null
-                        reflection.sourceItem = albumContainer
+                        // Re-apply sourceItem after clearing to ensure proper binding
+                        Qt.callLater(function() {
+                            if (!root.isDestroying && reflection && absDistance < 800) {
+                                reflection.sourceItem = albumContainer
+                            }
+                        })
+                    }
+                    
+                    // Force albumData to re-evaluate by triggering the binding
+                    var tempIndex = albumIndex
+                    albumIndex = -1
+                    albumIndex = tempIndex
+                }
+                
+                // Clean up when delegate is about to be recycled
+                ListView.onRemove: SequentialAnimation {
+                    PropertyAction { target: delegateItem; property: "ListView.delayRemove"; value: true }
+                    ScriptAction {
+                        script: {
+                            // Clear all references before removal
+                            if (reflection) {
+                                reflection.sourceItem = null
+                            }
+                        }
+                    }
+                    PropertyAction { target: delegateItem; property: "ListView.delayRemove"; value: false }
+                }
+                
+                Component.onDestruction: {
+                    // Final cleanup
+                    if (reflection) {
+                        reflection.sourceItem = null
+                    }
+                    if (albumContextMenu) {
+                        albumContextMenu.close()
                     }
                 }
                 
@@ -950,8 +1034,9 @@ Item {
                                     listView.currentIndex = index
                                     root.albumClicked(albumData)
                                 } else if (mouse.button === Qt.RightButton) {
-                                    // Show context menu
-                                    albumContextMenu.popup()
+                                    // Show shared context menu
+                                    sharedAlbumContextMenu.currentAlbumData = albumData
+                                    sharedAlbumContextMenu.popup()
                                 }
                             }
                             onDoubleClicked: function(mouse) {
@@ -996,73 +1081,6 @@ Item {
                                 }
                             }
                         }
-                        
-                        StyledMenu {
-                            id: albumContextMenu
-                            
-                            MenuItem {
-                                text: "Play"
-                                onTriggered: {
-                                    if (albumData) {
-                                        // If shuffle is enabled, start with a random track instead of the first
-                                        var startIndex = 0;
-                                        if (MediaPlayer && MediaPlayer.shuffleEnabled && albumData.trackCount > 0) {
-                                            startIndex = Math.floor(Math.random() * albumData.trackCount);
-                                        }
-                                        
-                                        // Check if we should show the dialog
-                                        if (SettingsManager && MediaPlayer && SettingsManager.queueActionDefault === SettingsManager.Ask && MediaPlayer.isQueueModified) {
-                                            // Show dialog for "Ask every time" setting when queue is modified
-                                            queueActionDialog.albumArtist = albumData.albumArtist
-                                            queueActionDialog.albumTitle = albumData.title
-                                            queueActionDialog.startIndex = startIndex
-                                            
-                                            // Position dialog at album center
-                                            var globalPos = albumContainer.mapToGlobal(albumContainer.width / 2, albumContainer.height / 2)
-                                            queueActionDialog.x = globalPos.x - queueActionDialog.width / 2
-                                            queueActionDialog.y = globalPos.y - queueActionDialog.height / 2
-                                            
-                                            queueActionDialog.open()
-                                        } else if (SettingsManager && MediaPlayer) {
-                                            // Apply the configured action
-                                            switch (SettingsManager.queueActionDefault) {
-                                                case SettingsManager.Replace:
-                                                    MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, startIndex);
-                                                    break;
-                                                case SettingsManager.Insert:
-                                                    MediaPlayer.playAlbumNext(albumData.albumArtist, albumData.title);
-                                                    break;
-                                                case SettingsManager.Append:
-                                                    MediaPlayer.playAlbumLast(albumData.albumArtist, albumData.title);
-                                                    break;
-                                                case SettingsManager.Ask:
-                                                    // If Ask but queue not modified, default to replace
-                                                    MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, startIndex);
-                                                    break;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            MenuItem {
-                                text: "Play Next"
-                                onTriggered: {
-                                    if (albumData && MediaPlayer) {
-                                        MediaPlayer.playAlbumNext(albumData.albumArtist, albumData.title)
-                                    }
-                                }
-                            }
-                            
-                            MenuItem {
-                                text: "Play Last"
-                                onTriggered: {
-                                    if (albumData && MediaPlayer) {
-                                        MediaPlayer.playAlbumLast(albumData.albumArtist, albumData.title)
-                                    }
-                                }
-                            }
-                        }
                     }
                     
                     // Reflection container
@@ -1094,17 +1112,6 @@ Item {
                             // Clear sourceItem when component is destroyed
                             Component.onDestruction: {
                                 sourceItem = null
-                            }
-                            
-                            // Update reflection when album image changes
-                            Connections {
-                                target: root.isDestroying ? null : albumImage
-                                enabled: !root.isDestroying
-                                function onStatusChanged() {
-                                    if (!root.isDestroying && albumImage && albumImage.status === Image.Ready && reflection) {
-                                        reflection.scheduleUpdate()
-                                    }
-                                }
                             }
                         }
                         
