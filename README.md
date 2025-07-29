@@ -23,6 +23,7 @@ A responsive search function finds artists, albums, and tracks, jumping to and s
 
 ### Library Management
 The library editor lets you select one or multiple directories to scan for music, and optionally specify additional directories for .m3u playlist files. 
+#### Note: The Flatpak build only supports access to ~/Music and its subdirectories. 
 - Supported formats: MP3, MP4/M4A (including iTunes-encoded AAC and ALAC), FLAC, OGG Vorbis, Opus
 - Metadata extraction using TagLib 2.0
 - Embedded album artwork extraction
