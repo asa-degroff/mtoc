@@ -68,6 +68,7 @@ Item {
         snapIndexTimer.stop()
         centerAlbumTimer.stop()
         scrollEndTimer.stop()
+        gcTimer.stop()
     }
     
     // Timer to save position after user stops scrolling
@@ -76,7 +77,12 @@ Item {
         interval: 250  // Save 250ms after user stops scrolling
         running: false
         onTriggered: {
-            if (!isDestroying && selectedAlbum && selectedAlbum.id && LibraryManager) {
+            if (isDestroying) {
+                savePositionTimer.stop()
+                return
+            }
+            
+            if (selectedAlbum && selectedAlbum.id && LibraryManager) {
                 LibraryManager.saveCarouselPosition(selectedAlbum.id)
             }
         }
@@ -318,38 +324,45 @@ Item {
                 property int triggerCount: 0
                 
                 onTriggered: {
-                    if (!isDestroying) {
-                        triggerCount++
-                        
-                        // Force garbage collection by clearing unused image cache
-                        gc()
-                        
-                        // Every 5th trigger (15 seconds), do a more aggressive cleanup
-                        if (triggerCount % 5 === 0) {
-                            // Clear pixmap cache of items that are far from view
-                            var currentIdx = listView.currentIndex
-                            for (var i = 0; i < listView.count; i++) {
-                                if (Math.abs(i - currentIdx) > 10) {
-                                    // This delegate is far from view, its cache can be cleared
-                                    // The cache will be repopulated when needed
-                                }
+                    if (isDestroying || !root) {
+                        gcTimer.stop()
+                        return
+                    }
+                    
+                    triggerCount++
+                    
+                    // Force garbage collection by clearing unused image cache
+                    gc()
+                    
+                    // Every 5th trigger (15 seconds), do a more aggressive cleanup
+                    if (triggerCount % 5 === 0) {
+                        // Clear pixmap cache of items that are far from view
+                        var currentIdx = listView.currentIndex
+                        for (var i = 0; i < listView.count; i++) {
+                            if (Math.abs(i - currentIdx) > 10) {
+                                // This delegate is far from view, its cache can be cleared
+                                // The cache will be repopulated when needed
                             }
-                            
-                            // Log memory management action
-                            console.log("HorizontalAlbumBrowser: Aggressive garbage collection triggered")
                         }
+                        
+                        // Log memory management action
+                        console.log("HorizontalAlbumBrowser: Aggressive garbage collection triggered")
                     }
                 }
             }
             
             onMovementStarted: {
-                gcTimer.running = true
+                if (!isDestroying) {
+                    gcTimer.running = true
+                }
                 root.isUserScrolling = true
             }
             onMovementEnded: {
-                gcTimer.running = false
-                // Final cleanup after scrolling stops
-                gcTimer.triggered()
+                if (!isDestroying) {
+                    gcTimer.running = false
+                    // Final cleanup after scrolling stops
+                    gcTimer.triggered()
+                }
                 
                 // Emit signal when user scrolling stops and we have an album
                 if (root.isUserScrolling && root.selectedAlbum) {
@@ -409,8 +422,10 @@ Item {
                         snapAnimation.start()
                         
                         // Update current index after a short delay to ensure smooth animation
-                        snapIndexTimer.targetIndex = targetIndex
-                        snapIndexTimer.start()
+                        if (!isDestroying) {
+                            snapIndexTimer.targetIndex = targetIndex
+                            snapIndexTimer.start()
+                        }
                     }
                 }
             }
@@ -441,7 +456,12 @@ Item {
                 running: false
                 property int targetIndex: -1
                 onTriggered: {
-                    if (!isDestroying && targetIndex >= 0 && listView) {
+                    if (isDestroying || !root) {
+                        snapIndexTimer.stop()
+                        return
+                    }
+                    
+                    if (targetIndex >= 0 && listView) {
                         listView.currentIndex = targetIndex
                     }
                 }
@@ -453,7 +473,12 @@ Item {
                 interval: 100  // Wait for animation to complete
                 running: false
                 onTriggered: {
-                    if (!isDestroying && root.selectedAlbum) {
+                    if (isDestroying || !root) {
+                        centerAlbumTimer.stop()
+                        return
+                    }
+                    
+                    if (root.selectedAlbum) {
                         root.centerAlbumChanged(root.selectedAlbum)
                     }
                 }
@@ -483,8 +508,10 @@ Item {
                         snapAnimation.start()
                         
                         // Update current index
-                        snapIndexTimer.targetIndex = targetIndex
-                        snapIndexTimer.start()
+                        if (!isDestroying) {
+                            snapIndexTimer.targetIndex = targetIndex
+                            snapIndexTimer.start()
+                        }
                     } else if (!root.isSnapping && root.isUserScrolling && root.selectedAlbum) {
                         // If we're not snapping but finished scrolling, emit the signal
                         root.centerAlbumChanged(root.selectedAlbum)
@@ -502,11 +529,15 @@ Item {
                     }
                     
                     // Save position after a delay
-                    savePositionTimer.restart()
+                    if (!isDestroying) {
+                        savePositionTimer.restart()
+                    }
                     
                     // Emit centerAlbumChanged for mouse wheel and keyboard navigation
                     // Use a timer to debounce and ensure it fires after the animation
-                    centerAlbumTimer.restart()
+                    if (!isDestroying) {
+                        centerAlbumTimer.restart()
+                    }
                 }
             }
             
@@ -564,10 +595,12 @@ Item {
                         }
                         
                         // Restart the scroll end detection timer
-                        scrollEndTimer.restart();
+                        if (!isDestroying) {
+                            scrollEndTimer.restart();
+                        }
                         
                         // Start velocity timer for momentum when gesture has velocity
-                        if (!velocityTimer.running && Math.abs(root.scrollVelocity) > 0) {
+                        if (!isDestroying && !velocityTimer.running && Math.abs(root.scrollVelocity) > 0) {
                             velocityTimer.start();
                         }
                     } else {
