@@ -7,6 +7,6 @@ Comment=Visual Music Library
 Exec=mtoc_app
 Icon=mtoc
 Terminal=false
-Categories=AudioVideo;Audio;Player;Qt;
+Categories=AudioVideo;Audio;Player;
 Keywords=Music;Player;Audio;Library;
 StartupNotify=true
