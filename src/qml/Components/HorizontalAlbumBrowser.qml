@@ -94,7 +94,7 @@ Item {
             
             // Try to restore to the same album if it still exists
             if (currentAlbumId > 0 && LibraryManager) {
-                var sourceAlbums = LibraryManager.albumModel
+                var sourceAlbums = (LibraryManager.albumModel) ? LibraryManager.albumModel : []
                 for (var i = 0; i < sourceAlbums.length; i++) {
                     if (sourceAlbums[i].id === currentAlbumId) {
                         jumpToAlbum(sourceAlbums[i])
@@ -111,7 +111,7 @@ Item {
     function updateSortedIndices() {
         if (isDestroying || !LibraryManager) return
         
-        var sourceAlbums = LibraryManager.albumModel
+        var sourceAlbums = (LibraryManager.albumModel) ? LibraryManager.albumModel : []
         // Create array of indices with album data for sorting
         var indexedAlbums = []
         for (var i = 0; i < sourceAlbums.length; i++) {
@@ -171,7 +171,7 @@ Item {
         var savedAlbumId = LibraryManager.loadCarouselPosition()
         if (savedAlbumId > 0) {
             // Find the album with this ID and jump to it
-            var sourceAlbums = LibraryManager.albumModel
+            var sourceAlbums = (LibraryManager.albumModel) ? LibraryManager.albumModel : []
             for (var i = 0; i < sourceAlbums.length; i++) {
                 if (sourceAlbums[i].id === savedAlbumId) {
                     console.log("HorizontalAlbumBrowser: Restoring carousel position to album:", sourceAlbums[i].title)
@@ -220,7 +220,7 @@ Item {
                 // Get the actual album to ensure it still exists
                 var albumIndex = sortedAlbumIndices[sortedIndex]
                 if (LibraryManager) {
-                    var sourceAlbums = LibraryManager.albumModel
+                    var sourceAlbums = (LibraryManager.albumModel) ? LibraryManager.albumModel : []
                         if (albumIndex < sourceAlbums.length) {
                         var currentAlbum = sourceAlbums[albumIndex]
                         if (currentAlbum && currentAlbum.id === album.id) {
@@ -653,14 +653,20 @@ Item {
                 property int sortedIndex: index
                 property int albumIndex: sortedIndex < sortedAlbumIndices.length ? sortedAlbumIndices[sortedIndex] : -1
                 property var albumData: {
-                    if (root.isDestroying || albumIndex < 0 || !LibraryManager || !LibraryManager.albumModel) {
+                    if (root.isDestroying || albumIndex < 0 || !LibraryManager) {
                         return null
                     }
                     // Extra null check for delegate recycling
                     if (delegateItem === null || typeof delegateItem === "undefined") {
                         return null
                     }
-                    return albumIndex < LibraryManager.albumModel.length ? LibraryManager.albumModel[albumIndex] : null
+                    // Check if albumModel exists before accessing it
+                    var model = LibraryManager.albumModel
+                    if (!model || typeof model === "undefined") {
+                        return null
+                    }
+                    // Safe array access with bounds checking
+                    return albumIndex < model.length ? model[albumIndex] : null
                 }
                 
                 // Handle delegate recycling with proper state reset
@@ -858,7 +864,10 @@ Item {
                             source: {
                                 // Robust source binding with null checks
                                 if (!delegateItem || root.isDestroying) return ""
-                                if (!albumData || !albumData.hasArt || !albumData.id) return ""
+                                if (!albumData || typeof albumData === "undefined") return ""
+                                // Additional safety check for object properties
+                                if (typeof albumData.hasArt === "undefined" || !albumData.hasArt) return ""
+                                if (typeof albumData.id === "undefined" || !albumData.id) return ""
                                 // Force loading for target delegates or nearby visible items
                                 if (forceImageLoad || isVisible) {
                                     return "image://albumart/" + albumData.id + "/thumbnail/400"
