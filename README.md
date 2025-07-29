@@ -70,7 +70,7 @@ Frequent reads and minimal writes makes this an application that benefits from e
 ## Getting Started
 
 #### Note
-Official packages are currently only maintained for Fedora 41+. 
+Official packages are currently only maintained for Fedora 42+. 
 
 #### Dependencies
 - Qt6 >= 6.7 (Core, Quick, Qml, Multimedia, DBus, Concurrent, Widgets, Sql)
@@ -80,7 +80,7 @@ Official packages are currently only maintained for Fedora 41+.
 - pkg-config
 - C++17 compatible compiler
 
-#### Package Installation (Fedora 41+)
+#### Package Installation (Fedora 42+)
 
 ```bash
 # Add the copr repository:
