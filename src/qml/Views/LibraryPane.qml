@@ -396,8 +396,12 @@ Item {
         // Restore library pane state
         currentTab = SettingsManager.libraryActiveTab
         
-        // Restore selected album after a delay to ensure everything is loaded
-        if (SettingsManager.lastSelectedAlbumId) {
+        // Restore selected album or playlist after a delay to ensure everything is loaded
+        if (SettingsManager.lastSelectedWasPlaylist && SettingsManager.lastSelectedPlaylistName) {
+            Qt.callLater(function() {
+                restoreSelectedPlaylist(SettingsManager.lastSelectedPlaylistName)
+            })
+        } else if (SettingsManager.lastSelectedAlbumId) {
             Qt.callLater(function() {
                 restoreSelectedAlbum(SettingsManager.lastSelectedAlbumId)
             })
@@ -473,9 +477,19 @@ Item {
 
     onSelectedAlbumChanged: {
         try {
-            // Save selected album ID
-            if (selectedAlbum && selectedAlbum.id) {
-                SettingsManager.lastSelectedAlbumId = String(selectedAlbum.id)
+            // Save selected album/playlist state
+            if (selectedAlbum) {
+                if (selectedAlbum.isPlaylist) {
+                    // Save playlist selection
+                    SettingsManager.lastSelectedPlaylistName = selectedAlbum.title
+                    SettingsManager.lastSelectedWasPlaylist = true
+                    SettingsManager.lastSelectedAlbumId = ""  // Clear album ID
+                } else if (selectedAlbum.id) {
+                    // Save album selection
+                    SettingsManager.lastSelectedAlbumId = String(selectedAlbum.id)
+                    SettingsManager.lastSelectedWasPlaylist = false
+                    SettingsManager.lastSelectedPlaylistName = ""  // Clear playlist name
+                }
             }
             
             // Sync navigation data when album changes
@@ -3786,6 +3800,50 @@ Item {
             }
         } catch (error) {
             console.warn("Error restoring selected album:", error)
+        }
+    }
+    
+    function restoreSelectedPlaylist(playlistName) {
+        try {
+            if (!playlistName) return
+            
+            // Switch to playlist tab
+            currentTab = 1
+            
+            // Get playlists from PlaylistManager
+            var playlists = PlaylistManager.playlists
+            
+            // Find the playlist with matching name
+            for (var i = 0; i < playlists.length; i++) {
+                if (playlists[i] === playlistName) {
+                    // Create a playlist album object
+                    var playlistAlbum = {
+                        title: playlistName,
+                        albumArtist: "Playlist",
+                        artist: "Playlist",
+                        year: 0,
+                        trackCount: PlaylistManager.getPlaylistTrackCount(playlistName),
+                        genre: "",
+                        coverArtUrl: "",
+                        hasArt: false,
+                        isPlaylist: true
+                    }
+                    
+                    // Select the playlist
+                    selectedAlbum = playlistAlbum
+                    
+                    // Select it in the playlist view if it exists
+                    if (playlistView) {
+                        Qt.callLater(function() {
+                            playlistView.selectPlaylist(playlistName)
+                        })
+                    }
+                    
+                    break
+                }
+            }
+        } catch (error) {
+            console.warn("Error restoring selected playlist:", error)
         }
     }
     

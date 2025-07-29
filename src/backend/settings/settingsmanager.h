@@ -15,6 +15,8 @@ class SettingsManager : public QObject
     Q_PROPERTY(bool shuffleEnabled READ shuffleEnabled WRITE setShuffleEnabled NOTIFY shuffleEnabledChanged)
     Q_PROPERTY(int libraryActiveTab READ libraryActiveTab WRITE setLibraryActiveTab NOTIFY libraryActiveTabChanged)
     Q_PROPERTY(QString lastSelectedAlbumId READ lastSelectedAlbumId WRITE setLastSelectedAlbumId NOTIFY lastSelectedAlbumIdChanged)
+    Q_PROPERTY(QString lastSelectedPlaylistName READ lastSelectedPlaylistName WRITE setLastSelectedPlaylistName NOTIFY lastSelectedPlaylistNameChanged)
+    Q_PROPERTY(bool lastSelectedWasPlaylist READ lastSelectedWasPlaylist WRITE setLastSelectedWasPlaylist NOTIFY lastSelectedWasPlaylistChanged)
 
 public:
     enum QueueAction {
@@ -36,6 +38,8 @@ public:
     bool shuffleEnabled() const { return m_shuffleEnabled; }
     int libraryActiveTab() const { return m_libraryActiveTab; }
     QString lastSelectedAlbumId() const { return m_lastSelectedAlbumId; }
+    QString lastSelectedPlaylistName() const { return m_lastSelectedPlaylistName; }
+    bool lastSelectedWasPlaylist() const { return m_lastSelectedWasPlaylist; }
     
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -45,6 +49,8 @@ public:
     void setShuffleEnabled(bool enabled);
     void setLibraryActiveTab(int tab);
     void setLastSelectedAlbumId(const QString& albumId);
+    void setLastSelectedPlaylistName(const QString& playlistName);
+    void setLastSelectedWasPlaylist(bool wasPlaylist);
 
 signals:
     void queueActionDefaultChanged(QueueAction action);
@@ -54,6 +60,8 @@ signals:
     void shuffleEnabledChanged(bool enabled);
     void libraryActiveTabChanged(int tab);
     void lastSelectedAlbumIdChanged(const QString& albumId);
+    void lastSelectedPlaylistNameChanged(const QString& playlistName);
+    void lastSelectedWasPlaylistChanged(bool wasPlaylist);
 
 private:
     explicit SettingsManager(QObject *parent = nullptr);
@@ -72,6 +80,8 @@ private:
     bool m_shuffleEnabled;
     int m_libraryActiveTab;
     QString m_lastSelectedAlbumId;
+    QString m_lastSelectedPlaylistName;
+    bool m_lastSelectedWasPlaylist;
 };
 
 #endif // SETTINGSMANAGER_H

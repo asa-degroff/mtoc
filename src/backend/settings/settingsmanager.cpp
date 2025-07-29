@@ -89,6 +89,24 @@ void SettingsManager::setLastSelectedAlbumId(const QString& albumId)
     }
 }
 
+void SettingsManager::setLastSelectedPlaylistName(const QString& playlistName)
+{
+    if (m_lastSelectedPlaylistName != playlistName) {
+        m_lastSelectedPlaylistName = playlistName;
+        emit lastSelectedPlaylistNameChanged(playlistName);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setLastSelectedWasPlaylist(bool wasPlaylist)
+{
+    if (m_lastSelectedWasPlaylist != wasPlaylist) {
+        m_lastSelectedWasPlaylist = wasPlaylist;
+        emit lastSelectedWasPlaylistChanged(wasPlaylist);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -108,6 +126,8 @@ void SettingsManager::loadSettings()
     m_settings.beginGroup("LibraryPane");
     m_libraryActiveTab = m_settings.value("activeTab", 0).toInt();
     m_lastSelectedAlbumId = m_settings.value("lastSelectedAlbumId", "").toString();
+    m_lastSelectedPlaylistName = m_settings.value("lastSelectedPlaylistName", "").toString();
+    m_lastSelectedWasPlaylist = m_settings.value("lastSelectedWasPlaylist", false).toBool();
     m_settings.endGroup();
     
     qDebug() << "SettingsManager: Loaded settings - Queue action:" << m_queueActionDefault 
@@ -136,6 +156,8 @@ void SettingsManager::saveSettings()
     m_settings.beginGroup("LibraryPane");
     m_settings.setValue("activeTab", m_libraryActiveTab);
     m_settings.setValue("lastSelectedAlbumId", m_lastSelectedAlbumId);
+    m_settings.setValue("lastSelectedPlaylistName", m_lastSelectedPlaylistName);
+    m_settings.setValue("lastSelectedWasPlaylist", m_lastSelectedWasPlaylist);
     m_settings.endGroup();
     
     m_settings.sync();
