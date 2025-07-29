@@ -777,9 +777,10 @@ Item {
                     // Reset any animation states
                     if (snapAnimation.running) snapAnimation.stop()
                     
-                    // Clear reflection source to let binding re-evaluate naturally
+                    // Clear reflection and set to live mode temporarily for recycling
                     if (reflection) {
                         reflection.sourceItem = null
+                        reflection.live = true  // Enable live mode during recycling
                     }
                 }
                 
@@ -812,6 +813,21 @@ Item {
                 property real itemCenterX: x + width / 2 - listView.contentX
                 property real distance: itemCenterX - listView.viewCenterX
                 property real absDistance: Math.abs(distance)
+                
+                // Update reflection when position changes during recycling
+                onXChanged: {
+                    if (!root.isDestroying && reflection && reflection.live) {
+                        // Position has been updated, re-evaluate reflection
+                        reflection.sourceItem = (absDistance < 800) ? albumContainer : null
+                        // Set back to static mode after a delay
+                        Qt.callLater(function() {
+                            if (reflection && reflection.sourceItem) {
+                                reflection.live = false
+                                reflection.scheduleUpdate()
+                            }
+                        })
+                    }
+                }
                 
                 // Optimization: Skip expensive calculations for far-away items
                 property bool isNearCenter: absDistance < 800
@@ -1108,6 +1124,18 @@ Item {
                             // Clear sourceItem when component is destroyed
                             Component.onDestruction: {
                                 sourceItem = null
+                            }
+                        }
+                        
+                        // Watch for album image load completion to update reflection
+                        Connections {
+                            target: albumImage
+                            enabled: !root.isDestroying && reflection
+                            
+                            function onStatusChanged() {
+                                if (albumImage.status === Image.Ready && reflection && reflection.sourceItem) {
+                                    reflection.scheduleUpdate()
+                                }
                             }
                         }
                         
