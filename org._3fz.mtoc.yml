@@ -27,9 +27,8 @@ finish-args:
   
   # File access - Music directory and file chooser portal
   - --filesystem=xdg-music:rw
-  - --filesystem=xdg-documents:rw
   - --filesystem=home:ro
-  - --filesystem=xdg-config/mtoc:create
+  - --filesystem=xdg-config/mtoc
   
   # D-Bus access for MPRIS
   - --talk-name=org.mpris.MediaPlayer2.mtoc
@@ -41,7 +40,6 @@ finish-args:
 
 cleanup:
   - /include
-  - /lib/debug
   - /lib/pkgconfig
   - /share/pkgconfig
   - '*.la'
