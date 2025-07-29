@@ -130,10 +130,11 @@ void AlbumArtImageResponse::loadImage()
     }
     
     // For exact matches (thumbnail at 256 or full without specific size), check cache directly
-    QString cacheKey = needsScaling ? QString() : baseCacheKey;
+    QString cacheKey = needsScaling ? QString("%1_%2").arg(baseCacheKey).arg(actualSize) : baseCacheKey;
     
     QPixmap pixmap;
-    if (!cacheKey.isEmpty() && QPixmapCache::find(cacheKey, &pixmap)) {
+    // First check if we have the exact size cached
+    if (QPixmapCache::find(cacheKey, &pixmap)) {
         m_image = pixmap.toImage();
         return;
     }
@@ -143,6 +144,8 @@ void AlbumArtImageResponse::loadImage()
         // Scale from cached version
         m_image = pixmap.scaled(actualSize, actualSize, Qt::KeepAspectRatio, 
                               type == "thumbnail" ? Qt::FastTransformation : Qt::SmoothTransformation).toImage();
+        // Cache the scaled version too
+        QPixmapCache::insert(cacheKey, QPixmap::fromImage(m_image));
         return;
     }
     
@@ -162,6 +165,12 @@ void AlbumArtImageResponse::loadImage()
                 
                 // Cache the base pixmap first (at standard thumbnail size)
                 QPixmapCache::insert(baseCacheKey, QPixmap::fromImage(m_image));
+                
+                // Convert to more efficient format for thumbnails
+                if (m_image.format() != QImage::Format_RGB888 && m_image.format() != QImage::Format_RGB32) {
+                    // Convert to RGB format for better performance (no alpha channel needed for album art)
+                    m_image = m_image.convertToFormat(QImage::Format_RGB888);
+                }
                 
                 // Scale if specific size is requested
                 if (needsScaling) {
@@ -202,11 +211,15 @@ AlbumArtImageProvider::AlbumArtImageProvider(LibraryManager* libraryManager)
     , m_libraryManager(libraryManager)
 {
     m_threadPool = new QThreadPool(this);
-    // Set thread pool size based on CPU cores but limit to prevent resource exhaustion
+    // Set thread pool size based on CPU cores with better scaling
     int idealThreadCount = QThread::idealThreadCount();
-    int threadCount = qBound(2, idealThreadCount / 2, 4);
+    // Use more threads for better parallel loading, especially during fast scrolling
+    int threadCount = qBound(4, idealThreadCount, 8);  // Increased from 2-4 to 4-8
     m_threadPool->setMaxThreadCount(threadCount);
     m_threadPool->setExpiryTimeout(30000); // 30 seconds
+    
+    // Set higher priority for image loading threads
+    m_threadPool->setThreadPriority(QThread::HighPriority);
 }
 
 QQuickImageResponse *AlbumArtImageProvider::requestImageResponse(const QString &id, const QSize &requestedSize)
@@ -217,6 +230,3 @@ QQuickImageResponse *AlbumArtImageProvider::requestImageResponse(const QString &
 }
 
 } // namespace Mtoc
-
-// Include MOC file for Q_OBJECT class
-#include "albumartimageprovider.moc"

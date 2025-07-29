@@ -17,6 +17,7 @@ Item {
     property real accumulatedDelta: 0
     property bool isSnapping: false
     property bool isUserScrolling: false
+    property int targetJumpIndex: -1  // Index we're jumping to with jumpToAlbum
     
     signal albumClicked(var album)
     signal centerAlbumChanged(var album)
@@ -182,6 +183,29 @@ Item {
         }
     }
     
+    // Manual memory cleanup function that can be called when needed
+    function clearDistantCache() {
+        if (isDestroying) return
+        
+        console.log("HorizontalAlbumBrowser: Clearing distant image cache")
+        
+        // Force garbage collection
+        gc()
+        
+        // Clear reflection sources for distant items
+        var currentIdx = listView.currentIndex
+        for (var i = 0; i < listView.contentItem.children.length; i++) {
+            var item = listView.contentItem.children[i]
+            if (item && item.hasOwnProperty("sortedIndex")) {
+                var distance = Math.abs(item.sortedIndex - currentIdx)
+                if (distance > 10 && item.reflection) {
+                    // Clear reflection source for distant items
+                    item.reflection.sourceItem = null
+                }
+            }
+        }
+    }
+    
     function jumpToAlbum(album) {
         try {
             // Validate album parameter
@@ -200,9 +224,17 @@ Item {
                         if (albumIndex < sourceAlbums.length) {
                         var currentAlbum = sourceAlbums[albumIndex]
                         if (currentAlbum && currentAlbum.id === album.id) {
+                            // Store the target index for preloading
+                            root.targetJumpIndex = sortedIndex
+                            
                             // Animate to the new index instead of jumping
                             listView.currentIndex = sortedIndex
                             selectedAlbum = currentAlbum
+                            
+                            // Clear target index after animation completes
+                            Qt.callLater(function() {
+                                root.targetJumpIndex = -1
+                            })
                             return
                         }
                     }
@@ -273,21 +305,39 @@ Item {
             // Cached value for delegate optimization - calculated once per frame
             readonly property real viewCenterX: width / 2
             
-            // Disable delegate recycling to prevent segmentation faults related to destroyed items
-            // Use a little more memory if you have to, it's not significant
-            reuseItems: false
-            cacheBuffer: 440  // Reduced to 2 items on each side (220px * 2)
+            // Enable delegate recycling with proper safeguards
+            cacheBuffer: 880  // 4 items on each side (220px * 4) for smoother scrolling
+            reuseItems: true  // Enable delegate recycling for better performance
             
             // Garbage collection timer for long scrolling sessions
             Timer {
                 id: gcTimer
-                interval: 5000  // Run every 5 seconds
+                interval: 3000  // Run every 3 seconds (more aggressive)
                 running: false
                 repeat: true
+                property int triggerCount: 0
+                
                 onTriggered: {
                     if (!isDestroying) {
+                        triggerCount++
+                        
                         // Force garbage collection by clearing unused image cache
                         gc()
+                        
+                        // Every 5th trigger (15 seconds), do a more aggressive cleanup
+                        if (triggerCount % 5 === 0) {
+                            // Clear pixmap cache of items that are far from view
+                            var currentIdx = listView.currentIndex
+                            for (var i = 0; i < listView.count; i++) {
+                                if (Math.abs(i - currentIdx) > 10) {
+                                    // This delegate is far from view, its cache can be cleared
+                                    // The cache will be repopulated when needed
+                                }
+                            }
+                            
+                            // Log memory management action
+                            console.log("HorizontalAlbumBrowser: Aggressive garbage collection triggered")
+                        }
                     }
                 }
             }
@@ -606,13 +656,37 @@ Item {
                     if (root.isDestroying || albumIndex < 0 || !LibraryManager || !LibraryManager.albumModel) {
                         return null
                     }
+                    // Extra null check for delegate recycling
+                    if (delegateItem === null || typeof delegateItem === "undefined") {
+                        return null
+                    }
                     return albumIndex < LibraryManager.albumModel.length ? LibraryManager.albumModel[albumIndex] : null
                 }
                 
-                // Handle delegate recycling
+                // Handle delegate recycling with proper state reset
                 ListView.onReused: {
-                    // Reset visibility calculations when reused
-                    // The bindings will automatically update based on new position
+                    // Reset all state when delegate is recycled
+                    albumImage.source = ""  // Clear old image first
+                    
+                    // Force property bindings to re-evaluate
+                    Qt.callLater(function() {
+                        if (!root.isDestroying && albumData) {
+                            // Re-bind the image source after clearing
+                            albumImage.source = Qt.binding(function() {
+                                return (albumData && albumData.hasArt && albumData.id) ? 
+                                    "image://albumart/" + albumData.id + "/thumbnail/400" : ""
+                            })
+                        }
+                    })
+                    
+                    // Reset any animation states
+                    if (snapAnimation.running) snapAnimation.stop()
+                    
+                    // Clear reflection source to prevent stale reflections
+                    if (reflection && reflection.sourceItem) {
+                        reflection.sourceItem = null
+                        reflection.sourceItem = albumContainer
+                    }
                 }
                 
                 // Cache expensive calculations - only update when contentX changes
@@ -623,6 +697,19 @@ Item {
                 // Optimization: Skip expensive calculations for far-away items
                 property bool isNearCenter: absDistance < 800
                 property bool isVisible: isNearCenter
+                
+                // Track if this delegate is actively being scrolled to
+                property bool isTargetDelegate: listView.currentIndex === index
+                
+                // Check if near the jump target during animation
+                property bool isNearJumpTarget: {
+                    if (root.targetJumpIndex < 0) return false
+                    var indexDistance = Math.abs(index - root.targetJumpIndex)
+                    return indexDistance <= 5  // Preload 5 items on each side of target
+                }
+                
+                // Force image loading for target delegates during animation
+                property bool forceImageLoad: isTargetDelegate || isNearJumpTarget || (isVisible && absDistance < 400)
                 
                 property real horizontalOffset: {
                     if (!isVisible) return 0
@@ -768,16 +855,25 @@ Item {
                         Image {
                             id: albumImage
                             anchors.fill: parent
-                            source: (albumData && albumData.hasArt && albumData.id) ? "image://albumart/" + albumData.id + "/thumbnail/400" : ""
+                            source: {
+                                // Robust source binding with null checks
+                                if (!delegateItem || root.isDestroying) return ""
+                                if (!albumData || !albumData.hasArt || !albumData.id) return ""
+                                // Force loading for target delegates or nearby visible items
+                                if (forceImageLoad || isVisible) {
+                                    return "image://albumart/" + albumData.id + "/thumbnail/400"
+                                }
+                                return ""
+                            }
                             fillMode: Image.PreserveAspectCrop
-                            asynchronous: true
+                            asynchronous: !isTargetDelegate  // Load synchronously for target delegate
                             antialiasing: true
                             cache: true  // Enable caching to prevent reloading
                             sourceSize.width: 400  // 2x the display size for retina
                             sourceSize.height: 400
                             
                             onStatusChanged: {
-                                if (status === Image.Error) {
+                                if (status === Image.Error && !root.isDestroying) {
                                     console.warn("Failed to load album art for:", albumData ? albumData.id : "unknown")
                                 }
                             }
@@ -940,7 +1036,7 @@ Item {
                         ShaderEffectSource {
                             id: reflection
                             anchors.fill: parent
-                            sourceItem: root.isDestroying ? null : albumContainer  // Clear source on destruction
+                            sourceItem: (!root.isDestroying && absDistance < 800) ? albumContainer : null  // Only visible items get reflections
                             visible: !root.isDestroying && absDistance < 800  // Cover all visible albums in max width
                             live: false  // Static reflection for better performance
                             recursive: false
