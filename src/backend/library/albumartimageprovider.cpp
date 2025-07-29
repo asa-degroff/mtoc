@@ -6,49 +6,68 @@
 #include <QUrl>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QThread>
 
 namespace Mtoc {
 
-AlbumArtImageProvider::AlbumArtImageProvider(LibraryManager* libraryManager)
-    : QQuickImageProvider(QQuickImageProvider::Pixmap)
+// AlbumArtImageResponse implementation
+AlbumArtImageResponse::AlbumArtImageResponse(const QString &id, const QSize &requestedSize, LibraryManager* libraryManager)
+    : m_id(id)
+    , m_requestedSize(requestedSize)
     , m_libraryManager(libraryManager)
+{
+    setAutoDelete(false);
+}
+
+AlbumArtImageResponse::~AlbumArtImageResponse()
 {
 }
 
-QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, const QSize &requestedSize)
+QQuickTextureFactory *AlbumArtImageResponse::textureFactory() const
 {
-    // Add protection against concurrent access and invalid requests
-    static QMutex requestMutex;
-    QMutexLocker locker(&requestMutex);
+    return QQuickTextureFactory::textureFactoryForImage(m_image);
+}
+
+void AlbumArtImageResponse::run()
+{
+    if (m_cancelled) {
+        emit finished();
+        return;
+    }
     
-    // qDebug() << "[AlbumArtImageProvider::requestPixmap] Request for id:" << id;
+    loadImage();
     
+    if (!m_cancelled) {
+        emit finished();
+    }
+}
+
+void AlbumArtImageResponse::loadImage()
+{
     // Check if LibraryManager is still valid
     if (m_libraryManager.isNull()) {
-        qWarning() << "AlbumArtImageProvider: LibraryManager is null, cannot load album art for:" << id;
-        if (size) {
-            *size = QSize(1, 1);
-        }
-        QPixmap emptyPixmap(1, 1);
-        emptyPixmap.fill(Qt::transparent);
-        return emptyPixmap;
+        qWarning() << "AlbumArtImageProvider: LibraryManager is null, cannot load album art for:" << m_id;
+        m_image = QImage(1, 1, QImage::Format_ARGB32);
+        m_image.fill(Qt::transparent);
+        return;
     }
     
     // Get database manager through LibraryManager
     DatabaseManager* databaseManager = m_libraryManager->databaseManager();
     if (!databaseManager) {
-        qWarning() << "AlbumArtImageProvider: DatabaseManager is null, cannot load album art for:" << id;
-        if (size) {
-            *size = QSize(0, 0);
-        }
-        return QPixmap();
+        qWarning() << "AlbumArtImageProvider: DatabaseManager is null, cannot load album art for:" << m_id;
+        m_image = QImage(1, 1, QImage::Format_ARGB32);
+        m_image.fill(Qt::transparent);
+        return;
     }
     
     // The id format is "albumId/type/size" or "artist/album/type/size" where type is "thumbnail" or "full" and size is optional
-    QStringList parts = id.split('/');
+    QStringList parts = m_id.split('/');
     if (parts.isEmpty()) {
-        qWarning() << "AlbumArtImageProvider: Invalid image id:" << id;
-        return QPixmap();
+        qWarning() << "AlbumArtImageProvider: Invalid image id:" << m_id;
+        m_image = QImage(1, 1, QImage::Format_ARGB32);
+        m_image.fill(Qt::transparent);
+        return;
     }
     
     int albumId = 0;
@@ -80,27 +99,20 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
             albumId = databaseManager->getAlbumIdByArtistAndTitle(artist, album);
             if (albumId <= 0) {
                 qWarning() << "AlbumArtImageProvider: Album not found:" << artist << "-" << album;
-                // Return a valid empty pixmap instead of default constructed one
-                if (size) {
-                    *size = QSize(1, 1);
-                }
-                QPixmap emptyPixmap(1, 1);
-                emptyPixmap.fill(Qt::transparent);
-                return emptyPixmap;
+                m_image = QImage(1, 1, QImage::Format_ARGB32);
+                m_image.fill(Qt::transparent);
+                return;
             }
         } else {
             qWarning() << "AlbumArtImageProvider: Invalid album id:" << parts[0];
-            if (size) {
-                *size = QSize(1, 1);
-            }
-            QPixmap emptyPixmap(1, 1);
-            emptyPixmap.fill(Qt::transparent);
-            return emptyPixmap;
+            m_image = QImage(1, 1, QImage::Format_ARGB32);
+            m_image.fill(Qt::transparent);
+            return;
         }
     }
     
     // Determine the actual size to use
-    int actualSize = targetSize > 0 ? targetSize : (requestedSize.isValid() ? qMax(requestedSize.width(), requestedSize.height()) : 0);
+    int actualSize = targetSize > 0 ? targetSize : (m_requestedSize.isValid() ? qMax(m_requestedSize.width(), m_requestedSize.height()) : 0);
     
     // Two-tier cache system: only cache thumbnail (256) and full size
     // For other sizes, we'll scale from the nearest cached version
@@ -118,25 +130,23 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
     }
     
     // For exact matches (thumbnail at 256 or full without specific size), check cache directly
-    QString cacheKey = needsScaling ? QString() : baseCacheKey;
+    QString cacheKey = needsScaling ? QString("%1_%2").arg(baseCacheKey).arg(actualSize) : baseCacheKey;
     
     QPixmap pixmap;
-    if (!cacheKey.isEmpty() && QPixmapCache::find(cacheKey, &pixmap)) {
-        if (size) {
-            *size = pixmap.size();
-        }
-        return pixmap;
+    // First check if we have the exact size cached
+    if (QPixmapCache::find(cacheKey, &pixmap)) {
+        m_image = pixmap.toImage();
+        return;
     }
     
     // Try to find base cached version for scaling
     if (needsScaling && QPixmapCache::find(baseCacheKey, &pixmap)) {
         // Scale from cached version
-        pixmap = pixmap.scaled(actualSize, actualSize, Qt::KeepAspectRatio, 
-                              type == "thumbnail" ? Qt::FastTransformation : Qt::SmoothTransformation);
-        if (size) {
-            *size = pixmap.size();
-        }
-        return pixmap;
+        m_image = pixmap.scaled(actualSize, actualSize, Qt::KeepAspectRatio, 
+                              type == "thumbnail" ? Qt::FastTransformation : Qt::SmoothTransformation).toImage();
+        // Cache the scaled version too
+        QPixmapCache::insert(cacheKey, QPixmap::fromImage(m_image));
+        return;
     }
     
     // Load from database or file
@@ -144,44 +154,30 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
         // Load thumbnail from database
         QByteArray thumbnailData = databaseManager->getAlbumArtThumbnail(albumId);
         if (!thumbnailData.isEmpty()) {
-            QImage image;
-            if (image.loadFromData(thumbnailData)) {
-                // Validate image before creating pixmap
-                if (image.isNull() || image.width() <= 0 || image.height() <= 0) {
+            if (m_image.loadFromData(thumbnailData)) {
+                // Validate image
+                if (m_image.isNull() || m_image.width() <= 0 || m_image.height() <= 0) {
                     qWarning() << "AlbumArtImageProvider: Invalid image data for album:" << albumId;
-                    if (size) {
-                        *size = QSize(1, 1);
-                    }
-                    QPixmap emptyPixmap(1, 1);
-                    emptyPixmap.fill(Qt::transparent);
-                    return emptyPixmap;
-                }
-                
-                pixmap = QPixmap::fromImage(image);
-                
-                // Validate pixmap
-                if (pixmap.isNull()) {
-                    qWarning() << "AlbumArtImageProvider: Failed to create pixmap for album:" << albumId;
-                    if (size) {
-                        *size = QSize(1, 1);
-                    }
-                    QPixmap emptyPixmap(1, 1);
-                    emptyPixmap.fill(Qt::transparent);
-                    return emptyPixmap;
+                    m_image = QImage(1, 1, QImage::Format_ARGB32);
+                    m_image.fill(Qt::transparent);
+                    return;
                 }
                 
                 // Cache the base pixmap first (at standard thumbnail size)
-                QPixmapCache::insert(baseCacheKey, pixmap);
+                QPixmapCache::insert(baseCacheKey, QPixmap::fromImage(m_image));
+                
+                // Convert to more efficient format for thumbnails
+                if (m_image.format() != QImage::Format_RGB888 && m_image.format() != QImage::Format_RGB32) {
+                    // Convert to RGB format for better performance (no alpha channel needed for album art)
+                    m_image = m_image.convertToFormat(QImage::Format_RGB888);
+                }
                 
                 // Scale if specific size is requested
                 if (needsScaling) {
-                    pixmap = pixmap.scaled(actualSize, actualSize, Qt::KeepAspectRatio, Qt::FastTransformation);
+                    m_image = m_image.scaled(actualSize, actualSize, Qt::KeepAspectRatio, Qt::FastTransformation);
                 }
                 
-                if (size) {
-                    *size = pixmap.size();
-                }
-                return pixmap;
+                return;
             } else {
                 qWarning() << "AlbumArtImageProvider: Failed to load image data for album:" << albumId;
             }
@@ -190,34 +186,47 @@ QPixmap AlbumArtImageProvider::requestPixmap(const QString &id, QSize *size, con
         // Load full image from file
         QString imagePath = databaseManager->getAlbumArtPath(albumId);
         if (!imagePath.isEmpty()) {
-            pixmap.load(imagePath);
-            
-            if (!pixmap.isNull()) {
+            if (m_image.load(imagePath)) {
                 // Cache the base full-size pixmap
-                QPixmapCache::insert(baseCacheKey, pixmap);
+                QPixmapCache::insert(baseCacheKey, QPixmap::fromImage(m_image));
                 
                 // Scale if specific size is requested
                 if (needsScaling) {
-                    pixmap = pixmap.scaled(actualSize, actualSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                    m_image = m_image.scaled(actualSize, actualSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
                 }
                 
-                if (size) {
-                    *size = pixmap.size();
-                }
-                return pixmap;
+                return;
             }
         }
     }
     
-    // Return empty pixmap if no art found
-    // qDebug() << "[AlbumArtImageProvider::requestPixmap] No art found for id:" << id;
-    if (size) {
-        *size = QSize(1, 1);
-    }
-    QPixmap emptyPixmap(1, 1);
-    emptyPixmap.fill(Qt::transparent);
-    // qDebug() << "[AlbumArtImageProvider::requestPixmap] Returning empty pixmap for id:" << id;
-    return emptyPixmap;
+    // Return empty image if no art found
+    m_image = QImage(1, 1, QImage::Format_ARGB32);
+    m_image.fill(Qt::transparent);
+}
+
+// AlbumArtImageProvider implementation
+AlbumArtImageProvider::AlbumArtImageProvider(LibraryManager* libraryManager)
+    : QQuickAsyncImageProvider()
+    , m_libraryManager(libraryManager)
+{
+    m_threadPool = new QThreadPool(this);
+    // Set thread pool size based on CPU cores with better scaling
+    int idealThreadCount = QThread::idealThreadCount();
+    // Use more threads for better parallel loading, especially during fast scrolling
+    int threadCount = qBound(4, idealThreadCount, 8);  // Increased from 2-4 to 4-8
+    m_threadPool->setMaxThreadCount(threadCount);
+    m_threadPool->setExpiryTimeout(30000); // 30 seconds
+    
+    // Set higher priority for image loading threads
+    m_threadPool->setThreadPriority(QThread::HighPriority);
+}
+
+QQuickImageResponse *AlbumArtImageProvider::requestImageResponse(const QString &id, const QSize &requestedSize)
+{
+    AlbumArtImageResponse *response = new AlbumArtImageResponse(id, requestedSize, m_libraryManager);
+    m_threadPool->start(response);
+    return response;
 }
 
 } // namespace Mtoc

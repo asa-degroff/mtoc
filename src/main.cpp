@@ -121,13 +121,45 @@ int main(int argc, char *argv[])
         app.setWindowIcon(QIcon(":/resources/icons/mtoc-icon-512.png"));
     }
     
-    // Configure pixmap cache for album art
-    // Start with a conservative limit and monitor usage
-    int initialCacheSize = 128 * 1024; // 128MB initial limit
-    QPixmapCache::setCacheLimit(initialCacheSize);
+    // Configure pixmap cache for album art with dynamic sizing
+    // Get available system memory (this is a rough estimate)
+    qint64 totalMemory = 0;
+    
+#ifdef Q_OS_LINUX
+    QFile meminfo("/proc/meminfo");
+    if (meminfo.open(QIODevice::ReadOnly)) {
+        QString line = meminfo.readLine();
+        while (!line.isEmpty()) {
+            if (line.startsWith("MemTotal:")) {
+                QStringList parts = line.split(' ', Qt::SkipEmptyParts);
+                if (parts.size() >= 2) {
+                    totalMemory = parts[1].toLongLong() * 1024; // Convert from KB to bytes
+                    break;
+                }
+            }
+            line = meminfo.readLine();
+        }
+        meminfo.close();
+    }
+#endif
+    
+    // Calculate cache size based on available memory
+    // Use 5-10% of total memory for image cache, with min/max limits
+    int minCacheSize = 128 * 1024; // 128MB minimum
+    int maxCacheSize = 1024 * 1024; // 1GB maximum
+    int dynamicCacheSize = 256 * 1024; // Default 256MB
+    
+    if (totalMemory > 0) {
+        // Use 7.5% of total memory for cache
+        qint64 suggestedSize = totalMemory / 1024 * 75 / 1000; // 7.5% in KB
+        dynamicCacheSize = qBound(minCacheSize, static_cast<int>(suggestedSize), maxCacheSize);
+    }
+    
+    QPixmapCache::setCacheLimit(dynamicCacheSize);
     
     // Log cache configuration
-    qDebug() << "QPixmapCache configured with limit:" << initialCacheSize / 1024 << "MB";
+    qDebug() << "System memory:" << totalMemory / 1024 / 1024 << "MB";
+    qDebug() << "QPixmapCache configured with dynamic limit:" << dynamicCacheSize / 1024 << "MB";
 
     QQmlApplicationEngine engine;
 
