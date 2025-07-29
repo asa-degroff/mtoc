@@ -2018,42 +2018,29 @@ void MediaPlayer::restoreState()
             }
         }
         
-        // Check if we're restoring a playlist
+        // Check if we have a modified queue first (even if from a playlist)
         QString playlistName = state["playlistName"].toString();
-        if (!playlistName.isEmpty()) {
-            qDebug() << "MediaPlayer::restoreState - Restoring playlist:" << playlistName;
-            
-            // Use playPlaylist which will set up the queue properly
-            playPlaylist(playlistName, trackIndex);
-            
-            // Override the auto-play behavior to restore position instead
-            if (m_restoreConnection) {
-                disconnect(m_restoreConnection);
-            }
-            
-            m_restoreConnection = connect(m_audioEngine.get(), &AudioEngine::durationChanged, this, [this]() {
-                if (m_audioEngine->duration() > 0) {
-                    disconnect(m_restoreConnection);
-                    m_restoreConnection = QMetaObject::Connection();
-                    onTrackLoadedForRestore();
-                }
-            });
-            
-            return; // Don't continue to other restoration paths
-        }
-        
-        // If we have a modified queue, restore it
         if (queueModified && !queueData.isEmpty()) {
+            qDebug() << "MediaPlayer::restoreState - Restoring modified queue";
+            
             // Clear current queue and restore from saved data
             clearQueue();
+            
+            // If this modified queue originated from a playlist, preserve the playlist name
+            if (!playlistName.isEmpty()) {
+                if (m_currentPlaylistName != playlistName) {
+                    m_currentPlaylistName = playlistName;
+                    emit currentPlaylistNameChanged(m_currentPlaylistName);
+                }
+            }
             
             // Build the queue from saved data
             for (const auto& trackData : queueData) {
                 auto trackMap = trackData.toMap();
                 QString title = trackMap.value("title").toString();
-                QString filePath = trackMap.value("filePath").toString();
+                QString trackFilePath = trackMap.value("filePath").toString();
                 
-                if (filePath.isEmpty()) {
+                if (trackFilePath.isEmpty()) {
                     qWarning() << "Empty filePath for track:" << title;
                     continue;
                 }
@@ -2066,7 +2053,7 @@ void MediaPlayer::restoreState()
                 track->setAlbumArtist(trackMap.value("albumArtist").toString());
                 track->setTrackNumber(trackMap.value("trackNumber").toInt());
                 track->setDuration(trackMap.value("duration").toInt());
-                track->setFileUrl(QUrl::fromLocalFile(filePath));
+                track->setFileUrl(QUrl::fromLocalFile(trackFilePath));
                 
                 m_playbackQueue.append(track);
             }
@@ -2082,8 +2069,7 @@ void MediaPlayer::restoreState()
                 if (m_shuffleEnabled) {
                     generateShuffleOrder();
                     
-                    // After generating shuffle order, we need to find where our current track ended up
-                    // and update m_shuffleIndex to that position
+                    // After generating shuffle order, find where our current track ended up
                     if (!m_shuffleOrder.isEmpty() && m_currentQueueIndex >= 0) {
                         int shufflePos = m_shuffleOrder.indexOf(m_currentQueueIndex);
                         if (shufflePos >= 0) {
@@ -2094,24 +2080,123 @@ void MediaPlayer::restoreState()
                 
                 emit playbackQueueChanged();
                 
-                // Set up connection to handle when track is loaded
+                // Set up restoration connection before loading
                 if (m_restoreConnection) {
                     disconnect(m_restoreConnection);
                 }
                 
                 m_restoreConnection = connect(m_audioEngine.get(), &AudioEngine::durationChanged, this, [this]() {
                     if (m_audioEngine->duration() > 0) {
-                        // Track is loaded, disconnect and handle restoration
                         disconnect(m_restoreConnection);
                         m_restoreConnection = QMetaObject::Connection();
                         onTrackLoadedForRestore();
                     }
                 });
                 
-                // Load track without auto-playing
+                // Load the track WITHOUT auto-playing (false parameter)
+                Mtoc::Track* trackToRestore = m_playbackQueue[m_currentQueueIndex];
+                loadTrack(trackToRestore, false);
+            } else {
+                qWarning() << "MediaPlayer::restoreState - Invalid track index for modified queue";
+                clearRestorationState();
+            }
+            
+            return; // Don't continue to other restoration paths
+        }
+        
+        // Check if we're restoring a playlist (without modifications)
+        if (!playlistName.isEmpty()) {
+            qDebug() << "MediaPlayer::restoreState - Restoring playlist:" << playlistName;
+            
+            // Get playlist tracks from PlaylistManager
+            PlaylistManager* playlistManager = PlaylistManager::instance();
+            auto trackList = playlistManager->loadPlaylist(playlistName);
+            
+            if (trackList.isEmpty()) {
+                qWarning() << "No tracks found in playlist:" << playlistName;
+                clearRestorationState();
+                return;
+            }
+            
+            // Clear current queue
+            clearQueue();
+            
+            // Set the current playlist name
+            if (m_currentPlaylistName != playlistName) {
+                m_currentPlaylistName = playlistName;
+                emit currentPlaylistNameChanged(m_currentPlaylistName);
+            }
+            
+            // Build tracks from data and add to queue
+            for (const auto& trackData : trackList) {
+                auto trackMap = trackData.toMap();
+                QString trackTitle = trackMap.value("title").toString();
+                QString trackFilePath = trackMap.value("filePath").toString();
+                
+                if (trackFilePath.isEmpty()) {
+                    qWarning() << "Empty filePath for track:" << trackTitle;
+                    continue;
+                }
+                
+                // Create a new Track object from the data
+                Mtoc::Track* track = new Mtoc::Track(this);
+                track->setTitle(trackTitle);
+                track->setArtist(trackMap.value("artist").toString());
+                track->setAlbum(trackMap.value("album").toString());
+                track->setAlbumArtist(trackMap.value("albumArtist").toString());
+                track->setTrackNumber(trackMap.value("trackNumber").toInt());
+                track->setDuration(trackMap.value("duration").toInt());
+                track->setFileUrl(QUrl::fromLocalFile(trackFilePath));
+                
+                m_playbackQueue.append(track);
+            }
+            
+            // Clear the queue modified flag since this is a restored playlist
+            setQueueModified(false);
+            
+            // Ensure trackIndex is within bounds
+            trackIndex = qBound(0, trackIndex, m_playbackQueue.size() - 1);
+            
+            if (!m_playbackQueue.isEmpty()) {
+                m_currentQueueIndex = trackIndex;
+                
+                // Generate shuffle order if shuffle is enabled
+                if (m_shuffleEnabled) {
+                    generateShuffleOrder();
+                    
+                    // After generating shuffle order, find where our starting track ended up
+                    if (!m_shuffleOrder.isEmpty() && m_currentQueueIndex >= 0) {
+                        int shufflePos = m_shuffleOrder.indexOf(m_currentQueueIndex);
+                        if (shufflePos >= 0) {
+                            m_shuffleIndex = shufflePos;
+                        }
+                    }
+                }
+                
+                emit playbackQueueChanged();
+                
+                // Set up restoration connection before loading
+                if (m_restoreConnection) {
+                    disconnect(m_restoreConnection);
+                }
+                
+                m_restoreConnection = connect(m_audioEngine.get(), &AudioEngine::durationChanged, this, [this]() {
+                    if (m_audioEngine->duration() > 0) {
+                        disconnect(m_restoreConnection);
+                        m_restoreConnection = QMetaObject::Connection();
+                        onTrackLoadedForRestore();
+                    }
+                });
+                
+                // Load the track WITHOUT auto-playing (false parameter)
                 loadTrack(m_playbackQueue[trackIndex], false);
             }
-        } else if (!albumArtist.isEmpty() && !albumTitle.isEmpty()) {
+            
+            return; // Don't continue to other restoration paths
+        }
+        
+        // Check for album-based restoration
+        if (!albumArtist.isEmpty() && !albumTitle.isEmpty()) {
             // Load the album without auto-playing
             restoreAlbumByName(albumArtist, albumTitle, trackIndex, savedPosition);
         } else {
