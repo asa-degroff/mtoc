@@ -814,18 +814,60 @@ Item {
                 property real distance: itemCenterX - listView.viewCenterX
                 property real absDistance: Math.abs(distance)
                 
-                // Update reflection when position changes during recycling
+                // Update reflection when position changes
                 onXChanged: {
-                    if (!root.isDestroying && reflection && reflection.live) {
-                        // Position has been updated, re-evaluate reflection
-                        reflection.sourceItem = (absDistance < 800) ? albumContainer : null
-                        // Set back to static mode after a delay
-                        Qt.callLater(function() {
-                            if (reflection && reflection.sourceItem) {
-                                reflection.live = false
+                    if (!root.isDestroying && reflection) {
+                        var shouldHaveReflection = absDistance < 800
+                        var hasReflection = reflection.sourceItem !== null
+                        
+                        if (shouldHaveReflection !== hasReflection) {
+                            // State changed - update reflection
+                            reflection.sourceItem = shouldHaveReflection ? albumContainer : null
+                            
+                            // If we just enabled reflection and image is ready, schedule update
+                            if (shouldHaveReflection && reflection.sourceItem && albumImage.status === Image.Ready) {
                                 reflection.scheduleUpdate()
                             }
-                        })
+                        }
+                        
+                        // Set back to static mode if it was in live mode (from recycling)
+                        if (reflection.live && reflection.sourceItem) {
+                            Qt.callLater(function() {
+                                if (reflection) {
+                                    reflection.live = false
+                                }
+                            })
+                        }
+                    }
+                }
+                
+                // Watch ListView scrolling to update reflections
+                Connections {
+                    target: listView
+                    enabled: !root.isDestroying
+                    
+                    function onContentXChanged() {
+                        // When scrolling, check if this delegate's reflection state should change
+                        if (reflection) {
+                            var shouldHaveReflection = absDistance < 800
+                            var hasReflection = reflection.sourceItem !== null
+                            
+                            if (shouldHaveReflection !== hasReflection) {
+                                // State changed - update reflection
+                                reflection.sourceItem = shouldHaveReflection ? albumContainer : null
+                                
+                                // If enabling reflection and image is ready, update it
+                                if (shouldHaveReflection && reflection.sourceItem) {
+                                    if (albumImage.status === Image.Ready) {
+                                        reflection.scheduleUpdate()
+                                    }
+                                    // Also ensure it's not in live mode
+                                    if (reflection.live) {
+                                        reflection.live = false
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 
