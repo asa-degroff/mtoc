@@ -29,12 +29,12 @@
   <screenshots>
     <screenshot type="default">
       <caption>Main window showing library and now playing</caption>
-      <image>https://github.com/asa-degroff/mtoc/raw/main/resources/banner/main=screenshot.avif</image>
+      <image>https://github.com/asa-degroff/mtoc/raw/main/resources/banner/main=screenshot.png</image>
     </screenshot>
   </screenshots>
   <developer>
     <id>org._3fz</id>
-    <name>3fz</name>
+    <name>Asa DeGroff</name>
   </developer>
   <update_contact>asa@3fz.org</update_contact>
 </component>
