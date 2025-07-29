@@ -748,7 +748,10 @@ Item {
                 
                 // Get the actual album data from the model using sorted index
                 property int sortedIndex: index
-                property int albumIndex: sortedIndex < sortedAlbumIndices.length ? sortedAlbumIndices[sortedIndex] : -1
+                property int albumIndex: {
+                    if (sortedIndex < 0 || sortedIndex >= sortedAlbumIndices.length) return -1
+                    return sortedAlbumIndices[sortedIndex]
+                }
                 property var albumData: {
                     if (root.isDestroying || albumIndex < 0 || !LibraryManager) {
                         return null
@@ -768,28 +771,21 @@ Item {
                 
                 // Handle delegate recycling with proper state reset
                 ListView.onReused: {
+                    // Force update sortedIndex to match new index
+                    sortedIndex = index
+                    
                     // Reset any animation states
                     if (snapAnimation.running) snapAnimation.stop()
                     
-                    // Clear reflection source to prevent stale reflections
+                    // Clear reflection source to let binding re-evaluate naturally
                     if (reflection) {
                         reflection.sourceItem = null
-                        // Re-apply sourceItem after clearing to ensure proper binding
-                        Qt.callLater(function() {
-                            if (!root.isDestroying && reflection && absDistance < 800) {
-                                reflection.sourceItem = albumContainer
-                            }
-                        })
                     }
-                    
-                    // Force albumData to re-evaluate by triggering the binding
-                    var tempIndex = albumIndex
-                    albumIndex = -1
-                    albumIndex = tempIndex
                 }
                 
-                // Clean up when delegate is about to be recycled
-                ListView.onRemove: SequentialAnimation {
+                // Animation for cleaning up when delegate is removed
+                SequentialAnimation {
+                    id: removeAnimation
                     PropertyAction { target: delegateItem; property: "ListView.delayRemove"; value: true }
                     ScriptAction {
                         script: {
@@ -802,13 +798,13 @@ Item {
                     PropertyAction { target: delegateItem; property: "ListView.delayRemove"; value: false }
                 }
                 
+                // Clean up when delegate is about to be recycled
+                ListView.onRemove: removeAnimation.start()
+                
                 Component.onDestruction: {
                     // Final cleanup
                     if (reflection) {
                         reflection.sourceItem = null
-                    }
-                    if (albumContextMenu) {
-                        albumContextMenu.close()
                     }
                 }
                 
