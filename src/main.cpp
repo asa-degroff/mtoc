@@ -122,8 +122,8 @@ int main(int argc, char *argv[])
     }
     
     // Configure pixmap cache for album art
-    // Start with a conservative limit and monitor usage
-    int initialCacheSize = 128 * 1024; // 128MB initial limit
+    // Increased cache size for smoother scrolling performance
+    int initialCacheSize = 256 * 1024; // 256MB initial limit for smoother scrolling
     QPixmapCache::setCacheLimit(initialCacheSize);
     
     // Log cache configuration
