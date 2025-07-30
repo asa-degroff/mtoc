@@ -56,6 +56,19 @@
   </recommends>
 
   <releases>
+
+    <release version="2.0.1" date="2025-07-29">
+      <description>
+        <p>Fixed laggy image loading during fast scrolling in the album carousel</p>
+        <ul>
+          <li>Improved performance in album carousel with delegate recycling and improved connection handling</li>
+          <li>Implemented multithreaded asynchronous image response for higher performance thumbnail loading</li>
+          <li>Improved thumbnail size efficiency</li>
+          <li>Dynanic pixmap cache sizing based on available system memory for improved image loading performance</li>
+        </ul>
+      </description>
+    </release>
+
     <release version="2.0" date="2025-07-28">
       <description>
         <p>Functional overhaul expanding library management, playback features, and interface</p>
