@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.0.1.1
+Version:        2.0.1.2
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -52,6 +52,15 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %{_datadir}/pixmaps/%{name}.png
 
 %changelog
+* Wed Jul 30 2025 Asa DeGroff <asa@3fz.org> 2.0.1.2-1
+- manifest for local flatpak build (asa@3fz.org)
+- skip installation of removed SVG icon (asa@3fz.org)
+- added 64x64 icon and fixed typo (asa@3fz.org)
+- add installation of metainfo file to CMakeLists (asa@3fz.org)
+- fixes for metainfo and manifest (asa@3fz.org)
+- update metainfo and manifest (asa@3fz.org)
+- release notes in metainfo (asa@3fz.org)
+
 * Tue Jul 29 2025 Asa DeGroff <asa@3fz.org> 2.0.1.1-1
 - bump version in systeminfo (asa@3fz.org)
 
