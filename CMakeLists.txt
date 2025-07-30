@@ -132,6 +132,11 @@ if(UNIX AND NOT APPLE)
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/48x48/apps
         RENAME mtoc.png
     )
+
+    install(FILES resources/icons/mtoc-icon-64.png
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/64x64/apps
+        RENAME mtoc.png
+    )
     
     install(FILES resources/icons/mtoc-icon-128.png
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/128x128/apps

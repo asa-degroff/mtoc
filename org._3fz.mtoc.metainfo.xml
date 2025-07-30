@@ -64,7 +64,7 @@
           <li>Improved performance in album carousel with delegate recycling and improved connection handling</li>
           <li>Implemented multithreaded asynchronous image response for higher performance thumbnail loading</li>
           <li>Improved thumbnail size efficiency</li>
-          <li>Dynanic pixmap cache sizing based on available system memory for improved image loading performance</li>
+          <li>Dynamic pixmap cache sizing based on available system memory for improved image loading performance</li>
         </ul>
       </description>
     </release>
