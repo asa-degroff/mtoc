@@ -73,8 +73,12 @@ modules:
     config-opts:
       - -DCMAKE_BUILD_TYPE=Release
     sources:
-      - type: dir
-        path: .
+      - type: git
+        url: https://github.com/asa-degroff/mtoc.git
+        tag: mtoc-2.0.1-1
+        commit: ecd4df08b59ade282a537ac42c6c3075c1f39a56
+      - type: file
+        path: org._3fz.mtoc.metainfo.xml
     post-install:
       # Remove the original desktop file and icons installed by CMake
       - rm -f /app/share/applications/mtoc.desktop
