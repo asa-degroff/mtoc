@@ -153,12 +153,6 @@ if(UNIX AND NOT APPLE)
         RENAME mtoc.png
     )
     
-    # Keep SVG for scalable support
-    install(FILES resources/icons/app_icon.svg
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/scalable/apps
-        RENAME mtoc.svg
-    )
-    
     # Install 128x128 PNG in pixmaps for legacy support
     install(FILES resources/icons/mtoc-icon-128.png
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/pixmaps
