@@ -159,4 +159,9 @@ if(UNIX AND NOT APPLE)
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/pixmaps
         RENAME mtoc.png
     )
+    
+    # Install metainfo file
+    install(FILES org._3fz.mtoc.metainfo.xml
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/metainfo
+    )
 endif()
