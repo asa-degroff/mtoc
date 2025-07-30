@@ -282,7 +282,7 @@ MprisManager::MprisManager(MediaPlayer *mediaPlayer, QObject *parent)
     , m_mprisAdaptor(nullptr)
     , m_playerAdaptor(nullptr)
     , m_dbusConnection(QDBusConnection::sessionBus())
-    , m_serviceName("org.mpris.MediaPlayer2.mtoc")
+    , m_serviceName("org.mpris.MediaPlayer2.org._3fz.mtoc")
     , m_initialized(false)
 {
 }
