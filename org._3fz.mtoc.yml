@@ -3,8 +3,6 @@ runtime: org.kde.Platform
 runtime-version: '6.9'
 sdk: org.kde.Sdk
 command: mtoc_app
-rename-desktop-file: mtoc.desktop
-rename-icon: mtoc
 finish-args:
     # Display
     - --socket=wayland
@@ -27,7 +25,9 @@ finish-args:
     - --filesystem=xdg-music:rw
 
     # D-Bus access for MPRIS
+    - --talk-name=org.mpris.MediaPlayer2.mtoc
     - --own-name=org.mpris.MediaPlayer2.mtoc
+
 
 cleanup:
   - /include
@@ -35,6 +35,7 @@ cleanup:
   - /share/pkgconfig
   - '*.la'
   - '*.a'
+  - /share/pixmaps
 
 modules:
   - name: utf8cpp
@@ -70,12 +71,24 @@ modules:
     config-opts:
       - -DCMAKE_BUILD_TYPE=Release
     sources:
-      - type: git
-        url: https://github.com/asa-degroff/mtoc.git
-        tag: mtoc-2.0.1-1
-        commit: ecd4df08b59ade282a537ac42c6c3075c1f39a56
-      - type: file
-        path: org._3fz.mtoc.metainfo.xml
+      - type: dir
+        path: .    
+        
     post-install:
+      # Remove the original desktop file and icons installed by CMake
+      - rm -f /app/share/applications/mtoc.desktop
+      - rm -f /app/share/icons/hicolor/*/apps/mtoc.png
+      - rm -f /app/share/icons/hicolor/scalable/apps/mtoc.svg
+      - rm -f /app/share/pixmaps/mtoc.png
+      # Copy and modify desktop file to use correct icon name
+      - cp mtoc.desktop org._3fz.mtoc.desktop
+      - sed -i 's/Icon=mtoc/Icon=org._3fz.mtoc/' org._3fz.mtoc.desktop
+      - install -Dm644 org._3fz.mtoc.desktop /app/share/applications/org._3fz.mtoc.desktop
+      # Install icons (skip empty SVG file)
+      # - install -Dm644 resources/icons/app_icon.svg /app/share/icons/hicolor/scalable/apps/org._3fz.mtoc.svg
+      - install -Dm644 resources/icons/mtoc-icon-48.png /app/share/icons/hicolor/48x48/apps/org._3fz.mtoc.png
+      - install -Dm644 resources/icons/mtoc-icon-128.png /app/share/icons/hicolor/128x128/apps/org._3fz.mtoc.png
+      - install -Dm644 resources/icons/mtoc-icon-256.png /app/share/icons/hicolor/256x256/apps/org._3fz.mtoc.png
+      - install -Dm644 resources/icons/mtoc-icon-512.png /app/share/icons/hicolor/512x512/apps/org._3fz.mtoc.png
       # Install metainfo
       - install -Dm644 org._3fz.mtoc.metainfo.xml /app/share/metainfo/org._3fz.mtoc.metainfo.xml
