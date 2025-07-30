@@ -50,6 +50,7 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %{_datadir}/applications/%{name}.desktop
 %{_datadir}/icons/hicolor/*/apps/%{name}.*
 %{_datadir}/pixmaps/%{name}.png
+%{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
 * Wed Jul 30 2025 Asa DeGroff <asa@3fz.org> 2.0.1.2-1
