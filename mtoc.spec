@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.0.1.3
+Version:        2.0.1.4
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,10 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Wed Jul 30 2025 Asa DeGroff <asa@3fz.org> 2.0.1.4-1
+- Update MprisManager service name to conform to flatpak standard (asa@3fz.org)
+- Update changelog (asa@3fz.org)
+
 * Wed Jul 30 2025 Asa DeGroff <asa@3fz.org> 2.0.1.3-1
 - update spec for rpm build (asa@3fz.org)
 
