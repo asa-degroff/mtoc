@@ -166,8 +166,10 @@ Item {
                         Layout.fillWidth: true
                     }
                     
-                    RowLayout {
+                    Row {
                         spacing: 8
+                        Layout.fillWidth: true
+                        clip: true
                         
                         Label {
                             text: {
