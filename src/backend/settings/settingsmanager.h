@@ -17,6 +17,10 @@ class SettingsManager : public QObject
     Q_PROPERTY(QString lastSelectedAlbumId READ lastSelectedAlbumId WRITE setLastSelectedAlbumId NOTIFY lastSelectedAlbumIdChanged)
     Q_PROPERTY(QString lastSelectedPlaylistName READ lastSelectedPlaylistName WRITE setLastSelectedPlaylistName NOTIFY lastSelectedPlaylistNameChanged)
     Q_PROPERTY(bool lastSelectedWasPlaylist READ lastSelectedWasPlaylist WRITE setLastSelectedWasPlaylist NOTIFY lastSelectedWasPlaylistChanged)
+    Q_PROPERTY(int windowWidth READ windowWidth WRITE setWindowWidth NOTIFY windowWidthChanged)
+    Q_PROPERTY(int windowHeight READ windowHeight WRITE setWindowHeight NOTIFY windowHeightChanged)
+    Q_PROPERTY(int windowX READ windowX WRITE setWindowX NOTIFY windowXChanged)
+    Q_PROPERTY(int windowY READ windowY WRITE setWindowY NOTIFY windowYChanged)
 
 public:
     enum QueueAction {
@@ -40,6 +44,10 @@ public:
     QString lastSelectedAlbumId() const { return m_lastSelectedAlbumId; }
     QString lastSelectedPlaylistName() const { return m_lastSelectedPlaylistName; }
     bool lastSelectedWasPlaylist() const { return m_lastSelectedWasPlaylist; }
+    int windowWidth() const { return m_windowWidth; }
+    int windowHeight() const { return m_windowHeight; }
+    int windowX() const { return m_windowX; }
+    int windowY() const { return m_windowY; }
     
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -51,6 +59,10 @@ public:
     void setLastSelectedAlbumId(const QString& albumId);
     void setLastSelectedPlaylistName(const QString& playlistName);
     void setLastSelectedWasPlaylist(bool wasPlaylist);
+    void setWindowWidth(int width);
+    void setWindowHeight(int height);
+    void setWindowX(int x);
+    void setWindowY(int y);
 
 signals:
     void queueActionDefaultChanged(QueueAction action);
@@ -62,6 +74,10 @@ signals:
     void lastSelectedAlbumIdChanged(const QString& albumId);
     void lastSelectedPlaylistNameChanged(const QString& playlistName);
     void lastSelectedWasPlaylistChanged(bool wasPlaylist);
+    void windowWidthChanged(int width);
+    void windowHeightChanged(int height);
+    void windowXChanged(int x);
+    void windowYChanged(int y);
 
 private:
     explicit SettingsManager(QObject *parent = nullptr);
@@ -82,6 +98,10 @@ private:
     QString m_lastSelectedAlbumId;
     QString m_lastSelectedPlaylistName;
     bool m_lastSelectedWasPlaylist;
+    int m_windowWidth;
+    int m_windowHeight;
+    int m_windowX;
+    int m_windowY;
 };
 
 #endif // SETTINGSMANAGER_H

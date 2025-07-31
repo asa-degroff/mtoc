@@ -8,8 +8,10 @@ import "Components/"
 
 ApplicationWindow {
     id: window
-    width: 1920
-    height: 1200
+    width: SettingsManager.windowWidth
+    height: SettingsManager.windowHeight
+    x: SettingsManager.windowX >= 0 ? SettingsManager.windowX : Screen.width / 2 - width / 2
+    y: SettingsManager.windowY >= 0 ? SettingsManager.windowY : Screen.height / 2 - height / 2
     minimumWidth: 800  // Set a reasonable minimum to fit all panes
     minimumHeight: 500
     visible: true
@@ -31,6 +33,25 @@ ApplicationWindow {
 
     // Property to hold the current track metadata
     property var currentTrack: ({})
+    
+    // Timer to debounce window geometry changes
+    Timer {
+        id: saveGeometryTimer
+        interval: 500  // Wait 500ms after resize/move stops
+        onTriggered: {
+            SettingsManager.windowWidth = window.width
+            SettingsManager.windowHeight = window.height
+            SettingsManager.windowX = window.x
+            SettingsManager.windowY = window.y
+            console.log("Main.qml: Saved window geometry - " + window.width + "x" + window.height + " at " + window.x + "," + window.y)
+        }
+    }
+    
+    // Save window dimensions when they change
+    onWidthChanged: saveGeometryTimer.restart()
+    onHeightChanged: saveGeometryTimer.restart()
+    onXChanged: saveGeometryTimer.restart()
+    onYChanged: saveGeometryTimer.restart()
     
     // Resize handler for deferred resizing
     ResizeHandler {
@@ -122,9 +143,45 @@ ApplicationWindow {
         repeat: false
     }
     
+    // Function to ensure window is visible on screen
+    function ensureWindowVisible() {
+        // Check if window position is valid and visible
+        var screenGeometry = Qt.application.screens[0];
+        var screenWidth = screenGeometry.width;
+        var screenHeight = screenGeometry.height;
+        
+        // Ensure at least 100 pixels of the window are visible
+        var minVisible = 100;
+        
+        // Check horizontal bounds
+        if (window.x + minVisible > screenWidth) {
+            window.x = screenWidth - window.width / 2;
+        } else if (window.x + window.width < minVisible) {
+            window.x = minVisible - window.width / 2;
+        }
+        
+        // Check vertical bounds
+        if (window.y + minVisible > screenHeight) {
+            window.y = screenHeight - window.height / 2;
+        } else if (window.y < 0) {
+            window.y = 0;
+        }
+        
+        // Ensure window fits on screen
+        if (window.width > screenWidth) {
+            window.width = screenWidth - 50;
+        }
+        if (window.height > screenHeight) {
+            window.height = screenHeight - 50;
+        }
+    }
+    
     // Restore playback state when application is fully loaded
     Component.onCompleted: {
         console.log("Main.qml: Window loaded");
+        
+        // Ensure window is visible on screen
+        ensureWindowVisible();
         
         // Give focus to library pane for keyboard navigation
         libraryPane.forceActiveFocus();

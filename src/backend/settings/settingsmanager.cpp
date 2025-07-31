@@ -107,6 +107,42 @@ void SettingsManager::setLastSelectedWasPlaylist(bool wasPlaylist)
     }
 }
 
+void SettingsManager::setWindowWidth(int width)
+{
+    if (m_windowWidth != width) {
+        m_windowWidth = width;
+        emit windowWidthChanged(width);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setWindowHeight(int height)
+{
+    if (m_windowHeight != height) {
+        m_windowHeight = height;
+        emit windowHeightChanged(height);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setWindowX(int x)
+{
+    if (m_windowX != x) {
+        m_windowX = x;
+        emit windowXChanged(x);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setWindowY(int y)
+{
+    if (m_windowY != y) {
+        m_windowY = y;
+        emit windowYChanged(y);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -128,6 +164,13 @@ void SettingsManager::loadSettings()
     m_lastSelectedAlbumId = m_settings.value("lastSelectedAlbumId", "").toString();
     m_lastSelectedPlaylistName = m_settings.value("lastSelectedPlaylistName", "").toString();
     m_lastSelectedWasPlaylist = m_settings.value("lastSelectedWasPlaylist", false).toBool();
+    m_settings.endGroup();
+    
+    m_settings.beginGroup("Window");
+    m_windowWidth = m_settings.value("width", 1920).toInt();
+    m_windowHeight = m_settings.value("height", 1200).toInt();
+    m_windowX = m_settings.value("x", -1).toInt();  // -1 means use default positioning
+    m_windowY = m_settings.value("y", -1).toInt();
     m_settings.endGroup();
     
     qDebug() << "SettingsManager: Loaded settings - Queue action:" << m_queueActionDefault 
@@ -158,6 +201,13 @@ void SettingsManager::saveSettings()
     m_settings.setValue("lastSelectedAlbumId", m_lastSelectedAlbumId);
     m_settings.setValue("lastSelectedPlaylistName", m_lastSelectedPlaylistName);
     m_settings.setValue("lastSelectedWasPlaylist", m_lastSelectedWasPlaylist);
+    m_settings.endGroup();
+    
+    m_settings.beginGroup("Window");
+    m_settings.setValue("width", m_windowWidth);
+    m_settings.setValue("height", m_windowHeight);
+    m_settings.setValue("x", m_windowX);
+    m_settings.setValue("y", m_windowY);
     m_settings.endGroup();
     
     m_settings.sync();
