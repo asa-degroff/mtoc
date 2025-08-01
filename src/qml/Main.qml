@@ -15,7 +15,7 @@ ApplicationWindow {
     minimumWidth: 1050  // Set a reasonable minimum to fit all panes
     minimumHeight: 700
     visible: true
-    title: SystemInfo.appName + " - " + SystemInfo.appVersion
+    title: SystemInfo.appName
     
     // Save state when window is closing
     onClosing: function(close) {
@@ -47,7 +47,7 @@ ApplicationWindow {
             SettingsManager.windowHeight = window.height
             SettingsManager.windowX = window.x
             SettingsManager.windowY = window.y
-            console.log("Main.qml: Saved window geometry - " + window.width + "x" + window.height + " at " + window.x + "," + window.y)
+            //console.log("Main.qml: Saved window geometry - " + window.width + "x" + window.height + " at " + window.x + "," + window.y)
         }
     }
     
@@ -182,7 +182,7 @@ ApplicationWindow {
     
     // Restore playback state when application is fully loaded
     Component.onCompleted: {
-        console.log("Main.qml: Window loaded");
+        //console.log("Main.qml: Window loaded");
         
         // Ensure window is visible on screen
         ensureWindowVisible();
