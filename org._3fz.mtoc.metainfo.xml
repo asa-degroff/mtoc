@@ -27,11 +27,15 @@
   <screenshots>
     <screenshot type="default">
       <caption>Main window showing library and now playing</caption>
-      <image>https://github.com/asa-degroff/mtoc/raw/ecd4df08b59ade282a537ac42c6c3075c1f39a56/resources/banner/main-screenshot.png</image>
+      <image>https://github.com/asa-degroff/mtoc/raw/081362d8b137686e1db81423e04c27f3770447a9/resources/banner/main-screenshot-small.png</image>
     </screenshot>
     <screenshot>
       <caption>Queue and playlist view</caption>
-      <image>https://github.com/asa-degroff/mtoc/raw/ecd4df08b59ade282a537ac42c6c3075c1f39a56/resources/banner/queue-and-playlist.png</image>
+      <image>https://github.com/asa-degroff/mtoc/raw/081362d8b137686e1db81423e04c27f3770447a9/resources/banner/queue-and-playlist-small.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Library editor window showing library stats and directory picker</caption>
+      <image>https://github.com/asa-degroff/mtoc/raw/081362d8b137686e1db81423e04c27f3770447a9/resources/banner/library-editor.png</image>
     </screenshot>
   </screenshots>
 
@@ -54,6 +58,15 @@
   </recommends>
 
   <releases>
+
+    <release version="2.0.2" date="2025-07-31">
+      <description>
+        <p>Updated icon and improved layout on small displays</p>
+        <ul>
+          <li>Expanded library pane for better usability at very small window widths</li>
+          <li>Updated icon to match the new branding</li>
+        </ul>
+      </description>
 
     <release version="2.0.1" date="2025-07-29">
       <description>
