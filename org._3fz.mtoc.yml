@@ -3,6 +3,8 @@ runtime: org.kde.Platform
 runtime-version: '6.9'
 sdk: org.kde.Sdk
 command: mtoc_app
+rename-desktop-file: mtoc.desktop
+rename-icon: org._3fz.mtoc
 finish-args:
     # Display
     - --socket=wayland
@@ -22,7 +24,6 @@ cleanup:
   - /share/pkgconfig
   - '*.la'
   - '*.a'
-  - /share/pixmaps
 
 modules:
   - name: mtoc

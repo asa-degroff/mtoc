@@ -130,34 +130,29 @@ if(UNIX AND NOT APPLE)
     # Install PNG icons in multiple sizes
     install(FILES resources/icons/mtoc-icon-48.png
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/48x48/apps
-        RENAME mtoc.png
+        RENAME org._3fz.mtoc.png
     )
 
     install(FILES resources/icons/mtoc-icon-64.png
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/64x64/apps
-        RENAME mtoc.png
+        RENAME org._3fz.mtoc.png
     )
     
     install(FILES resources/icons/mtoc-icon-128.png
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/128x128/apps
-        RENAME mtoc.png
+        RENAME org._3fz.mtoc.png
     )
     
     install(FILES resources/icons/mtoc-icon-256.png
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/256x256/apps
-        RENAME mtoc.png
+        RENAME org._3fz.mtoc.png
     )
     
     install(FILES resources/icons/mtoc-icon-512.png
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/512x512/apps
-        RENAME mtoc.png
+        RENAME org._3fz.mtoc.png
     )
-    
-    # Install 128x128 PNG in pixmaps for legacy support
-    install(FILES resources/icons/mtoc-icon-128.png
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/pixmaps
-        RENAME mtoc.png
-    )
+
     
     # Install metainfo file
     install(FILES org._3fz.mtoc.metainfo.xml
