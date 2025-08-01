@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.0.2
+Version:        2.0.2.1
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -41,18 +41,21 @@ mtoc is a music player and library browser for Linux that emphasizes smooth, con
 %cmake_install
 
 # Validate desktop file
-desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
+desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 
 %files
 %license LICENSE
 %doc README.md CHANGELOG.md
 %{_bindir}/mtoc_app
-%{_datadir}/applications/%{name}.desktop
-%{_datadir}/icons/hicolor/*/apps/%{name}.*
-%{_datadir}/pixmaps/%{name}.png
+%{_datadir}/applications/*.desktop
+%{_datadir}/icons/hicolor/*/apps/org._3fz.mtoc.png
+%{_datadir}/pixmaps/mtoc.png
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Thu Jul 31 2025 Asa DeGroff <asa@3fz.org> 2.0.2.1-1
+- 
+
 * Thu Jul 31 2025 Asa DeGroff <asa@3fz.org> 2.0.2-1
 - update icon renames for installation and adjust metainfo configuration
   (asa@3fz.org)
