@@ -123,16 +123,9 @@ install(TARGETS mtoc_app
 
 # Install desktop file for Linux desktop integration
 if(UNIX AND NOT APPLE)
-    # For flatpak builds, use the org._3fz.mtoc.desktop file
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/org._3fz.mtoc.desktop")
-        install(FILES org._3fz.mtoc.desktop
-            DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications
-        )
-    else()
-        install(FILES mtoc.desktop
-            DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications
-        )
-    endif()
+    install(FILES mtoc.desktop
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications
+    )
     
     # Install PNG icons in multiple sizes
     install(FILES resources/icons/mtoc-icon-48.png
