@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.0.2.1
+Version:        2.0.2.1.1
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,9 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Thu Jul 31 2025 Asa DeGroff <asa@3fz.org> 2.0.2.1.1-1
+- add pixpap icon to cmakelists (asa@3fz.org)
+
 * Thu Jul 31 2025 Asa DeGroff <asa@3fz.org> 2.0.2.1-1
 - 
 
