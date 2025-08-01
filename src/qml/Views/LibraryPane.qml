@@ -1459,10 +1459,12 @@ Item {
                             function calculateAlbumContainerHeight() {
                                 if (!cachedAlbums || cachedAlbums.length === 0) return 0
                                 
-                                var cellWidth = 130  // 120 + 10 spacing
+                                var minCellWidth = 130  // Minimum width (120 thumbnail + 10 spacing)
                                 var cellHeight = 150  // 140 + 10 spacing
-                                var gridWidth = Math.floor((artistsListView.width - 24) / cellWidth)
-                                var rows = Math.ceil(cachedAlbums.length / gridWidth)
+                                var availableWidth = width - 16  // Use container's width, matching GridView calculation
+                                var columns = Math.floor(availableWidth / minCellWidth)
+                                if (columns < 1) columns = 1
+                                var rows = Math.ceil(cachedAlbums.length / columns)
                                 
                                 return (rows * cellHeight) + 16  // Grid height + padding
                             }
@@ -1500,7 +1502,13 @@ Item {
                                 anchors.fill: parent
                                 anchors.margins: 8
                                 clip: false  // Allow glow effect to overflow
-                                cellWidth: 120 + 10 // Thumbnail size + padding
+                                cellWidth: {
+                                    var minCellWidth = 130  // Minimum width (120 thumbnail + 10 spacing)
+                                    var availableWidth = parent.width - 16  // Account for margins
+                                    var columns = Math.floor(availableWidth / minCellWidth)
+                                    if (columns < 1) columns = 1
+                                    return Math.floor(availableWidth / columns)
+                                }
                                 cellHeight: 140 + 10 // Thumbnail + title + padding
                                 interactive: false // Parent ListView handles scrolling primarily
                                 reuseItems: false  // Disabled to prevent issues with expand/collapse
@@ -4047,7 +4055,10 @@ Item {
         if (index < 0 || index >= LibraryManager.artistModel.length) return -1
         
         var position = 0
-        var gridColumns = Math.floor((artistsListView.width - 24) / 130)
+        var minCellWidth = 130  // Same as in GridView
+        var availableWidth = artistsListView.width - 16  // Same calculation as GridView
+        var gridColumns = Math.floor(availableWidth / minCellWidth)
+        if (gridColumns < 1) gridColumns = 1
         console.log("calculateArtistPosition: Grid columns:", gridColumns)
         
         for (var i = 0; i < index; i++) {
@@ -4267,7 +4278,10 @@ Item {
                 }
                 
                 if (albumCount > 0) {
-                    var gridColumns = Math.floor((artistsListView.width - 24) / 130)
+                    var minCellWidth = 130  // Same as in GridView
+                    var availableWidth = artistsListView.width - 16  // Same calculation as GridView
+                    var gridColumns = Math.floor(availableWidth / minCellWidth)
+                    if (gridColumns < 1) gridColumns = 1
                     var gridRows = Math.ceil(albumCount / gridColumns)
                     itemHeight += gridRows * 150 + 20
                 }
