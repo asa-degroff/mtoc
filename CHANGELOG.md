@@ -1,3 +1,8 @@
+# 2.0.2
+### New icon and layout tweaks for small screens
+- New icon to match the updated branding
+- Library pane is now wider at small window widths for improved usability
+
 # 2.0.1
 ### Fixed laggy image loading during fast scrolling in the album carousel
 - Improved performance in album carousel with delegate recycling and improved connection handling
