@@ -1011,14 +1011,13 @@ Item {
             Rectangle {
                 id: leftPaneContainer
                 SplitView.preferredWidth: parent.width * 0.51  // 51% of parent width
-                SplitView.minimumWidth: 280  // Minimum for 2 album covers
+                SplitView.minimumWidth: 297  // Minimum for 2 album covers
                 SplitView.maximumWidth: 600  // Maximum width to prevent it from getting too wide
                 Layout.fillHeight: true
                 color: Qt.rgba(0.1, 0.1, 0.1, 0.25)  // Semi-transparent dark with smoky tint
                 radius: 8
                 clip: true // Ensure content doesn't overflow radius
                 
-                // 3D border effect - lit from above
                 border.width: 1
                 border.color: Qt.rgba(1, 1, 1, 0.08)
                 
