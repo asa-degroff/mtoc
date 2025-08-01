@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.0.1.4
+Version:        2.0.2
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,31 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Thu Jul 31 2025 Asa DeGroff <asa@3fz.org> 2.0.2-1
+- update icon renames for installation and adjust metainfo configuration
+  (asa@3fz.org)
+- undo icon rename (asa@3fz.org)
+- update cmake lists (asa@3fz.org)
+- add new esktop file and update icon renames for flatpak builds (asa@3fz.org)
+- fixed typo (asa@3fz.org)
+- update metainfo with new screenshots (asa@3fz.org)
+- cleanup flatpak manifeset for local build (asa@3fz.org)
+- version bump (asa@3fz.org)
+- updated screenshots (asa@3fz.org)
+- cleanup title info and console logging (asa@3fz.org)
+- Updated metainfo for shorter description (asa@3fz.org)
+- Update readme (asa@3fz.org)
+- Set a minimum window width to fit all panes (asa@3fz.org)
+- Refactor album grid layout to ensure minimum cell width and responsive column
+  calculation (asa@3fz.org)
+- minimum artists list width for 2 album covers (asa@3fz.org)
+- updated icons (asa@3fz.org)
+- layout changes for tiny window size (asa@3fz.org)
+- Add window geometry settings and persistence to SettingsManager (asa@3fz.org)
+- playlist view clipping fix (asa@3fz.org)
+- capitalization in metainfo summary (asa@3fz.org)
+- New icons (asa@3fz.org)
+
 * Wed Jul 30 2025 Asa DeGroff <asa@3fz.org> 2.0.1.4-1
 - Update MprisManager service name to conform to flatpak standard (asa@3fz.org)
 - Update changelog (asa@3fz.org)
