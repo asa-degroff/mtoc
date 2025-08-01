@@ -4,6 +4,24 @@ mtoc (music table of contents) is a visually-rich music player and library brows
 
 ![mtoc Music Player](resources/banner/main-screenshot.avif)
 
+## Getting Started
+
+### Flatpak Installation (Flathub)
+
+```bash
+flatpak install flathub org._3fz.mtoc
+```
+
+#### RPM Package Installation (Fedora 42+)
+
+```bash
+# Add the copr repository:
+sudo dnf copr enable 3fz-asa/mtoc
+
+# Install:
+sudo dnf install mtoc
+```
+
 # Features
 
 ### Album Browsing
@@ -68,29 +86,13 @@ Frequent reads and minimal writes makes this an application that benefits from e
 - Solid state storage recommended
 - 4GB system RAM recommended. Typical usage for mtoc remains under ~350MB, but may go as high as 1GB if you push it by loading all tracks in a large library and skipping through them quickly. 
 
-## Getting Started
-
-#### Note
-Official packages are currently only maintained for Fedora 42+. 
-
 #### Dependencies
-- Qt6 >= 6.7 (Core, Quick, Qml, Multimedia, DBus, Concurrent, Widgets, Sql)
+- Qt6 >= 6.9 (Core, Quick, Qml, Multimedia, DBus, Concurrent, Widgets, Sql)
 - CMake >= 3.16
 - TagLib >= 2.0
 - GStreamer >= 1.0
 - pkg-config
 - C++17 compatible compiler
-
-#### Package Installation (Fedora 42+)
-
-```bash
-# Add the copr repository:
-sudo dnf copr enable 3fz-asa/mtoc
-
-# Install:
-sudo dnf install mtoc
-```
-
 
 #### Build From Source
 
@@ -171,6 +173,7 @@ On first launch, mtoc will feature an empty library. Click "Edit Library" (or th
 ## Roadmap
 The following features are in development or planned for a future release: 
 
+- Additional layout options optimized for narrow width and vertical arrangements
 - Gamepad input support for steam deck and similar devices
 - Podcast library with streaming and online search
 
