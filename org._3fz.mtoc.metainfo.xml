@@ -19,10 +19,8 @@
       <li>"Bento Box" layout places large-scale album art with playback controls and your library side by side</li>
       <li>Advanced queue management with library context menus and drag-and-drop reordering</li>
       <li>Save playlists from your queue, manage M3U files, and use the intuitive playlist editor</li>
-      <li>Directory picker and one-click scanning extracts track metadata</li> 
-      <li>Lightweight database layer stores tags and thumbnails to keep your library responsive</li>
+      <li>Directory picker and one-click scanning extracts track metadata to construct your library</li>
       <li>Desktop integration with full MPRIS 2 support</li>
-      <li>GStreamer-based playback engine with support for a wide variety of formats and gapless playback</li>
     </ul>
   </description>
 
