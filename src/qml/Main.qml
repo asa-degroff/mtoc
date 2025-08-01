@@ -12,8 +12,8 @@ ApplicationWindow {
     height: SettingsManager.windowHeight
     x: SettingsManager.windowX >= 0 ? SettingsManager.windowX : Screen.width / 2 - width / 2
     y: SettingsManager.windowY >= 0 ? SettingsManager.windowY : Screen.height / 2 - height / 2
-    minimumWidth: 800  // Set a reasonable minimum to fit all panes
-    minimumHeight: 500
+    minimumWidth: 1000  // Set a reasonable minimum to fit all panes
+    minimumHeight: 700
     visible: true
     title: SystemInfo.appName + " - " + SystemInfo.appVersion
     
@@ -33,6 +33,10 @@ ApplicationWindow {
 
     // Property to hold the current track metadata
     property var currentTrack: ({})
+    
+    // Responsive layout properties
+    property real libraryPaneRatio: mainContent.width < 1250 ? 0.55 : 0.45
+    property real nowPlayingPaneRatio: 1.0 - libraryPaneRatio
     
     // Timer to debounce window geometry changes
     Timer {
@@ -105,7 +109,7 @@ ApplicationWindow {
             LibraryPane {
                 id: libraryPane
                 Layout.fillWidth: true
-                Layout.preferredWidth: mainContent.width * 0.45 // 45% of content width
+                Layout.preferredWidth: mainContent.width * libraryPaneRatio
                 Layout.fillHeight: true
             }
 
@@ -114,7 +118,7 @@ ApplicationWindow {
             NowPlayingPane {
                 id: nowPlayingPane
                 Layout.fillWidth: true
-                Layout.preferredWidth: mainContent.width * 0.55 // 55% of content width
+                Layout.preferredWidth: mainContent.width * nowPlayingPaneRatio
                 Layout.fillHeight: true
                 
                 // Pass reference to library pane for navigation
