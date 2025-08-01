@@ -153,6 +153,11 @@ if(UNIX AND NOT APPLE)
         RENAME org._3fz.mtoc.png
     )
 
+    # Install 128x128 PNG in pixmaps for legacy support
+    install(FILES resources/icons/mtoc-icon-128.png
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/pixmaps
+        RENAME mtoc.png
+    )
     
     # Install metainfo file
     install(FILES org._3fz.mtoc.metainfo.xml
