@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.5
+Type=Application
+Name=mtoc
+GenericName=Music Player
+Comment=Visual Music Library
+Exec=mtoc_app
+Icon=org._3fz.mtoc
+Terminal=false
+Categories=AudioVideo;Audio;Player;
+Keywords=Music;Player;Audio;Library;
+StartupNotify=true

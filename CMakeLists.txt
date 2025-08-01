@@ -123,34 +123,41 @@ install(TARGETS mtoc_app
 
 # Install desktop file for Linux desktop integration
 if(UNIX AND NOT APPLE)
-    install(FILES mtoc.desktop
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications
-    )
+    # For flatpak builds, use the org._3fz.mtoc.desktop file
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/org._3fz.mtoc.desktop")
+        install(FILES org._3fz.mtoc.desktop
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications
+        )
+    else()
+        install(FILES mtoc.desktop
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications
+        )
+    endif()
     
     # Install PNG icons in multiple sizes
     install(FILES resources/icons/mtoc-icon-48.png
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/48x48/apps
-        RENAME mtoc.png
+        RENAME org._3fz.mtoc.png
     )
 
     install(FILES resources/icons/mtoc-icon-64.png
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/64x64/apps
-        RENAME mtoc.png
+        RENAME org._3fz.mtoc.png
     )
     
     install(FILES resources/icons/mtoc-icon-128.png
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/128x128/apps
-        RENAME mtoc.png
+        RENAME org._3fz.mtoc.png
     )
     
     install(FILES resources/icons/mtoc-icon-256.png
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/256x256/apps
-        RENAME mtoc.png
+        RENAME org._3fz.mtoc.png
     )
     
     install(FILES resources/icons/mtoc-icon-512.png
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/512x512/apps
-        RENAME mtoc.png
+        RENAME org._3fz.mtoc.png
     )
     
     # Install 128x128 PNG in pixmaps for legacy support
