@@ -834,7 +834,7 @@ Item {
                     function onContentXChanged() {
                         // When scrolling, check if this delegate's reflection state should change
                         if (reflection) {
-                            var shouldHaveReflection = absDistance < 800
+                            var shouldHaveReflection = absDistance < (listView.width / 2)
                             var hasReflection = reflection.sourceItem !== null
                             
                             if (shouldHaveReflection !== hasReflection) {
@@ -857,7 +857,7 @@ Item {
                 }
                 
                 // Optimization: Skip expensive calculations for far-away items
-                property bool isVisible: absDistance < 800
+                property bool isVisible: absDistance < (listView.width / 2)
                 
                 // Track if this delegate is actively being scrolled to
                 property bool isTargetDelegate: listView.currentIndex === index
@@ -1003,7 +1003,7 @@ Item {
                     height: 340  // Height for album + reflection
                     
                     // Conditional layer rendering - only for visible items near center
-                    layer.enabled: isVisible && absDistance < 400 // Enable for nearby items to smooth reflections
+                    layer.enabled: isVisible && absDistance < (listView.width / 2) // Enable for items within half viewport width
                     layer.smooth: true // Enable antialiasing for both album and reflection
                     layer.samples: 4 // Multisample antialiasing for best quality
                     
