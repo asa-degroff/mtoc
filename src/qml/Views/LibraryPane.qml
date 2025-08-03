@@ -920,7 +920,7 @@ Item {
             // Gradient overlay to fade the bottom to black
             Item {
                 anchors.fill: parent
-                anchors.margins: 2  // Keep gradient inside borders
+                anchors.margins: 1  // Keep gradient inside borders
                 z: 10  // Above album browser but below any text
                 clip: true
                 
