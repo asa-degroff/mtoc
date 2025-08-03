@@ -7,10 +7,10 @@ import "../"
 Rectangle {
     id: root
     implicitHeight: 36
-    color: Qt.rgba(0.1, 0.1, 0.1, 0.42)
+    color: Theme.isDark ? Qt.rgba(0.1, 0.1, 0.1, 0.42) : Qt.rgba(0, 0, 0, 0.08)
     radius: 6
     border.width: 1
-    border.color: Qt.rgba(1, 1, 1, 0.08)
+    border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.12)
     
     property alias text: textInput.text
     property string placeholderText: "Search library..."
@@ -28,7 +28,7 @@ Rectangle {
         radius: parent.radius - 1
         color: "transparent"
         border.width: 1
-        border.color: Qt.rgba(0, 0, 0, 0.25)
+        border.color: Theme.isDark ? Qt.rgba(0, 0, 0, 0.25) : Qt.rgba(0, 0, 0, 0.08)
     }
     
     RowLayout {
@@ -152,7 +152,7 @@ Rectangle {
             Layout.preferredHeight: 20
             
             background: Rectangle {
-                color: parent.hovered ? Qt.rgba(1, 1, 1, 0.1) : "transparent"
+                color: parent.hovered ? Theme.hoverBackground : "transparent"
                 radius: 10
                 
                 Behavior on color {
@@ -198,8 +198,8 @@ Rectangle {
         when: textInput.activeFocus
         PropertyChanges {
             target: root
-            border.color: Qt.rgba(0.37, 0.44, 0.84, 0.6)
-            color: Qt.rgba(0.1, 0.1, 0.1, 0.5)
+            border.color: Theme.isDark ? Qt.rgba(0.37, 0.44, 0.84, 0.6) : Qt.rgba(0.37, 0.44, 0.84, 0.8)
+            color: Theme.isDark ? Qt.rgba(0.1, 0.1, 0.1, 0.5) : Qt.rgba(0, 0, 0, 0.12)
         }
     }
     
