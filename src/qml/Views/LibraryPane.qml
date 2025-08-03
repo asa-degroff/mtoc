@@ -886,8 +886,8 @@ Item {
             HorizontalAlbumBrowser {
                 id: albumBrowser
                 anchors.centerIn: parent
-                width: Math.min(parent.width - 16, 1600)  // Max width with margins
-                height: parent.height - 16  // Account for margins
+                width: Math.min(parent.width - 3, 1600)  // Max width with very thin margin for borders
+                height: parent.height - 3  // Account for margins
                 
                 onAlbumClicked: function(album) {
                     root.selectedAlbum = album
