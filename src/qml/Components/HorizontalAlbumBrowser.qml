@@ -744,7 +744,7 @@ Item {
             delegate: Item {
                 id: delegateItem
                 width: 220
-                height: 370  // Height for album plus reflection
+                height: 320  // Height for album plus reflection
                 
                 // Get the actual album data from the model using sorted index
                 property int sortedIndex: index
@@ -1003,8 +1003,9 @@ Item {
                     height: 340  // Height for album + reflection
                     
                     // Conditional layer rendering - only for visible items near center
-                    layer.enabled: false // Disabled to improve performance
-                    layer.smooth: false
+                    layer.enabled: isVisible && absDistance < 400 // Enable for nearby items to smooth reflections
+                    layer.smooth: true // Enable antialiasing for both album and reflection
+                    layer.samples: 4 // Multisample antialiasing for best quality
                     
                     Item {
                         id: albumContainer
