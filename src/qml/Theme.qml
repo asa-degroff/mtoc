@@ -6,15 +6,15 @@ QtObject {
     property bool isDark: SettingsManager.theme === SettingsManager.Dark
     
     // Primary colors
-    property color primaryText: isDark ? "white" : "black"
-    property color secondaryText: isDark ? "#cccccc" : "#333333"
-    property color tertiaryText: isDark ? "#999999" : "#666666"
+    property color primaryText: isDark ? "white" : "#333333"
+    property color secondaryText: isDark ? "#cccccc" : "#444444"
+    property color tertiaryText: isDark ? "#999999" : "#555555"
     
     // Background colors
     property color backgroundColor: isDark ? "#1a1a1a" : "#f5f5f5"
     property color overlayColor: isDark ? "black" : "white"
-    property real overlayOpacity: isDark ? 0.65 : 0.65
-    property real nowPlayingOverlayOpacity: isDark ? 0.4 : 0.4
+    property real overlayOpacity: isDark ? 0.65 : 0.75
+    property real nowPlayingOverlayOpacity: isDark ? 0.4 : 0.5
     
     // UI element colors
     property color panelBackground: isDark ? "#333333" : "#e8e8e8"

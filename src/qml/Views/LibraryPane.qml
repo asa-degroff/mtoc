@@ -951,7 +951,7 @@ Item {
                     anchors.bottomMargin: 12
                     text: albumBrowser.selectedAlbum && albumBrowser.selectedAlbum.albumArtist && albumBrowser.selectedAlbum.title ? 
                           albumBrowser.selectedAlbum.albumArtist + " - " + albumBrowser.selectedAlbum.title : ""
-                    color: Theme.primaryText
+                    color: "white"  // Always white due to dark gradient overlay
                     font.pixelSize: 16
                     font.bold: true
                     elide: Text.ElideRight
@@ -2164,7 +2164,7 @@ Item {
                                     
                                     Label {
                                         text: root.selectedAlbum && root.selectedAlbum.year ? root.selectedAlbum.year : ""
-                                        color: "#b0b0b0"
+                                        color: Theme.secondaryText
                                         font.pixelSize: 12
                                         visible: text !== ""
                                     }
@@ -2172,14 +2172,14 @@ Item {
                                     Label {
                                         text: rightPane.currentAlbumTracks.length > 0 ? 
                                               (rightPane.currentAlbumTracks.length === 1 ? "1 track" : rightPane.currentAlbumTracks.length + " tracks") : ""
-                                        color: "#b0b0b0"
+                                        color: Theme.secondaryText
                                         font.pixelSize: 12
                                         visible: text !== "" && !(root.playlistEditMode && root.playlistNameError !== "") && root.playlistStatusMessage === ""
                                     }
                                     
                                     Label {
                                         text: rightPane.currentAlbumTracks.length > 0 ? formatAlbumDuration() : ""
-                                        color: "#b0b0b0"
+                                        color: Theme.secondaryText
                                         font.pixelSize: 12
                                         visible: text !== "" && !(root.playlistEditMode && root.playlistNameError !== "") && root.playlistStatusMessage === ""
                                     }
@@ -2620,7 +2620,7 @@ Item {
 
                                     Label { // Track Number
                                         text: trackData.trackNumber ? String(trackData.trackNumber).padStart(1, '0') : "--"
-                                        color: "#aaaaaa"
+                                        color: Theme.tertiaryText
                                         font.pixelSize: 12
                                         Layout.preferredWidth: 25
                                         horizontalAlignment: Text.AlignRight
@@ -2690,7 +2690,7 @@ Item {
 
                                     Label { // Track Duration
                                         text: trackData.duration ? formatDuration(trackData.duration) : "0:00"
-                                        color: "#aaaaaa"
+                                        color: Theme.tertiaryText
                                         font.pixelSize: 12
                                         Layout.preferredWidth: 40
                                         visible: !root.playlistEditMode
