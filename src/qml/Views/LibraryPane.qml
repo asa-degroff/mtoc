@@ -932,8 +932,8 @@ Item {
                         orientation: Gradient.Vertical
                         GradientStop { position: 0.0; color: "transparent" }
                         GradientStop { position: 0.7; color: "transparent" }
-                        GradientStop { position: 0.82; color: Qt.rgba(0, 0, 0, 0.5) }
-                        GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 1.0) }
+                        GradientStop { position: 0.82; color: Theme.upperGradientColor }  // Use theme color for upper gradient
+                        GradientStop { position: 1.0; color: Theme.lowerGradientColor }  // Use theme color for lower gradient
                     }
                 }
             }
@@ -963,7 +963,7 @@ Item {
                         anchors.horizontalCenterOffset: 1
                         anchors.verticalCenterOffset: 1
                         text: parent.text
-                        color: "#80000000"
+                        color: Theme.isDark ? "#80000000" : "#40000000"
                         font: parent.font
                         elide: parent.elide
                         horizontalAlignment: parent.horizontalAlignment
@@ -1134,7 +1134,7 @@ Item {
                                             anchors.centerIn: parent
                                             text: "Artists"
                                             font.pixelSize: 12
-                                            color: root.currentTab === 0 ? "white" : "#808080"
+                                            color: root.currentTab === 0 ? Theme.primaryText : Theme.tertiaryText
                                             
                                             Behavior on color {
                                                 ColorAnimation { duration: 150 }
@@ -1165,7 +1165,7 @@ Item {
                                             anchors.centerIn: parent
                                             text: "Playlists"
                                             font.pixelSize: 12
-                                            color: root.currentTab === 1 ? "white" : "#808080"
+                                            color: root.currentTab === 1 ? Theme.primaryText : Theme.tertiaryText
                                             
                                             Behavior on color {
                                                 ColorAnimation { duration: 150 }
@@ -1646,7 +1646,7 @@ Item {
                                                 // Placeholder when no art available
                                                 Rectangle {
                                                     anchors.fill: parent
-                                                    color: "#444444"
+                                                    color: Theme.isDark ? "#444444" : "#dddddd"
                                                     visible: parent.status !== Image.Ready
                                                     radius: 3
                                                     
@@ -1654,7 +1654,7 @@ Item {
                                                         anchors.centerIn: parent
                                                         text: "♪"
                                                         font.pixelSize: 32
-                                                        color: "#666666"
+                                                        color: Theme.tertiaryText
                                                     }
                                                 }
                                             }
@@ -2468,7 +2468,7 @@ Item {
                                     anchors.leftMargin: 12
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: "Disc " + (trackData.discNumber || 1)
-                                    color: "#cccccc"
+                                    color: Theme.secondaryText
                                     font.pixelSize: 11
                                     font.weight: Font.Medium
                                 }
@@ -3345,7 +3345,7 @@ Item {
                                             Layout.fillWidth: true
                                             Label {
                                                 text: "Artist:"
-                                                color: "#b0b0b0"
+                                                color: Theme.secondaryText
                                                 font.pixelSize: 10
                                                 Layout.preferredWidth: 80
                                             }
@@ -3363,7 +3363,7 @@ Item {
                                             Layout.fillWidth: true
                                             Label {
                                                 text: "Album:"
-                                                color: "#b0b0b0"
+                                                color: Theme.secondaryText
                                                 font.pixelSize: 10
                                                 Layout.preferredWidth: 80
                                             }
@@ -3381,7 +3381,7 @@ Item {
                                             Layout.fillWidth: true
                                             Label {
                                                 text: "Album Artist:"
-                                                color: "#b0b0b0"
+                                                color: Theme.secondaryText
                                                 font.pixelSize: 10
                                                 Layout.preferredWidth: 80
                                             }
@@ -3419,7 +3419,7 @@ Item {
                                                 Layout.fillWidth: true
                                                 Label {
                                                     text: "Track:"
-                                                    color: "#b0b0b0"
+                                                    color: Theme.secondaryText
                                                     font.pixelSize: 10
                                                     Layout.preferredWidth: 50
                                                 }
@@ -3449,7 +3449,7 @@ Item {
                                                 visible: root.selectedTrackForInfo && root.selectedTrackForInfo.year > 0
                                                 Label {
                                                     text: "Year:"
-                                                    color: "#b0b0b0"
+                                                    color: Theme.secondaryText
                                                     font.pixelSize: 10
                                                     Layout.preferredWidth: 50
                                                 }
@@ -3467,7 +3467,7 @@ Item {
                                                 visible: root.selectedTrackForInfo && root.selectedTrackForInfo.genre
                                                 Label {
                                                     text: "Genre:"
-                                                    color: "#b0b0b0"
+                                                    color: Theme.secondaryText
                                                     font.pixelSize: 10
                                                     Layout.preferredWidth: 50
                                                 }
@@ -3491,7 +3491,7 @@ Item {
                                                 Layout.fillWidth: true
                                                 Label {
                                                     text: "Duration:"
-                                                    color: "#b0b0b0"
+                                                    color: Theme.secondaryText
                                                     font.pixelSize: 10
                                                     Layout.preferredWidth: 60
                                                 }
@@ -3508,7 +3508,7 @@ Item {
                                                 Layout.fillWidth: true
                                                 Label {
                                                     text: "Format:"
-                                                    color: "#b0b0b0"
+                                                    color: Theme.secondaryText
                                                     font.pixelSize: 10
                                                     Layout.preferredWidth: 60
                                                 }
@@ -3533,7 +3533,7 @@ Item {
                                                 Layout.fillWidth: true
                                                 Label {
                                                     text: "File Size:"
-                                                    color: "#b0b0b0"
+                                                    color: Theme.secondaryText
                                                     font.pixelSize: 10
                                                     Layout.preferredWidth: 60
                                                 }
@@ -3561,7 +3561,7 @@ Item {
                                         Layout.fillWidth: true
                                         Label {
                                             text: "File Path:"
-                                            color: "#b0b0b0"
+                                            color: Theme.secondaryText
                                             font.pixelSize: 10
                                             Layout.preferredWidth: 80
                                         }
