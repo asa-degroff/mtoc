@@ -43,7 +43,7 @@ Rectangle {
             Layout.preferredHeight: 16
             antialiasing: true
             
-            property color iconColor: textInput.activeFocus ? "white" : "#999999"
+            property color iconColor: textInput.activeFocus ? Theme.primaryText : Theme.tertiaryText
             
             Behavior on iconColor {
                 ColorAnimation { duration: 150 }
@@ -92,7 +92,7 @@ Rectangle {
             id: textInput
             Layout.fillWidth: true
             font.pixelSize: 13
-            color: "white"
+            color: Theme.primaryText
             selectByMouse: true
             selectionColor: Qt.rgba(0.25, 0.32, 0.71, 0.5)
             
@@ -101,7 +101,7 @@ Rectangle {
                 anchors.fill: parent
                 text: root.placeholderText
                 font: textInput.font
-                color: "#666666"
+                color: Theme.tertiaryText
                 visible: textInput.text.length === 0 && !textInput.activeFocus
                 verticalAlignment: Text.AlignVCenter
             }
@@ -163,7 +163,7 @@ Rectangle {
             contentItem: Text {
                 text: parent.text
                 font: parent.font
-                color: parent.hovered ? "white" : "#999999"
+                color: parent.hovered ? Theme.primaryText : Theme.tertiaryText
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
                 

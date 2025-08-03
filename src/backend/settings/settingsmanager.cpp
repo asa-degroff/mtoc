@@ -143,6 +143,15 @@ void SettingsManager::setWindowY(int y)
     }
 }
 
+void SettingsManager::setTheme(Theme theme)
+{
+    if (m_theme != theme) {
+        m_theme = theme;
+        emit themeChanged(theme);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -151,6 +160,7 @@ void SettingsManager::loadSettings()
     
     m_settings.beginGroup("Display");
     m_showTrackInfoByDefault = m_settings.value("showTrackInfoByDefault", false).toBool();
+    m_theme = static_cast<Theme>(m_settings.value("theme", Dark).toInt());
     m_settings.endGroup();
     
     m_settings.beginGroup("Playback");
@@ -188,6 +198,7 @@ void SettingsManager::saveSettings()
     
     m_settings.beginGroup("Display");
     m_settings.setValue("showTrackInfoByDefault", m_showTrackInfoByDefault);
+    m_settings.setValue("theme", static_cast<int>(m_theme));
     m_settings.endGroup();
     
     m_settings.beginGroup("Playback");

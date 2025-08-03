@@ -11,7 +11,7 @@ ApplicationWindow {
     
     flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint
     
-    color: "#2a2a2a"
+    color: Theme.backgroundColor
     
     ScrollView {
         anchors.fill: parent
@@ -27,7 +27,7 @@ ApplicationWindow {
                 text: "Settings"
                 font.pixelSize: 20
                 font.bold: true
-                color: "white"
+                color: Theme.primaryText
                 Layout.fillWidth: true
             }
             
@@ -35,7 +35,7 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: queueBehaviorLayout.implicitHeight + 24
-                color: "#333333"
+                color: Theme.panelBackground
                 radius: 4
                 
                 ColumnLayout {
@@ -48,13 +48,13 @@ ApplicationWindow {
                         text: "Queue Behavior"
                         font.pixelSize: 16
                         font.bold: true
-                        color: "white"
+                        color: Theme.primaryText
                     }
                     
                     Label {
                         text: "Default action for playing an album or playlist if queue has been modified:"
                         font.pixelSize: 14
-                        color: "#cccccc"
+                        color: Theme.secondaryText
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                     }
@@ -71,15 +71,15 @@ ApplicationWindow {
                         }
                         
                         background: Rectangle {
-                            color: parent.hovered ? "#404040" : "#383838"
+                            color: parent.hovered ? Theme.inputBackgroundHover : Theme.inputBackground
                             radius: 4
                             border.width: 1
-                            border.color: "#505050"
+                            border.color: Theme.borderColor
                         }
                         
                         contentItem: Text {
                             text: parent.displayText
-                            color: "white"
+                            color: Theme.primaryText
                             font.pixelSize: 14
                             verticalAlignment: Text.AlignVCenter
                             leftPadding: 8
@@ -121,8 +121,8 @@ ApplicationWindow {
                             }
                             
                             background: Rectangle {
-                                color: "#2a2a2a"
-                                border.color: "#505050"
+                                color: Theme.backgroundColor
+                                border.color: Theme.borderColor
                                 border.width: 1
                                 radius: 4
                             }
@@ -134,14 +134,14 @@ ApplicationWindow {
                             
                             contentItem: Text {
                                 text: modelData
-                                color: parent.hovered ? "white" : "#cccccc"
+                                color: parent.hovered ? Theme.primaryText : Theme.secondaryText
                                 font.pixelSize: 14
                                 verticalAlignment: Text.AlignVCenter
                                 leftPadding: 8
                             }
                             
                             background: Rectangle {
-                                color: parent.hovered ? "#4a5fba" : "transparent"
+                                color: parent.hovered ? Theme.selectedBackground : "transparent"
                                 radius: 2
                             }
                         }
@@ -153,7 +153,7 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: displayLayout.implicitHeight + 24
-                color: "#333333"
+                color: Theme.panelBackground
                 radius: 4
                 
                 ColumnLayout {
@@ -166,7 +166,35 @@ ApplicationWindow {
                         text: "Display Options"
                         font.pixelSize: 16
                         font.bold: true
-                        color: "white"
+                        color: Theme.primaryText
+                    }
+                    
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 12
+                        
+                        Label {
+                            text: "Theme:"
+                            font.pixelSize: 14
+                            color: Theme.secondaryText
+                        }
+                        
+                        Switch {
+                            id: themeSwitch
+                            checked: SettingsManager.theme === SettingsManager.Light
+                            
+                            onToggled: {
+                                SettingsManager.theme = checked ? SettingsManager.Light : SettingsManager.Dark
+                            }
+                        }
+                        
+                        Label {
+                            text: themeSwitch.checked ? "Light" : "Dark"
+                            font.pixelSize: 14
+                            color: Theme.secondaryText
+                        }
+                        
+                        Item { Layout.fillWidth: true }
                     }
                     
                     CheckBox {
@@ -181,7 +209,7 @@ ApplicationWindow {
                         contentItem: Text {
                             text: parent.text
                             font.pixelSize: 14
-                            color: "#cccccc"
+                            color: Theme.secondaryText
                             verticalAlignment: Text.AlignVCenter
                             leftPadding: parent.indicator.width + parent.spacing
                         }
@@ -192,8 +220,8 @@ ApplicationWindow {
                             x: parent.leftPadding
                             y: parent.height / 2 - height / 2
                             radius: 3
-                            color: parent.checked ? "#4a5fba" : "#383838"
-                            border.color: parent.checked ? "#5a6fca" : "#505050"
+                            color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                            border.color: parent.checked ? Theme.linkColor : Theme.borderColor
                             
                             Canvas {
                                 anchors.fill: parent
@@ -223,7 +251,7 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: playbackLayout.implicitHeight + 24
-                color: "#333333"
+                color: Theme.panelBackground
                 radius: 4
                 
                 ColumnLayout {
@@ -236,7 +264,7 @@ ApplicationWindow {
                         text: "Playback"
                         font.pixelSize: 16
                         font.bold: true
-                        color: "white"
+                        color: Theme.primaryText
                     }
                     
                     CheckBox {
@@ -251,7 +279,7 @@ ApplicationWindow {
                         contentItem: Text {
                             text: parent.text
                             font.pixelSize: 14
-                            color: "#cccccc"
+                            color: Theme.secondaryText
                             verticalAlignment: Text.AlignVCenter
                             leftPadding: parent.indicator.width + parent.spacing
                         }
@@ -262,8 +290,8 @@ ApplicationWindow {
                             x: parent.leftPadding
                             y: parent.height / 2 - height / 2
                             radius: 3
-                            color: parent.checked ? "#4a5fba" : "#383838"
-                            border.color: parent.checked ? "#5a6fca" : "#505050"
+                            color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                            border.color: parent.checked ? Theme.linkColor : Theme.borderColor
                             
                             Canvas {
                                 anchors.fill: parent
@@ -293,7 +321,7 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: aboutLayout.implicitHeight + 24
-                color: "#333333"
+                color: Theme.panelBackground
                 radius: 4
                 
                 ColumnLayout {
@@ -306,25 +334,25 @@ ApplicationWindow {
                         text: "About"
                         font.pixelSize: 16
                         font.bold: true
-                        color: "white"
+                        color: Theme.primaryText
                     }
                     
                     Label {
                         text: "mtoc - Music Library and Player"
                         font.pixelSize: 14
-                        color: "#cccccc"
+                        color: Theme.secondaryText
                     }
                     
                     Label {
                         text: "Version 2.0"
                         font.pixelSize: 12
-                        color: "#999999"
+                        color: Theme.tertiaryText
                     }
                     
                     Label {
                         text: "© 2025 Asa DeGroff"
                         font.pixelSize: 12
-                        color: "#999999"
+                        color: Theme.tertiaryText
                     }
                     
                     Item { height: 8 }
@@ -333,13 +361,13 @@ ApplicationWindow {
                         text: "Acknowledgements"
                         font.pixelSize: 14
                         font.bold: true
-                        color: "#cccccc"
+                        color: Theme.secondaryText
                     }
                     
                     Label {
                         text: "Built with Qt, TagLib, and GStreamer"
                         font.pixelSize: 12
-                        color: "#999999"
+                        color: Theme.tertiaryText
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
                     }
@@ -348,7 +376,7 @@ ApplicationWindow {
                         text: "License"
                         font.pixelSize: 14
                         font.bold: true
-                        color: "#cccccc"
+                        color: Theme.secondaryText
                     }
 
                     Text {
@@ -358,7 +386,7 @@ mtoc is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY
 
 You should have received a copy of the GNU General Public License along with mtoc. If not, see: <a href=\"https://www.gnu.org/licenses/gpl-3.0.html\">https://www.gnu.org/licenses/gpl-3.0.html</a>"
                         font.pixelSize: 12
-                        color: "#999999"
+                        color: Theme.tertiaryText
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
                         textFormat: Text.RichText

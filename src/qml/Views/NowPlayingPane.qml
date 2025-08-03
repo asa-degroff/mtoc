@@ -120,7 +120,7 @@ Item {
     // Temporary debug rectangle
     Rectangle {
         anchors.fill: parent
-        color: "#1a1a1a"
+        color: Theme.backgroundColor
         z: -2
     }
     
@@ -162,11 +162,11 @@ Item {
         backgroundOpacity: 0.4
     }
     
-    // Dark overlay for better contrast
+    // Overlay for better contrast
     Rectangle {
         anchors.fill: parent
-        color: "black"
-        opacity: 0.4
+        color: Theme.overlayColor
+        opacity: Theme.nowPlayingOverlayOpacity
     }
     
     ColumnLayout {
@@ -266,14 +266,14 @@ Item {
                                 // Placeholder when no album art
                                 Rectangle {
                                     anchors.fill: parent
-                                    color: "#202020"
+                                    color: Theme.panelBackground
                                     visible: parent.status !== Image.Ready || parent.source == ""
                                     
                                     Text {
                                         anchors.centerIn: parent
                                         text: "♪"
                                         font.pixelSize: parent.width * 0.3
-                                        color: "#404040"
+                                        color: Theme.inputBackgroundHover
                                     }
                                 }
                                 
@@ -322,14 +322,14 @@ Item {
                         // Placeholder when no album art
                         Rectangle {
                             anchors.fill: parent
-                            color: "#202020"
+                            color: Theme.panelBackground
                             visible: albumArt.status !== Image.Ready || !albumArtUrl
                             
                             Text {
                                 anchors.centerIn: parent
                                 text: "♪"
                                 font.pixelSize: parent.width * 0.3
-                                color: "#404040"
+                                color: Theme.inputBackgroundHover
                             }
                         }
                     }
@@ -380,7 +380,7 @@ Item {
                                 text: "Queue"
                                 font.pixelSize: 16
                                 font.weight: Font.DemiBold
-                                color: "white"
+                                color: Theme.primaryText
                             }
                             
                             Item { Layout.fillWidth: true }
@@ -541,7 +541,7 @@ Item {
                     text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.title : ""
                     font.pixelSize: 24
                     font.weight: Font.DemiBold
-                    color: titleMouseArea.containsMouse ? "#ffffff" : "#e0e0e0"
+                    color: titleMouseArea.containsMouse ? Theme.primaryText : Theme.secondaryText
                     elide: Text.ElideRight
                     horizontalAlignment: Text.AlignHCenter
                     
@@ -578,7 +578,7 @@ Item {
                     anchors.fill: parent
                     text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.artist : ""
                     font.pixelSize: 18
-                    color: artistMouseArea.containsMouse ? "#d0d0d0" : "#b0b0b0"
+                    color: artistMouseArea.containsMouse ? Theme.secondaryText : Theme.tertiaryText
                     elide: Text.ElideRight
                     horizontalAlignment: Text.AlignHCenter
                     
@@ -615,7 +615,7 @@ Item {
                     anchors.fill: parent
                     text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.album : ""
                     font.pixelSize: 16
-                    color: albumMouseArea.containsMouse ? "#a0a0a0" : "#808080"
+                    color: albumMouseArea.containsMouse ? Theme.tertiaryText : Theme.tertiaryText
                     elide: Text.ElideRight
                     horizontalAlignment: Text.AlignHCenter
                     
@@ -695,14 +695,14 @@ Item {
                     text: "No Music"
                     font.pixelSize: 32
                     font.bold: true
-                    color: "white"
+                    color: Theme.primaryText
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
                 
                 Label {
                     text: "Add a folder and scan to build your library"
                     font.pixelSize: 16
-                    color: placeholderMouseArea.containsMouse ? "white" : Qt.rgba(1, 1, 1, 0.7)
+                    color: placeholderMouseArea.containsMouse ? Theme.primaryText : Theme.secondaryText
                     anchors.horizontalCenter: parent.horizontalCenter
                     font.underline: placeholderMouseArea.containsMouse
                     

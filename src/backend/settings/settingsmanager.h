@@ -21,6 +21,7 @@ class SettingsManager : public QObject
     Q_PROPERTY(int windowHeight READ windowHeight WRITE setWindowHeight NOTIFY windowHeightChanged)
     Q_PROPERTY(int windowX READ windowX WRITE setWindowX NOTIFY windowXChanged)
     Q_PROPERTY(int windowY READ windowY WRITE setWindowY NOTIFY windowYChanged)
+    Q_PROPERTY(Theme theme READ theme WRITE setTheme NOTIFY themeChanged)
 
 public:
     enum QueueAction {
@@ -30,6 +31,12 @@ public:
         Ask
     };
     Q_ENUM(QueueAction)
+
+    enum Theme {
+        Dark,
+        Light
+    };
+    Q_ENUM(Theme)
 
     static SettingsManager* instance();
     ~SettingsManager();
@@ -48,6 +55,7 @@ public:
     int windowHeight() const { return m_windowHeight; }
     int windowX() const { return m_windowX; }
     int windowY() const { return m_windowY; }
+    Theme theme() const { return m_theme; }
     
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -63,6 +71,7 @@ public:
     void setWindowHeight(int height);
     void setWindowX(int x);
     void setWindowY(int y);
+    void setTheme(Theme theme);
 
 signals:
     void queueActionDefaultChanged(QueueAction action);
@@ -78,6 +87,7 @@ signals:
     void windowHeightChanged(int height);
     void windowXChanged(int x);
     void windowYChanged(int y);
+    void themeChanged(Theme theme);
 
 private:
     explicit SettingsManager(QObject *parent = nullptr);
@@ -102,6 +112,7 @@ private:
     int m_windowHeight;
     int m_windowX;
     int m_windowY;
+    Theme m_theme;
 };
 
 #endif // SETTINGSMANAGER_H

@@ -14,10 +14,10 @@ Item {
     height: parent.height
     focus: true  // Enable keyboard focus for the whole pane
     
-    // Ensure we have a dark background as a base
+    // Ensure we have a background as a base
     Rectangle {
         anchors.fill: parent
-        color: "#1a1a1a"
+        color: Theme.backgroundColor
         z: -3  // Behind everything else
     }
     
@@ -690,11 +690,11 @@ Item {
         z: -2  // Put this behind the dark overlay
     }
     
-    // Dark overlay for better contrast
+    // Overlay for better contrast
     Rectangle {
         anchors.fill: parent
-        color: "black"
-        opacity: 0.65  // Increased to compensate for reduced blur
+        color: Theme.overlayColor
+        opacity: Theme.overlayOpacity
         z: -1  // This should be above the blurred background but below content
     }
     
@@ -704,8 +704,8 @@ Item {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         width: 1
-        color: Qt.rgba(1, 1, 1, 0.1)  // Transparent white that takes on background color
-        opacity: 0.6
+        color: Theme.edgeLineColor
+        opacity: Theme.edgeLineOpacity
         z: 10  // Ensure it's above other content
         
         // Gradient for fade effect at top and bottom
@@ -736,7 +736,7 @@ Item {
                     text: "Music Library"
                     font.pixelSize: 18  // Slightly smaller
                     font.bold: true
-                    color: "white"
+                    color: Theme.primaryText
                 }
                 
                 Item { Layout.fillWidth: true } // Spacer
@@ -759,7 +759,7 @@ Item {
                     
                     contentItem: Text {
                         text: parent.text
-                        color: "white"
+                        color: Theme.primaryText
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         font.pixelSize: 12  // Smaller font
@@ -811,7 +811,7 @@ Item {
                     
                     contentItem: Text {
                         text: parent.text
-                        color: "white"
+                        color: Theme.primaryText
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         font.pixelSize: 12  // Same font size
@@ -951,7 +951,7 @@ Item {
                     anchors.bottomMargin: 12
                     text: albumBrowser.selectedAlbum && albumBrowser.selectedAlbum.albumArtist && albumBrowser.selectedAlbum.title ? 
                           albumBrowser.selectedAlbum.albumArtist + " - " + albumBrowser.selectedAlbum.title : ""
-                    color: "white"
+                    color: Theme.primaryText
                     font.pixelSize: 16
                     font.bold: true
                     elide: Text.ElideRight
@@ -1349,7 +1349,7 @@ Item {
                                 
                                 Label {
                                     text: artistData.name
-                                    color: "white"
+                                    color: Theme.primaryText
                                     font.pixelSize: 14
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
@@ -1358,7 +1358,7 @@ Item {
                                 Label {
                                     id: chevronLabel
                                     text: "\u203A" // Right-pointing chevron
-                                    color: "white"
+                                    color: Theme.primaryText
                                     font.pixelSize: 16
                                     Layout.rightMargin: 4
                                     
@@ -1664,7 +1664,7 @@ Item {
                                                 id: selectionIndicator
                                                 color: "transparent"
                                                 border.width: 2
-                                                border.color: "#ffffff"
+                                                border.color: Theme.primaryText
                                                 radius: 3
                                                 visible: root.selectedAlbum && root.selectedAlbum.id === modelData.id
                                                 opacity: 0.8
@@ -1716,7 +1716,7 @@ Item {
                                             anchors.right: parent.right
                                             height: 30  // Fixed height for 2 lines max
                                             text: modelData.title
-                                            color: "white"
+                                            color: Theme.primaryText
                                             font.pixelSize: 11
                                             font.underline: root.navigationMode === "album" && 
                                                     root.selectedArtistName === artistData.name && 
@@ -2072,7 +2072,7 @@ Item {
                                                 anchors.centerIn: parent
                                                 width: parent.width
                                                 text: rightPane.albumTitleText
-                                                color: albumTitleMouseArea.containsMouse ? "#ffffff" : "#e0e0e0"
+                                                color: albumTitleMouseArea.containsMouse ? Theme.primaryText : Theme.secondaryText
                                                 font.pixelSize: 16
                                                 font.bold: true
                                                 elide: Text.ElideRight
@@ -2102,7 +2102,7 @@ Item {
                                             id: titleTextField
                                             anchors.fill: parent
                                             text: root.editingPlaylistName
-                                            color: "white"
+                                            color: Theme.primaryText
                                             font.pixelSize: 16
                                             font.bold: true
                                             selectByMouse: true
@@ -2638,7 +2638,7 @@ Item {
                                         Label {
                                             anchors.fill: parent
                                             text: trackData.title || "Unknown Track"
-                                            color: "white"
+                                            color: Theme.primaryText
                                             font.pixelSize: 13
                                             elide: Text.ElideRight
                                             visible: !parent.isPlaylist
@@ -2653,7 +2653,7 @@ Item {
                                             // Track title - prioritized, takes space it needs
                                             Label {
                                                 text: trackData.title || "Unknown Track"
-                                                color: "white"
+                                                color: Theme.primaryText
                                                 font.pixelSize: 13
                                                 elide: Text.ElideRight
                                                 Layout.fillWidth: false
@@ -2664,7 +2664,7 @@ Item {
                                             // Artist name - gets remaining space, truncated as needed
                                             Label {
                                                 text: trackData.artist || "Unknown Artist"
-                                                color: "#808080"
+                                                color: Theme.tertiaryText
                                                 font.pixelSize: 13
                                                 elide: Text.ElideRight
                                                 Layout.fillWidth: true
@@ -3093,7 +3093,7 @@ Item {
                                                 text: modelData.title || "Unknown Title"
                                                 font.pixelSize: 14
                                                 font.weight: Font.Medium
-                                                color: "white"
+                                                color: Theme.primaryText
                                                 elide: Text.ElideRight
                                             }
                                             
@@ -3105,7 +3105,7 @@ Item {
                                                     return artist + " - " + album
                                                 }
                                                 font.pixelSize: 12
-                                                color: "#808080"
+                                                color: Theme.tertiaryText
                                                 elide: Text.ElideMiddle
                                             }
                                         }
@@ -3183,7 +3183,7 @@ Item {
                                 Label {
                                     anchors.centerIn: parent
                                     text: root.trackSelectorSearchTerm.trim().length > 0 ? "No tracks found" : "Type to search for tracks"
-                                    color: "#808080"
+                                    color: Theme.tertiaryText
                                     font.pixelSize: 14
                                 }
                             }
@@ -3285,7 +3285,7 @@ Item {
                                 // Use track title as header
                                 Label {
                                     text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.title || "Unknown") : ""
-                                    color: "white"
+                                    color: Theme.primaryText
                                     font.pixelSize: 12
                                     font.bold: true
                                     Layout.fillWidth: true
@@ -3351,7 +3351,7 @@ Item {
                                             }
                                             Label {
                                                 text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.artist || "Unknown") : ""
-                                                color: "white"
+                                                color: Theme.primaryText
                                                 font.pixelSize: 10
                                                 Layout.fillWidth: true
                                                 elide: Text.ElideRight
@@ -3369,7 +3369,7 @@ Item {
                                             }
                                             Label {
                                                 text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.album || "Unknown") : ""
-                                                color: "white"
+                                                color: Theme.primaryText
                                                 font.pixelSize: 10
                                                 Layout.fillWidth: true
                                                 elide: Text.ElideRight
@@ -3387,7 +3387,7 @@ Item {
                                             }
                                             Label {
                                                 text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.albumArtist || root.selectedTrackForInfo.artist || "Unknown") : ""
-                                                color: "white"
+                                                color: Theme.primaryText
                                                 font.pixelSize: 10
                                                 Layout.fillWidth: true
                                                 elide: Text.ElideRight
@@ -3436,7 +3436,7 @@ Item {
                                                             return "Unknown"
                                                         }
                                                     }
-                                                    color: "white"
+                                                    color: Theme.primaryText
                                                     font.pixelSize: 10
                                                     Layout.fillWidth: true
                                                     elide: Text.ElideRight
@@ -3455,7 +3455,7 @@ Item {
                                                 }
                                                 Label {
                                                     text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.year || "") : ""
-                                                    color: "white"
+                                                    color: Theme.primaryText
                                                     font.pixelSize: 10
                                                     Layout.fillWidth: true
                                                 }
@@ -3473,7 +3473,7 @@ Item {
                                                 }
                                                 Label {
                                                     text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.genre || "") : ""
-                                                    color: "white"
+                                                    color: Theme.primaryText
                                                     font.pixelSize: 10
                                                     Layout.fillWidth: true
                                                     elide: Text.ElideRight
@@ -3497,7 +3497,7 @@ Item {
                                                 }
                                                 Label {
                                                     text: root.selectedTrackForInfo ? formatDuration(root.selectedTrackForInfo.duration || 0) : ""
-                                                    color: "white"
+                                                    color: Theme.primaryText
                                                     font.pixelSize: 10
                                                     Layout.fillWidth: true
                                                 }
@@ -3522,7 +3522,7 @@ Item {
                                                         }
                                                         return "Unknown"
                                                     }
-                                                    color: "white"
+                                                    color: Theme.primaryText
                                                     font.pixelSize: 10
                                                     Layout.fillWidth: true
                                                 }
@@ -3539,7 +3539,7 @@ Item {
                                                 }
                                                 Label {
                                                     text: root.selectedTrackForInfo ? formatFileSize(root.selectedTrackForInfo.fileSize || 0) : ""
-                                                    color: "white"
+                                                    color: Theme.primaryText
                                                     font.pixelSize: 10
                                                     Layout.fillWidth: true
                                                 }
@@ -3614,14 +3614,14 @@ Item {
                                                     Label {
                                                         id: filePathLabel1
                                                         text: parent.pathText
-                                                        color: "white"
+                                                        color: Theme.primaryText
                                                         font.pixelSize: 10
                                                     }
                                                     
                                                     // Second copy for seamless wrap-around (only visible when scrolling)
                                                     Label {
                                                         text: parent.pathText
-                                                        color: "white"
+                                                        color: Theme.primaryText
                                                         font.pixelSize: 10
                                                         visible: parent.needsScrolling
                                                     }
@@ -3690,7 +3690,7 @@ Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         text: rightPane.selectedAlbum ? "No tracks found for this album." : "Select an album to view tracks."
-                        color: "#808080"
+                        color: Theme.tertiaryText
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         wrapMode: Text.WordWrap
