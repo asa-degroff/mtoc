@@ -380,7 +380,7 @@ Item {
                                 text: "Queue"
                                 font.pixelSize: 16
                                 font.weight: Font.DemiBold
-                                color: Theme.primaryText
+                                color: "#ffffff"
                             }
                             
                             Item { Layout.fillWidth: true }

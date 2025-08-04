@@ -340,9 +340,9 @@ Item {
                     radius: 5
                     gradient: Gradient {
                         orientation: Gradient.Vertical
-                        GradientStop { position: 0.0; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(0, 0, 0, 0.08) }
-                        GradientStop { position: 0.5; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.17) : Qt.rgba(0, 0, 0, 0.10) }
-                        GradientStop { position: 1.0; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.19) : Qt.rgba(0, 0, 0, 0.12) }
+                        GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.15) }
+                        GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.17) }
+                        GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0.19) }
                     }
                     opacity: 0.8
                     
@@ -354,9 +354,9 @@ Item {
                         
                         gradient: Gradient {
                             orientation: Gradient.Vertical
-                            GradientStop { position: 0.0; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.8) : Qt.rgba(0, 0, 0, 0.3) }
-                            GradientStop { position: 0.5; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.6) : Qt.rgba(0, 0, 0, 0.5) }
-                            GradientStop { position: 1.0; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.35) : Qt.rgba(0, 0, 0, 0.7) }
+                            GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.8) }
+                            GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.6) }
+                            GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0.35) }
                         }
                     }
                 }
