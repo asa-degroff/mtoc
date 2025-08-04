@@ -31,33 +31,6 @@ Menu {
         }
     }
     
-    // Default delegate for consistent MenuItem styling
-    delegate: MenuItem {
-        id: menuItem
-        
-        // Force the palette to use our custom colors
-        palette.windowText: Theme.isDark ? "#e0e0e0" : Theme.secondaryText
-        palette.highlightedText: Theme.primaryText
-        
-        // Custom content item for consistent styling
-        contentItem: Text {
-            text: menuItem.text
-            color: Theme.isDark ? (menuItem.hovered ? "white" : "#e0e0e0") : (menuItem.hovered ? Theme.primaryText : Theme.secondaryText)
-            font.pixelSize: 13
-            verticalAlignment: Text.AlignVCenter
-            leftPadding: 12
-            rightPadding: 12
-        }
-        
-        // Custom background for hover effect with rounded corners
-        background: Rectangle {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.leftMargin: 2
-            anchors.rightMargin: 2
-            implicitHeight: 32
-            radius: 4
-            color: menuItem.hovered ? Theme.hoverBackground : "transparent"
-        }
-    }
+    // Use StyledMenuItem as the default delegate for any dynamically created items
+    delegate: StyledMenuItem { }
 }
