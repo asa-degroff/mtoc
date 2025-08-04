@@ -154,12 +154,12 @@ Item {
         }
     }
     
-    // Blurred background using thumbnail for efficiency
+    // Blurred background
     BlurredBackground {
         anchors.fill: parent
         source: thumbnailUrl
         blurRadius: 512
-        backgroundOpacity: 0.9
+        backgroundOpacity: 0.8
     }
     
     // Overlay for better contrast

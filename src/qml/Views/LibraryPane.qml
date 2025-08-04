@@ -2496,6 +2496,9 @@ Item {
                                 id: trackDelegate
                                 width: parent.width
                                 height: 45
+                                
+                                property bool isHovered: trackHoverArea.containsMouse
+                                
                                 color: {
                                     if (root.selectedTrackIndices.indexOf(index) !== -1) {
                                         return Qt.rgba(0.25, 0.32, 0.71, 0.25)  // Selected track
@@ -2510,6 +2513,13 @@ Item {
                                 //border
                                 border.width: 1
                                 border.color: Qt.rgba(1, 1, 1, 0.04)
+                                
+                                MouseArea {
+                                    id: trackHoverArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    acceptedButtons: Qt.NoButton
+                                }
                                 
                                 // Animated vertical offset for drag feedback
                                 transform: Translate {
@@ -2568,7 +2578,7 @@ Item {
                                     // Drag handle (only in edit mode for playlists)
                                     Image {
                                         id: dragHandle
-                                        source: "qrc:/resources/icons/list-drag-handle.svg"
+                                        source: Theme.isDark ? "qrc:/resources/icons/list-drag-handle.svg" : "qrc:/resources/icons/list-drag-handle-dark.svg"
                                         Layout.preferredWidth: 20
                                         Layout.preferredHeight: 20
                                         sourceSize.width: 40
@@ -2716,21 +2726,48 @@ Item {
                                     
                                     // Delete button (only in edit mode for playlists)
                                     Rectangle {
+                                        id: deleteButton
                                         width: 28
                                         height: 28
                                         radius: 4
                                         color: deleteTrackMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
-                                        visible: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist
+                                        visible: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist && (trackDelegate.isHovered || deleteTrackMouseArea.containsMouse)
+                                        opacity: visible ? 1.0 : 0.0
                                         
-                                        Image {
+                                        Behavior on opacity {
+                                            NumberAnimation { duration: 150 }
+                                        }
+                                        
+                                        Item {
                                             anchors.centerIn: parent
                                             width: 16
                                             height: 16
-                                            source: deleteTrackMouseArea.containsMouse ? 
-                                                (Theme.isDark ? "qrc:/resources/icons/trash-can-open-lid.svg" : "qrc:/resources/icons/trash-can-open-lid-dark.svg") : 
-                                                (Theme.isDark ? "qrc:/resources/icons/trash-can-closed-lid.svg" : "qrc:/resources/icons/trash-can-closed-lid-dark.svg")
-                                            sourceSize.width: 32
-                                            sourceSize.height: 32
+                                            
+                                            Image {
+                                                id: closedLidIcon
+                                                anchors.fill: parent
+                                                source: Theme.isDark ? "qrc:/resources/icons/trash-can-closed-lid.svg" : "qrc:/resources/icons/trash-can-closed-lid-dark.svg"
+                                                sourceSize.width: 32
+                                                sourceSize.height: 32
+                                                opacity: deleteTrackMouseArea.containsMouse ? 0 : 1
+                                                
+                                                Behavior on opacity {
+                                                    NumberAnimation { duration: 150 }
+                                                }
+                                            }
+                                            
+                                            Image {
+                                                id: openLidIcon
+                                                anchors.fill: parent
+                                                source: Theme.isDark ? "qrc:/resources/icons/trash-can-open-lid.svg" : "qrc:/resources/icons/trash-can-open-lid-dark.svg"
+                                                sourceSize.width: 32
+                                                sourceSize.height: 32
+                                                opacity: deleteTrackMouseArea.containsMouse ? 1 : 0
+                                                
+                                                Behavior on opacity {
+                                                    NumberAnimation { duration: 150 }
+                                                }
+                                            }
                                         }
                                         
                                         MouseArea {

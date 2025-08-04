@@ -255,15 +255,36 @@ Item {
                         color: deleteMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
                         visible: (mouseArea.containsMouse || renameMouseArea.containsMouse || deleteMouseArea.containsMouse) && !PlaylistManager.isSpecialPlaylist(modelData)
                         
-                        Image {
+                        Item {
                             anchors.centerIn: parent
                             width: 16
                             height: 16
-                            source: deleteMouseArea.containsMouse ? 
-                                (Theme.isDark ? "qrc:/resources/icons/trash-can-open-lid.svg" : "qrc:/resources/icons/trash-can-open-lid-dark.svg") : 
-                                (Theme.isDark ? "qrc:/resources/icons/trash-can-closed-lid.svg" : "qrc:/resources/icons/trash-can-closed-lid-dark.svg")
-                            sourceSize.width: 32
-                            sourceSize.height: 32
+                            
+                            Image {
+                                id: closedLidIcon
+                                anchors.fill: parent
+                                source: Theme.isDark ? "qrc:/resources/icons/trash-can-closed-lid.svg" : "qrc:/resources/icons/trash-can-closed-lid-dark.svg"
+                                sourceSize.width: 32
+                                sourceSize.height: 32
+                                opacity: deleteMouseArea.containsMouse ? 0 : 1
+                                
+                                Behavior on opacity {
+                                    NumberAnimation { duration: 150 }
+                                }
+                            }
+                            
+                            Image {
+                                id: openLidIcon
+                                anchors.fill: parent
+                                source: Theme.isDark ? "qrc:/resources/icons/trash-can-open-lid.svg" : "qrc:/resources/icons/trash-can-open-lid-dark.svg"
+                                sourceSize.width: 32
+                                sourceSize.height: 32
+                                opacity: deleteMouseArea.containsMouse ? 1 : 0
+                                
+                                Behavior on opacity {
+                                    NumberAnimation { duration: 150 }
+                                }
+                            }
                         }
                         
                         MouseArea {
