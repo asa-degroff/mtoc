@@ -7,8 +7,8 @@ QtObject {
     
     // Primary colors
     property color primaryText: isDark ? "white" : "#333333"
-    property color secondaryText: isDark ? "#cccccc" : "#444444"
-    property color tertiaryText: isDark ? "#999999" : "#555555"
+    property color secondaryText: isDark ? "#cccccc" : "#3d3d3d"
+    property color tertiaryText: isDark ? "#999999" : "#444444"
     
     // Background colors
     property color backgroundColor: isDark ? "#1a1a1a" : "#f5f5f5"
