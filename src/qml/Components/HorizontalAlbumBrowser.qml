@@ -21,6 +21,7 @@ Item {
     
     signal albumClicked(var album)
     signal centerAlbumChanged(var album)
+    signal albumTitleClicked(string artistName, string albumTitle)
     
     // Track component destruction state
     property bool isDestroying: false

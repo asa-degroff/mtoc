@@ -915,6 +915,11 @@ Item {
                         }
                     }
                 }
+                
+                onAlbumTitleClicked: function(artistName, albumTitle) {
+                    // Jump to the artist and select the album in the artist list
+                    root.jumpToAlbum(artistName, albumTitle)
+                }
             }
             
             // Gradient overlay to fade the bottom to black
@@ -947,6 +952,7 @@ Item {
                 z: 20  // Higher z-order than gradient overlay
                 
                 Label {
+                    id: albumTitleLabel
                     anchors.centerIn: parent
                     anchors.bottomMargin: 12
                     text: albumBrowser.selectedAlbum && albumBrowser.selectedAlbum.albumArtist && albumBrowser.selectedAlbum.title ? 
@@ -968,6 +974,18 @@ Item {
                         elide: parent.elide
                         horizontalAlignment: parent.horizontalAlignment
                         z: -1
+                    }
+                    
+                    // Make the label clickable
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (albumBrowser.selectedAlbum && albumBrowser.selectedAlbum.albumArtist && albumBrowser.selectedAlbum.title) {
+                                // Emit signal to jump to artist
+                                albumBrowser.albumTitleClicked(albumBrowser.selectedAlbum.albumArtist, albumBrowser.selectedAlbum.title)
+                            }
+                        }
                     }
                 }
             }
