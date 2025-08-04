@@ -46,13 +46,20 @@
         <file>resources/icons/repeat-dark.svg</file>
         <file>resources/icons/list-drag-handle.svg</file>
         <file>resources/icons/trash-can-closed-lid.svg</file>
+        <file>resources/icons/trash-can-closed-lid-dark.svg</file>
         <file>resources/icons/trash-can-open-lid.svg</file>
+        <file>resources/icons/trash-can-open-lid-dark.svg</file>
         <file>resources/icons/bomb.svg</file>
         <file>resources/icons/undo.svg</file>
         <file>resources/icons/save.svg</file>
+        <file>resources/icons/save-dark.svg</file>
         <file>resources/icons/edit.svg</file>
+        <file>resources/icons/edit-dark.svg</file>
         <file>resources/icons/cancel.svg</file>
+        <file>resources/icons/cancel-dark.svg</file>
         <file>resources/icons/text-input.svg</file>
+        <file>resources/icons/text-input-dark.svg</file>
         <file>resources/icons/add.svg</file>
+        <file>resources/icons/list-drag-handle-dark.svg</file>
     </qresource>
 </RCC>

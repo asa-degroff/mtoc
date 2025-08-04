@@ -226,7 +226,7 @@ Item {
                             anchors.centerIn: parent
                             width: 16
                             height: 16
-                            source: "qrc:/resources/icons/text-input.svg"
+                            source: Theme.isDark ? "qrc:/resources/icons/text-input.svg" : "qrc:/resources/icons/text-input-dark.svg"
                             sourceSize.width: 32
                             sourceSize.height: 32
                         }
@@ -259,7 +259,9 @@ Item {
                             anchors.centerIn: parent
                             width: 16
                             height: 16
-                            source: deleteMouseArea.containsMouse ? "qrc:/resources/icons/trash-can-open-lid.svg" : "qrc:/resources/icons/trash-can-closed-lid.svg"
+                            source: deleteMouseArea.containsMouse ? 
+                                (Theme.isDark ? "qrc:/resources/icons/trash-can-open-lid.svg" : "qrc:/resources/icons/trash-can-open-lid-dark.svg") : 
+                                (Theme.isDark ? "qrc:/resources/icons/trash-can-closed-lid.svg" : "qrc:/resources/icons/trash-can-closed-lid-dark.svg")
                             sourceSize.width: 32
                             sourceSize.height: 32
                         }

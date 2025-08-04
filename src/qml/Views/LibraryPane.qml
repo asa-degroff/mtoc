@@ -2245,7 +2245,7 @@ Item {
                                         anchors.centerIn: parent
                                         width: 18
                                         height: 18
-                                        source: "qrc:/resources/icons/edit.svg"
+                                        source: Theme.isDark ? "qrc:/resources/icons/edit.svg" : "qrc:/resources/icons/edit-dark.svg"
                                         sourceSize.width: 36
                                         sourceSize.height: 36
                                     }
@@ -2283,7 +2283,7 @@ Item {
                                         anchors.centerIn: parent
                                         width: 18
                                         height: 18
-                                        source: "qrc:/resources/icons/save.svg"
+                                        source: Theme.isDark ? "qrc:/resources/icons/save.svg" : "qrc:/resources/icons/save-dark.svg"
                                         sourceSize.width: 36
                                         sourceSize.height: 36
                                     }
@@ -2358,7 +2358,7 @@ Item {
                                         anchors.centerIn: parent
                                         width: 18
                                         height: 18
-                                        source: "qrc:/resources/icons/cancel.svg"
+                                        source: Theme.isDark ? "qrc:/resources/icons/cancel.svg" : "qrc:/resources/icons/cancel-dark.svg"
                                         sourceSize.width: 36
                                         sourceSize.height: 36
                                     }
@@ -2726,7 +2726,9 @@ Item {
                                             anchors.centerIn: parent
                                             width: 16
                                             height: 16
-                                            source: deleteTrackMouseArea.containsMouse ? "qrc:/resources/icons/trash-can-open-lid.svg" : "qrc:/resources/icons/trash-can-closed-lid.svg"
+                                            source: deleteTrackMouseArea.containsMouse ? 
+                                                (Theme.isDark ? "qrc:/resources/icons/trash-can-open-lid.svg" : "qrc:/resources/icons/trash-can-open-lid-dark.svg") : 
+                                                (Theme.isDark ? "qrc:/resources/icons/trash-can-closed-lid.svg" : "qrc:/resources/icons/trash-can-closed-lid-dark.svg")
                                             sourceSize.width: 32
                                             sourceSize.height: 32
                                         }
@@ -3039,7 +3041,7 @@ Item {
                                         anchors.centerIn: parent
                                         width: 18
                                         height: 18
-                                        source: "qrc:/resources/icons/cancel.svg"
+                                        source: Theme.isDark ? "qrc:/resources/icons/cancel.svg" : "qrc:/resources/icons/cancel-dark.svg"
                                         sourceSize.width: 36
                                         sourceSize.height: 36
                                         rotation: root.showTrackSelector ? 0 : -45  // 45 degrees for plus sign

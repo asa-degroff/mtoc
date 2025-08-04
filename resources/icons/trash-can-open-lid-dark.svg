@@ -1,0 +1,20 @@
+<svg width="800px" height="800px" viewBox="-2 -4 28 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g id="SVGRepo_bgCarrier" stroke-width="0"/>
+  <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#CCCCCC" stroke-width="0.048"/>
+  <g id="SVGRepo_iconCarrier">
+    <!-- Trash can body -->
+    <path d="M5 6V17.2C5 18.8802 5 19.7202 5.32698 20.362C5.6146 20.9265 6.07354 21.3854 6.63803 21.673C7.27976 22 8.11984 22 9.8 22H14.2C15.8802 22 16.7202 22 17.362 21.673C17.9265 21.3854 18.3854 20.9265 18.673 20.362C19 19.7202 19 18.8802 19 17.2V6" stroke="#333333" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Trash lines inside -->
+    <path d="M10 11.5V16.5M14 11.5V16.5" stroke="#333333" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Lid and handle group (rotated and translated) -->
+    <g transform="translate(0 2) rotate(-30 3 6)">
+      <!-- Lid -->
+      <path d="M3 6H21" stroke="#333333" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      
+      <!-- Handle -->
+      <path d="M16 6V5.2C16 4.0799 16 3.51984 15.782 3.09202C15.5903 2.71569 15.2843 2.40973 14.908 2.21799C14.4802 2 13.9201 2 12.8 2H11.2C10.0799 2 9.51984 2 9.09202 2.21799C8.71569 2.40973 8.40973 2.71569 8.21799 3.09202C8 3.51984 8 4.0799 8 5.2V6" stroke="#333333" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+</svg>
