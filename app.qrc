@@ -38,8 +38,11 @@
         <file>resources/icons/drag-handle-pressed.svg</file>
         <file>resources/icons/close-button.svg</file>
         <file>resources/icons/queue.svg</file>
+        <file>resources/icons/queue-dark.svg</file>
         <file>resources/icons/shuffle.svg</file>
+        <file>resources/icons/shuffle-dark.svg</file>
         <file>resources/icons/repeat.svg</file>
+        <file>resources/icons/repeat-dark.svg</file>
         <file>resources/icons/list-drag-handle.svg</file>
         <file>resources/icons/trash-can-closed-lid.svg</file>
         <file>resources/icons/trash-can-open-lid.svg</file>

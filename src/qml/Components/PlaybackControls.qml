@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Shapes
+import QtQuick.Effects
 import Mtoc.Backend 1.0
 
 Item {
@@ -93,8 +94,8 @@ Item {
                 Layout.preferredHeight: 31
                 Layout.alignment: Qt.AlignVCenter
                 radius: 25
-                color: Qt.rgba(1, 1, 1, 0.05)
-                border.color: Qt.rgba(1, 1, 1, 0.2)
+                color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
+                border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(0, 0, 0, 0.2)
                 border.width: 1
                 
                 RowLayout {
@@ -111,7 +112,7 @@ Item {
                             anchors.fill: parent
                             anchors.margins: 2
                             radius: parent.height / 2
-                            color: root.repeatEnabled ? Qt.rgba(1, 1, 1, 0.2) : "transparent"
+                            color: root.repeatEnabled ? (Theme.isDark ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(0, 0, 0, 0.2)) : "transparent"
                             
                             Behavior on color {
                                 ColorAnimation { duration: 200 }
@@ -119,10 +120,11 @@ Item {
                         }
                         
                         IconButton {
+                            id: repeatButton
                             anchors.centerIn: parent
                             width: 18
                             height: 18
-                            iconSource: "qrc:/resources/icons/repeat.svg"
+                            iconSource: Theme.isDark ? "qrc:/resources/icons/repeat.svg" : "qrc:/resources/icons/repeat-dark.svg"
                             opacity: root.repeatEnabled ? 1.0 : 0.6
                             onClicked: root.repeatToggled()
                             
@@ -138,7 +140,7 @@ Item {
                         Layout.fillHeight: true
                         Layout.topMargin: 8
                         Layout.bottomMargin: 8
-                        color: Qt.rgba(1, 1, 1, 0.2)
+                        color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(0, 0, 0, 0.2)
                     }
                     
                     // Shuffle button
@@ -150,7 +152,7 @@ Item {
                             anchors.fill: parent
                             anchors.margins: 2
                             radius: parent.height / 2
-                            color: root.shuffleEnabled ? Qt.rgba(1, 1, 1, 0.2) : "transparent"
+                            color: root.shuffleEnabled ? (Theme.isDark ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(0, 0, 0, 0.2)) : "transparent"
                             
                             Behavior on color {
                                 ColorAnimation { duration: 200 }
@@ -158,10 +160,11 @@ Item {
                         }
                         
                         IconButton {
+                            id: shuffleButton
                             anchors.centerIn: parent
                             width: 20
                             height: 20
-                            iconSource: "qrc:/resources/icons/shuffle.svg"
+                            iconSource: Theme.isDark ? "qrc:/resources/icons/shuffle.svg" : "qrc:/resources/icons/shuffle-dark.svg"
                             opacity: root.shuffleEnabled ? 1.0 : 0.6
                             onClicked: root.shuffleToggled()
                             
@@ -222,7 +225,7 @@ Item {
                     anchors.centerIn: parent
                     width: 30
                     height: 30
-                    iconSource: "qrc:/resources/icons/queue.svg"
+                    iconSource: Theme.isDark ? "qrc:/resources/icons/queue.svg" : "qrc:/resources/icons/queue-dark.svg"
                     opacity: root.queueVisible ? 1.0 : 0.6
                     onClicked: root.queueToggled()
                     
@@ -242,7 +245,7 @@ Item {
             
             Label {
                 text: formatTime(MediaPlayer.savedPosition > 0 ? MediaPlayer.savedPosition : progressSlider.value)
-                color: "#b0b0b0"
+                color: Theme.secondaryText
                 font.pixelSize: 14
                 Layout.preferredWidth: 45  // Fixed width for consistent alignment
                 horizontalAlignment: Text.AlignRight
@@ -337,9 +340,9 @@ Item {
                     radius: 5
                     gradient: Gradient {
                         orientation: Gradient.Vertical
-                        GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.15) }
-                        GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.17) }
-                        GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0.19) }
+                        GradientStop { position: 0.0; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(0, 0, 0, 0.08) }
+                        GradientStop { position: 0.5; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.17) : Qt.rgba(0, 0, 0, 0.10) }
+                        GradientStop { position: 1.0; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.19) : Qt.rgba(0, 0, 0, 0.12) }
                     }
                     opacity: 0.8
                     
@@ -351,9 +354,9 @@ Item {
                         
                         gradient: Gradient {
                             orientation: Gradient.Vertical
-                            GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.8) }
-                            GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.6) }
-                            GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0.35) }
+                            GradientStop { position: 0.0; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.8) : Qt.rgba(0, 0, 0, 0.3) }
+                            GradientStop { position: 0.5; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.6) : Qt.rgba(0, 0, 0, 0.5) }
+                            GradientStop { position: 1.0; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.35) : Qt.rgba(0, 0, 0, 0.7) }
                         }
                     }
                 }
@@ -409,7 +412,7 @@ Item {
             
             Label {
                 text: formatTime(MediaPlayer.duration)
-                color: "#b0b0b0"
+                color: Theme.secondaryText
                 font.pixelSize: 14
                 Layout.preferredWidth: 45  // Fixed width for consistent alignment
                 horizontalAlignment: Text.AlignLeft
