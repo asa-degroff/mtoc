@@ -686,7 +686,7 @@ Item {
         id: blurredBg
         anchors.fill: parent
         source: thumbnailUrl
-        backgroundOpacity: 0.8
+        backgroundOpacity: 0.9
         z: -2  // Put this behind the dark overlay
     }
     

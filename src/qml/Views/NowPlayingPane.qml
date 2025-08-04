@@ -159,7 +159,7 @@ Item {
         anchors.fill: parent
         source: thumbnailUrl
         blurRadius: 512
-        backgroundOpacity: 0.4
+        backgroundOpacity: 0.9
     }
     
     // Overlay for better contrast
