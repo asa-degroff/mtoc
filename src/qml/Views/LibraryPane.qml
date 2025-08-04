@@ -1781,7 +1781,7 @@ Item {
                                     StyledMenu {
                                         id: albumContextMenu
                                         
-                                        MenuItem {
+                                        StyledMenuItem {
                                             text: "Play"
                                             onTriggered: {
                                                 var globalPos = artistAlbumMouseArea.parent.mapToGlobal(artistAlbumMouseArea.width / 2, artistAlbumMouseArea.height / 2);
@@ -1796,14 +1796,14 @@ Item {
                                             }
                                         }
                                         
-                                        MenuItem {
+                                        StyledMenuItem {
                                             text: "Play Next"
                                             onTriggered: {
                                                 MediaPlayer.playAlbumNext(modelData.albumArtist, modelData.title);
                                             }
                                         }
                                         
-                                        MenuItem {
+                                        StyledMenuItem {
                                             text: "Play Last"
                                             onTriggered: {
                                                 MediaPlayer.playAlbumLast(modelData.albumArtist, modelData.title);
@@ -2842,7 +2842,7 @@ Item {
                                     StyledMenu {
                                         id: trackContextMenu
                                         
-                                        MenuItem {
+                                        StyledMenuItem {
                                             text: root.selectedTrackIndices.length > 1 ? 
                                                   "Play " + root.selectedTrackIndices.length + " Tracks Next" : 
                                                   "Play Next"
@@ -2873,7 +2873,7 @@ Item {
                                             }
                                         }
                                         
-                                        MenuItem {
+                                        StyledMenuItem {
                                             text: root.selectedTrackIndices.length > 1 ? 
                                                   "Play " + root.selectedTrackIndices.length + " Tracks Last" : 
                                                   "Play Last"
@@ -2909,7 +2909,7 @@ Item {
                                             height: visible ? implicitHeight : 0
                                         }
                                         
-                                        MenuItem {
+                                        StyledMenuItem {
                                             text: "Show info"
                                             visible: root.selectedTrackIndices.length === 1
                                             height: visible ? implicitHeight : 0

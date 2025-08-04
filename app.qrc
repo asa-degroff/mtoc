@@ -9,6 +9,7 @@
         <file>src/qml/Components/ResizeHandler.qml</file>
         <file>src/qml/Components/SearchBar.qml</file>
         <file>src/qml/Components/StyledMenu.qml</file>
+        <file>src/qml/Components/StyledMenuItem.qml</file>
         <file>src/qml/Components/StyledMenuSeparator.qml</file>
         <file>src/qml/Components/ThumbnailGridDelegate.qml</file>
         <file>src/qml/Views/LibraryPane.qml</file>

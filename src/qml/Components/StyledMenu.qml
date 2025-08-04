@@ -35,6 +35,10 @@ Menu {
     delegate: MenuItem {
         id: menuItem
         
+        // Force the palette to use our custom colors
+        palette.windowText: Theme.isDark ? "#e0e0e0" : Theme.secondaryText
+        palette.highlightedText: Theme.primaryText
+        
         // Custom content item for consistent styling
         contentItem: Text {
             text: menuItem.text

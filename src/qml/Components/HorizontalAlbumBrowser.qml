@@ -54,7 +54,7 @@ Item {
         id: sharedAlbumContextMenu
         property var currentAlbumData: null
         
-        MenuItem {
+        StyledMenuItem {
             text: "Play"
             onTriggered: {
                 if (sharedAlbumContextMenu.currentAlbumData) {
@@ -94,7 +94,7 @@ Item {
             }
         }
         
-        MenuItem {
+        StyledMenuItem {
             text: "Play Next"
             onTriggered: {
                 if (sharedAlbumContextMenu.currentAlbumData && MediaPlayer) {
@@ -103,7 +103,7 @@ Item {
             }
         }
         
-        MenuItem {
+        StyledMenuItem {
             text: "Play Last"
             onTriggered: {
                 if (sharedAlbumContextMenu.currentAlbumData && MediaPlayer) {
