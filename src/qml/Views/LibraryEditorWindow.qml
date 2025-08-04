@@ -12,7 +12,7 @@ ApplicationWindow {
     
     flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint
     
-    color: "#2a2a2a"
+    color: Theme.backgroundColor
     
     // Folder dialog for adding music folders
     FolderDialog {
@@ -98,7 +98,7 @@ ApplicationWindow {
                 text: "Library Management"
                 font.pixelSize: 20
                 font.bold: true
-                color: "white"
+                color: Theme.primaryText
                 Layout.fillWidth: true
             }
             
@@ -106,7 +106,7 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 height: 100
-                color: "#333333"
+                color: Theme.panelBackground
                 radius: 4
                 
                 RowLayout {
@@ -124,13 +124,13 @@ ApplicationWindow {
                             text: LibraryManager.albumArtistCount
                             font.pixelSize: 32
                             font.bold: true
-                            color: "white"
+                            color: Theme.primaryText
                         }
 
                         Label {
                             text: "Album Artists"
                             font.pixelSize: 14
-                            color: "#cccccc"
+                            color: Theme.secondaryText
                         }
                     }
                     
@@ -144,13 +144,13 @@ ApplicationWindow {
                             text: LibraryManager.artistCount
                             font.pixelSize: 32
                             font.bold: true
-                            color: "white"
+                            color: Theme.primaryText
                         }
                         
                         Label {
                             text: "Artists"
                             font.pixelSize: 14
-                            color: "#cccccc"
+                            color: Theme.secondaryText
                         }
                     }
                     
@@ -164,13 +164,13 @@ ApplicationWindow {
                             text: LibraryManager.albumCount
                             font.pixelSize: 32
                             font.bold: true
-                            color: "white"
+                            color: Theme.primaryText
                         }
                         
                         Label {
                             text: "Albums"
                             font.pixelSize: 14
-                            color: "#cccccc"
+                            color: Theme.secondaryText
                         }
                     }
                     
@@ -184,13 +184,13 @@ ApplicationWindow {
                             text: LibraryManager.trackCount
                             font.pixelSize: 32
                             font.bold: true
-                            color: "white"
+                            color: Theme.primaryText
                         }
                         
                         Label {
                             text: "Tracks"
                             font.pixelSize: 14
-                            color: "#cccccc"
+                            color: Theme.secondaryText
                         }
                     }
                     
@@ -211,7 +211,7 @@ ApplicationWindow {
                         Label {
                             text: "Scanning: " + LibraryManager.scanProgressText
                             font.pixelSize: 12
-                            color: "#cccccc"
+                            color: Theme.secondaryText
                         }
                     }
                 }
@@ -221,7 +221,7 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                color: "#333333"
+                color: Theme.panelBackground
                 radius: 4
                 
                 ColumnLayout {
@@ -236,7 +236,7 @@ ApplicationWindow {
                             text: "Music Folders"
                             font.pixelSize: 16
                             font.bold: true
-                            color: "white"
+                            color: Theme.primaryText
                         }
                         
                         Item { Layout.fillWidth: true }
@@ -247,8 +247,8 @@ ApplicationWindow {
                             implicitWidth: 100
                             
                             background: Rectangle {
-                                color: parent.down ? "#0066cc" : parent.hovered ? "#0055aa" : "#333333"
-                                border.color: parent.hovered ? "#0066cc" : "#555555"
+                                color: parent.down ? Theme.linkColor : parent.hovered ? Theme.selectedBackground : Theme.inputBackground
+                                border.color: parent.hovered ? Theme.linkColor : Theme.borderColor
                                 border.width: 1
                                 radius: 4
                                 
@@ -259,7 +259,7 @@ ApplicationWindow {
                             
                             contentItem: Text {
                                 text: parent.text
-                                color: parent.hovered ? "white" : "#cccccc"
+                                color: parent.hovered ? Theme.primaryText : Theme.secondaryText
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
                                 font.pixelSize: 13
@@ -277,7 +277,7 @@ ApplicationWindow {
                         Rectangle {
                             id: listBackground
                             anchors.fill: parent
-                            color: "#2a2a2a"
+                            color: Theme.backgroundColor
                             radius: 4
                         }
                         
@@ -290,7 +290,7 @@ ApplicationWindow {
                             delegate: Rectangle {
                                 width: ListView.view.width
                                 height: 48  // Increased height for better spacing
-                                color: index % 2 === 0 ? "#3a3a3a" : "#353535"
+                                color: index % 2 === 0 ? Theme.inputBackground : Theme.inputBackgroundHover
                                 radius: index === 0 ? 3 : 0  // Round top corners for first item
                                 
                                 // Special handling for first and last items
@@ -313,7 +313,7 @@ ApplicationWindow {
                                 
                                 Label {
                                     text: modelData
-                                    color: "white"
+                                    color: Theme.primaryText
                                     elide: Text.ElideLeft
                                     Layout.fillWidth: true
                                     Layout.alignment: Qt.AlignVCenter  // Ensure vertical centering
@@ -326,8 +326,8 @@ ApplicationWindow {
                                     implicitWidth: 80
                                     
                                     background: Rectangle {
-                                        color: parent.down ? "#ff3333" : parent.hovered ? "#cc0000" : "#333333"
-                                        border.color: parent.hovered ? "#ff3333" : "#555555"
+                                        color: parent.down ? Theme.errorText : parent.hovered ? Qt.darker(Theme.errorText, 1.2) : Theme.inputBackground
+                                        border.color: parent.hovered ? Theme.errorText : Theme.borderColor
                                         border.width: 1
                                         radius: 4
                                         
@@ -338,7 +338,7 @@ ApplicationWindow {
                                     
                                     contentItem: Text {
                                         text: parent.text
-                                        color: parent.hovered ? "white" : "#cccccc"
+                                        color: parent.hovered ? Theme.primaryText : Theme.secondaryText
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
                                         font.pixelSize: 13
@@ -362,7 +362,7 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                color: "#333333"
+                color: Theme.panelBackground
                 radius: 4
                 
                 ColumnLayout {
@@ -377,7 +377,7 @@ ApplicationWindow {
                             text: "Playlist Folders"
                             font.pixelSize: 16
                             font.bold: true
-                            color: "white"
+                            color: Theme.primaryText
                         }
                         
                         Item { Layout.fillWidth: true }
@@ -388,8 +388,8 @@ ApplicationWindow {
                             implicitWidth: 100
                             
                             background: Rectangle {
-                                color: parent.down ? "#0066cc" : parent.hovered ? "#0055aa" : "#333333"
-                                border.color: parent.hovered ? "#0066cc" : "#555555"
+                                color: parent.down ? Theme.linkColor : parent.hovered ? Theme.selectedBackground : Theme.inputBackground
+                                border.color: parent.hovered ? Theme.linkColor : Theme.borderColor
                                 border.width: 1
                                 radius: 4
                                 
@@ -400,7 +400,7 @@ ApplicationWindow {
                             
                             contentItem: Text {
                                 text: parent.text
-                                color: parent.hovered ? "white" : "#cccccc"
+                                color: parent.hovered ? Theme.primaryText : Theme.secondaryText
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
                                 font.pixelSize: 13
@@ -418,7 +418,7 @@ ApplicationWindow {
                         Rectangle {
                             id: playlistListBackground
                             anchors.fill: parent
-                            color: "#2a2a2a"
+                            color: Theme.backgroundColor
                             radius: 4
                         }
                         
@@ -431,7 +431,7 @@ ApplicationWindow {
                             delegate: Rectangle {
                                 width: ListView.view.width
                                 height: 48  // Increased height for better spacing
-                                color: index % 2 === 0 ? "#3a3a3a" : "#353535"
+                                color: index % 2 === 0 ? Theme.inputBackground : Theme.inputBackgroundHover
                                 radius: index === 0 ? 3 : 0  // Round top corners for first item
                                 
                                 // Special handling for first and last items
@@ -457,8 +457,8 @@ ApplicationWindow {
                                     width: 20
                                     height: 20
                                     radius: 10
-                                    color: PlaylistManager.playlistFolders[index] === PlaylistManager.defaultPlaylistFolder ? "#4a5fba" : "#383838"
-                                    border.color: PlaylistManager.playlistFolders[index] === PlaylistManager.defaultPlaylistFolder ? "#5a6fca" : "#505050"
+                                    color: PlaylistManager.playlistFolders[index] === PlaylistManager.defaultPlaylistFolder ? Theme.selectedBackground : Theme.inputBackground
+                                    border.color: PlaylistManager.playlistFolders[index] === PlaylistManager.defaultPlaylistFolder ? Theme.linkColor : Theme.borderColor
                                     border.width: 1
                                     Layout.alignment: Qt.AlignVCenter
                                     
@@ -467,7 +467,7 @@ ApplicationWindow {
                                         width: 8
                                         height: 8
                                         radius: 4
-                                        color: "white"
+                                        color: Theme.primaryText
                                         visible: PlaylistManager.playlistFolders[index] === PlaylistManager.defaultPlaylistFolder
                                     }
                                     
@@ -482,7 +482,7 @@ ApplicationWindow {
                                 
                                 Label {
                                     text: modelData
-                                    color: "white"
+                                    color: Theme.primaryText
                                     elide: Text.ElideLeft
                                     Layout.fillWidth: true
                                     Layout.alignment: Qt.AlignVCenter  // Ensure vertical centering
@@ -490,7 +490,7 @@ ApplicationWindow {
                                 
                                 Label {
                                     text: PlaylistManager.playlistFolders[index] === PlaylistManager.defaultPlaylistFolder ? "Default" : ""
-                                    color: "#4a5fba"
+                                    color: Theme.selectedBackground
                                     font.pixelSize: 12
                                     font.italic: true
                                     Layout.alignment: Qt.AlignVCenter
@@ -505,8 +505,8 @@ ApplicationWindow {
                                     opacity: enabled ? 1.0 : 0.5
                                     
                                     background: Rectangle {
-                                        color: parent.enabled ? (parent.down ? "#ff3333" : parent.hovered ? "#cc0000" : "#333333") : "#333333"
-                                        border.color: parent.enabled ? (parent.hovered ? "#ff3333" : "#555555") : "#444444"
+                                        color: parent.enabled ? (parent.down ? Theme.errorText : parent.hovered ? Qt.darker(Theme.errorText, 1.2) : Theme.inputBackground) : Theme.inputBackground
+                                        border.color: parent.enabled ? (parent.hovered ? Theme.errorText : Theme.borderColor) : Theme.borderColor
                                         border.width: 1
                                         radius: 4
                                         
@@ -517,7 +517,7 @@ ApplicationWindow {
                                     
                                     contentItem: Text {
                                         text: parent.text
-                                        color: parent.enabled ? (parent.hovered ? "white" : "#cccccc") : "#666666"
+                                        color: parent.enabled ? (parent.hovered ? Theme.primaryText : Theme.secondaryText) : Theme.tertiaryText
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
                                         font.pixelSize: 13
@@ -540,7 +540,7 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 160
-                color: "#404040"
+                color: Theme.panelBackground
                 radius: 4
                 
                 ColumnLayout {
@@ -550,7 +550,7 @@ ApplicationWindow {
                     
                     Label {
                         text: "Scan your library to add audio files from the chosen folders to the library database. Clear and rescan to regenerate the database. \n\nAudio files are treated as read-only, changes made here only affect the database. \n\nRestart the application to apply changes if replacing the entire library."
-                        color: "#cccccc"
+                        color: Theme.secondaryText
                         font.pixelSize: 12
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
@@ -566,8 +566,8 @@ ApplicationWindow {
                             implicitWidth: 100
                             
                             background: Rectangle {
-                                color: parent.down ? "#cc6600" : parent.hovered ? "#aa5500" : "#333333"
-                                border.color: parent.hovered ? "#cc6600" : "#555555"
+                                color: parent.down ? "#cc6600" : parent.hovered ? "#aa5500" : Theme.inputBackground
+                                border.color: parent.hovered ? "#cc6600" : Theme.borderColor
                                 border.width: 1
                                 radius: 4
                                 
@@ -578,7 +578,7 @@ ApplicationWindow {
                             
                             contentItem: Text {
                                 text: parent.text
-                                color: parent.hovered ? "white" : "#cccccc"
+                                color: parent.hovered ? Theme.primaryText : Theme.secondaryText
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
                                 font.pixelSize: 13
@@ -609,7 +609,7 @@ ApplicationWindow {
                             
                             contentItem: Text {
                                 text: parent.text
-                                color: "white"
+                                color: Theme.primaryText
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
                                 font.pixelSize: 13
