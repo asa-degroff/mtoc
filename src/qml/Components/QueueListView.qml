@@ -494,7 +494,7 @@ ListView {
             // Duration (fixed width)
             Label {
                 text: modelData.duration ? formatDuration(modelData.duration) : "0:00"
-                color: "#aaaaaa"
+                color: Theme.isDark ? "#aaaaaa" : "#ffffffff"
                 font.pixelSize: 12
                 Layout.preferredWidth: 45
                 horizontalAlignment: Text.AlignRight

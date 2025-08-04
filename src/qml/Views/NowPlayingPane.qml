@@ -389,7 +389,7 @@ Item {
                                 text: showPlaylistSavedMessage ? "Playlist Saved" : 
                                       MediaPlayer.queueLength + " track" + (MediaPlayer.queueLength !== 1 ? "s" : "") + ", " + formatQueueDuration(MediaPlayer.totalQueueDuration)
                                 font.pixelSize: 12
-                                color: showPlaylistSavedMessage ? "#60ff60" : "#808080"
+                                color: showPlaylistSavedMessage ? "#60ff60" : Theme.isDark ? "#808080" : "#ffffff"
                                 
                                 Behavior on color {
                                     ColorAnimation { duration: 200 }
