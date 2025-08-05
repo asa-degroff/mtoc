@@ -45,6 +45,7 @@ Item {
         property string iconPressedSource: ""
         property bool isPressed: false
         property bool isHovered: false
+        property bool addShadow: false
         signal clicked()
         
         scale: isPressed ? 0.9 : (isHovered ? 1.1 : 1.0)
@@ -63,6 +64,17 @@ Item {
             smooth: true
             antialiasing: false
             fillMode: Image.PreserveAspectFit
+            
+            // Drop shadow for better contrast in light mode
+            layer.enabled: buttonRoot.addShadow && !Theme.isDark
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowHorizontalOffset: 0
+                shadowVerticalOffset: 1
+                shadowBlur: 0.3
+                shadowColor: "#000000"
+                shadowOpacity: 0.5
+            }
         }
         
         MouseArea {
@@ -124,8 +136,9 @@ Item {
                             anchors.centerIn: parent
                             width: 18
                             height: 18
-                            iconSource: Theme.isDark ? "qrc:/resources/icons/repeat.svg" : "qrc:/resources/icons/repeat-dark.svg"
+                            iconSource: "qrc:/resources/icons/repeat.svg"
                             opacity: root.repeatEnabled ? 1.0 : 0.6
+                            addShadow: true
                             onClicked: root.repeatToggled()
                             
                             Behavior on opacity {
@@ -164,8 +177,9 @@ Item {
                             anchors.centerIn: parent
                             width: 20
                             height: 20
-                            iconSource: Theme.isDark ? "qrc:/resources/icons/shuffle.svg" : "qrc:/resources/icons/shuffle-dark.svg"
+                            iconSource: "qrc:/resources/icons/shuffle.svg"
                             opacity: root.shuffleEnabled ? 1.0 : 0.6
+                            addShadow: true
                             onClicked: root.shuffleToggled()
                             
                             Behavior on opacity {
@@ -225,8 +239,9 @@ Item {
                     anchors.centerIn: parent
                     width: 30
                     height: 30
-                    iconSource: Theme.isDark ? "qrc:/resources/icons/queue.svg" : "qrc:/resources/icons/queue-dark.svg"
+                    iconSource: "qrc:/resources/icons/queue.svg"
                     opacity: root.queueVisible ? 1.0 : 0.6
+                    addShadow: true
                     onClicked: root.queueToggled()
                     
                     Behavior on opacity {
