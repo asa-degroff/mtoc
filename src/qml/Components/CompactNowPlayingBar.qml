@@ -125,6 +125,7 @@ Rectangle {
         anchors.right: parent.right
         height: 1
         color: Theme.borderColor
+        opacity: 0.5
     }
     
     // Main centered content
