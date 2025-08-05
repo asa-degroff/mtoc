@@ -3348,14 +3348,106 @@ Item {
                             RowLayout {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 16
+                                spacing: 8
                                 
-                                // Use track title as header
-                                Label {
-                                    text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.title || "Unknown") : ""
-                                    color: Theme.primaryText
-                                    font.pixelSize: 12
-                                    font.bold: true
+                                // Scrolling track title
+                                Flickable {
                                     Layout.fillWidth: true
+                                    Layout.preferredHeight: 16
+                                    contentHeight: height
+                                    interactive: false
+                                    clip: true
+                                    
+                                    // Container for the label with opacity mask
+                                    Item {
+                                        id: titleLabelContainer
+                                        anchors.fill: parent
+                                        
+                                        // Row containing duplicated text for seamless scrolling
+                                        Row {
+                                            id: titleRow
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            spacing: 60  // Gap between duplicates
+                                            
+                                            // Properties for scrolling
+                                            property string titleText: root.selectedTrackForInfo ? (root.selectedTrackForInfo.title || "Unknown") : ""
+                                            property bool needsScrolling: titleLabel1.contentWidth > titleLabelContainer.width
+                                            property real scrollOffset: 0
+                                            property real pauseDuration: 1500  // Pause at end in ms
+                                            property real scrollDuration: 8000  // Time to scroll full width in ms
+                                            
+                                            // Position for scrolling
+                                            x: needsScrolling ? -scrollOffset : 0
+                                            
+                                            // Update scrolling when text changes
+                                            onTitleTextChanged: {
+                                                scrollOffset = 0
+                                                titleScrollAnimation.stop()
+                                                if (needsScrolling) {
+                                                    titleScrollAnimation.start()
+                                                }
+                                            }
+                                            
+                                            onNeedsScrollingChanged: {
+                                                scrollOffset = 0
+                                                titleScrollAnimation.stop()
+                                                if (needsScrolling) {
+                                                    titleScrollAnimation.start()
+                                                }
+                                            }
+                                            
+                                            // First copy of the text
+                                            Label {
+                                                id: titleLabel1
+                                                text: parent.titleText
+                                                color: Theme.primaryText
+                                                font.pixelSize: 12
+                                                font.bold: true
+                                            }
+                                            
+                                            // Second copy for seamless wrap-around (only visible when scrolling)
+                                            Label {
+                                                text: parent.titleText
+                                                color: Theme.primaryText
+                                                font.pixelSize: 12
+                                                font.bold: true
+                                                visible: parent.needsScrolling
+                                            }
+                                            
+                                            // Continuous scrolling animation
+                                            SequentialAnimation {
+                                                id: titleScrollAnimation
+                                                loops: Animation.Infinite
+                                                
+                                                // Scroll continuously to show second copy
+                                                NumberAnimation {
+                                                    target: titleRow
+                                                    property: "scrollOffset"
+                                                    from: 0
+                                                    to: titleLabel1.contentWidth + titleRow.spacing  // Scroll one full text width + gap
+                                                    duration: titleRow.scrollDuration
+                                                    easing.type: Easing.InOutQuad
+                                                }
+                                                
+                                                // Brief pause at the wrap point
+                                                PauseAnimation {
+                                                    duration: titleRow.pauseDuration
+                                                }
+                                                
+                                                // Instant reset to beginning (seamless wrap)
+                                                PropertyAction {
+                                                    target: titleRow
+                                                    property: "scrollOffset"
+                                                    value: 0
+                                                }
+                                                
+                                                // Brief pause at the beginning
+                                                PauseAnimation {
+                                                    duration: titleRow.pauseDuration
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                                 
                                 // Close button
@@ -3369,7 +3461,7 @@ Item {
                                         anchors.centerIn: parent
                                         width: 12
                                         height: 12
-                                        source: "qrc:/resources/icons/close-button.svg"
+                                        source: Theme.isDark ? "qrc:/resources/icons/close-button.svg" : "qrc:/resources/icons/close-button-dark.svg"
                                         sourceSize.width: 24
                                         sourceSize.height: 24
                                         smooth: true
