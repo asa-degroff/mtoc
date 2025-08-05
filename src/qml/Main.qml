@@ -22,8 +22,11 @@ ApplicationWindow {
         console.log("Main.qml: Window closing, saving playback state");
         
         // Close all child windows first
-        if (libraryPane && libraryPane.closeAllWindows) {
-            libraryPane.closeAllWindows();
+        if (libraryPaneWide && libraryPaneWide.closeAllWindows) {
+            libraryPaneWide.closeAllWindows();
+        }
+        if (libraryPaneCompact && libraryPaneCompact.closeAllWindows) {
+            libraryPaneCompact.closeAllWindows();
         }
         
         if (MediaPlayer) {
@@ -100,32 +103,66 @@ ApplicationWindow {
             x: parent.width > width ? (parent.width - width) / 2 : 0
             y: parent.height > height ? (parent.height - height) / 2 : 0
         
-        // Basic two-pane layout
-        RowLayout {
+        // Layout based on mode
+        Item {
             anchors.fill: parent
-            spacing: 0  // Remove default spacing
+            
+            // Wide layout (default)
+            RowLayout {
+                anchors.fill: parent
+                spacing: 0
+                visible: SettingsManager.layoutMode === SettingsManager.Wide
 
-            // Library Pane
-            LibraryPane {
-                id: libraryPane
-                Layout.fillWidth: true
-                Layout.preferredWidth: mainContent.width * libraryPaneRatio
-                Layout.fillHeight: true
+                // Library Pane
+                LibraryPane {
+                    id: libraryPaneWide
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: mainContent.width * libraryPaneRatio
+                    Layout.fillHeight: true
+                }
+
+                // Now Playing Pane
+                NowPlayingPane {
+                    id: nowPlayingPane
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: mainContent.width * nowPlayingPaneRatio
+                    Layout.fillHeight: true
+                    
+                    // Pass reference to library pane for navigation
+                    libraryPane: libraryPaneWide
+                    
+                    Component.onCompleted: {
+                        console.log("NowPlayingPane added to Main.qml");
+                    }
+                }
             }
-
-
-            // Now Playing Pane
-            NowPlayingPane {
-                id: nowPlayingPane
-                Layout.fillWidth: true
-                Layout.preferredWidth: mainContent.width * nowPlayingPaneRatio
-                Layout.fillHeight: true
+            
+            // Compact layout
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: 0
+                visible: SettingsManager.layoutMode === SettingsManager.Compact
                 
-                // Pass reference to library pane for navigation
-                libraryPane: libraryPane
+                // Library Pane (full width)
+                LibraryPane {
+                    id: libraryPaneCompact
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                }
                 
-                Component.onCompleted: {
-                    console.log("NowPlayingPane added to Main.qml");
+                // Compact Now Playing Bar
+                CompactNowPlayingBar {
+                    id: compactNowPlayingBar
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 80
+                    
+                    onAlbumTitleClicked: function(artistName, albumTitle) {
+                        libraryPaneCompact.jumpToAlbum(artistName, albumTitle)
+                    }
+                    
+                    onArtistClicked: function(artistName) {
+                        libraryPaneCompact.jumpToArtist(artistName)
+                    }
                 }
             }
         }
@@ -188,7 +225,11 @@ ApplicationWindow {
         ensureWindowVisible();
         
         // Give focus to library pane for keyboard navigation
-        libraryPane.forceActiveFocus();
+        if (SettingsManager.layoutMode === SettingsManager.Wide) {
+            libraryPaneWide.forceActiveFocus();
+        } else {
+            libraryPaneCompact.forceActiveFocus();
+        }
         
         // Wait for MediaPlayer to be ready before restoring state
         if (MediaPlayer.isReady) {
@@ -205,7 +246,30 @@ ApplicationWindow {
     Shortcut {
         sequence: StandardKey.Find  // Ctrl+F on Linux, Cmd+F on macOS
         onActivated: {
-            libraryPane.focusSearchBar()
+            if (SettingsManager.layoutMode === SettingsManager.Wide) {
+                libraryPaneWide.focusSearchBar()
+            } else {
+                libraryPaneCompact.focusSearchBar()
+            }
         }
+    }
+    
+    // Queue popup for compact mode
+    QueuePopup {
+        id: queuePopup
+        parent: window.contentItem
+        queueModel: MediaPlayer.queue
+        currentPlayingIndex: MediaPlayer.currentQueueIndex
+        visible: compactNowPlayingBar.queuePopupVisible
+        onClosed: compactNowPlayingBar.queuePopupVisible = false
+    }
+    
+    // Album art popup for compact mode
+    AlbumArtPopup {
+        id: albumArtPopup
+        parent: window.contentItem
+        albumArtUrl: compactNowPlayingBar.albumArtUrl
+        visible: compactNowPlayingBar.albumArtPopupVisible
+        onClosed: compactNowPlayingBar.albumArtPopupVisible = false
     }
 }

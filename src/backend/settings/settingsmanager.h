@@ -23,6 +23,7 @@ class SettingsManager : public QObject
     Q_PROPERTY(int windowY READ windowY WRITE setWindowY NOTIFY windowYChanged)
     Q_PROPERTY(Theme theme READ theme WRITE setTheme NOTIFY themeChanged)
     Q_PROPERTY(bool isSystemDark READ isSystemDark NOTIFY systemThemeChanged)
+    Q_PROPERTY(LayoutMode layoutMode READ layoutMode WRITE setLayoutMode NOTIFY layoutModeChanged)
 
 public:
     enum QueueAction {
@@ -39,6 +40,12 @@ public:
         System
     };
     Q_ENUM(Theme)
+
+    enum LayoutMode {
+        Wide,
+        Compact
+    };
+    Q_ENUM(LayoutMode)
 
     static SettingsManager* instance();
     ~SettingsManager();
@@ -59,6 +66,7 @@ public:
     int windowY() const { return m_windowY; }
     Theme theme() const { return m_theme; }
     bool isSystemDark() const;
+    LayoutMode layoutMode() const { return m_layoutMode; }
     
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -75,6 +83,7 @@ public:
     void setWindowX(int x);
     void setWindowY(int y);
     void setTheme(Theme theme);
+    void setLayoutMode(LayoutMode mode);
 
 signals:
     void queueActionDefaultChanged(QueueAction action);
@@ -92,6 +101,7 @@ signals:
     void windowYChanged(int y);
     void themeChanged(Theme theme);
     void systemThemeChanged();
+    void layoutModeChanged(LayoutMode mode);
 
 private slots:
     void onSystemThemeChanged();
@@ -121,6 +131,7 @@ private:
     int m_windowX;
     int m_windowY;
     Theme m_theme;
+    LayoutMode m_layoutMode;
 };
 
 #endif // SETTINGSMANAGER_H

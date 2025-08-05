@@ -12,6 +12,9 @@
         <file>src/qml/Components/StyledMenuItem.qml</file>
         <file>src/qml/Components/StyledMenuSeparator.qml</file>
         <file>src/qml/Components/ThumbnailGridDelegate.qml</file>
+        <file>src/qml/Components/CompactNowPlayingBar.qml</file>
+        <file>src/qml/Components/QueuePopup.qml</file>
+        <file>src/qml/Components/AlbumArtPopup.qml</file>
         <file>src/qml/Views/LibraryPane.qml</file>
         <file>src/qml/Views/LibraryEditorWindow.qml</file>
         <file>src/qml/Views/SettingsWindow.qml</file>

@@ -8,6 +8,7 @@ SettingsManager* SettingsManager::s_instance = nullptr;
 SettingsManager::SettingsManager(QObject *parent)
     : QObject(parent)
     , m_settings("mtoc", "mtoc")
+    , m_layoutMode(Wide)
 {
     loadSettings();
     setupSystemThemeDetection();
@@ -155,6 +156,15 @@ void SettingsManager::setTheme(Theme theme)
     }
 }
 
+void SettingsManager::setLayoutMode(LayoutMode mode)
+{
+    if (m_layoutMode != mode) {
+        m_layoutMode = mode;
+        emit layoutModeChanged(mode);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -164,6 +174,7 @@ void SettingsManager::loadSettings()
     m_settings.beginGroup("Display");
     m_showTrackInfoByDefault = m_settings.value("showTrackInfoByDefault", false).toBool();
     m_theme = static_cast<Theme>(m_settings.value("theme", Dark).toInt());
+    m_layoutMode = static_cast<LayoutMode>(m_settings.value("layoutMode", Wide).toInt());
     m_settings.endGroup();
     
     m_settings.beginGroup("Playback");
@@ -202,6 +213,7 @@ void SettingsManager::saveSettings()
     m_settings.beginGroup("Display");
     m_settings.setValue("showTrackInfoByDefault", m_showTrackInfoByDefault);
     m_settings.setValue("theme", static_cast<int>(m_theme));
+    m_settings.setValue("layoutMode", static_cast<int>(m_layoutMode));
     m_settings.endGroup();
     
     m_settings.beginGroup("Playback");

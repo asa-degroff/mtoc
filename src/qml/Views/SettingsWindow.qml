@@ -288,6 +288,114 @@ ApplicationWindow {
                         Item { Layout.fillWidth: true }
                     }
                     
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 12
+                        
+                        Label {
+                            text: "Layout Mode:"
+                            font.pixelSize: 14
+                            color: Theme.secondaryText
+                        }
+                        
+                        ComboBox {
+                            id: layoutModeComboBox
+                            Layout.preferredWidth: 150
+                            Layout.preferredHeight: 36
+                            model: ["Wide", "Compact"]
+                            currentIndex: SettingsManager.layoutMode === SettingsManager.Wide ? 0 : 1
+                            
+                            onActivated: function(index) {
+                                SettingsManager.layoutMode = index === 0 ? SettingsManager.Wide : SettingsManager.Compact
+                            }
+                            
+                            background: Rectangle {
+                                color: parent.hovered ? Theme.inputBackgroundHover : Theme.inputBackground
+                                radius: 4
+                                border.width: 1
+                                border.color: Theme.borderColor
+                            }
+                            
+                            contentItem: Text {
+                                text: parent.displayText
+                                color: Theme.primaryText
+                                font.pixelSize: 14
+                                verticalAlignment: Text.AlignVCenter
+                                leftPadding: 8
+                                rightPadding: 30  // Leave space for indicator
+                            }
+                            
+                            indicator: Canvas {
+                                x: parent.width - width - 8
+                                y: parent.height / 2 - height / 2
+                                width: 12
+                                height: 8
+                                contextType: "2d"
+                                
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.reset()
+                                    ctx.moveTo(0, 0)
+                                    ctx.lineTo(width, 0)
+                                    ctx.lineTo(width / 2, height)
+                                    ctx.closePath()
+                                    ctx.fillStyle = "#cccccc"
+                                    ctx.fill()
+                                }
+                                
+                                Connections {
+                                    target: Theme
+                                    function onIsDarkChanged() {
+                                        requestPaint()
+                                    }
+                                }
+                            }
+                            
+                            popup: Popup {
+                                y: parent.height + 2
+                                width: parent.width
+                                implicitHeight: contentItem.implicitHeight + 2
+                                padding: 1
+                                
+                                contentItem: ListView {
+                                    clip: true
+                                    implicitHeight: contentHeight
+                                    model: parent.visible ? layoutModeComboBox.delegateModel : null
+                                    currentIndex: layoutModeComboBox.highlightedIndex
+                                    
+                                    ScrollIndicator.vertical: ScrollIndicator { }
+                                }
+                                
+                                background: Rectangle {
+                                    color: Theme.backgroundColor
+                                    border.color: Theme.borderColor
+                                    border.width: 1
+                                    radius: 4
+                                }
+                            }
+                            
+                            delegate: ItemDelegate {
+                                width: layoutModeComboBox.width
+                                height: 36
+                                
+                                contentItem: Text {
+                                    text: modelData
+                                    color: parent.hovered ? Theme.primaryText : Theme.secondaryText
+                                    font.pixelSize: 14
+                                    verticalAlignment: Text.AlignVCenter
+                                    leftPadding: 8
+                                }
+                                
+                                background: Rectangle {
+                                    color: parent.hovered ? Theme.selectedBackground : "transparent"
+                                    radius: 2
+                                }
+                            }
+                        }
+                        
+                        Item { Layout.fillWidth: true }
+                    }
+                    
                     CheckBox {
                         id: showTrackInfoCheck
                         text: "Show track info panel by default"
