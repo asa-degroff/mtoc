@@ -1,5 +1,7 @@
 #include "settingsmanager.h"
 #include <QDebug>
+#include <QGuiApplication>
+#include <QPalette>
 
 SettingsManager* SettingsManager::s_instance = nullptr;
 
@@ -8,6 +10,7 @@ SettingsManager::SettingsManager(QObject *parent)
     , m_settings("mtoc", "mtoc")
 {
     loadSettings();
+    setupSystemThemeDetection();
 }
 
 SettingsManager::~SettingsManager()
@@ -223,4 +226,32 @@ void SettingsManager::saveSettings()
     
     m_settings.sync();
     qDebug() << "SettingsManager: Settings saved";
+}
+
+bool SettingsManager::isSystemDark() const
+{
+    // Get the system palette to detect if we're in dark mode
+    QPalette palette = QGuiApplication::palette();
+    QColor windowColor = palette.color(QPalette::Window);
+    
+    // Consider it dark mode if the window background is dark
+    // Using a threshold of 128 for the lightness value
+    return windowColor.lightness() < 128;
+}
+
+void SettingsManager::setupSystemThemeDetection()
+{
+    // Connect to palette change events to detect system theme changes
+    connect(qApp, &QGuiApplication::paletteChanged, this, &SettingsManager::onSystemThemeChanged);
+}
+
+void SettingsManager::onSystemThemeChanged()
+{
+    // Emit signal when system theme changes
+    emit systemThemeChanged();
+    
+    // If we're using the System theme, also emit themeChanged
+    if (m_theme == System) {
+        emit themeChanged(m_theme);
+    }
 }

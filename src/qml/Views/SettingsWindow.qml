@@ -179,19 +179,110 @@ ApplicationWindow {
                             color: Theme.secondaryText
                         }
                         
-                        Switch {
-                            id: themeSwitch
-                            checked: SettingsManager.theme === SettingsManager.Light
-                            
-                            onToggled: {
-                                SettingsManager.theme = checked ? SettingsManager.Light : SettingsManager.Dark
+                        ComboBox {
+                            id: themeComboBox
+                            Layout.preferredWidth: 150
+                            Layout.preferredHeight: 36
+                            model: ["Dark", "Light", "System"]
+                            currentIndex: {
+                                switch (SettingsManager.theme) {
+                                    case SettingsManager.Dark: return 0
+                                    case SettingsManager.Light: return 1
+                                    case SettingsManager.System: return 2
+                                    default: return 0
+                                }
                             }
-                        }
-                        
-                        Label {
-                            text: themeSwitch.checked ? "Light" : "Dark"
-                            font.pixelSize: 14
-                            color: Theme.secondaryText
+                            
+                            onActivated: function(index) {
+                                switch (index) {
+                                    case 0: SettingsManager.theme = SettingsManager.Dark; break
+                                    case 1: SettingsManager.theme = SettingsManager.Light; break
+                                    case 2: SettingsManager.theme = SettingsManager.System; break
+                                }
+                            }
+                            
+                            background: Rectangle {
+                                color: parent.hovered ? Theme.inputBackgroundHover : Theme.inputBackground
+                                radius: 4
+                                border.width: 1
+                                border.color: Theme.borderColor
+                            }
+                            
+                            contentItem: Text {
+                                text: parent.displayText
+                                color: Theme.primaryText
+                                font.pixelSize: 14
+                                verticalAlignment: Text.AlignVCenter
+                                leftPadding: 8
+                                rightPadding: 30  // Leave space for indicator
+                            }
+                            
+                            indicator: Canvas {
+                                x: parent.width - width - 8
+                                y: parent.height / 2 - height / 2
+                                width: 12
+                                height: 8
+                                contextType: "2d"
+                                
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.reset()
+                                    ctx.moveTo(0, 0)
+                                    ctx.lineTo(width, 0)
+                                    ctx.lineTo(width / 2, height)
+                                    ctx.closePath()
+                                    ctx.fillStyle = "#cccccc"
+                                    ctx.fill()
+                                }
+                                
+                                Connections {
+                                    target: Theme
+                                    function onIsDarkChanged() {
+                                        requestPaint()
+                                    }
+                                }
+                            }
+                            
+                            popup: Popup {
+                                y: parent.height + 2
+                                width: parent.width
+                                implicitHeight: contentItem.implicitHeight + 2
+                                padding: 1
+                                
+                                contentItem: ListView {
+                                    clip: true
+                                    implicitHeight: contentHeight
+                                    model: parent.visible ? themeComboBox.delegateModel : null
+                                    currentIndex: themeComboBox.highlightedIndex
+                                    
+                                    ScrollIndicator.vertical: ScrollIndicator { }
+                                }
+                                
+                                background: Rectangle {
+                                    color: Theme.backgroundColor
+                                    border.color: Theme.borderColor
+                                    border.width: 1
+                                    radius: 4
+                                }
+                            }
+                            
+                            delegate: ItemDelegate {
+                                width: themeComboBox.width
+                                height: 36
+                                
+                                contentItem: Text {
+                                    text: modelData
+                                    color: parent.hovered ? Theme.primaryText : Theme.secondaryText
+                                    font.pixelSize: 14
+                                    verticalAlignment: Text.AlignVCenter
+                                    leftPadding: 8
+                                }
+                                
+                                background: Rectangle {
+                                    color: parent.hovered ? Theme.selectedBackground : "transparent"
+                                    radius: 2
+                                }
+                            }
                         }
                         
                         Item { Layout.fillWidth: true }

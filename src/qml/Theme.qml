@@ -3,7 +3,12 @@ import QtQuick
 import Mtoc.Backend 1.0
 
 QtObject {
-    property bool isDark: SettingsManager.theme === SettingsManager.Dark
+    property bool isDark: {
+        if (SettingsManager.theme === SettingsManager.System) {
+            return SettingsManager.isSystemDark
+        }
+        return SettingsManager.theme === SettingsManager.Dark
+    }
     
     // Primary colors
     property color primaryText: isDark ? "white" : "#333333"

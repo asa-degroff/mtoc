@@ -22,6 +22,7 @@ class SettingsManager : public QObject
     Q_PROPERTY(int windowX READ windowX WRITE setWindowX NOTIFY windowXChanged)
     Q_PROPERTY(int windowY READ windowY WRITE setWindowY NOTIFY windowYChanged)
     Q_PROPERTY(Theme theme READ theme WRITE setTheme NOTIFY themeChanged)
+    Q_PROPERTY(bool isSystemDark READ isSystemDark NOTIFY systemThemeChanged)
 
 public:
     enum QueueAction {
@@ -34,7 +35,8 @@ public:
 
     enum Theme {
         Dark,
-        Light
+        Light,
+        System
     };
     Q_ENUM(Theme)
 
@@ -56,6 +58,7 @@ public:
     int windowX() const { return m_windowX; }
     int windowY() const { return m_windowY; }
     Theme theme() const { return m_theme; }
+    bool isSystemDark() const;
     
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -88,12 +91,17 @@ signals:
     void windowXChanged(int x);
     void windowYChanged(int y);
     void themeChanged(Theme theme);
+    void systemThemeChanged();
+
+private slots:
+    void onSystemThemeChanged();
 
 private:
     explicit SettingsManager(QObject *parent = nullptr);
     
     void loadSettings();
     void saveSettings();
+    void setupSystemThemeDetection();
     
     static SettingsManager* s_instance;
     QSettings m_settings;
