@@ -507,8 +507,9 @@ Rectangle {
                             anchors.centerIn: parent
                             width: 16
                             height: 16
-                            iconSource: Theme.isDark ? "qrc:/resources/icons/repeat.svg" : "qrc:/resources/icons/repeat-dark.svg"
+                            iconSource: "qrc:/resources/icons/repeat.svg"
                             opacity: MediaPlayer.repeatEnabled ? 1.0 : 0.6
+                            addShadow: true
                             onClicked: MediaPlayer.repeatEnabled = !MediaPlayer.repeatEnabled
                             
                             Behavior on opacity {
@@ -546,8 +547,9 @@ Rectangle {
                             anchors.centerIn: parent
                             width: 18
                             height: 18
-                            iconSource: Theme.isDark ? "qrc:/resources/icons/shuffle.svg" : "qrc:/resources/icons/shuffle-dark.svg"
+                            iconSource: "qrc:/resources/icons/shuffle.svg"
                             opacity: MediaPlayer.shuffleEnabled ? 1.0 : 0.6
+                            addShadow: true
                             onClicked: MediaPlayer.shuffleEnabled = !MediaPlayer.shuffleEnabled
                             
                             Behavior on opacity {
@@ -562,8 +564,9 @@ Rectangle {
             IconButton {
                 Layout.preferredWidth: 24
                 Layout.preferredHeight: 24
-                iconSource: Theme.isDark ? "qrc:/resources/icons/queue.svg" : "qrc:/resources/icons/queue-dark.svg"
+                iconSource: "qrc:/resources/icons/queue.svg"
                 opacity: root.queuePopupVisible ? 1.0 : 0.6
+                addShadow: true
                 onClicked: root.queuePopupVisible = !root.queuePopupVisible
                 
                 Behavior on opacity {
