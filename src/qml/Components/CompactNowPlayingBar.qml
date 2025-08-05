@@ -7,7 +7,8 @@ import Mtoc.Backend 1.0
 Rectangle {
     id: root
     height: 90
-    color: Theme.panelBackground
+    color: Theme.backgroundColor
+    clip: true
     
     property string currentAlbumId: ""
     property url albumArtUrl: ""
@@ -88,6 +89,21 @@ Rectangle {
                 thumbnailUrl = ""
             }
         }
+    }
+    
+    // Blurred background
+    BlurredBackground {
+        anchors.fill: parent
+        source: thumbnailUrl
+        blurRadius: 256
+        backgroundOpacity: 0.8
+    }
+    
+    // Overlay for better contrast
+    Rectangle {
+        anchors.fill: parent
+        color: Theme.overlayColor
+        opacity: Theme.nowPlayingOverlayOpacity
     }
     
     // Top border
