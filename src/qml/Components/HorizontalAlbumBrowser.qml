@@ -881,19 +881,23 @@ Item {
                     var phase3Spacing = 40
                     var sign = distance > 0 ? 1 : -1
                     
+                    var offset = 0
                     if (absDistance < 20) {
                         // Phase 1: Proportional slide in dead zone
-                        return sign * phase1Spacing * (absDistance / 20)
+                        offset = sign * phase1Spacing * (absDistance / 20)
                     } else if (absDistance < 60) {
                         // Phase 2: Maintain slide during rotation
-                        return sign * phase1Spacing
+                        offset = sign * phase1Spacing
                     } else if (absDistance < 80) {
                         // Phase 3: Additional slide after rotation
-                        return sign * (phase1Spacing + phase3Spacing * ((absDistance - 60) / 20))
+                        offset = sign * (phase1Spacing + phase3Spacing * ((absDistance - 60) / 20))
                     } else {
                         // Final spacing
-                        return sign * (phase1Spacing + phase3Spacing)
+                        offset = sign * (phase1Spacing + phase3Spacing)
                     }
+                    
+                    // Round to nearest pixel for sharp rendering
+                    return Math.round(offset)
                 }
                 
                 property real itemAngle: {
@@ -940,14 +944,21 @@ Item {
                 property real scaleAmount: {
                     if (!isVisible) return 0.85
                     
+                    var scale = 1.0
                     // Simplified piecewise linear scaling
-                    if (absDistance < 20) {
-                        return 1.0 - 0.001 * absDistance  // 1.0 to 0.98
+                    if (absDistance < 5) {
+                        // Center album - always exactly 1.0 for perfect sharpness
+                        scale = 1.0
+                    } else if (absDistance < 20) {
+                        scale = 1.0 - 0.001 * absDistance  // 1.0 to 0.98
                     } else if (absDistance < 60) {
-                        return 0.98 - 0.00325 * (absDistance - 20)  // 0.98 to 0.85
+                        scale = 0.98 - 0.00325 * (absDistance - 20)  // 0.98 to 0.85
                     } else {
-                        return 0.85
+                        scale = 0.85
                     }
+                    
+                    // Round to nearest 0.05 for cleaner scaling
+                    return Math.round(scale * 20) / 20
                 }
                 
                 transform: [
@@ -1007,6 +1018,8 @@ Item {
                     layer.enabled: isVisible && absDistance < (listView.width / 2) // Enable for items within half viewport width
                     layer.smooth: true // Enable antialiasing for both album and reflection
                     layer.samples: 4 // Multisample antialiasing for best quality
+                    //layer.mipmap: true // Enable mipmapping for better texture filtering (too soft)
+                    layer.textureSize: Qt.size(Math.round(220 * scaleAmount), Math.round(340 * scaleAmount)) // Match actual rendered size with pixel alignment
                     
                     Item {
                         id: albumContainer
@@ -1027,16 +1040,19 @@ Item {
                                 if (typeof albumData.id === "undefined" || !albumData.id) return ""
                                 // Force loading for target delegates or nearby visible items
                                 if (forceImageLoad || isVisible) {
-                                    return "image://albumart/" + albumData.id + "/thumbnail/400"
+                                    return "image://albumart/" + albumData.id + "/thumbnail/600"
                                 }
                                 return ""
                             }
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: !isTargetDelegate  // Load synchronously for target delegate
+                            // Conditional smoothing - disable for pixel-perfect rendering when at rest
+                            smooth: itemAngle !== 0 || scaleAmount !== 1.0
                             antialiasing: true
+                            //mipmap: true  // Enable mipmapping for better downscaling quality
                             cache: true  // Enable caching to prevent reloading
-                            sourceSize.width: 400  // 2x the display size for retina
-                            sourceSize.height: 400
+                            //sourceSize.width: 600  // 3x the display size for better quality
+                            //sourceSize.height: 600
                             
                             onStatusChanged: {
                                 if (status === Image.Error && !root.isDestroying) {
