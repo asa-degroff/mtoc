@@ -19,9 +19,39 @@ Popup {
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     
-    // Semi-transparent background overlay
+    // Slide up animation on enter
+    enter: Transition {
+        NumberAnimation {
+            property: "y"
+            from: parent.height
+            to: (parent.height - height) / 2
+            duration: 300
+            easing.type: Easing.OutCubic
+        }
+    }
+    
+    // Slide down animation on exit
+    exit: Transition {
+        NumberAnimation {
+            property: "y"
+            from: (parent.height - height) / 2
+            to: parent.height
+            duration: 300
+            easing.type: Easing.InCubic
+        }
+    }
+    
+    // Semi-transparent background overlay with fade animation
     Overlay.modal: Rectangle {
         color: Qt.rgba(0, 0, 0, 0.7)
+        opacity: root.visible ? 1.0 : 0.0
+        
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 300
+                easing.type: Easing.InOutCubic
+            }
+        }
     }
     
     background: Rectangle {
