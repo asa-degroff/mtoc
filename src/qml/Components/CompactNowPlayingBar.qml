@@ -18,6 +18,44 @@ Rectangle {
     signal albumTitleClicked(string artistName, string albumTitle)
     signal artistClicked(string artistName)
     
+    // Custom icon button component (from PlaybackControls)
+    component IconButton: Item {
+        id: buttonRoot
+        property string iconSource: ""
+        property string iconPressedSource: ""
+        property bool isPressed: false
+        property bool isHovered: false
+        signal clicked()
+        
+        scale: isPressed ? 0.9 : (isHovered ? 1.1 : 1.0)
+        
+        Behavior on scale {
+            enabled: buttonRoot.isHovered || buttonRoot.isPressed
+            NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+        }
+        
+        Image {
+            id: iconImage
+            anchors.fill: parent
+            source: buttonRoot.isPressed && buttonRoot.iconPressedSource ? buttonRoot.iconPressedSource : buttonRoot.iconSource
+            sourceSize.width: width * 2
+            sourceSize.height: height * 2
+            smooth: true
+            antialiasing: false
+            fillMode: Image.PreserveAspectFit
+        }
+        
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            onEntered: buttonRoot.isHovered = true
+            onExited: buttonRoot.isHovered = false
+            onPressed: buttonRoot.isPressed = true
+            onReleased: buttonRoot.isPressed = false
+            onClicked: buttonRoot.clicked()
+        }
+    }
+    
     // Update album art when track changes
     Connections {
         target: MediaPlayer
@@ -199,50 +237,37 @@ Rectangle {
             spacing: 8
             
             // Previous button
-            ToolButton {
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
-                icon.source: "qrc:/resources/icons/previous.svg"
-                icon.width: 16
-                icon.height: 16
+            IconButton {
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
+                iconSource: "qrc:/resources/icons/previous-button-normal.svg"
+                iconPressedSource: "qrc:/resources/icons/previous-button-pressed.svg"
                 onClicked: MediaPlayer.previous()
-                
-                background: Rectangle {
-                    color: parent.hovered ? Theme.inputBackgroundHover : "transparent"
-                    radius: 4
-                }
             }
             
             // Play/Pause button
-            ToolButton {
+            IconButton {
+                id: playPauseButton
                 Layout.preferredWidth: 36
                 Layout.preferredHeight: 36
-                icon.source: MediaPlayer.isPlaying ? "qrc:/resources/icons/pause.svg" : "qrc:/resources/icons/play.svg"
-                icon.width: 20
-                icon.height: 20
+                iconSource: MediaPlayer.state === MediaPlayer.PlayingState ? 
+                    "qrc:/resources/icons/pause-button-normal.svg" : 
+                    "qrc:/resources/icons/play-button-normal.svg"
+                iconPressedSource: MediaPlayer.state === MediaPlayer.PlayingState ? 
+                    "qrc:/resources/icons/pause-button-pressed.svg" : 
+                    "qrc:/resources/icons/play-button-pressed.svg"
                 onClicked: MediaPlayer.togglePlayPause()
-                
-                background: Rectangle {
-                    color: parent.hovered ? Theme.inputBackgroundHover : Theme.inputBackground
-                    radius: 18
-                    border.width: 1
-                    border.color: Theme.borderColor
-                }
             }
             
             // Next button
-            ToolButton {
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
-                icon.source: "qrc:/resources/icons/next.svg"
-                icon.width: 16
-                icon.height: 16
+            IconButton {
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
+                iconSource: "qrc:/resources/icons/skip-button-normal.svg"
+                iconPressedSource: "qrc:/resources/icons/skip-button-pressed.svg"
+                enabled: MediaPlayer.hasNext
+                opacity: enabled ? 1.0 : 0.3
                 onClicked: MediaPlayer.next()
-                
-                background: Rectangle {
-                    color: parent.hovered ? Theme.inputBackgroundHover : "transparent"
-                    radius: 4
-                }
             }
             
             // Separator
@@ -254,53 +279,41 @@ Rectangle {
             }
             
             // Queue button
-            ToolButton {
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
-                icon.source: "qrc:/resources/icons/queue.svg"
-                icon.width: 16
-                icon.height: 16
-                checkable: true
-                checked: root.queuePopupVisible
+            IconButton {
+                Layout.preferredWidth: 24
+                Layout.preferredHeight: 24
+                iconSource: Theme.isDark ? "qrc:/resources/icons/queue.svg" : "qrc:/resources/icons/queue-dark.svg"
+                opacity: root.queuePopupVisible ? 1.0 : 0.6
                 onClicked: root.queuePopupVisible = !root.queuePopupVisible
                 
-                background: Rectangle {
-                    color: parent.checked ? Theme.selectedBackground : (parent.hovered ? Theme.inputBackgroundHover : "transparent")
-                    radius: 4
+                Behavior on opacity {
+                    NumberAnimation { duration: 200 }
                 }
             }
             
             // Repeat button
-            ToolButton {
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
-                icon.source: "qrc:/resources/icons/repeat.svg"
-                icon.width: 16
-                icon.height: 16
-                checkable: true
-                checked: MediaPlayer.repeatEnabled
+            IconButton {
+                Layout.preferredWidth: 24
+                Layout.preferredHeight: 24
+                iconSource: Theme.isDark ? "qrc:/resources/icons/repeat.svg" : "qrc:/resources/icons/repeat-dark.svg"
+                opacity: MediaPlayer.repeatEnabled ? 1.0 : 0.6
                 onClicked: MediaPlayer.repeatEnabled = !MediaPlayer.repeatEnabled
                 
-                background: Rectangle {
-                    color: parent.checked ? Theme.selectedBackground : (parent.hovered ? Theme.inputBackgroundHover : "transparent")
-                    radius: 4
+                Behavior on opacity {
+                    NumberAnimation { duration: 200 }
                 }
             }
             
             // Shuffle button
-            ToolButton {
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
-                icon.source: "qrc:/resources/icons/shuffle.svg"
-                icon.width: 16
-                icon.height: 16
-                checkable: true
-                checked: MediaPlayer.shuffleEnabled
+            IconButton {
+                Layout.preferredWidth: 24
+                Layout.preferredHeight: 24
+                iconSource: Theme.isDark ? "qrc:/resources/icons/shuffle.svg" : "qrc:/resources/icons/shuffle-dark.svg"
+                opacity: MediaPlayer.shuffleEnabled ? 1.0 : 0.6
                 onClicked: MediaPlayer.shuffleEnabled = !MediaPlayer.shuffleEnabled
                 
-                background: Rectangle {
-                    color: parent.checked ? Theme.selectedBackground : (parent.hovered ? Theme.inputBackgroundHover : "transparent")
-                    radius: 4
+                Behavior on opacity {
+                    NumberAnimation { duration: 200 }
                 }
             }
         }

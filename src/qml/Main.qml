@@ -12,7 +12,7 @@ ApplicationWindow {
     height: SettingsManager.windowHeight
     x: SettingsManager.windowX >= 0 ? SettingsManager.windowX : Screen.width / 2 - width / 2
     y: SettingsManager.windowY >= 0 ? SettingsManager.windowY : Screen.height / 2 - height / 2
-    minimumWidth: 1050  // Set a reasonable minimum to fit all panes
+    minimumWidth: SettingsManager.layoutMode === SettingsManager.Compact ? 700 : 1050
     minimumHeight: 700
     visible: true
     title: SystemInfo.appName
