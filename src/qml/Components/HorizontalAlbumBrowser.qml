@@ -1020,13 +1020,6 @@ Item {
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: 200
                         height: 200
-                        
-                        // Layer rendering for antialiasing on rotated content
-                        layer.enabled: isVisible && (itemAngle !== 0 || scaleAmount !== 1.0)
-                        layer.smooth: true
-                        layer.samples: itemAngle !== 0 ? 8 : 4  // Higher samples for rotated items
-                        layer.format: ShaderEffectSource.RGBA  // Better quality format
-                        layer.textureSize: Qt.size(Math.round(width * scaleAmount), Math.round(height * scaleAmount))
                             
                         Image {
                             id: albumImage
@@ -1046,8 +1039,7 @@ Item {
                             }
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: !isTargetDelegate  // Load synchronously for target delegate
-                            // Conditional smoothing - only enable for rotated/scaled items
-                            smooth: Math.abs(itemAngle) > 1 || (scaleAmount !== 1.0 && scaleAmount < 0.95)
+                            smooth: true // Always smooth for better quality
                             antialiasing: true
                             mipmap: false  // Disable mipmapping to avoid softness
                             cache: true  // Enable caching to prevent reloading
@@ -1154,6 +1146,9 @@ Item {
                             visible: sourceItem !== null  // Only visible when sourceItem is set
                             live: false  // Static reflection for better performance
                             recursive: false
+                            smooth: true  // Enable antialiasing for reflection
+                            mipmap: false  // Maintain sharpness
+                            format: ShaderEffectSource.RGBA8  // High quality format
                             // Capture the bottom portion of the album for reflection
                             sourceRect: Qt.rect(0, albumContainer.height - 120, albumContainer.width, 120)
                             transform: [
