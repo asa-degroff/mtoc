@@ -1,5 +1,6 @@
 #include "albumartimageprovider.h"
 #include "librarymanager.h"
+#include "albumartmanager.h"
 #include <QDebug>
 #include <QPixmap>
 #include <QImage>
@@ -114,7 +115,7 @@ void AlbumArtImageResponse::loadImage()
     // Determine the actual size to use
     int actualSize = targetSize > 0 ? targetSize : (m_requestedSize.isValid() ? qMax(m_requestedSize.width(), m_requestedSize.height()) : 0);
     
-    // Two-tier cache system: only cache thumbnail (256) and full size
+    // Two-tier cache system: only cache thumbnail and full size
     // For other sizes, we'll scale from the nearest cached version
     bool needsScaling = false;
     QString baseCacheKey;
@@ -122,14 +123,14 @@ void AlbumArtImageResponse::loadImage()
     if (type == "thumbnail") {
         // Always use standard thumbnail size for caching
         baseCacheKey = QString("album_%1_thumbnail").arg(albumId);
-        needsScaling = actualSize > 0 && actualSize != 256;
+        needsScaling = actualSize > 0 && actualSize != AlbumArtManager::THUMBNAIL_SIZE;
     } else {
         // Full size
         baseCacheKey = QString("album_%1_full").arg(albumId);
         needsScaling = actualSize > 0;
     }
     
-    // For exact matches (thumbnail at 256 or full without specific size), check cache directly
+    // For exact matches (thumbnail at standard size or full without specific size), check cache directly
     QString cacheKey = needsScaling ? QString("%1_%2").arg(baseCacheKey).arg(actualSize) : baseCacheKey;
     
     QPixmap pixmap;

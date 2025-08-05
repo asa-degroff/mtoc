@@ -39,7 +39,7 @@ public:
                                     const QString& hash) const;
     
     // Thumbnail configuration
-    static constexpr int THUMBNAIL_SIZE = 256;
+    static constexpr int THUMBNAIL_SIZE = 400;
     static constexpr int MAX_FULL_SIZE = 1800;
     
 signals:
