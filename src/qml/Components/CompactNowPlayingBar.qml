@@ -6,7 +6,7 @@ import Mtoc.Backend 1.0
 
 Rectangle {
     id: root
-    height: 80
+    height: 90
     color: Theme.panelBackground
     
     property string currentAlbumId: ""
@@ -17,6 +17,18 @@ Rectangle {
     
     signal albumTitleClicked(string artistName, string albumTitle)
     signal artistClicked(string artistName)
+    
+    function formatTime(milliseconds) {
+        if (isNaN(milliseconds) || milliseconds < 0) {
+            return "0:00"
+        }
+        
+        var totalSeconds = Math.floor(milliseconds / 1000)
+        var minutes = Math.floor(totalSeconds / 60)
+        var seconds = totalSeconds % 60
+        
+        return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
+    }
     
     // Custom icon button component (from PlaybackControls)
     component IconButton: Item {
@@ -87,18 +99,21 @@ Rectangle {
         color: Theme.borderColor
     }
     
+    // Main centered content
     RowLayout {
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
         anchors.leftMargin: 12
         anchors.rightMargin: 12
-        anchors.topMargin: 8
-        anchors.bottomMargin: 8
+        anchors.verticalCenter: parent.verticalCenter
+        height: 65
         spacing: 12
         
         // Album art thumbnail (clickable)
         Item {
-            Layout.preferredWidth: 60
-            Layout.preferredHeight: 60
+            Layout.preferredWidth: 65
+            Layout.preferredHeight: 65
+            Layout.alignment: Qt.AlignVCenter
             
             Image {
                 id: albumArtThumb
@@ -130,102 +145,249 @@ Rectangle {
             }
         }
         
-        // Track info
-        ColumnLayout {
+        // Middle section with track info, progress bar and time
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 2
             
-            // Track title (clickable)
-            Item {
-                Layout.fillWidth: true
-                Layout.preferredHeight: titleLabel.implicitHeight
+            // Track info at top
+            ColumnLayout {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.topMargin: 4
+                spacing: 2
                 
-                Label {
-                    id: titleLabel
-                    anchors.fill: parent
-                    text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.title : ""
-                    font.pixelSize: 14
-                    font.weight: Font.DemiBold
-                    color: titleMouseArea.containsMouse ? Theme.primaryText : Theme.secondaryText
-                    elide: Text.ElideRight
+                // Track title (clickable)
+                Item {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: titleLabel.implicitHeight
+                    
+                    Label {
+                        id: titleLabel
+                        anchors.fill: parent
+                        text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.title : ""
+                        font.pixelSize: 15
+                        font.weight: Font.DemiBold
+                        color: titleMouseArea.containsMouse ? Theme.primaryText : Theme.secondaryText
+                        elide: Text.ElideRight
+                    }
+                    
+                    MouseArea {
+                        id: titleMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (MediaPlayer.currentTrack) {
+                                var artistName = MediaPlayer.currentTrack.albumArtist || MediaPlayer.currentTrack.artist
+                                var albumTitle = MediaPlayer.currentTrack.album
+                                if (artistName && albumTitle) {
+                                    root.albumTitleClicked(artistName, albumTitle)
+                                }
+                            }
+                        }
+                    }
                 }
                 
-                MouseArea {
-                    id: titleMouseArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (MediaPlayer.currentTrack) {
-                            var artistName = MediaPlayer.currentTrack.albumArtist || MediaPlayer.currentTrack.artist
-                            var albumTitle = MediaPlayer.currentTrack.album
-                            if (artistName && albumTitle) {
-                                root.albumTitleClicked(artistName, albumTitle)
+                // Artist name (clickable)
+                Item {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: artistLabel.implicitHeight
+                    
+                    Label {
+                        id: artistLabel
+                        anchors.fill: parent
+                        text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.artist : ""
+                        font.pixelSize: 13
+                        color: artistMouseArea.containsMouse ? Theme.secondaryText : Theme.tertiaryText
+                        elide: Text.ElideRight
+                    }
+                    
+                    MouseArea {
+                        id: artistMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (MediaPlayer.currentTrack) {
+                                var albumArtist = MediaPlayer.currentTrack.albumArtist || MediaPlayer.currentTrack.artist
+                                if (albumArtist) {
+                                    root.artistClicked(albumArtist)
+                                }
                             }
                         }
                     }
                 }
             }
             
-            // Artist name (clickable)
-            Item {
-                Layout.fillWidth: true
-                Layout.preferredHeight: artistLabel.implicitHeight
-                
-                Label {
-                    id: artistLabel
-                    anchors.fill: parent
-                    text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.artist : ""
-                    font.pixelSize: 12
-                    color: artistMouseArea.containsMouse ? Theme.secondaryText : Theme.tertiaryText
-                    elide: Text.ElideRight
-                }
-                
-                MouseArea {
-                    id: artistMouseArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (MediaPlayer.currentTrack) {
-                            var albumArtist = MediaPlayer.currentTrack.albumArtist || MediaPlayer.currentTrack.artist
-                            if (albumArtist) {
-                                root.artistClicked(albumArtist)
-                            }
-                        }
-                    }
-                }
+            // Time display at bottom right
+            Label {
+                id: timeLabel
+                anchors.right: parent.right
+                anchors.bottom: progressSlider.top
+                anchors.bottomMargin: 1
+                text: formatTime(MediaPlayer.savedPosition > 0 ? MediaPlayer.savedPosition : progressSlider.value) + " / " + formatTime(MediaPlayer.duration)
+                font.pixelSize: 11
+                color: Theme.tertiaryText
             }
             
-            // Progress bar
-            ProgressBar {
-                id: progressBar
-                Layout.fillWidth: true
-                Layout.preferredHeight: 4
+            // Progress bar at bottom
+            Slider {
+                id: progressSlider
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 20
                 from: 0
-                to: MediaPlayer.duration > 0 ? MediaPlayer.duration : 1
-                value: MediaPlayer.position
+                to: MediaPlayer.duration
+                
+                // Prevent keyboard focus to avoid arrow key conflicts
+                focusPolicy: Qt.NoFocus
+                
+                property real targetValue: 0
+                property bool isSeeking: false
+                
+                // Use Binding for cleaner logic
+                Binding {
+                    target: progressSlider
+                    property: "value"
+                    value: MediaPlayer.position
+                    when: !progressSlider.isSeeking && MediaPlayer.savedPosition === 0
+                }
+                
+                Binding {
+                    target: progressSlider
+                    property: "value"
+                    value: MediaPlayer.savedPosition
+                    when: !progressSlider.isSeeking && MediaPlayer.savedPosition > 0
+                }
+                
+                Binding {
+                    target: progressSlider
+                    property: "value"
+                    value: progressSlider.targetValue
+                    when: progressSlider.isSeeking
+                }
+                
+                onPressedChanged: {
+                    if (pressed) {
+                        isSeeking = true
+                        targetValue = value
+                        seekTimeoutTimer.stop()
+                    } else if (isSeeking) {
+                        // Keep showing target value until seek completes
+                        MediaPlayer.seek(targetValue)
+                        // Start timeout timer as fallback
+                        seekTimeoutTimer.start()
+                    }
+                }
+                
+                // Fallback timer to clear seeking state if position doesn't update
+                Timer {
+                    id: seekTimeoutTimer
+                    interval: 300
+                    onTriggered: progressSlider.isSeeking = false
+                }
+                
+                onMoved: {
+                    if (pressed) {
+                        targetValue = value
+                    }
+                }
+                
+                // Monitor position changes to detect when seek completes
+                Connections {
+                    target: MediaPlayer
+                    function onPositionChanged() {
+                        if (progressSlider.isSeeking && !progressSlider.pressed) {
+                            // Check if position is close to target (within 500ms)
+                            var diff = Math.abs(MediaPlayer.position - progressSlider.targetValue)
+                            if (diff < 500) {
+                                // Seek completed, stop showing target value
+                                seekTimeoutTimer.stop()
+                                progressSlider.isSeeking = false
+                            }
+                        }
+                    }
+                }
                 
                 background: Rectangle {
-                    color: Theme.inputBackground
-                    radius: 2
-                }
-                
-                contentItem: Item {
+                    x: progressSlider.leftPadding + progressSlider.handle.width / 2
+                    y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
+                    implicitWidth: 200
+                    implicitHeight: 6
+                    width: progressSlider.availableWidth - progressSlider.handle.width
+                    height: implicitHeight
+                    radius: 3
+                    gradient: Gradient {
+                        orientation: Gradient.Vertical
+                        GradientStop { position: 0.0; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(0, 0, 0, 0.19) }
+                        GradientStop { position: 0.5; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.17) : Qt.rgba(0, 0, 0, 0.17) }
+                        GradientStop { position: 1.0; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.19) : Qt.rgba(0, 0, 0, 0.15) }
+                    }
+                    opacity: 0.8
+                    
                     Rectangle {
-                        width: progressBar.visualPosition * parent.width
+                        width: progressSlider.visualPosition * parent.width
                         height: parent.height
-                        radius: 2
-                        color: Theme.selectedBackground
+                        radius: 3
+                        opacity: 0.6
+                        
+                        gradient: Gradient {
+                            orientation: Gradient.Vertical
+                            GradientStop { position: 0.0; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.8) : Qt.rgba(0, 0, 0, 0.25) }
+                            GradientStop { position: 0.5; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.6) : Qt.rgba(0, 0, 0, 0.35) }
+                            GradientStop { position: 1.0; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.35) : Qt.rgba(0, 0, 0, 0.4) }
+                        }
                     }
                 }
                 
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: function(mouse) {
-                        var position = mouse.x / width * progressBar.to
-                        MediaPlayer.seek(position)
+                handle: Item {
+                    id: sliderHandle
+                    x: progressSlider.leftPadding + progressSlider.visualPosition * (progressSlider.availableWidth - width)
+                    y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
+                    implicitWidth: 20
+                    implicitHeight: 20
+                    
+                    property bool shouldShow: progressSlider.hovered || progressSlider.pressed || handleFadeTimer.running
+                    opacity: shouldShow ? 1.0 : 0.0
+                    scale: progressSlider.pressed ? 0.9 : 1.0
+                    
+                    Behavior on opacity {
+                        NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                    }
+                    
+                    Behavior on scale {
+                        NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                    }
+                    
+                    Image {
+                        anchors.fill: parent
+                        source: progressSlider.pressed ? 
+                            "qrc:/resources/icons/drag-handle-pressed.svg" : 
+                            "qrc:/resources/icons/drag-handle-normal.svg"
+                        sourceSize.width: width * 2
+                        sourceSize.height: height * 2
+                        smooth: true
+                        antialiasing: true
+                    }
+                    
+                    Timer {
+                        id: handleFadeTimer
+                        interval: 1000
+                        running: false
+                    }
+                    
+                    Connections {
+                        target: progressSlider
+                        function onHoveredChanged() {
+                            if (!progressSlider.hovered && !progressSlider.pressed) {
+                                handleFadeTimer.restart()
+                            } else if (progressSlider.hovered) {
+                                handleFadeTimer.stop()
+                            }
+                        }
                     }
                 }
             }
@@ -233,7 +395,7 @@ Rectangle {
         
         // Playback controls
         RowLayout {
-            Layout.fillHeight: true
+            Layout.alignment: Qt.AlignVCenter
             spacing: 8
             
             // Previous button
@@ -273,8 +435,8 @@ Rectangle {
             // Separator
             Rectangle {
                 Layout.preferredWidth: 1
-                Layout.fillHeight: true
-                Layout.margins: 8
+                Layout.preferredHeight: 40
+                Layout.alignment: Qt.AlignVCenter
                 color: Theme.borderColor
             }
             

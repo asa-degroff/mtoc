@@ -154,7 +154,7 @@ ApplicationWindow {
                 CompactNowPlayingBar {
                     id: compactNowPlayingBar
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 80
+                    Layout.preferredHeight: 90
                     
                     onAlbumTitleClicked: function(artistName, albumTitle) {
                         libraryPaneCompact.jumpToAlbum(artistName, albumTitle)
