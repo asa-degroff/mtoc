@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Mtoc.Backend 1.0
+import ".."
 
 ListView {
     id: root
@@ -13,6 +14,7 @@ ListView {
     property bool isRapidSkipping: false
     property int lastSkipTime: 0
     property int rapidSkipThreshold: 500 // milliseconds
+    property bool forceLightText: false // For dark background contexts like NowPlayingPane
     
     // Drag and drop state
     property int draggedTrackIndex: -1
@@ -470,7 +472,7 @@ ListView {
             // Track title
             Label {
                 text: modelData.title || "Unknown Track"
-                color: "white"
+                color: root.forceLightText ? "#ffffff" : Theme.primaryText
                 font.pixelSize: 13
                 elide: Text.ElideRight
                 Layout.fillWidth: true
@@ -494,7 +496,7 @@ ListView {
             // Duration (fixed width)
             Label {
                 text: modelData.duration ? formatDuration(modelData.duration) : "0:00"
-                color: Theme.isDark ? "#aaaaaa" : "#ffffffff"
+                color: root.forceLightText ? "#aaaaaa" : Theme.secondaryText
                 font.pixelSize: 12
                 Layout.preferredWidth: 45
                 horizontalAlignment: Text.AlignRight

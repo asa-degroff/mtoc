@@ -505,6 +505,7 @@ Item {
                             queueModel: MediaPlayer.queue
                             currentPlayingIndex: MediaPlayer.currentQueueIndex
                             focus: root.queueVisible
+                            forceLightText: true // Always use light text on dark background
                             
                             onTrackDoubleClicked: function(index) {
                                 MediaPlayer.playTrackAt(index);
