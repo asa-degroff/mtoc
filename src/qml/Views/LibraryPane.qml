@@ -1112,10 +1112,10 @@ Item {
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            color: Qt.rgba(1, 1, 1, 0.03)
+                            color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.03) : Qt.rgba(1, 1, 1, 0.15)
                             radius: 4
                             border.width: 1
-                            border.color: Qt.rgba(1, 1, 1, 0.06)
+                            border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(1, 1, 1, 0.18)
                             
                             Item {
                                 anchors.fill: parent
@@ -1126,7 +1126,7 @@ Item {
                                     id: tabIndicator
                                     width: (parent.width - 2) / 2  // Account for spacing
                                     height: parent.height
-                                    color: Qt.rgba(1, 1, 1, 0.08)
+                                    color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(1, 1, 1, 0.25)
                                     radius: 3
                                     x: root.currentTab === 0 ? 0 : parent.width / 2 + 1
                                     
@@ -2008,6 +2008,16 @@ Item {
                 color: Qt.rgba(0.1, 0.1, 0.1, 0.25)  // Semi-transparent dark with smoky tint
                 radius: 8
                 clip: true
+
+                // Inner shadow for depth
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    radius: parent.radius - 1
+                    color: "transparent"
+                    border.width: 1
+                    border.color: Qt.rgba(0, 0, 0, 0.15) // Slightly lighter shadow than left pane
+                }
                 
                 //border
                 border.width: 1
@@ -2059,10 +2069,10 @@ Item {
                         Layout.fillWidth: true
                         Layout.margins: 4
                         height: 60
-                        color: Qt.rgba(1, 1, 1, 0.07)
+                        color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.07) : Qt.rgba(1, 1, 1, 0.15) // Track info panel background
                         radius: 6
                         border.width: 1
-                        border.color: Qt.rgba(1, 1, 1, 0.13)
+                        border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.13) : Qt.rgba(1, 1, 1, 0.21) 
                         
                         RowLayout {
                             anchors.fill: parent
@@ -2505,7 +2515,7 @@ Item {
                                     } else if (root.selectedTrackIndex === index) {
                                         return Qt.rgba(0.25, 0.32, 0.71, 0.15)  // Current track (lighter)
                                     } else {
-                                        return Qt.rgba(1, 1, 1, 0.02)  // Default background
+                                        return Theme.isDark ? Qt.rgba(1, 1, 1, 0.03) : Qt.rgba(1, 1, 1, 0.12) // Track background
                                     }
                                 }
                                 radius: 4
@@ -2999,7 +3009,7 @@ Item {
                             }
                         }
                         Layout.topMargin: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist ? 8 : 0
-                        color: Qt.rgba(1, 1, 1, 0.05)
+                        color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(1, 1, 1, 0.20) // Background color for the track selector
                         radius: 6
                         visible: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist
                         clip: true
@@ -3127,7 +3137,7 @@ Item {
                                 delegate: Rectangle {
                                     width: ListView.view.width
                                     height: 56
-                                    color: trackItemMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.1) : "transparent"
+                                    color: trackItemMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(1, 1, 1, 0.05)
                                     radius: 4
                                     
                                     Behavior on color {
@@ -3256,7 +3266,7 @@ Item {
                         Layout.leftMargin: root.showTrackInfoPanel && root.trackInfoPanelY < 10 ? 4 : 0
                         Layout.rightMargin: root.showTrackInfoPanel && root.trackInfoPanelY < 10 ? 4 : 0
                         Layout.bottomMargin: root.showTrackInfoPanel && root.trackInfoPanelY < 10 ? 4 : 0
-                        color: Qt.rgba(1, 1, 1, 0.07)
+                        color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.07) : Qt.rgba(1, 1, 1, 0.25) // Track info panel background
                         radius: 6
                         border.width: 1
                         border.color: Qt.rgba(1, 1, 1, 0.13)
