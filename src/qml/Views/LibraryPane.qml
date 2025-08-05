@@ -2714,7 +2714,7 @@ Item {
 
                                     // Now Playing Indicator
                                     Image {
-                                        source: "qrc:/resources/icons/speaker.svg"
+                                        source: Theme.isDark ? "qrc:/resources/icons/speaker.svg" : "qrc:/resources/icons/speaker-dark.svg"
                                         Layout.preferredWidth: 16
                                         Layout.preferredHeight: 16
                                         sourceSize.width: 32  // 2x for retina
@@ -3192,7 +3192,7 @@ Item {
                                                 anchors.centerIn: parent
                                                 width: 16
                                                 height: 16
-                                                source: "qrc:/resources/icons/add.svg"
+                                                source: Theme.isDark ? "qrc:/resources/icons/add.svg" : "qrc:/resources/icons/add-dark.svg"
                                                 sourceSize.width: 32
                                                 sourceSize.height: 32
                                             }

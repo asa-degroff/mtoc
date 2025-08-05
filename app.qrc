@@ -27,6 +27,7 @@
         <file>resources/icons/mtoc-icon-256.png</file>
         <file>resources/icons/mtoc-icon-512.png</file>
         <file>resources/icons/speaker.svg</file>
+        <file>resources/icons/speaker-dark.svg</file>
         <file>resources/icons/play-button-normal.svg</file>
         <file>resources/icons/play-button-pressed.svg</file>
         <file>resources/icons/pause-button-normal.svg</file>
@@ -60,6 +61,7 @@
         <file>resources/icons/text-input.svg</file>
         <file>resources/icons/text-input-dark.svg</file>
         <file>resources/icons/add.svg</file>
+        <file>resources/icons/add-dark.svg</file>
         <file>resources/icons/list-drag-handle-dark.svg</file>
     </qresource>
 </RCC>
