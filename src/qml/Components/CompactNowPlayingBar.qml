@@ -471,6 +471,92 @@ Rectangle {
                 color: Theme.borderColor
             }
             
+            // Repeat/Shuffle pill container
+            Rectangle {
+                Layout.preferredWidth: 64
+                Layout.preferredHeight: 28
+                Layout.alignment: Qt.AlignVCenter
+                radius: 14
+                color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
+                border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(0, 0, 0, 0.2)
+                border.width: 1
+                
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 2
+                    spacing: 0
+                    
+                    // Repeat button
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 2
+                            radius: parent.height / 2
+                            color: MediaPlayer.repeatEnabled ? (Theme.isDark ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(0, 0, 0, 0.2)) : "transparent"
+                            
+                            Behavior on color {
+                                ColorAnimation { duration: 200 }
+                            }
+                        }
+                        
+                        IconButton {
+                            anchors.centerIn: parent
+                            width: 16
+                            height: 16
+                            iconSource: Theme.isDark ? "qrc:/resources/icons/repeat.svg" : "qrc:/resources/icons/repeat-dark.svg"
+                            opacity: MediaPlayer.repeatEnabled ? 1.0 : 0.6
+                            onClicked: MediaPlayer.repeatEnabled = !MediaPlayer.repeatEnabled
+                            
+                            Behavior on opacity {
+                                NumberAnimation { duration: 200 }
+                            }
+                        }
+                    }
+                    
+                    // Divider
+                    Rectangle {
+                        Layout.preferredWidth: 1
+                        Layout.fillHeight: true
+                        Layout.topMargin: 6
+                        Layout.bottomMargin: 6
+                        color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(0, 0, 0, 0.2)
+                    }
+                    
+                    // Shuffle button
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 2
+                            radius: parent.height / 2
+                            color: MediaPlayer.shuffleEnabled ? (Theme.isDark ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(0, 0, 0, 0.2)) : "transparent"
+                            
+                            Behavior on color {
+                                ColorAnimation { duration: 200 }
+                            }
+                        }
+                        
+                        IconButton {
+                            anchors.centerIn: parent
+                            width: 18
+                            height: 18
+                            iconSource: Theme.isDark ? "qrc:/resources/icons/shuffle.svg" : "qrc:/resources/icons/shuffle-dark.svg"
+                            opacity: MediaPlayer.shuffleEnabled ? 1.0 : 0.6
+                            onClicked: MediaPlayer.shuffleEnabled = !MediaPlayer.shuffleEnabled
+                            
+                            Behavior on opacity {
+                                NumberAnimation { duration: 200 }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Queue button
             IconButton {
                 Layout.preferredWidth: 24
@@ -478,32 +564,6 @@ Rectangle {
                 iconSource: Theme.isDark ? "qrc:/resources/icons/queue.svg" : "qrc:/resources/icons/queue-dark.svg"
                 opacity: root.queuePopupVisible ? 1.0 : 0.6
                 onClicked: root.queuePopupVisible = !root.queuePopupVisible
-                
-                Behavior on opacity {
-                    NumberAnimation { duration: 200 }
-                }
-            }
-            
-            // Repeat button
-            IconButton {
-                Layout.preferredWidth: 24
-                Layout.preferredHeight: 24
-                iconSource: Theme.isDark ? "qrc:/resources/icons/repeat.svg" : "qrc:/resources/icons/repeat-dark.svg"
-                opacity: MediaPlayer.repeatEnabled ? 1.0 : 0.6
-                onClicked: MediaPlayer.repeatEnabled = !MediaPlayer.repeatEnabled
-                
-                Behavior on opacity {
-                    NumberAnimation { duration: 200 }
-                }
-            }
-            
-            // Shuffle button
-            IconButton {
-                Layout.preferredWidth: 24
-                Layout.preferredHeight: 24
-                iconSource: Theme.isDark ? "qrc:/resources/icons/shuffle.svg" : "qrc:/resources/icons/shuffle-dark.svg"
-                opacity: MediaPlayer.shuffleEnabled ? 1.0 : 0.6
-                onClicked: MediaPlayer.shuffleEnabled = !MediaPlayer.shuffleEnabled
                 
                 Behavior on opacity {
                     NumberAnimation { duration: 200 }
