@@ -38,6 +38,7 @@ Rectangle {
         property string iconPressedSource: ""
         property bool isPressed: false
         property bool isHovered: false
+        property bool addShadow: false
         signal clicked()
         
         scale: isPressed ? 0.9 : (isHovered ? 1.1 : 1.0)
@@ -56,6 +57,17 @@ Rectangle {
             smooth: true
             antialiasing: false
             fillMode: Image.PreserveAspectFit
+            
+            // Drop shadow for better contrast in light mode
+            layer.enabled: buttonRoot.addShadow && !Theme.isDark
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowHorizontalOffset: 0
+                shadowVerticalOffset: 1
+                shadowBlur: 0.3
+                shadowColor: "#000000"
+                shadowOpacity: 0.5
+            }
         }
         
         MouseArea {
@@ -420,6 +432,7 @@ Rectangle {
                 Layout.preferredHeight: 28
                 iconSource: "qrc:/resources/icons/previous-button-normal.svg"
                 iconPressedSource: "qrc:/resources/icons/previous-button-pressed.svg"
+                addShadow: true
                 onClicked: MediaPlayer.previous()
             }
             
@@ -434,6 +447,7 @@ Rectangle {
                 iconPressedSource: MediaPlayer.state === MediaPlayer.PlayingState ? 
                     "qrc:/resources/icons/pause-button-pressed.svg" : 
                     "qrc:/resources/icons/play-button-pressed.svg"
+                addShadow: true
                 onClicked: MediaPlayer.togglePlayPause()
             }
             
@@ -445,6 +459,7 @@ Rectangle {
                 iconPressedSource: "qrc:/resources/icons/skip-button-pressed.svg"
                 enabled: MediaPlayer.hasNext
                 opacity: enabled ? 1.0 : 0.3
+                addShadow: true
                 onClicked: MediaPlayer.next()
             }
             
