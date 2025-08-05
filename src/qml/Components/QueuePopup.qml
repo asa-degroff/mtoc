@@ -71,7 +71,7 @@ Popup {
                 }
                 
                 Label {
-                    text: MediaPlayer.queueLength + " tracks • " + formatQueueDuration(MediaPlayer.queueDuration)
+                    text: MediaPlayer.queueLength + " tracks • " + formatQueueDuration(MediaPlayer.totalQueueDuration)
                     font.pixelSize: 14
                     color: Theme.secondaryText
                 }
@@ -82,14 +82,22 @@ Popup {
                 ToolButton {
                     Layout.preferredWidth: 36
                     Layout.preferredHeight: 36
-                    icon.source: "qrc:/resources/icons/save.svg"
+                    icon.source: Theme.isDark ? "qrc:/resources/icons/save.svg" : "qrc:/resources/icons/save-dark.svg"
                     icon.width: 18
                     icon.height: 18
+                    icon.color: "transparent"
                     visible: MediaPlayer.queueLength > 0 && !MediaPlayer.isPlayingVirtualPlaylist
                     onClicked: {
                         if (PlaylistManager.saveQueueAsPlaylist()) {
                             console.log("Queue saved as playlist");
                         }
+                    }
+                    
+                    contentItem: Image {
+                        source: parent.icon.source
+                        sourceSize.width: 36
+                        sourceSize.height: 36
+                        fillMode: Image.PreserveAspectFit
                     }
                     
                     background: Rectangle {
@@ -111,6 +119,7 @@ Popup {
                     icon.source: MediaPlayer.canUndoClear ? "qrc:/resources/icons/undo.svg" : "qrc:/resources/icons/bomb.svg"
                     icon.width: 18
                     icon.height: 18
+                    icon.color: Theme.isDark ? Theme.primaryText : Theme.primaryText
                     visible: (MediaPlayer.queueLength > 0 || MediaPlayer.canUndoClear) && !MediaPlayer.isPlayingVirtualPlaylist
                     onClicked: {
                         if (MediaPlayer.canUndoClear) {
@@ -136,9 +145,10 @@ Popup {
                 ToolButton {
                     Layout.preferredWidth: 36
                     Layout.preferredHeight: 36
-                    icon.source: "qrc:/resources/icons/close.svg"
+                    icon.source: "qrc:/resources/icons/close-button.svg"
                     icon.width: 18
                     icon.height: 18
+                    icon.color: Theme.isDark ? Theme.primaryText : Theme.primaryText
                     onClicked: root.close()
                     
                     background: Rectangle {
