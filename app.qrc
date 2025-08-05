@@ -57,6 +57,7 @@
         <file>resources/icons/bomb.svg</file>
         <file>resources/icons/bomb-dark.svg</file>
         <file>resources/icons/undo.svg</file>
+        <file>resources/icons/undo-dark.svg</file>
         <file>resources/icons/save.svg</file>
         <file>resources/icons/save-dark.svg</file>
         <file>resources/icons/edit.svg</file>

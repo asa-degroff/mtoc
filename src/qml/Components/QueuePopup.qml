@@ -209,7 +209,7 @@ Popup {
                             anchors.centerIn: parent
                             width: 18
                             height: 18
-                            source: MediaPlayer.canUndoClear ? "qrc:/resources/icons/undo.svg" : Theme.isDark ? "qrc:/resources/icons/bomb.svg" : "qrc:/resources/icons/bomb-dark.svg"
+                            source: MediaPlayer.canUndoClear ? (Theme.isDark ? "qrc:/resources/icons/undo.svg" : "qrc:/resources/icons/undo-dark.svg") : (Theme.isDark ? "qrc:/resources/icons/bomb.svg" : "qrc:/resources/icons/bomb-dark.svg")
                             sourceSize.width: 36
                             sourceSize.height: 36
                             fillMode: Image.PreserveAspectFit
