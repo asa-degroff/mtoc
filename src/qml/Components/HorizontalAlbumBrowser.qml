@@ -966,8 +966,8 @@ Item {
                         x: horizontalOffset
                     },
                     Scale {
-                        origin.x: delegateItem.width / 2
-                        origin.y: delegateItem.height / 2
+                        origin.x: Math.round(delegateItem.width / 2)
+                        origin.y: Math.round(delegateItem.height / 2)
                         xScale: scaleAmount
                         yScale: scaleAmount
                         
@@ -991,16 +991,16 @@ Item {
                         origin.x: {
                             if (distance > 0) {
                                 // Moving right
-                                return delegateItem.width * 0.75
+                                return Math.round(delegateItem.width * 0.75)
                             } else if (distance < 0) {
                                 // Moving left
-                                return delegateItem.width * 0.25
+                                return Math.round(delegateItem.width * 0.25)
                             } else {
                                 // Center - default to middle
-                                return delegateItem.width / 2
+                                return Math.round(delegateItem.width / 2)
                             }
                         }
-                        origin.y: delegateItem.height / 2
+                        origin.y: Math.round(delegateItem.height / 2)
                         axis { x: 0; y: 1; z: 0 }
                         angle: itemAngle
                     }
@@ -1014,19 +1014,19 @@ Item {
                     width: 220
                     height: 340  // Height for album + reflection
                     
-                    // Conditional layer rendering - only for visible items near center
-                    layer.enabled: isVisible && absDistance < (listView.width / 2) // Enable for items within half viewport width
-                    layer.smooth: true // Enable antialiasing for both album and reflection
-                    layer.samples: 4 // Multisample antialiasing for best quality
-                    //layer.mipmap: true // Enable mipmapping for better texture filtering (too soft)
-                    layer.textureSize: Qt.size(Math.round(220 * scaleAmount), Math.round(340 * scaleAmount)) // Match actual rendered size with pixel alignment
-                    
                     Item {
                         id: albumContainer
                         anchors.top: parent.top
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: 200
                         height: 200
+                        
+                        // Layer rendering for antialiasing on rotated content
+                        layer.enabled: isVisible && (itemAngle !== 0 || scaleAmount !== 1.0)
+                        layer.smooth: true
+                        layer.samples: itemAngle !== 0 ? 8 : 4  // Higher samples for rotated items
+                        layer.format: ShaderEffectSource.RGBA  // Better quality format
+                        layer.textureSize: Qt.size(Math.round(width * scaleAmount), Math.round(height * scaleAmount))
                             
                         Image {
                             id: albumImage
@@ -1046,13 +1046,11 @@ Item {
                             }
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: !isTargetDelegate  // Load synchronously for target delegate
-                            // Conditional smoothing - disable for pixel-perfect rendering when at rest
-                            smooth: itemAngle !== 0 || scaleAmount !== 1.0
+                            // Conditional smoothing - only enable for rotated/scaled items
+                            smooth: Math.abs(itemAngle) > 1 || (scaleAmount !== 1.0 && scaleAmount < 0.95)
                             antialiasing: true
-                            //mipmap: true  // Enable mipmapping for better downscaling quality
+                            mipmap: false  // Disable mipmapping to avoid softness
                             cache: true  // Enable caching to prevent reloading
-                            //sourceSize.width: 600  // 3x the display size for better quality
-                            //sourceSize.height: 600
                             
                             onStatusChanged: {
                                 if (status === Image.Error && !root.isDestroying) {
