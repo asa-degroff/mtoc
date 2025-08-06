@@ -508,25 +508,16 @@ Item {
                         root.isSnapping = true
                         root.isTouchpadScrolling = false  // Mark touchpad scrolling complete
                         
-                        // Restore strict highlight range mode
-                        listView.highlightRangeMode = ListView.StrictlyEnforceRange
-                        
-                        // Find nearest album with hysteresis and animate to it
+                        // Find nearest album with hysteresis
                         var targetIndex = nearestIndexWithHysteresis()
-                        var targetContentX = contentXForIndex(targetIndex)
                         
-                        // Animate to the target position
-                        snapAnimation.to = targetContentX
-                        snapAnimation.start()
-                        
-                        // Update current index after a short delay to ensure smooth animation
-                        if (!isDestroying) {
-                            snapIndexTimer.targetIndex = targetIndex
-                            snapIndexTimer.start()
-                        }
-                        
-                        // Update last stable index
+                        // Update current index BEFORE restoring strict mode to prevent snap-back
+                        listView.currentIndex = targetIndex
                         root.lastStableIndex = targetIndex
+                        
+                        // Now restore strict highlight range mode
+                        // The ListView will handle the animation to center the item
+                        listView.highlightRangeMode = ListView.StrictlyEnforceRange
                     }
                 }
             }
@@ -599,33 +590,38 @@ Item {
                     // Mark touchpad scrolling as complete
                     root.isTouchpadScrolling = false
                     
-                    // Restore strict highlight range mode for snapping
-                    listView.highlightRangeMode = ListView.StrictlyEnforceRange
-                    
                     // If velocity is very low or zero, snap to nearest album
                     if (Math.abs(root.scrollVelocity) < 0.5 && !root.isSnapping) {
                         root.isSnapping = true
                         
                         // Find nearest album with hysteresis
                         var targetIndex = nearestIndexWithHysteresis()
-                        var targetContentX = contentXForIndex(targetIndex)
                         
-                        // Animate to the target position
-                        snapAnimation.to = targetContentX
-                        snapAnimation.start()
-                        
-                        // Update current index
-                        if (!isDestroying) {
-                            snapIndexTimer.targetIndex = targetIndex
-                            snapIndexTimer.start()
-                        }
-                        
-                        // Update last stable index
+                        // Update current index BEFORE restoring strict mode to prevent snap-back
+                        listView.currentIndex = targetIndex
                         root.lastStableIndex = targetIndex
+                        
+                        // Now restore strict highlight range mode for proper snapping
+                        listView.highlightRangeMode = ListView.StrictlyEnforceRange
+                        
+                        // The ListView will now animate to center the new currentIndex
+                        // No need for manual animation since StrictlyEnforceRange handles it
                     } else if (!root.isSnapping && root.isUserScrolling && root.selectedAlbum) {
-                        // If we're not snapping but finished scrolling, emit the signal
-                        root.centerAlbumChanged(root.selectedAlbum)
-                        root.isUserScrolling = false
+                        // If still scrolling with velocity, let velocity timer handle it
+                        // Don't restore strict mode yet
+                        if (Math.abs(root.scrollVelocity) >= 0.5) {
+                            // Velocity timer is still running, it will handle the rest
+                        } else {
+                            // If we're not snapping but finished scrolling, emit the signal
+                            root.centerAlbumChanged(root.selectedAlbum)
+                            root.isUserScrolling = false
+                            
+                            // Update index and restore strict mode
+                            var nearestIdx = nearestIndexWithHysteresis()
+                            listView.currentIndex = nearestIdx
+                            root.lastStableIndex = nearestIdx
+                            listView.highlightRangeMode = ListView.StrictlyEnforceRange
+                        }
                     }
                 }
             }
