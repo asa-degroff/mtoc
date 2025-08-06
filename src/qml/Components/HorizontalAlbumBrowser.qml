@@ -115,6 +115,15 @@ Item {
         }
     }
     
+    // Pixel alignment helper functions
+    function snapToPixel(value) {
+        return Math.round(value)
+    }
+    
+    function snapToHalfPixel(value) {
+        return Math.round(value * 2) / 2
+    }
+    
     Component.onCompleted: {
         updateSortedIndices()
         // Restore carousel position after indices are sorted
@@ -340,7 +349,8 @@ Item {
     function contentXForIndex(index) {
         var itemWidth = 220 + listView.spacing  // 220 - 165 = 55 effective width
         var centerOffset = listView.width / 2 - 110  // Center position
-        return index * itemWidth - centerOffset
+        // Snap to pixel boundary for sharp rendering
+        return snapToPixel(index * itemWidth - centerOffset)
     }
     
     // Get the minimum allowed contentX value
@@ -360,7 +370,7 @@ Item {
     function nearestIndex() {
         var itemWidth = 220 + listView.spacing  // 55 effective width
         var centerOffset = listView.width / 2 - 110
-        var centerX = listView.contentX + centerOffset
+        var centerX = snapToPixel(listView.contentX) + centerOffset
         var index = Math.round(centerX / itemWidth)
         return Math.max(0, Math.min(sortedAlbumIndices.length - 1, index))
     }
@@ -661,11 +671,14 @@ Item {
                             snapAnimation.stop();
                             root.isSnapping = false;
                             
-                            // Directly update content position
+                            // Directly update content position with pixel snapping
                             var newContentX = listView.contentX - root.accumulatedDelta;
                             
                             // Clamp to bounds
                             newContentX = Math.max(minContentX(), Math.min(maxContentX(), newContentX));
+                            
+                            // Snap to pixel boundary for sharp rendering during scrolling
+                            newContentX = snapToPixel(newContentX);
                             
                             // Apply the new position
                             listView.contentX = newContentX;
@@ -765,10 +778,14 @@ Item {
                 width: 220
                 height: 320  // Height for album plus reflection
                 
-                // Enable layer multisampling at transform level for proper antialiasing
-                layer.enabled: true
-                layer.samples: 4  // 4x multisampling
-                layer.smooth: true
+                // Calculate if this item needs rotation (for conditional layer rendering)
+                property bool needsRotation: Math.abs(itemAngle) > 0.5
+                
+                // Only enable layer rendering for items that need rotation
+                // This ensures the center album renders directly without FBO overhead
+                layer.enabled: needsRotation
+                layer.samples: needsRotation ? 4 : 0  // 4x multisampling only when rotating
+                layer.smooth: needsRotation
                 
                 // Get the actual album data from the model using sorted index
                 property int sortedIndex: index
@@ -899,6 +916,11 @@ Item {
                 property real horizontalOffset: {
                     if (!isVisible) return 0
                     
+                    // Special case: center album should have exactly 0 offset
+                    if (absDistance < 5 && listView.currentIndex === index) {
+                        return 0
+                    }
+                    
                     // Constants for phase calculations
                     var phase1Spacing = 50
                     var phase3Spacing = 40
@@ -920,11 +942,16 @@ Item {
                     }
                     
                     // Round to nearest pixel for sharp rendering
-                    return Math.round(offset)
+                    return snapToPixel(offset)
                 }
                 
                 property real itemAngle: {
                     if (!isVisible) return distance > 0 ? -65 : 65
+                    
+                    // Special case: center album should have exactly 0 rotation
+                    if (absDistance < 5 && listView.currentIndex === index) {
+                        return 0
+                    }
                     
                     if (absDistance < 10) {
                         // Dead zone - no rotation
@@ -968,10 +995,15 @@ Item {
                 property real scaleAmount: {
                     if (!isVisible) return 0.85
                     
+                    // Special case: center album should have exactly 1.0 scale
+                    if (absDistance < 5 && listView.currentIndex === index) {
+                        return 1.0
+                    }
+                    
                     var scale = 1.0
                     // Simplified piecewise linear scaling
                     if (absDistance < 5) {
-                        // Center album - always exactly 1.0 for perfect sharpness
+                        // Near center - always exactly 1.0 for perfect sharpness
                         scale = 1.0
                     } else if (absDistance < 20) {
                         scale = 1.0 - 0.001 * absDistance  // 1.0 to 0.98
@@ -981,8 +1013,8 @@ Item {
                         scale = 0.85
                     }
                     
-                    // Round to nearest 0.05 for cleaner scaling
-                    return Math.round(scale * 20) / 20
+                    // Round to nearest 0.01 for precise but clean scaling
+                    return Math.round(scale * 100) / 100
                 }
                 
                 transform: [
@@ -990,8 +1022,8 @@ Item {
                         x: horizontalOffset
                     },
                     Scale {
-                        origin.x: Math.round(delegateItem.width / 2)
-                        origin.y: Math.round(delegateItem.height / 2)
+                        origin.x: snapToPixel(delegateItem.width / 2)
+                        origin.y: snapToPixel(delegateItem.height / 2)
                         xScale: scaleAmount
                         yScale: scaleAmount
                         
@@ -1015,16 +1047,16 @@ Item {
                         origin.x: {
                             if (distance > 0) {
                                 // Moving right
-                                return Math.round(delegateItem.width * 0.75)
+                                return snapToPixel(delegateItem.width * 0.75)
                             } else if (distance < 0) {
                                 // Moving left
-                                return Math.round(delegateItem.width * 0.25)
+                                return snapToPixel(delegateItem.width * 0.25)
                             } else {
                                 // Center - default to middle
-                                return Math.round(delegateItem.width / 2)
+                                return snapToPixel(delegateItem.width / 2)
                             }
                         }
-                        origin.y: Math.round(delegateItem.height / 2)
+                        origin.y: snapToPixel(delegateItem.height / 2)
                         axis { x: 0; y: 1; z: 0 }
                         angle: itemAngle
                     }
