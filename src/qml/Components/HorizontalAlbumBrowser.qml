@@ -813,7 +813,7 @@ Item {
                 // This ensures the center album renders directly without FBO overhead
                 layer.enabled: needsRotation
                 layer.samples: needsRotation ? 4 : 0  // 4x multisampling only when rotating
-                layer.smooth: needsRotation
+                layer.smooth: true // Always smooth at the delegate level
                 
                 // Get the actual album data from the model using sorted index
                 property int sortedIndex: index
@@ -1121,11 +1121,10 @@ Item {
                                 }
                                 return ""
                             }
-                            fillMode: Image.PreserveAspectCrop
+                            fillMode: Image.PreserveAspectCrop // Preserve aspect ratio and crop to fit
                             asynchronous: !isTargetDelegate  // Load synchronously for target delegate
-                            //smooth: true // results in conditional pixel alignment related softness
-                            // Disable smoothing for center album to maintain sharpness
-                            smooth: needsRotation || absDistance > 5
+                            //smooth: true // redundant with layer.smooth at the delegate level
+                            //smooth: needsRotation || absDistance > 5 // non-smoothed center album, results in pixel misalignment in some cases
                             mipmap: false  // Disable mipmapping to avoid softness
                             cache: true  // Enable caching to prevent reloading
                             
