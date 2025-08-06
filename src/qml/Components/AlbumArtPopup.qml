@@ -4,212 +4,247 @@ import QtQuick.Layouts 1.15
 import QtQuick.Effects
 import Mtoc.Backend 1.0
 
-Popup {
+Item {
     id: root
     
     property url albumArtUrl: ""
     property alias currentTrack: trackInfoColumn.currentTrack
+    property bool isOpen: false
     
-    width: parent.width * 0.9
-    height: Math.min(parent.height * 0.9, headerRect.height + width + trackInfoColumn.implicitHeight + 40)
-    x: (parent.width - width) / 2
-    y: (parent.height - height) / 2
+    signal closed()
     
-    modal: true
-    focus: true
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    anchors.fill: parent
+    z: 1000
+    visible: isOpen || closeAnimationTimer.running
     
-    // Slide up animation on enter
-    enter: Transition {
+    // Only show when open
+    opacity: isOpen ? 1.0 : 0.0
+    enabled: isOpen
+    
+    Behavior on opacity {
         NumberAnimation {
-            property: "y"
-            from: parent.height
-            to: (parent.height - height) / 2
             duration: 300
-            easing.type: Easing.OutCubic
+            easing.type: Easing.InOutQuad
         }
     }
     
-    // Slide down animation on exit
-    exit: Transition {
-        NumberAnimation {
-            property: "y"
-            from: (parent.height - height) / 2
-            to: parent.height
-            duration: 300
-            easing.type: Easing.InCubic
-        }
-    }
-    
-    // Semi-transparent background overlay with fade animation
-    Overlay.modal: Rectangle {
+    // Semi-transparent background overlay
+    Rectangle {
+        anchors.fill: parent
         color: Qt.rgba(0, 0, 0, 0.7)
-        opacity: root.visible ? 1.0 : 0.0
+        opacity: root.isOpen ? 1.0 : 0.0
         
         Behavior on opacity {
             NumberAnimation {
                 duration: 300
-                easing.type: Easing.InOutCubic
-            }
-        }
-    }
-    
-    background: Rectangle {
-        color: "transparent"
-        radius: 8
-        
-        // Drop shadow
-        layer.enabled: true
-        layer.effect: MultiEffect {
-            shadowEnabled: true
-            shadowHorizontalOffset: 0
-            shadowVerticalOffset: 8
-            shadowBlur: 1.0
-            shadowColor: "#A0000000"
-        }
-    }
-    
-    contentItem: ColumnLayout {
-        spacing: 0
-        
-        // Header with close button
-        Rectangle {
-            id: headerRect
-            Layout.fillWidth: true
-            Layout.preferredHeight: 50
-            color: Theme.panelBackground
-            radius: 8
-            
-            // Bottom corners square to connect with album art
-            Rectangle {
-                anchors.bottom: parent.bottom
-                anchors.left: parent.left
-                anchors.right: parent.right
-                height: 8
-                color: parent.color
-            }
-            
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 16
-                anchors.rightMargin: 16
-                
-                Label {
-                    text: "Album Artwork"
-                    font.pixelSize: 16
-                    font.bold: true
-                    color: Theme.primaryText
-                }
-                
-                Item { Layout.fillWidth: true }
-                
-                // Close button
-                ToolButton {
-                    Layout.preferredWidth: 36
-                    Layout.preferredHeight: 36
-                    icon.source: "qrc:/resources/icons/close-button.svg"
-                    icon.width: 18
-                    icon.height: 18
-                    onClicked: root.close()
-                    
-                    background: Rectangle {
-                        color: parent.hovered ? Theme.inputBackgroundHover : Theme.inputBackground
-                        radius: 4
-                    }
-                }
+                easing.type: Easing.InOutQuad
             }
         }
         
-        // Album art container with background
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: width
-            color: Theme.backgroundColor
-            
-            Image {
-                id: albumArt
-                anchors.fill: parent
-                source: root.albumArtUrl
-                fillMode: Image.PreserveAspectFit
-                
-                // Drop shadow effect
-                layer.enabled: true
-                layer.effect: MultiEffect {
-                    shadowEnabled: true
-                    shadowHorizontalOffset: 0
-                    shadowVerticalOffset: 4
-                    shadowBlur: 0.5
-                    shadowColor: "#60000000"
-                }
-                
-                // Placeholder when no album art
-                Rectangle {
-                    anchors.fill: parent
-                    color: Theme.panelBackground
-                    visible: parent.status !== Image.Ready || parent.source == ""
-                    
-                    Text {
-                        anchors.centerIn: parent
-                        text: "♪"
-                        font.pixelSize: parent.width * 0.3
-                        color: Theme.inputBackgroundHover
-                    }
-                }
-            }
-        }
-        
-        // Track info with background
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: trackInfoColumn.implicitHeight + 40
-            color: Theme.backgroundColor
-            radius: 8
-            
-            // Top corners square to connect with album art
-            Rectangle {
-                anchors.top: parent.top
-                anchors.left: parent.left
-                anchors.right: parent.right
-                height: 8
-                color: parent.color
-            }
-            
-        ColumnLayout {
-            id: trackInfoColumn
+        MouseArea {
             anchors.fill: parent
-            anchors.margins: 20
-            spacing: 8
-            
-            property var currentTrack: MediaPlayer.currentTrack
-            
-            Label {
-                Layout.fillWidth: true
-                text: currentTrack ? currentTrack.title : ""
-                font.pixelSize: 18
-                font.bold: true
-                color: Theme.primaryText
-                horizontalAlignment: Text.AlignHCenter
-                elide: Text.ElideRight
-            }
-            
-            Label {
-                Layout.fillWidth: true
-                text: currentTrack ? currentTrack.artist : ""
-                font.pixelSize: 16
-                color: Theme.secondaryText
-                horizontalAlignment: Text.AlignHCenter
-                elide: Text.ElideRight
-            }
-            
-            Label {
-                Layout.fillWidth: true
-                text: currentTrack ? currentTrack.album : ""
-                font.pixelSize: 14
-                color: Theme.tertiaryText
-                horizontalAlignment: Text.AlignHCenter
-                elide: Text.ElideRight
+            onClicked: root.closed()
+        }
+    }
+    
+    // Popup content container
+    Item {
+        id: popupContainer
+        width: parent.width * 0.9
+        height: Math.min(parent.height * 0.9, headerRect.height + width + trackInfoColumn.implicitHeight + 40)
+        x: (parent.width - width) / 2
+        
+        // Animate position
+        y: root.isOpen ? (parent.height - height) / 2 : parent.height
+        
+        Behavior on y {
+            NumberAnimation {
+                duration: 300
+                easing.type: Easing.InOutQuad
             }
         }
+        
+        // Background with shadow
+        Rectangle {
+            anchors.fill: parent
+            color: "transparent"
+            radius: 8
+            
+            // Drop shadow
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowHorizontalOffset: 0
+                shadowVerticalOffset: 8
+                shadowBlur: 1.0
+                shadowColor: "#A0000000"
+            }
         }
+        
+        // Content
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 0
+            
+            // Header with close button
+            Rectangle {
+                id: headerRect
+                Layout.fillWidth: true
+                Layout.preferredHeight: 50
+                color: Theme.panelBackground
+                radius: 8
+                
+                // Bottom corners square to connect with album art
+                Rectangle {
+                    anchors.bottom: parent.bottom
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    height: 8
+                    color: parent.color
+                }
+                
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 16
+                    anchors.rightMargin: 16
+                    
+                    Label {
+                        text: "Album Artwork"
+                        font.pixelSize: 16
+                        font.bold: true
+                        color: Theme.primaryText
+                    }
+                    
+                    Item { Layout.fillWidth: true }
+                    
+                    // Close button
+                    ToolButton {
+                        Layout.preferredWidth: 36
+                        Layout.preferredHeight: 36
+                        icon.source: "qrc:/resources/icons/close-button.svg"
+                        icon.width: 18
+                        icon.height: 18
+                        onClicked: root.closed()
+                        
+                        background: Rectangle {
+                            color: parent.hovered ? Theme.inputBackgroundHover : Theme.inputBackground
+                            radius: 4
+                        }
+                    }
+                }
+            }
+            
+            // Album art container with background
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: width
+                color: Theme.backgroundColor
+                
+                Image {
+                    id: albumArt
+                    anchors.fill: parent
+                    source: root.albumArtUrl
+                    fillMode: Image.PreserveAspectFit
+                    
+                    // Drop shadow effect
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        shadowEnabled: true
+                        shadowHorizontalOffset: 0
+                        shadowVerticalOffset: 4
+                        shadowBlur: 0.5
+                        shadowColor: "#60000000"
+                    }
+                    
+                    // Placeholder when no album art
+                    Rectangle {
+                        anchors.fill: parent
+                        color: Theme.panelBackground
+                        visible: parent.status !== Image.Ready || parent.source == ""
+                        
+                        Text {
+                            anchors.centerIn: parent
+                            text: "♪"
+                            font.pixelSize: parent.width * 0.3
+                            color: Theme.inputBackgroundHover
+                        }
+                    }
+                }
+            }
+            
+            // Track info with background
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: trackInfoColumn.implicitHeight + 40
+                color: Theme.backgroundColor
+                radius: 8
+                
+                // Top corners square to connect with album art
+                Rectangle {
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    height: 8
+                    color: parent.color
+                }
+                
+                ColumnLayout {
+                    id: trackInfoColumn
+                    anchors.fill: parent
+                    anchors.margins: 20
+                    spacing: 8
+                    
+                    property var currentTrack: MediaPlayer.currentTrack
+                    
+                    Label {
+                        Layout.fillWidth: true
+                        text: currentTrack ? currentTrack.title : ""
+                        font.pixelSize: 18
+                        font.bold: true
+                        color: Theme.primaryText
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideRight
+                    }
+                    
+                    Label {
+                        Layout.fillWidth: true
+                        text: currentTrack ? currentTrack.artist : ""
+                        font.pixelSize: 16
+                        color: Theme.secondaryText
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideRight
+                    }
+                    
+                    Label {
+                        Layout.fillWidth: true
+                        text: currentTrack ? currentTrack.album : ""
+                        font.pixelSize: 14
+                        color: Theme.tertiaryText
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideRight
+                    }
+                }
+            }
+        }
+    }
+    
+    // Handle escape key
+    Keys.onEscapePressed: root.closed()
+    
+    // Grab focus when open
+    onIsOpenChanged: {
+        if (isOpen) {
+            root.forceActiveFocus()
+        } else {
+            // Start timer to hide after animation completes
+            closeAnimationTimer.start()
+        }
+    }
+    
+    // Timer to keep item visible during close animation
+    Timer {
+        id: closeAnimationTimer
+        interval: 350  // Slightly longer than animation duration
+        repeat: false
     }
 }

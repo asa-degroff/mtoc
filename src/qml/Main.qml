@@ -144,10 +144,23 @@ ApplicationWindow {
                 visible: SettingsManager.layoutMode === SettingsManager.Compact
                 
                 // Library Pane (full width)
-                LibraryPane {
-                    id: libraryPaneCompact
+                Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    
+                    LibraryPane {
+                        id: libraryPaneCompact
+                        anchors.fill: parent
+                    }
+                    
+                    // Album art popup for compact mode - parented to library pane container
+                    AlbumArtPopup {
+                        id: albumArtPopup
+                        parent: parent
+                        albumArtUrl: compactNowPlayingBar.albumArtUrl
+                        isOpen: compactNowPlayingBar.albumArtPopupVisible
+                        onClosed: compactNowPlayingBar.albumArtPopupVisible = false
+                    }
                 }
                 
                 // Compact Now Playing Bar
@@ -262,14 +275,5 @@ ApplicationWindow {
         currentPlayingIndex: MediaPlayer.currentQueueIndex
         visible: compactNowPlayingBar.queuePopupVisible
         onClosed: compactNowPlayingBar.queuePopupVisible = false
-    }
-    
-    // Album art popup for compact mode
-    AlbumArtPopup {
-        id: albumArtPopup
-        parent: window.contentItem
-        albumArtUrl: compactNowPlayingBar.albumArtUrl
-        visible: compactNowPlayingBar.albumArtPopupVisible
-        onClosed: compactNowPlayingBar.albumArtPopupVisible = false
     }
 }
