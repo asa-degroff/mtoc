@@ -23,7 +23,7 @@ Item {
     
     Behavior on opacity {
         NumberAnimation {
-            duration: 300
+            duration: 200
             easing.type: Easing.InOutQuad
         }
     }
@@ -36,7 +36,7 @@ Item {
         
         Behavior on opacity {
             NumberAnimation {
-                duration: 300
+                duration: 200
                 easing.type: Easing.InOutQuad
             }
         }
@@ -66,7 +66,7 @@ Item {
         
         Behavior on y {
             NumberAnimation {
-                duration: 300
+                duration: 200
                 easing.type: Easing.InOutQuad
             }
         }
