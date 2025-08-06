@@ -169,6 +169,10 @@ Rectangle {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
+                    // Close queue popup if open
+                    if (root.queuePopupVisible) {
+                        root.queuePopupVisible = false
+                    }
                     root.albumArtPopupVisible = !root.albumArtPopupVisible
                 }
             }
@@ -567,7 +571,13 @@ Rectangle {
                 iconSource: "qrc:/resources/icons/queue.svg"
                 opacity: root.queuePopupVisible ? 1.0 : 0.6
                 addShadow: true
-                onClicked: root.queuePopupVisible = !root.queuePopupVisible
+                onClicked: {
+                    // Close album art popup if open
+                    if (root.albumArtPopupVisible) {
+                        root.albumArtPopupVisible = false
+                    }
+                    root.queuePopupVisible = !root.queuePopupVisible
+                }
                 
                 Behavior on opacity {
                     NumberAnimation { duration: 200 }
