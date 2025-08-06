@@ -1095,7 +1095,7 @@ Item {
                     anchors.top: parent.top
                     anchors.topMargin: 10  // Small margin to shift the album view up
                     width: 220
-                    height: 340  // Height for album + reflection
+                    height: 320  // Height for album + reflection (reduced from 340)
                     
                     Item {
                         id: albumContainer

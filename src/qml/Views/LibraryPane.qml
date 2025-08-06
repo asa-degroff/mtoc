@@ -864,7 +864,7 @@ Item {
         // Horizontal Album Browser with width constraint
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 360  // Height for albums with reflections
+            Layout.preferredHeight: 340  // Height for albums with reflections (reduced from 360)
             color: Qt.rgba(0, 0, 0, 0.5)  // Semi-transparent dark to match other panes
             radius: 8
             clip: true  // Clip content to rounded corners
@@ -936,8 +936,8 @@ Item {
                     gradient: Gradient {
                         orientation: Gradient.Vertical
                         GradientStop { position: 0.0; color: "transparent" }
-                        GradientStop { position: 0.7; color: "transparent" }
-                        GradientStop { position: 0.82; color: Theme.upperGradientColor }  // Use theme color for upper gradient
+                        GradientStop { position: 0.74; color: "transparent" }  // Adjusted from 0.7 for 340px height
+                        GradientStop { position: 0.865; color: Theme.upperGradientColor }  // Adjusted from 0.82 for 340px height
                         GradientStop { position: 1.0; color: Theme.lowerGradientColor }  // Use theme color for lower gradient
                     }
                 }
