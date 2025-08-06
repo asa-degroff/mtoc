@@ -130,6 +130,7 @@ Item {
         restoreCarouselPosition()
         // Clear initialization flag after component is ready
         Qt.callLater(function() {
+            if (!root || root.isDestroying) return
             isInitializing = false
         })
     }
@@ -138,17 +139,27 @@ Item {
         // Mark that we're destroying to prevent any further operations
         isDestroying = true
         
+        // Clear any delegates' reflection sources first
+        if (listView && listView.contentItem) {
+            for (var i = 0; i < listView.contentItem.children.length; i++) {
+                var item = listView.contentItem.children[i]
+                if (item && item.reflection) {
+                    item.reflection.sourceItem = null
+                }
+            }
+        }
+        
         // Stop animations
-        snapAnimation.stop()
-        contentXBehavior.enabled = false
+        if (snapAnimation) snapAnimation.stop()
+        if (contentXBehavior) contentXBehavior.enabled = false
         
         // Stop all timers to prevent callbacks during destruction
-        savePositionTimer.stop()
-        velocityTimer.stop()
-        snapIndexTimer.stop()
-        centerAlbumTimer.stop()
-        scrollEndTimer.stop()
-        gcTimer.stop()
+        if (savePositionTimer) savePositionTimer.stop()
+        if (velocityTimer) velocityTimer.stop()
+        if (snapIndexTimer) snapIndexTimer.stop()
+        if (centerAlbumTimer) centerAlbumTimer.stop()
+        if (scrollEndTimer) scrollEndTimer.stop()
+        if (gcTimer) gcTimer.stop()
     }
     
     // Timer to save position after user stops scrolling
@@ -157,8 +168,8 @@ Item {
         interval: 250  // Save 250ms after user stops scrolling
         running: false
         onTriggered: {
-            if (isDestroying) {
-                savePositionTimer.stop()
+            if (!root || isDestroying) {
+                if (savePositionTimer) savePositionTimer.stop()
                 return
             }
             
@@ -272,7 +283,7 @@ Item {
     
     // Manual memory cleanup function that can be called when needed
     function clearDistantCache() {
-        if (isDestroying) return
+        if (!root || isDestroying) return
         
         console.log("HorizontalAlbumBrowser: Clearing distant image cache")
         
@@ -330,6 +341,7 @@ Item {
                             
                             // Clear target index after animation completes
                             Qt.callLater(function() {
+                                if (!root || root.isDestroying) return
                                 root.targetJumpIndex = -1
                             })
                             return
@@ -416,8 +428,8 @@ Item {
                 property int triggerCount: 0
                 
                 onTriggered: {
-                    if (isDestroying || !root) {
-                        gcTimer.stop()
+                    if (!root || isDestroying) {
+                        if (gcTimer) gcTimer.stop()
                         return
                     }
                     
@@ -480,8 +492,8 @@ Item {
                 repeat: true
                 running: false
                 onTriggered: {
-                    if (isDestroying || !listView) {
-                        velocityTimer.stop()
+                    if (!root || isDestroying || !listView) {
+                        if (velocityTimer) velocityTimer.stop()
                         return
                     }
                     
@@ -549,8 +561,8 @@ Item {
                 running: false
                 property int targetIndex: -1
                 onTriggered: {
-                    if (isDestroying || !root) {
-                        snapIndexTimer.stop()
+                    if (!root || isDestroying) {
+                        if (snapIndexTimer) snapIndexTimer.stop()
                         return
                     }
                     
@@ -566,8 +578,8 @@ Item {
                 interval: 100  // Wait for animation to complete
                 running: false
                 onTriggered: {
-                    if (isDestroying || !root) {
-                        centerAlbumTimer.stop()
+                    if (!root || isDestroying) {
+                        if (centerAlbumTimer) centerAlbumTimer.stop()
                         return
                     }
                     
@@ -583,8 +595,8 @@ Item {
                 interval: 100  // Wait 100ms after last scroll event
                 running: false
                 onTriggered: {
-                    if (isDestroying) {
-                        scrollEndTimer.stop()
+                    if (!root || isDestroying) {
+                        if (scrollEndTimer) scrollEndTimer.stop()
                         return
                     }
                     
@@ -844,7 +856,11 @@ Item {
                 ListView.onRemove: removeAnimation.start()
                 
                 Component.onDestruction: {
-                    // Final cleanup
+                    // Disable connections first
+                    if (listViewConnection) listViewConnection.enabled = false
+                    if (albumImageConnection) albumImageConnection.enabled = false
+                    
+                    // Clear reflection source
                     if (reflection) {
                         reflection.sourceItem = null
                     }
@@ -860,19 +876,21 @@ Item {
                     if (!root.isDestroying && reflection && reflection.live && reflection.sourceItem) {
                         // Set back to static mode after recycling position update
                         Qt.callLater(function() {
-                            if (reflection) {
-                                reflection.live = false
-                            }
+                            if (!delegateItem || root.isDestroying || !reflection) return
+                            reflection.live = false
                         })
                     }
                 }
                 
                 // Watch ListView scrolling to update reflections
                 Connections {
+                    id: listViewConnection
                     target: listView
-                    enabled: !root.isDestroying
+                    enabled: !root.isDestroying && !delegateItem.ListView.isPooled
                     
                     function onContentXChanged() {
+                        if (root.isDestroying || !delegateItem) return
+                        
                         // When scrolling, check if this delegate's reflection state should change
                         if (reflection) {
                             var shouldHaveReflection = absDistance < (listView.width / 2)
@@ -884,7 +902,7 @@ Item {
                                 
                                 // If enabling reflection and image is ready, update it
                                 if (shouldHaveReflection && reflection.sourceItem) {
-                                    if (albumImage.status === Image.Ready) {
+                                    if (albumImage && albumImage.status === Image.Ready) {
                                         reflection.scheduleUpdate()
                                     }
                                     // Also ensure it's not in live mode
@@ -1213,11 +1231,13 @@ Item {
                         
                         // Watch for album image load completion to update reflection
                         Connections {
+                            id: albumImageConnection
                             target: albumImage
-                            enabled: !root.isDestroying && reflection
+                            enabled: !root.isDestroying && reflection && !delegateItem.ListView.isPooled
                             
                             function onStatusChanged() {
-                                if (albumImage.status === Image.Ready && reflection && reflection.sourceItem) {
+                                if (root.isDestroying || !delegateItem) return
+                                if (albumImage && albumImage.status === Image.Ready && reflection && reflection.sourceItem) {
                                     reflection.scheduleUpdate()
                                 }
                             }
