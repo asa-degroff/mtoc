@@ -1061,11 +1061,6 @@ Item {
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: 200
                         height: 200
-                        
-                        // // Enable layer for better rendering quality when used as ShaderEffectSource (this breaks antialiasing)
-                        // layer.enabled: true
-                        // layer.smooth: true
-                        // layer.samples: 4  // Multisampling for better antialiasing
                             
                         Image {
                             id: albumImage
@@ -1078,17 +1073,17 @@ Item {
                                 if (typeof albumData.hasArt === "undefined" || !albumData.hasArt) return ""
                                 if (typeof albumData.id === "undefined" || !albumData.id) return ""
                                 // Force loading for target delegates or nearby visible items
-                                // Request 200px size to match the display size
+                                // Request 400px size for up to 2x resolution scaling
                                 if (forceImageLoad || isVisible) {
-                                    return "image://albumart/" + albumData.id + "/thumbnail/200"
+                                    return "image://albumart/" + albumData.id + "/thumbnail/400"
                                 }
                                 return ""
                             }
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: !isTargetDelegate  // Load synchronously for target delegate
+                            //smooth: true // results in conditional pixel alignment related softness
                             // Disable smoothing for center album to maintain sharpness
                             smooth: needsRotation || absDistance > 5
-                            antialiasing: needsRotation  // Only antialias when rotating
                             mipmap: false  // Disable mipmapping to avoid softness
                             cache: true  // Enable caching to prevent reloading
                             
