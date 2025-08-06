@@ -302,11 +302,22 @@ ApplicationWindow {
                             id: layoutModeComboBox
                             Layout.preferredWidth: 150
                             Layout.preferredHeight: 36
-                            model: ["Wide", "Compact"]
-                            currentIndex: SettingsManager.layoutMode === SettingsManager.Wide ? 0 : 1
+                            model: ["Wide", "Compact", "Automatic"]
+                            currentIndex: {
+                                switch(SettingsManager.layoutMode) {
+                                    case SettingsManager.Wide: return 0
+                                    case SettingsManager.Compact: return 1
+                                    case SettingsManager.Automatic: return 2
+                                    default: return 2
+                                }
+                            }
                             
                             onActivated: function(index) {
-                                SettingsManager.layoutMode = index === 0 ? SettingsManager.Wide : SettingsManager.Compact
+                                switch(index) {
+                                    case 0: SettingsManager.layoutMode = SettingsManager.Wide; break
+                                    case 1: SettingsManager.layoutMode = SettingsManager.Compact; break
+                                    case 2: SettingsManager.layoutMode = SettingsManager.Automatic; break
+                                }
                             }
                             
                             background: Rectangle {
@@ -394,6 +405,16 @@ ApplicationWindow {
                         }
                         
                         Item { Layout.fillWidth: true }
+                    }
+                    
+                    // Help text for automatic mode
+                    Label {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 20
+                        text: "Automatic mode switches to Compact when window width < 1200px"
+                        font.pixelSize: 12
+                        color: Theme.tertiaryText
+                        visible: layoutModeComboBox.currentIndex === 2
                     }
                     
                     CheckBox {

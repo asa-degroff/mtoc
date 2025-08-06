@@ -12,7 +12,7 @@ ApplicationWindow {
     height: SettingsManager.windowHeight
     x: SettingsManager.windowX >= 0 ? SettingsManager.windowX : Screen.width / 2 - width / 2
     y: SettingsManager.windowY >= 0 ? SettingsManager.windowY : Screen.height / 2 - height / 2
-    minimumWidth: SettingsManager.layoutMode === SettingsManager.Compact ? 700 : 1050
+    minimumWidth: effectiveLayoutMode === SettingsManager.Compact ? 700 : 1050
     minimumHeight: 700
     visible: true
     title: SystemInfo.appName
@@ -40,6 +40,22 @@ ApplicationWindow {
     // Responsive layout properties
     property real libraryPaneRatio: mainContent.width < 1250 ? 0.55 : 0.45
     property real nowPlayingPaneRatio: 1.0 - libraryPaneRatio
+    
+    // Effective layout mode (considering automatic mode)
+    property int effectiveLayoutMode: {
+        if (SettingsManager.layoutMode === SettingsManager.Automatic) {
+            return window.width < 1200 ? SettingsManager.Compact : SettingsManager.Wide
+        }
+        return SettingsManager.layoutMode
+    }
+    
+    // Close popups when layout mode changes
+    onEffectiveLayoutModeChanged: {
+        if (compactNowPlayingBar) {
+            compactNowPlayingBar.queuePopupVisible = false
+            compactNowPlayingBar.albumArtPopupVisible = false
+        }
+    }
     
     // Timer to debounce window geometry changes
     Timer {
@@ -111,7 +127,7 @@ ApplicationWindow {
             RowLayout {
                 anchors.fill: parent
                 spacing: 0
-                visible: SettingsManager.layoutMode === SettingsManager.Wide
+                visible: effectiveLayoutMode === SettingsManager.Wide
 
                 // Library Pane
                 LibraryPane {
@@ -141,7 +157,7 @@ ApplicationWindow {
             ColumnLayout {
                 anchors.fill: parent
                 spacing: 0
-                visible: SettingsManager.layoutMode === SettingsManager.Compact
+                visible: effectiveLayoutMode === SettingsManager.Compact
                 
                 // Library Pane (full width)
                 Item {
@@ -248,7 +264,7 @@ ApplicationWindow {
         ensureWindowVisible();
         
         // Give focus to library pane for keyboard navigation
-        if (SettingsManager.layoutMode === SettingsManager.Wide) {
+        if (effectiveLayoutMode === SettingsManager.Wide) {
             libraryPaneWide.forceActiveFocus();
         } else {
             libraryPaneCompact.forceActiveFocus();
@@ -269,7 +285,7 @@ ApplicationWindow {
     Shortcut {
         sequence: StandardKey.Find  // Ctrl+F on Linux, Cmd+F on macOS
         onActivated: {
-            if (SettingsManager.layoutMode === SettingsManager.Wide) {
+            if (effectiveLayoutMode === SettingsManager.Wide) {
                 libraryPaneWide.focusSearchBar()
             } else {
                 libraryPaneCompact.focusSearchBar()

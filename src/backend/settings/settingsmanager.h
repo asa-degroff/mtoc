@@ -43,7 +43,8 @@ public:
 
     enum LayoutMode {
         Wide,
-        Compact
+        Compact,
+        Automatic
     };
     Q_ENUM(LayoutMode)
 
