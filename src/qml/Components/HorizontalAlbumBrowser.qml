@@ -20,6 +20,7 @@ Item {
     property bool isTouchpadScrolling: false  // Track active touchpad input
     property int targetJumpIndex: -1  // Index we're jumping to with jumpToAlbum
     property int lastStableIndex: -1  // Track last stable index for hysteresis
+    property real visualCenterIndex: 0  // Continuous tracking of visual center position
     
     signal albumClicked(var album)
     signal centerAlbumChanged(var album)
@@ -405,6 +406,16 @@ Item {
             // Cached value for delegate optimization - calculated once per frame
             readonly property real viewCenterX: width / 2
             
+            // Update visual center index based on contentX
+            onContentXChanged: {
+                if (!root.isDestroying) {
+                    var itemWidth = 220 + spacing  // 55 effective width
+                    var centerOffset = width / 2 - 110
+                    var centerX = contentX + centerOffset
+                    root.visualCenterIndex = centerX / itemWidth
+                }
+            }
+            
             // Enable delegate recycling with proper safeguards
             cacheBuffer: 880  // 4 items on each side (220px * 4) for smoother scrolling
             reuseItems: true  // Enable delegate recycling for better performance
@@ -501,23 +512,32 @@ Item {
                             listView.contentX = maxX
                             root.scrollVelocity = 0
                         }
+                        
+                        // Update currentIndex smoothly during velocity scrolling
+                        var nearestIdx = nearestIndex()
+                        if (Math.abs(nearestIdx - listView.currentIndex) >= 1) {
+                            listView.currentIndex = nearestIdx
+                        }
                     } else if (!root.isSnapping) {
                         // Velocity is low, start snapping to nearest album
                         velocityTimer.stop()
                         root.scrollVelocity = 0
                         root.isSnapping = true
-                        root.isTouchpadScrolling = false  // Mark touchpad scrolling complete
                         
                         // Find nearest album with hysteresis
                         var targetIndex = nearestIndexWithHysteresis()
                         
-                        // Update current index BEFORE restoring strict mode to prevent snap-back
+                        // Calculate target contentX for smooth animation
+                        var targetContentX = contentXForIndex(targetIndex)
+                        
+                        // Update current index
                         listView.currentIndex = targetIndex
                         root.lastStableIndex = targetIndex
                         
-                        // Now restore strict highlight range mode
-                        // The ListView will handle the animation to center the item
-                        listView.highlightRangeMode = ListView.StrictlyEnforceRange
+                        // Animate to target position
+                        snapAnimation.from = listView.contentX
+                        snapAnimation.to = targetContentX
+                        snapAnimation.start()
                     }
                 }
             }
@@ -533,6 +553,11 @@ Item {
                     if (root.isDestroying) return
                     
                     root.isSnapping = false
+                    root.isTouchpadScrolling = false  // Mark touchpad scrolling complete
+                    
+                    // Restore strict highlight range mode after animation completes
+                    listView.highlightRangeMode = ListView.StrictlyEnforceRange
+                    
                     // Emit signal when snap animation completes and we have an album
                     if (root.isUserScrolling && root.selectedAlbum) {
                         root.centerAlbumChanged(root.selectedAlbum)
@@ -597,30 +622,37 @@ Item {
                         // Find nearest album with hysteresis
                         var targetIndex = nearestIndexWithHysteresis()
                         
-                        // Update current index BEFORE restoring strict mode to prevent snap-back
+                        // Calculate target contentX for smooth animation
+                        var targetContentX = contentXForIndex(targetIndex)
+                        
+                        // Update current index
                         listView.currentIndex = targetIndex
                         root.lastStableIndex = targetIndex
                         
-                        // Now restore strict highlight range mode for proper snapping
-                        listView.highlightRangeMode = ListView.StrictlyEnforceRange
-                        
-                        // The ListView will now animate to center the new currentIndex
-                        // No need for manual animation since StrictlyEnforceRange handles it
+                        // Animate to target position
+                        snapAnimation.from = listView.contentX
+                        snapAnimation.to = targetContentX
+                        snapAnimation.start()
                     } else if (!root.isSnapping && root.isUserScrolling && root.selectedAlbum) {
                         // If still scrolling with velocity, let velocity timer handle it
                         // Don't restore strict mode yet
                         if (Math.abs(root.scrollVelocity) >= 0.5) {
                             // Velocity timer is still running, it will handle the rest
                         } else {
-                            // If we're not snapping but finished scrolling, emit the signal
-                            root.centerAlbumChanged(root.selectedAlbum)
-                            root.isUserScrolling = false
+                            // If we're not snapping but finished scrolling, snap to nearest
+                            root.isSnapping = true
                             
-                            // Update index and restore strict mode
                             var nearestIdx = nearestIndexWithHysteresis()
+                            var targetContentX = contentXForIndex(nearestIdx)
+                            
+                            // Update current index
                             listView.currentIndex = nearestIdx
                             root.lastStableIndex = nearestIdx
-                            listView.highlightRangeMode = ListView.StrictlyEnforceRange
+                            
+                            // Animate to target position
+                            snapAnimation.from = listView.contentX
+                            snapAnimation.to = targetContentX
+                            snapAnimation.start()
                         }
                     }
                 }
@@ -628,25 +660,22 @@ Item {
                     
             onCurrentIndexChanged: {
                 if (!isDestroying && currentIndex >= 0 && currentIndex < sortedAlbumIndices.length) {
-                    // Don't update during active touchpad scrolling to prevent glitching
-                    if (!root.isTouchpadScrolling) {
-                        root.currentIndex = currentIndex
-                        root.lastStableIndex = currentIndex  // Update stable index
-                        var albumIndex = sortedAlbumIndices[currentIndex]
-                        if (LibraryManager && LibraryManager.albumModel) {
-                            root.selectedAlbum = LibraryManager.albumModel[albumIndex]
-                        }
-                        
-                        // Save position after a delay
-                        if (!isDestroying) {
-                            savePositionTimer.restart()
-                        }
-                        
-                        // Emit centerAlbumChanged for mouse wheel and keyboard navigation
-                        // Use a timer to debounce and ensure it fires after the animation
-                        if (!isDestroying) {
-                            centerAlbumTimer.restart()
-                        }
+                    root.currentIndex = currentIndex
+                    root.lastStableIndex = currentIndex  // Update stable index
+                    var albumIndex = sortedAlbumIndices[currentIndex]
+                    if (LibraryManager && LibraryManager.albumModel) {
+                        root.selectedAlbum = LibraryManager.albumModel[albumIndex]
+                    }
+                    
+                    // Save position after a delay
+                    if (!isDestroying) {
+                        savePositionTimer.restart()
+                    }
+                    
+                    // Emit centerAlbumChanged for mouse wheel and keyboard navigation
+                    // Use a timer to debounce and ensure it fires after the animation
+                    if (!isDestroying && !root.isTouchpadScrolling) {
+                        centerAlbumTimer.restart()
                     }
                 }
             }
@@ -672,6 +701,13 @@ Item {
                         // Temporarily relax the highlight range mode to prevent fighting
                         if (listView.highlightRangeMode === ListView.StrictlyEnforceRange) {
                             listView.highlightRangeMode = ListView.NoHighlightRange
+                        }
+                        
+                        // Update currentIndex smoothly based on visual position
+                        var nearestIdx = nearestIndex()
+                        if (Math.abs(nearestIdx - listView.currentIndex) >= 1) {
+                            // Only update if we've moved to a different item
+                            listView.currentIndex = nearestIdx
                         }
                         
                         var deltaX = wheel.pixelDelta.x;
@@ -983,26 +1019,24 @@ Item {
                 
                 
                 z: {
+                    // Use visual center for accurate z-ordering during scrolling
+                    var visualDiff = index - root.visualCenterIndex
+                    var absVisualDiff = Math.abs(visualDiff)
+                    
                     // Center album has highest z-order
-                    if (absDistance < 5) {
+                    if (absVisualDiff < 0.1) {
                         return 1000  // Ensure center album is always on top
                     }
                     
-                    // Use index-based z-ordering to ensure consistent layering
-                    // The visual order should match the index order when viewed from the perspective
-                    var centerIndex = listView.currentIndex
-                    var indexDiff = index - centerIndex
-                    
-                    if (indexDiff === 0) {
-                        return 1000  // Center album
-                    } else if (indexDiff > 0) {
-                        // Albums to the right of center (higher index)
-                        // Closer to center = higher z-order
-                        return (500 - indexDiff * 10) > 0 ? (500 - indexDiff * 10) : 0
+                    // Calculate z-order based on visual distance from center
+                    // This ensures correct layering even during smooth scrolling
+                    if (absVisualDiff < 1) {
+                        // Very close to center - high priority
+                        return 900 - Math.floor(absVisualDiff * 100)
                     } else {
-                        // Albums to the left of center (lower index)
-                        // Closer to center = higher z-order
-                        return (500 + indexDiff * 10) > 0 ? (500 + indexDiff * 10) : 0
+                        // Further items - decreasing z-order
+                        var baseZ = 500 - Math.floor(absVisualDiff * 50)
+                        return baseZ > 0 ? baseZ : 0
                     }
                 }
                 
