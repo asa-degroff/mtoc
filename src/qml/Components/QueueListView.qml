@@ -417,7 +417,8 @@ ListView {
             // Drag handle
             Image {
                 id: dragHandle
-                source: "qrc:/resources/icons/list-drag-handle.svg"
+                source: root.forceLightText ? "qrc:/resources/icons/list-drag-handle.svg" : 
+                        (Theme.isDark ? "qrc:/resources/icons/list-drag-handle.svg" : "qrc:/resources/icons/list-drag-handle-dark.svg")
                 Layout.preferredWidth: 20
                 Layout.preferredHeight: 20
                 sourceSize.width: 40
