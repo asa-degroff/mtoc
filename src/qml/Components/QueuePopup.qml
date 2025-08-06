@@ -62,7 +62,7 @@ Item {
         Behavior on y {
             NumberAnimation {
                 duration: 300
-                easing.type: root.isOpen ? Easing.OutCubic : Easing.InCubic
+                easing.type: Easing.InOutQuad
             }
         }
         
