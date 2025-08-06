@@ -887,7 +887,7 @@ Item {
             HorizontalAlbumBrowser {
                 id: albumBrowser
                 anchors.centerIn: parent
-                width: Math.min(parent.width - 3, 1600)  // Max width with very thin margin for borders
+                width: Math.min(parent.width - 4, 1600)  // Max width with very thin margin for borders
                 height: parent.height - 3  // Account for margins
                 
                 onAlbumClicked: function(album) {
@@ -937,8 +937,8 @@ Item {
                     gradient: Gradient {
                         orientation: Gradient.Vertical
                         GradientStop { position: 0.0; color: "transparent" }
-                        GradientStop { position: 0.74; color: "transparent" }  // Adjusted from 0.7 for 340px height
-                        GradientStop { position: 0.865; color: Theme.upperGradientColor }  // Adjusted from 0.82 for 340px height
+                        GradientStop { position: 0.74; color: "transparent" } 
+                        GradientStop { position: 0.85; color: Theme.upperGradientColor }  
                         GradientStop { position: 1.0; color: Theme.lowerGradientColor }  // Use theme color for lower gradient
                     }
                 }

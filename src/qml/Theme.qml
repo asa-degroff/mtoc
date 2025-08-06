@@ -39,6 +39,6 @@ QtObject {
     property real edgeLineOpacity: 0.6
 
     // Carousel gradient
-    property color upperGradientColor: isDark ? Qt.rgba(0, 0, 0, 0.5) : Qt.rgba(0, 0, 0, 0.25)
-    property color lowerGradientColor: isDark ? Qt.rgba(0, 0, 0, 1.0) : Qt.rgba(0, 0, 0, 0.95)
+    property color upperGradientColor: isDark ? Qt.rgba(0, 0, 0, 0.5) : Qt.rgba(0, 0, 0, 0.35)
+    property color lowerGradientColor: isDark ? Qt.rgba(0, 0, 0, 1.0) : Qt.rgba(0, 0, 0, 1.0)
 }

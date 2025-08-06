@@ -411,7 +411,7 @@ Item {
         ListView {
             id: listView
             anchors.fill: parent
-            anchors.topMargin: 30      // Increased margin to accommodate rotation
+            anchors.topMargin: 27      // change to slide the carousel up or down
             anchors.bottomMargin: 30    // Bottom margin for reflection and info bar
             model: sortedAlbumIndices.length  // Use length for delegate count
             orientation: ListView.Horizontal
