@@ -169,7 +169,7 @@ Rectangle {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    root.albumArtPopupVisible = true
+                    root.albumArtPopupVisible = !root.albumArtPopupVisible
                 }
             }
         }
