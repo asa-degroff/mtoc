@@ -17,11 +17,8 @@ Item {
     property real accumulatedDelta: 0
     property bool isSnapping: false
     property bool isUserScrolling: false
-    property bool isTouchpadScrolling: false  // Track active touchpad input
     property int targetJumpIndex: -1  // Index we're jumping to with jumpToAlbum
-    property int lastStableIndex: -1  // Track last stable index for hysteresis
-    property real visualCenterIndex: 0  // Continuous tracking of visual center position
-    
+
     signal albumClicked(var album)
     signal centerAlbumChanged(var album)
     signal albumTitleClicked(string artistName, string albumTitle)
@@ -369,33 +366,6 @@ Item {
         return Math.max(0, Math.min(sortedAlbumIndices.length - 1, index))
     }
     
-    // Find nearest index with hysteresis to prevent rapid switching
-    function nearestIndexWithHysteresis() {
-        var currentNearest = nearestIndex()
-        
-        // If we don't have a last stable index, use the current nearest
-        if (lastStableIndex < 0) {
-            return currentNearest
-        }
-        
-        // Calculate distance from last stable index
-        var itemWidth = 220 + listView.spacing  // 55 effective width
-        var centerOffset = listView.width / 2 - 110
-        var centerX = listView.contentX + centerOffset
-        var exactPosition = centerX / itemWidth
-        
-        // Calculate distance from last stable index
-        var distanceFromStable = Math.abs(exactPosition - lastStableIndex)
-        
-        // Only switch if we've moved more than 30% toward another item
-        if (distanceFromStable > 0.3) {
-            return currentNearest
-        }
-        
-        // Otherwise stick with the last stable index
-        return lastStableIndex
-    }
-    
     Rectangle {
         anchors.fill: parent
         color: "transparent"  // Transparent to show parent's background
@@ -423,16 +393,6 @@ Item {
             
             // Cached value for delegate optimization - calculated once per frame
             readonly property real viewCenterX: width / 2
-            
-            // Update visual center index based on contentX
-            onContentXChanged: {
-                if (!root.isDestroying) {
-                    var itemWidth = 220 + spacing  // 55 effective width
-                    var centerOffset = width / 2 - 110
-                    var centerX = contentX + centerOffset
-                    root.visualCenterIndex = centerX / itemWidth
-                }
-            }
             
             // Enable delegate recycling with proper safeguards
             cacheBuffer: 880  // 4 items on each side (220px * 4) for smoother scrolling
@@ -530,32 +490,25 @@ Item {
                             listView.contentX = maxX
                             root.scrollVelocity = 0
                         }
-                        
-                        // Update currentIndex smoothly during velocity scrolling
-                        var nearestIdx = nearestIndex()
-                        if (Math.abs(nearestIdx - listView.currentIndex) >= 1) {
-                            listView.currentIndex = nearestIdx
-                        }
                     } else if (!root.isSnapping) {
                         // Velocity is low, start snapping to nearest album
                         velocityTimer.stop()
                         root.scrollVelocity = 0
                         root.isSnapping = true
                         
-                        // Find nearest album with hysteresis
-                        var targetIndex = nearestIndexWithHysteresis()
-                        
-                        // Calculate target contentX for smooth animation
+                        // Find nearest album and animate to it
+                        var targetIndex = nearestIndex()
                         var targetContentX = contentXForIndex(targetIndex)
                         
-                        // Update current index
-                        listView.currentIndex = targetIndex
-                        root.lastStableIndex = targetIndex
-                        
-                        // Animate to target position
-                        snapAnimation.from = listView.contentX
+                        // Animate to the target position
                         snapAnimation.to = targetContentX
                         snapAnimation.start()
+                        
+                        // Update current index after a short delay to ensure smooth animation
+                        if (!isDestroying) {
+                            snapIndexTimer.targetIndex = targetIndex
+                            snapIndexTimer.start()
+                        }
                     }
                 }
             }
@@ -571,11 +524,7 @@ Item {
                     if (root.isDestroying) return
                     
                     root.isSnapping = false
-                    root.isTouchpadScrolling = false  // Mark touchpad scrolling complete
-                    
-                    // Restore strict highlight range mode after animation completes
-                    listView.highlightRangeMode = ListView.StrictlyEnforceRange
-                    
+
                     // Emit signal when snap animation completes and we have an album
                     if (root.isUserScrolling && root.selectedAlbum) {
                         root.centerAlbumChanged(root.selectedAlbum)
@@ -630,48 +579,27 @@ Item {
                         return
                     }
                     
-                    // Mark touchpad scrolling as complete
-                    root.isTouchpadScrolling = false
-                    
                     // If velocity is very low or zero, snap to nearest album
                     if (Math.abs(root.scrollVelocity) < 0.5 && !root.isSnapping) {
                         root.isSnapping = true
                         
-                        // Find nearest album with hysteresis
-                        var targetIndex = nearestIndexWithHysteresis()
-                        
-                        // Calculate target contentX for smooth animation
+                        // Find nearest album and animate to it
+                        var targetIndex = nearestIndex()
                         var targetContentX = contentXForIndex(targetIndex)
                         
-                        // Update current index
-                        listView.currentIndex = targetIndex
-                        root.lastStableIndex = targetIndex
-                        
-                        // Animate to target position
-                        snapAnimation.from = listView.contentX
+                        // Animate to the target position
                         snapAnimation.to = targetContentX
                         snapAnimation.start()
-                    } else if (!root.isSnapping && root.isUserScrolling && root.selectedAlbum) {
-                        // If still scrolling with velocity, let velocity timer handle it
-                        // Don't restore strict mode yet
-                        if (Math.abs(root.scrollVelocity) >= 0.5) {
-                            // Velocity timer is still running, it will handle the rest
-                        } else {
-                            // If we're not snapping but finished scrolling, snap to nearest
-                            root.isSnapping = true
-                            
-                            var nearestIdx = nearestIndexWithHysteresis()
-                            var targetContentX = contentXForIndex(nearestIdx)
-                            
-                            // Update current index
-                            listView.currentIndex = nearestIdx
-                            root.lastStableIndex = nearestIdx
-                            
-                            // Animate to target position
-                            snapAnimation.from = listView.contentX
-                            snapAnimation.to = targetContentX
-                            snapAnimation.start()
+                        
+                        // Update current index
+                        if (!isDestroying) {
+                            snapIndexTimer.targetIndex = targetIndex
+                            snapIndexTimer.start()
                         }
+                    } else if (!root.isSnapping && root.isUserScrolling && root.selectedAlbum) {
+                        // If we're not snapping but finished scrolling, emit the signal
+                        root.centerAlbumChanged(root.selectedAlbum)
+                        root.isUserScrolling = false
                     }
                 }
             }
@@ -679,7 +607,6 @@ Item {
             onCurrentIndexChanged: {
                 if (!isDestroying && currentIndex >= 0 && currentIndex < sortedAlbumIndices.length) {
                     root.currentIndex = currentIndex
-                    root.lastStableIndex = currentIndex  // Update stable index
                     var albumIndex = sortedAlbumIndices[currentIndex]
                     if (LibraryManager && LibraryManager.albumModel) {
                         root.selectedAlbum = LibraryManager.albumModel[albumIndex]
@@ -692,7 +619,7 @@ Item {
                     
                     // Emit centerAlbumChanged for mouse wheel and keyboard navigation
                     // Use a timer to debounce and ensure it fires after the animation
-                    if (!isDestroying && !root.isTouchpadScrolling) {
+                    if (!isDestroying) {
                         centerAlbumTimer.restart()
                     }
                 }
@@ -714,20 +641,6 @@ Item {
                     // Different behavior for touchpad vs mouse wheel
                     if (wheel.pixelDelta.y !== 0 || wheel.pixelDelta.x !== 0) {
                         // Touchpad - use direct content manipulation for smooth scrolling
-                        root.isTouchpadScrolling = true
-                        
-                        // Temporarily relax the highlight range mode to prevent fighting
-                        if (listView.highlightRangeMode === ListView.StrictlyEnforceRange) {
-                            listView.highlightRangeMode = ListView.NoHighlightRange
-                        }
-                        
-                        // Update currentIndex smoothly based on visual position
-                        var nearestIdx = nearestIndex()
-                        if (Math.abs(nearestIdx - listView.currentIndex) >= 1) {
-                            // Only update if we've moved to a different item
-                            listView.currentIndex = nearestIdx
-                        }
-                        
                         var deltaX = wheel.pixelDelta.x;
                         var deltaY = wheel.pixelDelta.y;
                         
@@ -739,26 +652,18 @@ Item {
                             effectiveDelta = -deltaY * 2; // Vertical scrolling (inverted)
                         }
                         
-                        // Apply exponential smoothing for very small deltas to reduce jitter
-                        if (Math.abs(effectiveDelta) < 5) {
-                            effectiveDelta *= 0.5;  // Dampen very small movements
-                        }
-                        
                         // Accumulate small deltas for smoother micro-movements
                         root.accumulatedDelta += effectiveDelta;
                         
-                        // Apply accumulated delta when it's significant enough (increased threshold)
-                        if (Math.abs(root.accumulatedDelta) >= 4) {  // Increased from 1 to 4
+                        // Apply accumulated delta when it's significant enough
+                        if (Math.abs(root.accumulatedDelta) >= 1) {
                             // Stop any ongoing velocity animation or snap
                             velocityTimer.stop();
                             snapAnimation.stop();
                             root.isSnapping = false;
                             
-                            // Smooth the delta application
-                            var smoothedDelta = root.accumulatedDelta * 0.8;  // Apply 80% of accumulated delta
-                            
                             // Directly update content position
-                            var newContentX = listView.contentX - smoothedDelta;
+                            var newContentX = listView.contentX - root.accumulatedDelta;
                             
                             // Clamp to bounds
                             newContentX = Math.max(minContentX(), Math.min(maxContentX(), newContentX));
@@ -766,11 +671,11 @@ Item {
                             // Apply the new position
                             listView.contentX = newContentX;
                             
-                            // Update velocity for momentum (reduced multiplier for smoother deceleration)
-                            root.scrollVelocity = -smoothedDelta * 0.25;
+                            // Update velocity for momentum
+                            root.scrollVelocity = -root.accumulatedDelta * 0.3;
                             
                             // Reset accumulator
-                            root.accumulatedDelta = root.accumulatedDelta - smoothedDelta;  // Keep remainder for smoothness
+                            root.accumulatedDelta = 0;
                         }
                         
                         // Restart the scroll end detection timer
@@ -1037,24 +942,27 @@ Item {
                 
                 
                 z: {
-                    // Use visual center for accurate z-ordering during scrolling
-                    var visualDiff = index - root.visualCenterIndex
-                    var absVisualDiff = Math.abs(visualDiff)
                     
                     // Center album has highest z-order
-                    if (absVisualDiff < 0.1) {
+                    if (absDistance < 5) {
                         return 1000  // Ensure center album is always on top
                     }
                     
-                    // Calculate z-order based on visual distance from center
-                    // This ensures correct layering even during smooth scrolling
-                    if (absVisualDiff < 1) {
-                        // Very close to center - high priority
-                        return 900 - Math.floor(absVisualDiff * 100)
+                    // Use index-based z-ordering to ensure consistent layering
+                    // The visual order should match the index order when viewed from the perspective
+                    var centerIndex = listView.currentIndex
+                    var indexDiff = index - centerIndex
+                    
+                    if (indexDiff === 0) {
+                        return 1000  // Center album
+                    } else if (indexDiff > 0) {
+                        // Albums to the right of center (higher index)
+                        // Closer to center = higher z-order
+                        return (500 - indexDiff * 10) > 0 ? (500 - indexDiff * 10) : 0
                     } else {
-                        // Further items - decreasing z-order
-                        var baseZ = 500 - Math.floor(absVisualDiff * 50)
-                        return baseZ > 0 ? baseZ : 0
+                        // Albums to the left of center (lower index)
+                        // Closer to center = higher z-order
+                        return (500 + indexDiff * 10) > 0 ? (500 + indexDiff * 10) : 0
                     }
                 }
                 
