@@ -753,7 +753,7 @@ Item {
                         
                         //light border
                         border.width: 1
-                        border.color: Qt.rgba(1, 1, 1, 0.06)  // Subtle top highlight
+                        border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(0, 0, 0, 0.06)
 
                     }
                     
@@ -780,8 +780,8 @@ Item {
                         when: buttonMouseArea.containsMouse
                         PropertyChanges {
                             target: buttonRect
-                            color: Qt.rgba(1, 1, 1, 0.06)
-                            border.color: Qt.rgba(1, 1, 1, 0.09)
+                            color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
+                            border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.09) : Qt.rgba(0, 0, 0, 0.09)
                         }
                     }
                     
@@ -806,7 +806,7 @@ Item {
                         
                         //light border
                         border.width: 1
-                        border.color: Qt.rgba(1, 1, 1, 0.06)  // Subtle top highlight
+                        border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(0, 0, 0, 0.06)
                     }
                     
                     contentItem: Text {
@@ -832,7 +832,8 @@ Item {
                         when: settingsButtonMouseArea.containsMouse
                         PropertyChanges {
                             target: settingsButtonRect
-                            color: Qt.rgba(1, 1, 1, 0.05)
+                            color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
+                            border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.09) : Qt.rgba(0, 0, 0, 0.09)
                         }
                     }
                     
