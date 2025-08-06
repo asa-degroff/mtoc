@@ -17,7 +17,9 @@ Item {
     property real accumulatedDelta: 0
     property bool isSnapping: false
     property bool isUserScrolling: false
+    property bool isTouchpadScrolling: false  // Track active touchpad input
     property int targetJumpIndex: -1  // Index we're jumping to with jumpToAlbum
+    property int lastStableIndex: -1  // Track last stable index for hysteresis
     
     signal albumClicked(var album)
     signal centerAlbumChanged(var album)
@@ -348,6 +350,33 @@ Item {
         return Math.max(0, Math.min(sortedAlbumIndices.length - 1, index))
     }
     
+    // Find nearest index with hysteresis to prevent rapid switching
+    function nearestIndexWithHysteresis() {
+        var currentNearest = nearestIndex()
+        
+        // If we don't have a last stable index, use the current nearest
+        if (lastStableIndex < 0) {
+            return currentNearest
+        }
+        
+        // Calculate distance from last stable index
+        var itemWidth = 220 + listView.spacing  // 55 effective width
+        var centerOffset = listView.width / 2 - 110
+        var centerX = listView.contentX + centerOffset
+        var exactPosition = centerX / itemWidth
+        
+        // Calculate distance from last stable index
+        var distanceFromStable = Math.abs(exactPosition - lastStableIndex)
+        
+        // Only switch if we've moved more than 30% toward another item
+        if (distanceFromStable > 0.3) {
+            return currentNearest
+        }
+        
+        // Otherwise stick with the last stable index
+        return lastStableIndex
+    }
+    
     Rectangle {
         anchors.fill: parent
         color: "transparent"  // Transparent to show parent's background
@@ -477,9 +506,13 @@ Item {
                         velocityTimer.stop()
                         root.scrollVelocity = 0
                         root.isSnapping = true
+                        root.isTouchpadScrolling = false  // Mark touchpad scrolling complete
                         
-                        // Find nearest album and animate to it
-                        var targetIndex = nearestIndex()
+                        // Restore strict highlight range mode
+                        listView.highlightRangeMode = ListView.StrictlyEnforceRange
+                        
+                        // Find nearest album with hysteresis and animate to it
+                        var targetIndex = nearestIndexWithHysteresis()
                         var targetContentX = contentXForIndex(targetIndex)
                         
                         // Animate to the target position
@@ -491,6 +524,9 @@ Item {
                             snapIndexTimer.targetIndex = targetIndex
                             snapIndexTimer.start()
                         }
+                        
+                        // Update last stable index
+                        root.lastStableIndex = targetIndex
                     }
                 }
             }
@@ -560,12 +596,18 @@ Item {
                         return
                     }
                     
+                    // Mark touchpad scrolling as complete
+                    root.isTouchpadScrolling = false
+                    
+                    // Restore strict highlight range mode for snapping
+                    listView.highlightRangeMode = ListView.StrictlyEnforceRange
+                    
                     // If velocity is very low or zero, snap to nearest album
                     if (Math.abs(root.scrollVelocity) < 0.5 && !root.isSnapping) {
                         root.isSnapping = true
                         
-                        // Find nearest album and animate to it
-                        var targetIndex = nearestIndex()
+                        // Find nearest album with hysteresis
+                        var targetIndex = nearestIndexWithHysteresis()
                         var targetContentX = contentXForIndex(targetIndex)
                         
                         // Animate to the target position
@@ -577,6 +619,9 @@ Item {
                             snapIndexTimer.targetIndex = targetIndex
                             snapIndexTimer.start()
                         }
+                        
+                        // Update last stable index
+                        root.lastStableIndex = targetIndex
                     } else if (!root.isSnapping && root.isUserScrolling && root.selectedAlbum) {
                         // If we're not snapping but finished scrolling, emit the signal
                         root.centerAlbumChanged(root.selectedAlbum)
@@ -587,21 +632,25 @@ Item {
                     
             onCurrentIndexChanged: {
                 if (!isDestroying && currentIndex >= 0 && currentIndex < sortedAlbumIndices.length) {
-                    root.currentIndex = currentIndex
-                    var albumIndex = sortedAlbumIndices[currentIndex]
-                    if (LibraryManager && LibraryManager.albumModel) {
-                        root.selectedAlbum = LibraryManager.albumModel[albumIndex]
-                    }
-                    
-                    // Save position after a delay
-                    if (!isDestroying) {
-                        savePositionTimer.restart()
-                    }
-                    
-                    // Emit centerAlbumChanged for mouse wheel and keyboard navigation
-                    // Use a timer to debounce and ensure it fires after the animation
-                    if (!isDestroying) {
-                        centerAlbumTimer.restart()
+                    // Don't update during active touchpad scrolling to prevent glitching
+                    if (!root.isTouchpadScrolling) {
+                        root.currentIndex = currentIndex
+                        root.lastStableIndex = currentIndex  // Update stable index
+                        var albumIndex = sortedAlbumIndices[currentIndex]
+                        if (LibraryManager && LibraryManager.albumModel) {
+                            root.selectedAlbum = LibraryManager.albumModel[albumIndex]
+                        }
+                        
+                        // Save position after a delay
+                        if (!isDestroying) {
+                            savePositionTimer.restart()
+                        }
+                        
+                        // Emit centerAlbumChanged for mouse wheel and keyboard navigation
+                        // Use a timer to debounce and ensure it fires after the animation
+                        if (!isDestroying) {
+                            centerAlbumTimer.restart()
+                        }
                     }
                 }
             }
@@ -622,6 +671,13 @@ Item {
                     // Different behavior for touchpad vs mouse wheel
                     if (wheel.pixelDelta.y !== 0 || wheel.pixelDelta.x !== 0) {
                         // Touchpad - use direct content manipulation for smooth scrolling
+                        root.isTouchpadScrolling = true
+                        
+                        // Temporarily relax the highlight range mode to prevent fighting
+                        if (listView.highlightRangeMode === ListView.StrictlyEnforceRange) {
+                            listView.highlightRangeMode = ListView.NoHighlightRange
+                        }
+                        
                         var deltaX = wheel.pixelDelta.x;
                         var deltaY = wheel.pixelDelta.y;
                         
@@ -633,18 +689,26 @@ Item {
                             effectiveDelta = -deltaY * 2; // Vertical scrolling (inverted)
                         }
                         
+                        // Apply exponential smoothing for very small deltas to reduce jitter
+                        if (Math.abs(effectiveDelta) < 5) {
+                            effectiveDelta *= 0.5;  // Dampen very small movements
+                        }
+                        
                         // Accumulate small deltas for smoother micro-movements
                         root.accumulatedDelta += effectiveDelta;
                         
-                        // Apply accumulated delta when it's significant enough
-                        if (Math.abs(root.accumulatedDelta) >= 1) {
+                        // Apply accumulated delta when it's significant enough (increased threshold)
+                        if (Math.abs(root.accumulatedDelta) >= 4) {  // Increased from 1 to 4
                             // Stop any ongoing velocity animation or snap
                             velocityTimer.stop();
                             snapAnimation.stop();
                             root.isSnapping = false;
                             
+                            // Smooth the delta application
+                            var smoothedDelta = root.accumulatedDelta * 0.8;  // Apply 80% of accumulated delta
+                            
                             // Directly update content position
-                            var newContentX = listView.contentX - root.accumulatedDelta;
+                            var newContentX = listView.contentX - smoothedDelta;
                             
                             // Clamp to bounds
                             newContentX = Math.max(minContentX(), Math.min(maxContentX(), newContentX));
@@ -652,11 +716,11 @@ Item {
                             // Apply the new position
                             listView.contentX = newContentX;
                             
-                            // Update velocity for momentum
-                            root.scrollVelocity = -root.accumulatedDelta * 0.3;
+                            // Update velocity for momentum (reduced multiplier for smoother deceleration)
+                            root.scrollVelocity = -smoothedDelta * 0.25;
                             
                             // Reset accumulator
-                            root.accumulatedDelta = 0;
+                            root.accumulatedDelta = root.accumulatedDelta - smoothedDelta;  // Keep remainder for smoothness
                         }
                         
                         // Restart the scroll end detection timer
