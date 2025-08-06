@@ -28,6 +28,8 @@ Item {
     
     // Track component destruction state
     property bool isDestroying: false
+    // Track initialization state to prevent animations during startup
+    property bool isInitializing: true
     
     // Queue action dialog
     QueueActionDialog {
@@ -120,6 +122,10 @@ Item {
         updateSortedIndices()
         // Restore carousel position after indices are sorted
         restoreCarouselPosition()
+        // Clear initialization flag after component is ready
+        Qt.callLater(function() {
+            isInitializing = false
+        })
     }
     
     Component.onDestruction: {
@@ -171,7 +177,7 @@ Item {
                 var sourceAlbums = (LibraryManager.albumModel) ? LibraryManager.albumModel : []
                 for (var i = 0; i < sourceAlbums.length; i++) {
                     if (sourceAlbums[i].id === currentAlbumId) {
-                        jumpToAlbum(sourceAlbums[i])
+                        jumpToAlbum(sourceAlbums[i], false)  // Use animation for library changes
                         return
                     }
                 }
@@ -249,7 +255,8 @@ Item {
             for (var i = 0; i < sourceAlbums.length; i++) {
                 if (sourceAlbums[i].id === savedAlbumId) {
                     console.log("HorizontalAlbumBrowser: Restoring carousel position to album:", sourceAlbums[i].title)
-                    jumpToAlbum(sourceAlbums[i])
+                    // During initialization, jump without animation
+                    jumpToAlbum(sourceAlbums[i], isInitializing)
                     return
                 }
             }
@@ -280,7 +287,7 @@ Item {
         }
     }
     
-    function jumpToAlbum(album) {
+    function jumpToAlbum(album, instant) {
         try {
             // Validate album parameter
             if (!album || typeof album !== "object" || typeof album.id === "undefined") {
@@ -301,9 +308,20 @@ Item {
                             // Store the target index for preloading
                             root.targetJumpIndex = sortedIndex
                             
-                            // Animate to the new index instead of jumping
-                            listView.currentIndex = sortedIndex
-                            selectedAlbum = currentAlbum
+                            if (instant) {
+                                // During initialization or when instant jump is requested
+                                // Set contentX directly to avoid animation
+                                var targetContentX = contentXForIndex(sortedIndex)
+                                listView.contentX = targetContentX
+                                listView.currentIndex = sortedIndex
+                                selectedAlbum = currentAlbum
+                                root.currentIndex = sortedIndex
+                                root.lastStableIndex = sortedIndex
+                            } else {
+                                // Animate to the new index
+                                listView.currentIndex = sortedIndex
+                                selectedAlbum = currentAlbum
+                            }
                             
                             // Clear target index after animation completes
                             Qt.callLater(function() {
