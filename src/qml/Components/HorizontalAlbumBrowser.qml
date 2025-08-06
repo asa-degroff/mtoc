@@ -313,7 +313,6 @@ Item {
                                 listView.currentIndex = sortedIndex
                                 selectedAlbum = currentAlbum
                                 root.currentIndex = sortedIndex
-                                root.lastStableIndex = sortedIndex
                             } else {
                                 // Animate to the new index
                                 listView.currentIndex = sortedIndex
