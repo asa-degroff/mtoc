@@ -916,11 +916,6 @@ Item {
                 property real horizontalOffset: {
                     if (!isVisible) return 0
                     
-                    // Special case: center album should have exactly 0 offset
-                    if (absDistance < 5 && listView.currentIndex === index) {
-                        return 0
-                    }
-                    
                     // Constants for phase calculations
                     var phase1Spacing = 50
                     var phase3Spacing = 40
@@ -947,11 +942,6 @@ Item {
                 
                 property real itemAngle: {
                     if (!isVisible) return distance > 0 ? -65 : 65
-                    
-                    // Special case: center album should have exactly 0 rotation
-                    if (absDistance < 5 && listView.currentIndex === index) {
-                        return 0
-                    }
                     
                     if (absDistance < 10) {
                         // Dead zone - no rotation
@@ -994,11 +984,6 @@ Item {
                 
                 property real scaleAmount: {
                     if (!isVisible) return 0.85
-                    
-                    // Special case: center album should have exactly 1.0 scale
-                    if (absDistance < 5 && listView.currentIndex === index) {
-                        return 1.0
-                    }
                     
                     var scale = 1.0
                     // Simplified piecewise linear scaling
@@ -1093,15 +1078,17 @@ Item {
                                 if (typeof albumData.hasArt === "undefined" || !albumData.hasArt) return ""
                                 if (typeof albumData.id === "undefined" || !albumData.id) return ""
                                 // Force loading for target delegates or nearby visible items
+                                // Request 200px size to match the display size
                                 if (forceImageLoad || isVisible) {
-                                    return "image://albumart/" + albumData.id + "/thumbnail/256"
+                                    return "image://albumart/" + albumData.id + "/thumbnail/200"
                                 }
                                 return ""
                             }
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: !isTargetDelegate  // Load synchronously for target delegate
-                            smooth: true // Always smooth for better quality
-                            antialiasing: true
+                            // Disable smoothing for center album to maintain sharpness
+                            smooth: needsRotation || absDistance > 5
+                            antialiasing: needsRotation  // Only antialias when rotating
                             mipmap: false  // Disable mipmapping to avoid softness
                             cache: true  // Enable caching to prevent reloading
                             
