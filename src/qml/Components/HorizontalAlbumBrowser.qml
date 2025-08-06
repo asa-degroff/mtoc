@@ -747,6 +747,11 @@ Item {
                 width: 220
                 height: 320  // Height for album plus reflection
                 
+                // Enable layer multisampling at transform level for proper antialiasing
+                layer.enabled: true
+                layer.samples: 4  // 4x multisampling
+                layer.smooth: true
+                
                 // Get the actual album data from the model using sorted index
                 property int sortedIndex: index
                 property int albumIndex: {
@@ -1013,11 +1018,6 @@ Item {
                     anchors.topMargin: 10  // Small margin to shift the album view up
                     width: 220
                     height: 340  // Height for album + reflection
-                    
-                    // Enable multisampling for better antialiasing on rotated items
-                    layer.enabled: true
-                    layer.samples: 4  // 4x multisampling
-                    layer.smooth: true
                     
                     Item {
                         id: albumContainer
