@@ -49,12 +49,45 @@ ApplicationWindow {
         return SettingsManager.layoutMode
     }
     
-    // Close popups when layout mode changes
+    // Close popups and sync album position when layout mode changes
     onEffectiveLayoutModeChanged: {
+        // Save current album position from the previously active browser
+        var currentAlbum = null
+        if (effectiveLayoutMode === SettingsManager.Wide) {
+            // Switching TO wide, so compact was active before
+            if (libraryPaneCompact) {
+                currentAlbum = libraryPaneCompact.getCurrentAlbum()
+            }
+        } else {
+            // Switching TO compact, so wide was active before
+            if (libraryPaneWide) {
+                currentAlbum = libraryPaneWide.getCurrentAlbum()
+            }
+        }
+        
+        // Save the album position if we found one
+        if (currentAlbum && currentAlbum.id && LibraryManager) {
+            LibraryManager.saveCarouselPosition(currentAlbum.id)
+        }
+        
+        // Close popups
         if (compactNowPlayingBar) {
             compactNowPlayingBar.queuePopupVisible = false
             compactNowPlayingBar.albumArtPopupVisible = false
         }
+        
+        // Restore position in the new layout after a short delay
+        Qt.callLater(function() {
+            if (effectiveLayoutMode === SettingsManager.Wide) {
+                if (libraryPaneWide) {
+                    libraryPaneWide.restoreAlbumPosition()
+                }
+            } else {
+                if (libraryPaneCompact) {
+                    libraryPaneCompact.restoreAlbumPosition()
+                }
+            }
+        })
     }
     
     // Timer to debounce window geometry changes

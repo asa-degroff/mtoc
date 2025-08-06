@@ -4863,6 +4863,21 @@ Item {
         }
     }
     
+    // Helper function to get current album from browser
+    function getCurrentAlbum() {
+        if (albumBrowser && albumBrowser.selectedAlbum) {
+            return albumBrowser.selectedAlbum
+        }
+        return null
+    }
+    
+    // Helper function to restore album position
+    function restoreAlbumPosition() {
+        if (albumBrowser) {
+            albumBrowser.restoreCarouselPosition()
+        }
+    }
+    
     // Functions for Now Playing Panel integration
     function jumpToArtist(artistName) {
         try {
