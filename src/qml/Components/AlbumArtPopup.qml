@@ -10,8 +10,8 @@ Popup {
     property url albumArtUrl: ""
     property alias currentTrack: trackInfoColumn.currentTrack
     
-    width: Math.min(parent.width * 0.9, 800)
-    height: Math.min(parent.height * 0.9, 800)
+    width: parent.width * 0.9
+    height: Math.min(parent.height * 0.9, headerRect.height + width + trackInfoColumn.implicitHeight + 40)
     x: (parent.width - width) / 2
     y: (parent.height - height) / 2
     
@@ -55,7 +55,7 @@ Popup {
     }
     
     background: Rectangle {
-        color: Theme.backgroundColor
+        color: "transparent"
         radius: 8
         
         // Drop shadow
@@ -74,12 +74,13 @@ Popup {
         
         // Header with close button
         Rectangle {
+            id: headerRect
             Layout.fillWidth: true
             Layout.preferredHeight: 50
             color: Theme.panelBackground
             radius: 8
             
-            // Bottom corners square
+            // Bottom corners square to connect with album art
             Rectangle {
                 anchors.bottom: parent.bottom
                 anchors.left: parent.left
@@ -106,7 +107,7 @@ Popup {
                 ToolButton {
                     Layout.preferredWidth: 36
                     Layout.preferredHeight: 36
-                    icon.source: "qrc:/resources/icons/close.svg"
+                    icon.source: "qrc:/resources/icons/close-button.svg"
                     icon.width: 18
                     icon.height: 18
                     onClicked: root.close()
@@ -119,17 +120,15 @@ Popup {
             }
         }
         
-        // Album art container
-        Item {
+        // Album art container with background
+        Rectangle {
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.margins: 20
+            Layout.preferredHeight: width
+            color: Theme.backgroundColor
             
             Image {
                 id: albumArt
-                anchors.centerIn: parent
-                width: Math.min(parent.width, parent.height)
-                height: width
+                anchors.fill: parent
                 source: root.albumArtUrl
                 fillMode: Image.PreserveAspectFit
                 
@@ -159,11 +158,26 @@ Popup {
             }
         }
         
-        // Track info
+        // Track info with background
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: trackInfoColumn.implicitHeight + 40
+            color: Theme.backgroundColor
+            radius: 8
+            
+            // Top corners square to connect with album art
+            Rectangle {
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: 8
+                color: parent.color
+            }
+            
         ColumnLayout {
             id: trackInfoColumn
-            Layout.fillWidth: true
-            Layout.margins: 20
+            anchors.fill: parent
+            anchors.margins: 20
             spacing: 8
             
             property var currentTrack: MediaPlayer.currentTrack
@@ -195,6 +209,7 @@ Popup {
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
             }
+        }
         }
     }
 }
