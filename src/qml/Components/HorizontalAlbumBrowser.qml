@@ -1137,7 +1137,7 @@ Item {
                                 if (typeof albumData.id === "undefined" || !albumData.id) return ""
                                 // Force loading for target delegates or nearby visible items
                                 if (forceImageLoad || isVisible) {
-                                    return "image://albumart/" + albumData.id + "/thumbnail/400"
+                                    return "image://albumart/" + albumData.id + "/thumbnail/256"
                                 }
                                 return ""
                             }
