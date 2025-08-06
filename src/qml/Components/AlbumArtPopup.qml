@@ -121,7 +121,7 @@ Item {
                     ToolButton {
                         Layout.preferredWidth: 36
                         Layout.preferredHeight: 36
-                        icon.source: "qrc:/resources/icons/close-button.svg"
+                        icon.source: Theme.isDark ? "qrc:/resources/icons/close-button.svg" : "qrc:/resources/icons/close-button-dark.svg"
                         icon.width: 18
                         icon.height: 18
                         onClicked: root.closed()

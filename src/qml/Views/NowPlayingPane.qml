@@ -465,7 +465,7 @@ Item {
                                     anchors.centerIn: parent
                                     width: 18
                                     height: 18
-                                    source: MediaPlayer.canUndoClear ? (Theme.isDark ? "qrc:/resources/icons/undo.svg" : "qrc:/resources/icons/undo-dark.svg") : (Theme.isDark ? "qrc:/resources/icons/bomb.svg" : "qrc:/resources/icons/bomb-dark.svg")
+                                    source: MediaPlayer.canUndoClear ? "qrc:/resources/icons/undo.svg" : "qrc:/resources/icons/bomb.svg"
                                     sourceSize.width: 40
                                     sourceSize.height: 40
                                     opacity: clearQueueMouseArea.containsMouse ? 0.7 : 1.0
