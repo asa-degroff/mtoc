@@ -1014,12 +1014,22 @@ Item {
                     width: 220
                     height: 340  // Height for album + reflection
                     
+                    // Enable multisampling for better antialiasing on rotated items
+                    layer.enabled: true
+                    layer.samples: 4  // 4x multisampling
+                    layer.smooth: true
+                    
                     Item {
                         id: albumContainer
                         anchors.top: parent.top
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: 200
                         height: 200
+                        
+                        // // Enable layer for better rendering quality when used as ShaderEffectSource (this breaks antialiasing)
+                        // layer.enabled: true
+                        // layer.smooth: true
+                        // layer.samples: 4  // Multisampling for better antialiasing
                             
                         Image {
                             id: albumImage
@@ -1133,10 +1143,11 @@ Item {
                     Item {
                         id: reflectionContainer
                         anchors.top: albumContainer.bottom
-                        anchors.topMargin: 0
+                        anchors.topMargin: 0  // Small overlap to prevent gap
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: albumContainer.width
                         height: 180
+                        clip: true  // Ensure clean edges
                         
                         // Conditional reflection - only for visible items to reduce GPU load
                         ShaderEffectSource {
@@ -1149,6 +1160,9 @@ Item {
                             smooth: true  // Enable antialiasing for reflection
                             mipmap: false  // Maintain sharpness
                             format: ShaderEffectSource.RGBA8  // High quality format
+                            // Double texture resolution for better antialiasing (workaround for FBO limitation)
+                            //textureSize: Qt.size(albumContainer.width * 2, 360)
+                            samples: 4  // Enable multisampling where supported
                             // Capture the bottom portion of the album for reflection
                             sourceRect: Qt.rect(0, albumContainer.height - 180, albumContainer.width, 180)
                             transform: [
@@ -1176,12 +1190,25 @@ Item {
                             }
                         }
                         
-                        // Dark overlay to dim the reflection
+                        // Dark overlay to dim the reflection (60% black)
                         Rectangle {
                             anchors.fill: parent
                             color: Qt.rgba(0, 0, 0, 0.6)  // Semi-transparent black overlay
-                            opacity: 1.0
                         }
+                        
+                        // Gradient overlay for smooth edge transition
+                        // Rectangle {
+                        //     anchors.fill: parent
+                        //     gradient: Gradient {
+                        //         // Feather the top edge from opaque black to transparent
+                        //         GradientStop { position: 0.0; color: Qt.rgba(0, 0, 0, 1.0) }
+                        //         GradientStop { position: 0.02; color: Qt.rgba(0, 0, 0, 0.8) }
+                        //         GradientStop { position: 0.05; color: Qt.rgba(0, 0, 0, 0.5) }
+                        //         GradientStop { position: 0.1; color: Qt.rgba(0, 0, 0, 0.2) }
+                        //         GradientStop { position: 0.15; color: Qt.rgba(0, 0, 0, 0.0) }
+                        //         GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.0) }
+                        //     }
+                        // }
                     }
                 }
             }
