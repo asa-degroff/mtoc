@@ -50,8 +50,15 @@ Item {
     // Popup content container
     Item {
         id: popupContainer
-        width: parent.width * 0.9
-        height: Math.min(parent.height * 0.9, headerRect.height + width + trackInfoColumn.implicitHeight + 40)
+        
+        // Calculate maximum album art size that fits with header and track info
+        property real maxAvailableHeight: parent.height * 0.9
+        property real headerHeight: 50
+        property real trackInfoHeight: 120  // Approximate height for track info section
+        property real maxAlbumSize: Math.min(parent.width * 0.9, maxAvailableHeight - headerHeight - trackInfoHeight)
+        
+        width: Math.min(parent.width * 0.9, maxAlbumSize)
+        height: headerHeight + width + trackInfoHeight
         x: (parent.width - width) / 2
         
         // Animate position
@@ -137,7 +144,7 @@ Item {
             // Album art container with background
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: width
+                Layout.preferredHeight: popupContainer.width
                 color: Theme.backgroundColor
                 
                 Image {
@@ -175,7 +182,9 @@ Item {
             // Track info with background
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: trackInfoColumn.implicitHeight + 40
+                Layout.fillHeight: true
+                Layout.minimumHeight: 100
+                Layout.maximumHeight: 150
                 color: Theme.backgroundColor
                 radius: 8
                 
