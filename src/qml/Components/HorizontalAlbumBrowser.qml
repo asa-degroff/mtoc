@@ -1133,10 +1133,10 @@ Item {
                     Item {
                         id: reflectionContainer
                         anchors.top: albumContainer.bottom
-                        anchors.topMargin: 2
+                        anchors.topMargin: 0
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: albumContainer.width
-                        height: 120
+                        height: 180
                         
                         // Conditional reflection - only for visible items to reduce GPU load
                         ShaderEffectSource {
@@ -1150,7 +1150,7 @@ Item {
                             mipmap: false  // Maintain sharpness
                             format: ShaderEffectSource.RGBA8  // High quality format
                             // Capture the bottom portion of the album for reflection
-                            sourceRect: Qt.rect(0, albumContainer.height - 120, albumContainer.width, 120)
+                            sourceRect: Qt.rect(0, albumContainer.height - 180, albumContainer.width, 180)
                             transform: [
                                 Scale {
                                     yScale: -1
