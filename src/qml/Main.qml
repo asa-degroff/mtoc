@@ -153,6 +153,16 @@ ApplicationWindow {
                         anchors.fill: parent
                     }
                     
+                    // Queue popup for compact mode - parented to library pane container
+                    QueuePopup {
+                        id: queuePopup
+                        parent: parent
+                        queueModel: MediaPlayer.queue
+                        currentPlayingIndex: MediaPlayer.currentQueueIndex
+                        isOpen: compactNowPlayingBar.queuePopupVisible
+                        onClosed: compactNowPlayingBar.queuePopupVisible = false
+                    }
+                    
                     // Album art popup for compact mode - parented to library pane container
                     AlbumArtPopup {
                         id: albumArtPopup
@@ -267,13 +277,4 @@ ApplicationWindow {
         }
     }
     
-    // Queue popup for compact mode
-    QueuePopup {
-        id: queuePopup
-        parent: window.contentItem
-        queueModel: MediaPlayer.queue
-        currentPlayingIndex: MediaPlayer.currentQueueIndex
-        visible: compactNowPlayingBar.queuePopupVisible
-        onClosed: compactNowPlayingBar.queuePopupVisible = false
-    }
 }

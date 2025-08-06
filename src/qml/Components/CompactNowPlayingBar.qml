@@ -560,7 +560,7 @@ Rectangle {
                 }
             }
 
-            // Queue button
+            // Queue button (toggle)
             IconButton {
                 Layout.preferredWidth: 24
                 Layout.preferredHeight: 24
