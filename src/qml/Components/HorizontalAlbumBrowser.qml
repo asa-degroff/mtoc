@@ -139,12 +139,28 @@ Item {
         // Mark that we're destroying to prevent any further operations
         isDestroying = true
         
-        // Clear any delegates' reflection sources first
+        // Force all delegates to clear their resources
         if (listView && listView.contentItem) {
             for (var i = 0; i < listView.contentItem.children.length; i++) {
                 var item = listView.contentItem.children[i]
-                if (item && item.reflection) {
-                    item.reflection.sourceItem = null
+                if (item) {
+                    // Clear reflection
+                    if (item.reflection) {
+                        item.reflection.sourceItem = null
+                        item.reflection.live = false
+                    }
+                    // Disable connections
+                    if (item.listViewConnection) {
+                        item.listViewConnection.enabled = false
+                    }
+                    if (item.albumImageConnection) {
+                        item.albumImageConnection.enabled = false
+                    }
+                    // Disable layer rendering
+                    if (item.layer) {
+                        item.layer.enabled = false
+                        item.layer.effect = null
+                    }
                 }
             }
         }
@@ -824,36 +840,44 @@ Item {
                 
                 // Handle delegate recycling with proper state reset
                 ListView.onReused: {
-                    // Force update sortedIndex to match new index
-                    sortedIndex = index
-                    
-                    // Reset any animation states
-                    if (snapAnimation.running) snapAnimation.stop()
-                    
-                    // Clear reflection and set to live mode temporarily for recycling
+                    // Clear old state
                     if (reflection) {
                         reflection.sourceItem = null
-                        reflection.live = true  // Enable live mode during recycling
+                        reflection.live = false
+                    }
+                    
+                    // Reset index for new use
+                    sortedIndex = index
+                    if (snapAnimation && snapAnimation.running) snapAnimation.stop()
+                    
+                    // Re-enable connections for the new item
+                    if (listViewConnection) listViewConnection.enabled = true
+                    if (albumImageConnection) albumImageConnection.enabled = true
+                    
+                    // Don't touch layer.enabled here - let the binding handle it
+                }
+                
+                // Immediate cleanup when delegate is removed
+                ListView.onRemove: {
+                    // Just clear the reflection to avoid holding references
+                    if (reflection) {
+                        reflection.sourceItem = null
+                        reflection.live = false
                     }
                 }
                 
-                // Animation for cleaning up when delegate is removed
-                SequentialAnimation {
-                    id: removeAnimation
-                    PropertyAction { target: delegateItem; property: "ListView.delayRemove"; value: true }
-                    ScriptAction {
-                        script: {
-                            // Clear all references before removal
-                            if (reflection) {
-                                reflection.sourceItem = null
-                            }
-                        }
+                // Clear all GPU resources when returned to pool
+                ListView.onPooled: {
+                    // Clear GPU resources when pooled
+                    if (reflection) {
+                        reflection.sourceItem = null
+                        reflection.live = false
                     }
-                    PropertyAction { target: delegateItem; property: "ListView.delayRemove"; value: false }
+                    // Connections will be re-enabled in onReused
+                    if (listViewConnection) listViewConnection.enabled = false
+                    if (albumImageConnection) albumImageConnection.enabled = false
+                    // Don't force layer.enabled = false, let binding handle it
                 }
-                
-                // Clean up when delegate is about to be recycled
-                ListView.onRemove: removeAnimation.start()
                 
                 Component.onDestruction: {
                     // Disable connections first
@@ -889,7 +913,7 @@ Item {
                     enabled: !root.isDestroying && !delegateItem.ListView.isPooled
                     
                     function onContentXChanged() {
-                        if (root.isDestroying || !delegateItem) return
+                        if (root.isDestroying || !delegateItem || delegateItem.ListView.isPooled) return
                         
                         // When scrolling, check if this delegate's reflection state should change
                         if (reflection) {
@@ -1236,7 +1260,7 @@ Item {
                             enabled: !root.isDestroying && reflection && !delegateItem.ListView.isPooled
                             
                             function onStatusChanged() {
-                                if (root.isDestroying || !delegateItem) return
+                                if (root.isDestroying || !delegateItem || delegateItem.ListView.isPooled) return
                                 if (albumImage && albumImage.status === Image.Ready && reflection && reflection.sourceItem) {
                                     reflection.scheduleUpdate()
                                 }
