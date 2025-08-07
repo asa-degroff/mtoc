@@ -4884,6 +4884,11 @@ Item {
             console.log("jumpToArtist called with:", artistName)
             if (!artistName || typeof artistName !== "string") return
             
+            // Switch to Artists tab if currently showing Playlists
+            if (currentTab === 1) {
+                currentTab = 0
+            }
+            
             // Prevent concurrent jump operations
             if (isJumping) {
                 console.log("jumpToArtist: Already jumping, ignoring request")
