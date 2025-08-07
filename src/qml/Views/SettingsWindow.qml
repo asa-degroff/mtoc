@@ -120,8 +120,31 @@ ApplicationWindow {
                             contentItem: ListView {
                                 clip: true
                                 implicitHeight: contentHeight
-                                model: parent.visible ? queueActionCombo.delegateModel : null
+                                model: queueActionCombo.popup.visible ? queueActionCombo.model : null
                                 currentIndex: queueActionCombo.highlightedIndex
+                                
+                                delegate: ItemDelegate {
+                                    width: queueActionCombo.width
+                                    height: 36
+                                    
+                                    contentItem: Text {
+                                        text: modelData
+                                        color: parent.hovered ? Theme.primaryText : Theme.secondaryText
+                                        font.pixelSize: 14
+                                        verticalAlignment: Text.AlignVCenter
+                                        leftPadding: 8
+                                    }
+                                    
+                                    background: Rectangle {
+                                        color: parent.hovered ? Theme.selectedBackground : "transparent"
+                                        radius: 2
+                                    }
+                                    
+                                    onClicked: {
+                                        queueActionCombo.currentIndex = index
+                                        queueActionCombo.popup.close()
+                                    }
+                                }
                                 
                                 ScrollIndicator.vertical: ScrollIndicator { }
                             }
@@ -131,24 +154,6 @@ ApplicationWindow {
                                 border.color: Theme.borderColor
                                 border.width: 1
                                 radius: 4
-                            }
-                        }
-                        
-                        delegate: ItemDelegate {
-                            width: queueActionCombo.width
-                            height: 36
-                            
-                            contentItem: Text {
-                                text: modelData
-                                color: parent.hovered ? Theme.primaryText : Theme.secondaryText
-                                font.pixelSize: 14
-                                verticalAlignment: Text.AlignVCenter
-                                leftPadding: 8
-                            }
-                            
-                            background: Rectangle {
-                                color: parent.hovered ? Theme.selectedBackground : "transparent"
-                                radius: 2
                             }
                         }
                     }
@@ -261,8 +266,31 @@ ApplicationWindow {
                                 contentItem: ListView {
                                     clip: true
                                     implicitHeight: contentHeight
-                                    model: parent.visible ? themeComboBox.delegateModel : null
+                                    model: themeComboBox.popup.visible ? themeComboBox.model : null
                                     currentIndex: themeComboBox.highlightedIndex
+                                    
+                                    delegate: ItemDelegate {
+                                        width: themeComboBox.width
+                                        height: 36
+                                        
+                                        contentItem: Text {
+                                            text: modelData
+                                            color: parent.hovered ? Theme.primaryText : Theme.secondaryText
+                                            font.pixelSize: 14
+                                            verticalAlignment: Text.AlignVCenter
+                                            leftPadding: 8
+                                        }
+                                        
+                                        background: Rectangle {
+                                            color: parent.hovered ? Theme.selectedBackground : "transparent"
+                                            radius: 2
+                                        }
+                                        
+                                        onClicked: {
+                                            themeComboBox.currentIndex = index
+                                            themeComboBox.popup.close()
+                                        }
+                                    }
                                     
                                     ScrollIndicator.vertical: ScrollIndicator { }
                                 }
@@ -272,24 +300,6 @@ ApplicationWindow {
                                     border.color: Theme.borderColor
                                     border.width: 1
                                     radius: 4
-                                }
-                            }
-                            
-                            delegate: ItemDelegate {
-                                width: themeComboBox.width
-                                height: 36
-                                
-                                contentItem: Text {
-                                    text: modelData
-                                    color: parent.hovered ? Theme.primaryText : Theme.secondaryText
-                                    font.pixelSize: 14
-                                    verticalAlignment: Text.AlignVCenter
-                                    leftPadding: 8
-                                }
-                                
-                                background: Rectangle {
-                                    color: parent.hovered ? Theme.selectedBackground : "transparent"
-                                    radius: 2
                                 }
                             }
                         }
@@ -382,8 +392,31 @@ ApplicationWindow {
                                 contentItem: ListView {
                                     clip: true
                                     implicitHeight: contentHeight
-                                    model: parent.visible ? layoutModeComboBox.delegateModel : null
+                                    model: layoutModeComboBox.popup.visible ? layoutModeComboBox.model : null
                                     currentIndex: layoutModeComboBox.highlightedIndex
+                                    
+                                    delegate: ItemDelegate {
+                                        width: layoutModeComboBox.width
+                                        height: 36
+                                        
+                                        contentItem: Text {
+                                            text: modelData
+                                            color: parent.hovered ? Theme.primaryText : Theme.secondaryText
+                                            font.pixelSize: 14
+                                            verticalAlignment: Text.AlignVCenter
+                                            leftPadding: 8
+                                        }
+                                        
+                                        background: Rectangle {
+                                            color: parent.hovered ? Theme.selectedBackground : "transparent"
+                                            radius: 2
+                                        }
+                                        
+                                        onClicked: {
+                                            layoutModeComboBox.currentIndex = index
+                                            layoutModeComboBox.popup.close()
+                                        }
+                                    }
                                     
                                     ScrollIndicator.vertical: ScrollIndicator { }
                                 }
@@ -393,24 +426,6 @@ ApplicationWindow {
                                     border.color: Theme.borderColor
                                     border.width: 1
                                     radius: 4
-                                }
-                            }
-                            
-                            delegate: ItemDelegate {
-                                width: layoutModeComboBox.width
-                                height: 36
-                                
-                                contentItem: Text {
-                                    text: modelData
-                                    color: parent.hovered ? Theme.primaryText : Theme.secondaryText
-                                    font.pixelSize: 14
-                                    verticalAlignment: Text.AlignVCenter
-                                    leftPadding: 8
-                                }
-                                
-                                background: Rectangle {
-                                    color: parent.hovered ? Theme.selectedBackground : "transparent"
-                                    radius: 2
                                 }
                             }
                         }
