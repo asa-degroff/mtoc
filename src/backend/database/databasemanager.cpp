@@ -7,6 +7,7 @@
 #include <QVariant>
 #include <QMutexLocker>
 #include <QThread>
+#include <algorithm>
 
 namespace Mtoc {
 
@@ -1168,6 +1169,7 @@ QVariantList DatabaseManager::getAllArtists()
     
     QSqlQuery query(m_db);
     // Get album artists instead of track artists to avoid clutter
+    // Note: We fetch without ORDER BY and sort in C++ for locale-aware sorting
     query.exec(
         "SELECT aa.*, COUNT(DISTINCT al.id) as album_count, "
         "COUNT(DISTINCT t.id) as track_count "
@@ -1175,16 +1177,7 @@ QVariantList DatabaseManager::getAllArtists()
         "INNER JOIN albums al ON aa.id = al.album_artist_id "
         "INNER JOIN tracks t ON al.id = t.album_id "
         "GROUP BY aa.id "
-        "HAVING COUNT(t.id) > 0 "
-        "ORDER BY "
-        "CASE "
-        "  WHEN LOWER(SUBSTR(aa.name, 1, 1)) BETWEEN 'a' AND 'z' THEN 0 "
-        "  ELSE 1 "
-        "END, "
-        "CASE "
-        "  WHEN LOWER(SUBSTR(aa.name, 1, 4)) = 'the ' THEN LOWER(SUBSTR(aa.name, 5)) "
-        "  ELSE LOWER(aa.name) "
-        "END COLLATE NOCASE"
+        "HAVING COUNT(t.id) > 0"
     );
     
     while (query.next()) {
@@ -1195,6 +1188,33 @@ QVariantList DatabaseManager::getAllArtists()
         artist["trackCount"] = query.value("track_count");
         artists.append(artist);
     }
+    
+    // Sort using locale-aware comparison to match JavaScript's localeCompare
+    std::sort(artists.begin(), artists.end(), [](const QVariant& a, const QVariant& b) {
+        QVariantMap artistA = a.toMap();
+        QVariantMap artistB = b.toMap();
+        QString nameA = artistA["name"].toString().toLower();
+        QString nameB = artistB["name"].toString().toLower();
+        
+        // Remove "the " prefix for sorting (case-insensitive)
+        if (nameA.startsWith("the ")) {
+            nameA = nameA.mid(4);
+        }
+        if (nameB.startsWith("the ")) {
+            nameB = nameB.mid(4);
+        }
+        
+        // First, separate letters from non-letters (numbers/symbols go last)
+        bool aStartsWithLetter = !nameA.isEmpty() && nameA[0].isLetter();
+        bool bStartsWithLetter = !nameB.isEmpty() && nameB[0].isLetter();
+        
+        if (aStartsWithLetter != bStartsWithLetter) {
+            return aStartsWithLetter; // Letters come before non-letters
+        }
+        
+        // Use locale-aware comparison for consistent sorting with accented characters
+        return nameA.localeAwareCompare(nameB) < 0;
+    });
     
     return artists;
 }
