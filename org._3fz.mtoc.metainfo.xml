@@ -16,10 +16,10 @@
     <ul>
       <li>Animated, visual browsing made for music fans who enjoy flipping through albums</li>
       <li>Library browsing with smart organization and responsive search</li>
-      <li>"Bento Box" layout places large-scale album art with playback controls and your library side by side</li>
+      <li>Wide mode places full-size album art in the right pane; compact mode optimizes density for smaller widths</li>
       <li>Advanced queue management with library context menus and drag-and-drop reordering</li>
       <li>Save playlists from your queue, manage M3U files, and use the intuitive playlist editor</li>
-      <li>Directory picker and one-click scanning extracts track metadata to construct your library</li>
+      <li>Light and dark modes with tinted blurred backgrounds</li>
       <li>Desktop integration with full MPRIS 2 support</li>
     </ul>
   </description>
@@ -27,23 +27,27 @@
   <screenshots>
     <screenshot type="default">
       <caption>Main window showing compact layout in light mode</caption>
-      <image>https://github.com/asa-degroff/mtoc/raw/dabf456470906a48653f2bed84a5aa73519128e1/resources/banner/main-screenshot-compact-light.png</image>
+      <image>https://github.com/asa-degroff/mtoc/raw/db789f8778017b21ef48025b87705673175a919e/resources/banner/main-screenshot-compact-light.png</image>
     </screenshot>
     <screenshot>
       <caption>Main window showing compact layout in dark mode</caption>
-      <image>https://github.com/asa-degroff/mtoc/raw/dabf456470906a48653f2bed84a5aa73519128e1/resources/banner/main-screenshot-compact-dark.png</image>
+      <image>https://github.com/asa-degroff/mtoc/raw/db789f8778017b21ef48025b87705673175a919e/resources/banner/main-screenshot-compact-dark.png</image>
     </screenshot>
     <screenshot>
       <caption>Queue list in compact layout</caption>
-      <image>https://github.com/asa-degroff/mtoc/blob/dabf456470906a48653f2bed84a5aa73519128e1/resources/banner/queue-compact-light.png</image>
+      <image>https://github.com/asa-degroff/mtoc/blob/db789f8778017b21ef48025b87705673175a919e/resources/banner/queue-compact-light.png</image>
     </screenshot>
     <screenshot>
       <caption>Artist, album, and now playing in wide layout with dark mode</caption>
-      <image>https://github.com/asa-degroff/mtoc/raw/dabf456470906a48653f2bed84a5aa73519128e1/resources/banner/album-wide-dark.png</image>
+      <image>https://github.com/asa-degroff/mtoc/raw/db789f8778017b21ef48025b87705673175a919e/resources/banner/album-wide-dark.png</image>
     </screenshot>
     <screenshot>
       <caption>Queue list in wide layout</caption>
-      <image>https://github.com/asa-degroff/mtoc/raw/dabf456470906a48653f2bed84a5aa73519128e1/resources/banner/queue-wide-light.png</image>
+      <image>https://github.com/asa-degroff/mtoc/raw/db789f8778017b21ef48025b87705673175a919e/resources/banner/queue-wide-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Library management window</caption>
+      <image>https://github.com/asa-degroff/mtoc/raw/db789f8778017b21ef48025b87705673175a919e/resources/banner/library-editor.png</image>
     </screenshot>
   </screenshots>
 
