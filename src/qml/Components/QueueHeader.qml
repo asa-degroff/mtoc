@@ -57,8 +57,9 @@ RowLayout {
     
     // Fixed "Queue" label
     Label {
+        Layout.alignment: Qt.AlignVCenter
         text: "Queue"
-        font.pixelSize: 16
+        font.pixelSize: 14
         font.weight: Font.DemiBold
         color: forceLightText ? "#ffffff" : Theme.primaryText
     }
@@ -89,7 +90,7 @@ RowLayout {
                     property string contextText: getContextText()
                     property bool needsScrolling: contextLabel1.contentWidth > contextTextContainer.width
                     property real scrollOffset: 0
-                    property real pauseDuration: 1500  // Pause at end in ms
+                    property real pauseDuration: 500  // Pause at end in ms
                     property real scrollDuration: Math.max(4000, contextLabel1.contentWidth * 20)  // Speed based on text length
                     
                     // Position for scrolling
@@ -140,14 +141,14 @@ RowLayout {
                             duration: contextTextRow.pauseDuration
                         }
                         
-                        // Scroll continuously to show second copy
+                        // Single smooth scrolling animation with subtle easing
                         NumberAnimation {
                             target: contextTextRow
                             property: "scrollOffset"
                             from: 0
                             to: contextLabel1.contentWidth + contextTextRow.spacing  // Scroll one full text width + gap
                             duration: contextTextRow.scrollDuration
-                            easing.type: Easing.Linear
+                            easing.type: Easing.InOutQuad  // Smooth acceleration and deceleration
                         }
                         
                         // Brief pause at the wrap point
@@ -168,6 +169,7 @@ RowLayout {
     }
     
     Label {
+        Layout.alignment: Qt.AlignVCenter
         text: showPlaylistSavedMessage ? "Playlist Saved" : 
               MediaPlayer.queueLength + " track" + (MediaPlayer.queueLength !== 1 ? "s" : "") + ", " + formatQueueDuration(MediaPlayer.totalQueueDuration)
         font.pixelSize: 12
