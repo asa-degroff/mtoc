@@ -125,15 +125,20 @@ Item {
                         Layout.preferredHeight: 30
                         onClicked: root.closed()
                         
-                        contentItem: Image {
-                            anchors.centerIn: parent
-                            width: 18
-                            height: 18
-                            source: Theme.isDark ? "qrc:/resources/icons/close-button.svg" : "qrc:/resources/icons/close-button-dark.svg"
-                            sourceSize.width: 18
-                            sourceSize.height: 18
-                            fillMode: Image.PreserveAspectFit
-                            opacity: Theme.isDark ? 1.0 : 0.8
+                        contentItem: Item {
+                            anchors.fill: parent
+                            
+                            Image {
+                                anchors.centerIn: parent
+                                width: Math.min(18, parent.width * 0.6)
+                                height: Math.min(18, parent.height * 0.6)
+                                source: Theme.isDark ? "qrc:/resources/icons/close-button.svg" : "qrc:/resources/icons/close-button-dark.svg"
+                                sourceSize.width: 64
+                                sourceSize.height: 64
+                                fillMode: Image.PreserveAspectFit
+                                smooth: true
+                                opacity: Theme.isDark ? 1.0 : 0.8
+                            }
                         }
                         
                         background: Rectangle {
