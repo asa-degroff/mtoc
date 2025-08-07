@@ -18,7 +18,7 @@ QtObject {
     // Background colors
     property color backgroundColor: isDark ? "#1a1a1a" : "#f5f5f5"
     property color overlayColor: isDark ? "black" : "white"
-    property real overlayOpacity: isDark ? 0.65 : 0.75
+    property real overlayOpacity: 0.65
     property real nowPlayingOverlayOpacity: isDark ? 0.4 : 0.5
     
     // UI element colors

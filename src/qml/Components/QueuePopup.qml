@@ -91,7 +91,7 @@ Item {
             // Header
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 60
+                Layout.preferredHeight: 48
                 color: Theme.panelBackground
                 radius: 8
                 
@@ -106,12 +106,12 @@ Item {
                 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 16
-                    anchors.rightMargin: 16
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
                     
                     Label {
                         text: "Queue"
-                        font.pixelSize: 18
+                        font.pixelSize: 16
                         font.bold: true
                         color: Theme.primaryText
                     }
@@ -119,7 +119,7 @@ Item {
                     Label {
                         text: showPlaylistSavedMessage ? "Playlist Saved" :
                               MediaPlayer.queueLength + " tracks • " + formatQueueDuration(MediaPlayer.totalQueueDuration)
-                        font.pixelSize: 14
+                        font.pixelSize: 12
                         color: showPlaylistSavedMessage ? "#60ff60" : Theme.secondaryText
                         
                         Behavior on color {
@@ -131,17 +131,17 @@ Item {
                     
                     // Save queue button
                     Item {
-                        Layout.preferredWidth: 36
-                        Layout.preferredHeight: 36
+                        Layout.preferredWidth: 30
+                        Layout.preferredHeight: 30
                         visible: MediaPlayer.queueLength > 0 && !MediaPlayer.isPlayingVirtualPlaylist
                         
                         Rectangle {
                             id: saveButtonBackground
                             anchors.fill: parent
                             radius: 4
-                            color: saveButtonMouseArea.containsMouse ? Qt.rgba(0, 1, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
+                            color: saveButtonMouseArea.containsMouse ? Qt.rgba(0, 1, 0, 0.2) : Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(254, 254, 254, 0.5)
                             border.width: 1
-                            border.color: Qt.rgba(1, 1, 1, 0.3)
+                            border.color: Qt.rgba(1, 1, 1, 0.15)
                             
                             Behavior on color {
                                 ColorAnimation { duration: 150 }
@@ -152,8 +152,8 @@ Item {
                                 width: 18
                                 height: 18
                                 source: Theme.isDark ? "qrc:/resources/icons/save.svg" : "qrc:/resources/icons/save-dark.svg"
-                                sourceSize.width: 36
-                                sourceSize.height: 36
+                                sourceSize.width: 40
+                                sourceSize.height: 40
                                 fillMode: Image.PreserveAspectFit
                                 opacity: saveButtonMouseArea.containsMouse ? 0.7 : 1.0
                                 
@@ -184,17 +184,17 @@ Item {
                     
                     // Clear queue button
                     Item {
-                        Layout.preferredWidth: 36
-                        Layout.preferredHeight: 36
+                        Layout.preferredWidth: 30
+                        Layout.preferredHeight: 30
                         visible: (MediaPlayer.queueLength > 0 || MediaPlayer.canUndoClear) && !MediaPlayer.isPlayingVirtualPlaylist
                         
                         Rectangle {
                             id: clearButtonBackground
                             anchors.fill: parent
                             radius: 4
-                            color: clearButtonMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
+                            color: clearButtonMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(254, 254, 254, 0.5)
                             border.width: 1
-                            border.color: Qt.rgba(1, 1, 1, 0.3)
+                            border.color: Qt.rgba(1, 1, 1, 0.15)
                             
                             Behavior on color {
                                 ColorAnimation { duration: 150 }
@@ -205,8 +205,8 @@ Item {
                                 width: 18
                                 height: 18
                                 source: MediaPlayer.canUndoClear ? (Theme.isDark ? "qrc:/resources/icons/undo.svg" : "qrc:/resources/icons/undo-dark.svg") : (Theme.isDark ? "qrc:/resources/icons/bomb.svg" : "qrc:/resources/icons/bomb-dark.svg")
-                                sourceSize.width: 36
-                                sourceSize.height: 36
+                                sourceSize.width: 40
+                                sourceSize.height: 40
                                 fillMode: Image.PreserveAspectFit
                                 opacity: clearButtonMouseArea.containsMouse ? 0.7 : 1.0
                                 
@@ -239,8 +239,8 @@ Item {
                     
                     // Close button
                     ToolButton {
-                        Layout.preferredWidth: 36
-                        Layout.preferredHeight: 36
+                        Layout.preferredWidth: 30
+                        Layout.preferredHeight: 30
                         onClicked: root.closed()
                         
                         contentItem: Image {
@@ -248,8 +248,8 @@ Item {
                             width: 18
                             height: 18
                             source: Theme.isDark ? "qrc:/resources/icons/close-button.svg" : "qrc:/resources/icons/close-button-dark.svg"
-                            sourceSize.width: 36
-                            sourceSize.height: 36
+                            sourceSize.width: 40
+                            sourceSize.height: 40
                             fillMode: Image.PreserveAspectFit
                             opacity: Theme.isDark ? 1.0 : 0.8
                         }
@@ -257,6 +257,8 @@ Item {
                         background: Rectangle {
                             color: parent.hovered ? Theme.inputBackgroundHover : Theme.inputBackground
                             radius: 4
+                            border.width: 1
+                            border.color: Qt.rgba(1, 1, 1, 0.15)
                         }
                     }
                 }

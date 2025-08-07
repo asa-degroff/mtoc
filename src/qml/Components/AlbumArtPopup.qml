@@ -97,7 +97,7 @@ Item {
             Rectangle {
                 id: headerRect
                 Layout.fillWidth: true
-                Layout.preferredHeight: 50
+                Layout.preferredHeight: 48
                 color: Theme.panelBackground
                 radius: 8
                 
@@ -112,12 +112,12 @@ Item {
                 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 16
-                    anchors.rightMargin: 16
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
                     
                     Label {
                         text: "Album Artwork"
-                        font.pixelSize: 16
+                        font.pixelSize: 14
                         font.bold: true
                         color: Theme.primaryText
                     }
@@ -126,8 +126,8 @@ Item {
                     
                     // Close button
                     ToolButton {
-                        Layout.preferredWidth: 36
-                        Layout.preferredHeight: 36
+                        Layout.preferredWidth: 30
+                        Layout.preferredHeight: 30
                         icon.source: Theme.isDark ? "qrc:/resources/icons/close-button.svg" : "qrc:/resources/icons/close-button-dark.svg"
                         icon.width: 18
                         icon.height: 18
@@ -135,7 +135,9 @@ Item {
                         
                         background: Rectangle {
                             color: parent.hovered ? Theme.inputBackgroundHover : Theme.inputBackground
-                            radius: 4
+                            radius: 4                            
+                            border.width: 1
+                            border.color: Qt.rgba(1, 1, 1, 0.15)
                         }
                     }
                 }
