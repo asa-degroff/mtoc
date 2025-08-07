@@ -511,6 +511,7 @@ QVariantMap DatabaseManager::getTrack(int trackId)
         track["trackNumber"] = query.value("track_number");
         track["discNumber"] = query.value("disc_number");
         track["duration"] = query.value("duration");
+        track["fileSize"] = query.value("file_size");
         track["playCount"] = query.value("play_count");
         track["rating"] = query.value("rating");
         track["lastPlayed"] = query.value("last_played");
