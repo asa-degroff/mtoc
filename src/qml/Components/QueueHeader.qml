@@ -63,11 +63,10 @@ RowLayout {
         color: forceLightText ? "#ffffff" : Theme.primaryText
     }
     
-    // Scrolling container for context text
+    // Scrolling container for context text (always present to maintain layout)
     Item {
         Layout.fillWidth: true
         Layout.preferredHeight: 20
-        visible: getContextText() !== "" && getContextText() !== "(modified)"
         
         Flickable {
             anchors.fill: parent
@@ -166,15 +165,6 @@ RowLayout {
                 }
             }
         }
-    }
-    
-    // Show simple modified indicator when no context
-    Label {
-        text: getContextText()
-        font.pixelSize: 14
-        color: forceLightText ? "#ffffff" : Theme.primaryText
-        opacity: 0.7
-        visible: getContextText() !== "" && getContextText() === "(modified)"
     }
     
     Label {
