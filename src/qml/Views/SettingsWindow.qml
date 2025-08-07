@@ -15,11 +15,17 @@ ApplicationWindow {
     
     ScrollView {
         anchors.fill: parent
-        contentWidth: width
+        contentWidth: availableWidth
         
         ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 20
+            width: parent.availableWidth
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.leftMargin: 20
+            anchors.rightMargin: 20
+            anchors.topMargin: 20
+            anchors.bottomMargin: 20
             spacing: 24
             
             // Title
@@ -185,6 +191,7 @@ ApplicationWindow {
                             Layout.preferredWidth: 150
                             Layout.preferredHeight: 36
                             model: ["Dark", "Light", "System"]
+                            editable: false
                             currentIndex: {
                                 switch (SettingsManager.theme) {
                                     case SettingsManager.Dark: return 0
@@ -192,13 +199,6 @@ ApplicationWindow {
                                     case SettingsManager.System: return 2
                                     default: return 0
                                 }
-                            }
-                            displayText: currentIndex >= 0 ? model[currentIndex] : ""
-                            Component.onCompleted: {
-                                // Force initial display text update
-                                displayText = Qt.binding(function() { 
-                                    return currentIndex >= 0 ? model[currentIndex] : ""
-                                })
                             }
                             
                             onActivated: function(index) {
