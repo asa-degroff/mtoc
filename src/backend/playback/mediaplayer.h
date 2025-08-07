@@ -192,6 +192,9 @@ private:
     int m_undoQueueIndex = -1;
     Mtoc::Track* m_undoCurrentTrack = nullptr;
     bool m_undoQueueModified = false;
+    QString m_undoQueueSourceAlbumName;
+    QString m_undoQueueSourceAlbumArtist;
+    QString m_undoCurrentPlaylistName;
     
     // Repeat and shuffle
     bool m_repeatEnabled = false;
