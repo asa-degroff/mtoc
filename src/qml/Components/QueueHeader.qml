@@ -28,16 +28,15 @@ RowLayout {
         }
     }
     
-    // Build the contextual header text
-    function getHeaderText() {
-        var baseText = "Queue"
+    // Build the contextual header text (without "Queue" prefix)
+    function getContextText() {
         var contextText = ""
         
         // Add context about what's playing
         if (MediaPlayer.currentPlaylistName) {
-            contextText = " - Playing from playlist " + MediaPlayer.currentPlaylistName
+            contextText = "Playing from playlist " + MediaPlayer.currentPlaylistName
         } else if (MediaPlayer.queueSourceAlbumName) {
-            contextText = " - Playing from album " + MediaPlayer.queueSourceAlbumName
+            contextText = "Playing from album " + MediaPlayer.queueSourceAlbumName
             if (MediaPlayer.queueSourceAlbumArtist) {
                 contextText += " by " + MediaPlayer.queueSourceAlbumArtist
             }
@@ -49,21 +48,134 @@ RowLayout {
                 contextText += " (modified)"
             } else {
                 // Queue has individual tracks added, no album/playlist context
-                contextText = " (modified)"
+                contextText = "(modified)"
             }
         }
         
-        return baseText + contextText
+        return contextText
     }
     
+    // Fixed "Queue" label
     Label {
-        text: getHeaderText()
+        text: "Queue"
         font.pixelSize: 16
         font.weight: Font.DemiBold
         color: forceLightText ? "#ffffff" : Theme.primaryText
     }
     
-    Item { Layout.fillWidth: true }
+    // Scrolling container for context text
+    Item {
+        Layout.fillWidth: true
+        Layout.preferredHeight: 20
+        visible: getContextText() !== "" && getContextText() !== "(modified)"
+        
+        Flickable {
+            anchors.fill: parent
+            contentHeight: height
+            interactive: false
+            clip: true
+            
+            // Container for the scrolling text
+            Item {
+                id: contextTextContainer
+                anchors.fill: parent
+                
+                // Row containing duplicated text for seamless scrolling
+                Row {
+                    id: contextTextRow
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 60  // Gap between duplicates
+                    
+                    // Properties for scrolling
+                    property string contextText: getContextText()
+                    property bool needsScrolling: contextLabel1.contentWidth > contextTextContainer.width
+                    property real scrollOffset: 0
+                    property real pauseDuration: 1500  // Pause at end in ms
+                    property real scrollDuration: Math.max(4000, contextLabel1.contentWidth * 20)  // Speed based on text length
+                    
+                    // Position for scrolling
+                    x: needsScrolling ? -scrollOffset : 0
+                    
+                    // Update scrolling when text changes
+                    onContextTextChanged: {
+                        scrollOffset = 0
+                        contextScrollAnimation.stop()
+                        if (needsScrolling && contextText !== "") {
+                            contextScrollAnimation.start()
+                        }
+                    }
+                    
+                    onNeedsScrollingChanged: {
+                        scrollOffset = 0
+                        contextScrollAnimation.stop()
+                        if (needsScrolling && contextText !== "") {
+                            contextScrollAnimation.start()
+                        }
+                    }
+                    
+                    // First copy of the text
+                    Label {
+                        id: contextLabel1
+                        text: parent.contextText
+                        color: forceLightText ? "#ffffff" : Theme.primaryText
+                        opacity: 0.7
+                        font.pixelSize: 14
+                    }
+                    
+                    // Second copy for seamless wrap-around (only visible when scrolling)
+                    Label {
+                        text: parent.contextText
+                        color: forceLightText ? "#ffffff" : Theme.primaryText
+                        opacity: 0.7
+                        font.pixelSize: 14
+                        visible: parent.needsScrolling
+                    }
+                    
+                    // Continuous scrolling animation
+                    SequentialAnimation {
+                        id: contextScrollAnimation
+                        loops: Animation.Infinite
+                        
+                        // Initial pause
+                        PauseAnimation {
+                            duration: contextTextRow.pauseDuration
+                        }
+                        
+                        // Scroll continuously to show second copy
+                        NumberAnimation {
+                            target: contextTextRow
+                            property: "scrollOffset"
+                            from: 0
+                            to: contextLabel1.contentWidth + contextTextRow.spacing  // Scroll one full text width + gap
+                            duration: contextTextRow.scrollDuration
+                            easing.type: Easing.Linear
+                        }
+                        
+                        // Brief pause at the wrap point
+                        PauseAnimation {
+                            duration: contextTextRow.pauseDuration
+                        }
+                        
+                        // Instant reset to beginning (seamless wrap)
+                        PropertyAction {
+                            target: contextTextRow
+                            property: "scrollOffset"
+                            value: 0
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Show simple modified indicator when no context
+    Label {
+        text: getContextText()
+        font.pixelSize: 14
+        color: forceLightText ? "#ffffff" : Theme.primaryText
+        opacity: 0.7
+        visible: getContextText() !== "" && getContextText() === "(modified)"
+    }
     
     Label {
         text: showPlaylistSavedMessage ? "Playlist Saved" : 
