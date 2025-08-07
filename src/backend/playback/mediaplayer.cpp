@@ -671,6 +671,16 @@ void MediaPlayer::playAlbum(Mtoc::Album* album, int startIndex)
     m_currentAlbum = album;
     emit currentAlbumChanged(m_currentAlbum);
     
+    // Set queue source album info
+    if (m_queueSourceAlbumName != album->title()) {
+        m_queueSourceAlbumName = album->title();
+        emit queueSourceAlbumNameChanged(m_queueSourceAlbumName);
+    }
+    if (m_queueSourceAlbumArtist != album->artist()) {
+        m_queueSourceAlbumArtist = album->artist();
+        emit queueSourceAlbumArtistChanged(m_queueSourceAlbumArtist);
+    }
+    
     m_playbackQueue = album->tracks();
     m_currentQueueIndex = qBound(0, startIndex, m_playbackQueue.size() - 1);
     
@@ -1071,6 +1081,16 @@ void MediaPlayer::clearQueue()
         emit currentPlaylistNameChanged(m_currentPlaylistName);
     }
     
+    // Clear album source info
+    if (!m_queueSourceAlbumName.isEmpty()) {
+        m_queueSourceAlbumName.clear();
+        emit queueSourceAlbumNameChanged(m_queueSourceAlbumName);
+    }
+    if (!m_queueSourceAlbumArtist.isEmpty()) {
+        m_queueSourceAlbumArtist.clear();
+        emit queueSourceAlbumArtistChanged(m_queueSourceAlbumArtist);
+    }
+    
     // Clean up any tracks we created
     for (auto track : m_playbackQueue) {
         if (track && track->parent() == this) {
@@ -1176,6 +1196,16 @@ void MediaPlayer::playAlbumByName(const QString& artist, const QString& title, i
         
         // Set the current album info
         m_currentAlbum = nullptr; // We don't have the actual album object
+        
+        // Set queue source album info
+        if (m_queueSourceAlbumName != title) {
+            m_queueSourceAlbumName = title;
+            emit queueSourceAlbumNameChanged(m_queueSourceAlbumName);
+        }
+        if (m_queueSourceAlbumArtist != artist) {
+            m_queueSourceAlbumArtist = artist;
+            emit queueSourceAlbumArtistChanged(m_queueSourceAlbumArtist);
+        }
         
         // Build the queue from track data
         for (const auto& trackData : trackList) {

@@ -41,6 +41,8 @@ class MediaPlayer : public QObject
     Q_PROPERTY(bool isPlayingVirtualPlaylist READ isPlayingVirtualPlaylist NOTIFY playbackQueueChanged)
     Q_PROPERTY(QString virtualPlaylistName READ virtualPlaylistName NOTIFY virtualPlaylistNameChanged)
     Q_PROPERTY(QString currentPlaylistName READ currentPlaylistName NOTIFY currentPlaylistNameChanged)
+    Q_PROPERTY(QString queueSourceAlbumName READ queueSourceAlbumName NOTIFY queueSourceAlbumNameChanged)
+    Q_PROPERTY(QString queueSourceAlbumArtist READ queueSourceAlbumArtist NOTIFY queueSourceAlbumArtistChanged)
 
 public:
     enum State {
@@ -78,6 +80,8 @@ public:
     bool isPlayingVirtualPlaylist() const { return m_isVirtualPlaylist; }
     QString virtualPlaylistName() const { return m_virtualPlaylistName; }
     QString currentPlaylistName() const { return m_currentPlaylistName; }
+    QString queueSourceAlbumName() const { return m_queueSourceAlbumName; }
+    QString queueSourceAlbumArtist() const { return m_queueSourceAlbumArtist; }
 
 public slots:
     void play();
@@ -141,6 +145,8 @@ signals:
     void shuffleEnabledChanged(bool enabled);
     void virtualPlaylistNameChanged(const QString& name);
     void currentPlaylistNameChanged(const QString& name);
+    void queueSourceAlbumNameChanged(const QString& name);
+    void queueSourceAlbumArtistChanged(const QString& artist);
 
 private slots:
     void periodicStateSave();
@@ -205,6 +211,10 @@ private:
     QString m_currentPlaylistName;
     bool m_isVirtualPlaylist = false;
     QString m_virtualPlaylistName;
+    
+    // Queue source tracking (for contextual header)
+    QString m_queueSourceAlbumName;
+    QString m_queueSourceAlbumArtist;
     int m_virtualCurrentIndex = -1;
     int m_virtualShuffleIndex = -1;  // Current position in virtual playlist shuffle order
     QList<Mtoc::Track*> m_virtualBufferTracks;  // Pre-loaded tracks for smooth playback

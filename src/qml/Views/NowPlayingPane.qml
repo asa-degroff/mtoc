@@ -373,127 +373,13 @@ Item {
                             spacing: 8
                         
                         // Queue header
-                        RowLayout {
+                        QueueHeader {
                             Layout.fillWidth: true
+                            showPlaylistSavedMessage: root.showPlaylistSavedMessage
+                            forceLightText: true // Always use light text on dark background
                             
-                            Label {
-                                text: "Queue"
-                                font.pixelSize: 16
-                                font.weight: Font.DemiBold
-                                color: "#ffffff"
-                            }
-                            
-                            Item { Layout.fillWidth: true }
-                            
-                            Label {
-                                text: showPlaylistSavedMessage ? "Playlist Saved" : 
-                                      MediaPlayer.queueLength + " track" + (MediaPlayer.queueLength !== 1 ? "s" : "") + ", " + formatQueueDuration(MediaPlayer.totalQueueDuration)
-                                font.pixelSize: 12
-                                color: showPlaylistSavedMessage ? "#60ff60" : Theme.isDark ? "#808080" : "#ffffff"
-                                
-                                Behavior on color {
-                                    ColorAnimation { duration: 200 }
-                                }
-                                
-                                Behavior on opacity {
-                                    NumberAnimation { duration: 200 }
-                                }
-                            }
-                            
-                            // Save queue button
-                            Rectangle {
-                                Layout.preferredWidth: 30
-                                Layout.preferredHeight: 30
-                                radius: 4
-                                color: saveQueueMouseArea.containsMouse ? Qt.rgba(0, 1, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
-                                border.width: 1
-                                border.color: Qt.rgba(1, 1, 1, 0.3)
-                                visible: MediaPlayer.queueLength > 0 && !MediaPlayer.isPlayingVirtualPlaylist
-                                
-                                Behavior on color {
-                                    ColorAnimation { duration: 150 }
-                                }
-                                
-                                Image {
-                                    anchors.centerIn: parent
-                                    width: 18
-                                    height: 18
-                                    source: "qrc:/resources/icons/save.svg"
-                                    sourceSize.width: 40
-                                    sourceSize.height: 40
-                                    opacity: saveQueueMouseArea.containsMouse ? 0.7 : 1.0
-                                    
-                                    Behavior on opacity {
-                                        NumberAnimation { duration: 150 }
-                                    }
-                                }
-                                
-                                MouseArea {
-                                    id: saveQueueMouseArea
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        if (PlaylistManager.saveQueueAsPlaylist()) {
-                                            console.log("Queue saved as playlist");
-                                        }
-                                    }
-                                }
-                                
-                                ToolTip {
-                                    visible: saveQueueMouseArea.containsMouse
-                                    text: "Save queue as playlist"
-                                    delay: 500
-                                }
-                            }
-                            
-                            // Clear queue button
-                            Rectangle {
-                                Layout.preferredWidth: 30
-                                Layout.preferredHeight: 30
-                                radius: 4
-                                color: clearQueueMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
-                                border.width: 1
-                                border.color: Qt.rgba(1, 1, 1, 0.3)
-                                visible: (MediaPlayer.queueLength > 0 || MediaPlayer.canUndoClear) && !MediaPlayer.isPlayingVirtualPlaylist
-                                
-                                Behavior on color {
-                                    ColorAnimation { duration: 150 }
-                                }
-                                
-                                Image {
-                                    anchors.centerIn: parent
-                                    width: 18
-                                    height: 18
-                                    source: MediaPlayer.canUndoClear ? "qrc:/resources/icons/undo.svg" : "qrc:/resources/icons/bomb.svg"
-                                    sourceSize.width: 40
-                                    sourceSize.height: 40
-                                    opacity: clearQueueMouseArea.containsMouse ? 0.7 : 1.0
-                                    
-                                    Behavior on opacity {
-                                        NumberAnimation { duration: 150 }
-                                    }
-                                }
-                                
-                                MouseArea {
-                                    id: clearQueueMouseArea
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        if (MediaPlayer.canUndoClear) {
-                                            MediaPlayer.undoClearQueue();
-                                        } else {
-                                            queueListView.clearAllTracks();
-                                        }
-                                    }
-                                }
-                                
-                                ToolTip {
-                                    visible: clearQueueMouseArea.containsMouse
-                                    text: MediaPlayer.canUndoClear ? "Undo clear queue" : "Clear queue"
-                                    delay: 500
-                                }
+                            onClearQueueRequested: {
+                                queueListView.clearAllTracks();
                             }
                         }
                         
