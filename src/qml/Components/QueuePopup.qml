@@ -130,8 +130,8 @@ Item {
                             width: 18
                             height: 18
                             source: Theme.isDark ? "qrc:/resources/icons/close-button.svg" : "qrc:/resources/icons/close-button-dark.svg"
-                            sourceSize.width: 40
-                            sourceSize.height: 40
+                            sourceSize.width: 18
+                            sourceSize.height: 18
                             fillMode: Image.PreserveAspectFit
                             opacity: Theme.isDark ? 1.0 : 0.8
                         }
