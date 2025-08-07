@@ -72,8 +72,8 @@ ApplicationWindow {
                         model: ["Replace queue", "Play next", "Play last", "Ask every time"]
                         currentIndex: SettingsManager.queueActionDefault
                         
-                        onCurrentIndexChanged: {
-                            SettingsManager.queueActionDefault = currentIndex
+                        onActivated: function(index) {
+                            SettingsManager.queueActionDefault = index
                         }
                         
                         background: Rectangle {
@@ -142,6 +142,7 @@ ApplicationWindow {
                                     
                                     onClicked: {
                                         queueActionCombo.currentIndex = index
+                                        queueActionCombo.activated(index)
                                         queueActionCombo.popup.close()
                                     }
                                 }
@@ -288,6 +289,7 @@ ApplicationWindow {
                                         
                                         onClicked: {
                                             themeComboBox.currentIndex = index
+                                            themeComboBox.activated(index)
                                             themeComboBox.popup.close()
                                         }
                                     }
@@ -414,6 +416,7 @@ ApplicationWindow {
                                         
                                         onClicked: {
                                             layoutModeComboBox.currentIndex = index
+                                            layoutModeComboBox.activated(index)
                                             layoutModeComboBox.popup.close()
                                         }
                                     }
