@@ -193,7 +193,13 @@ ApplicationWindow {
                                     default: return 0
                                 }
                             }
-                            displayText: model[currentIndex] || ""
+                            displayText: currentIndex >= 0 ? model[currentIndex] : ""
+                            Component.onCompleted: {
+                                // Force initial display text update
+                                displayText = Qt.binding(function() { 
+                                    return currentIndex >= 0 ? model[currentIndex] : ""
+                                })
+                            }
                             
                             onActivated: function(index) {
                                 switch (index) {
