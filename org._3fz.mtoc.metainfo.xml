@@ -26,16 +26,24 @@
 
   <screenshots>
     <screenshot type="default">
-      <caption>Main window showing library and now playing</caption>
-      <image>https://github.com/asa-degroff/mtoc/raw/081362d8b137686e1db81423e04c27f3770447a9/resources/banner/main-screenshot-small.png</image>
+      <caption>Main window showing compact layout in light mode</caption>
+      <image>https://github.com/asa-degroff/mtoc/raw/dabf456470906a48653f2bed84a5aa73519128e1/resources/banner/main-screenshot-compact-light.png</image>
     </screenshot>
     <screenshot>
-      <caption>Queue and playlist view</caption>
-      <image>https://github.com/asa-degroff/mtoc/raw/081362d8b137686e1db81423e04c27f3770447a9/resources/banner/queue-and-playlist-small.png</image>
+      <caption>Main window showing compact layout in dark mode</caption>
+      <image>https://github.com/asa-degroff/mtoc/raw/dabf456470906a48653f2bed84a5aa73519128e1/resources/banner/main-screenshot-compact-dark.png</image>
     </screenshot>
     <screenshot>
-      <caption>Library editor window showing library stats and directory picker</caption>
-      <image>https://github.com/asa-degroff/mtoc/raw/081362d8b137686e1db81423e04c27f3770447a9/resources/banner/library-editor.png</image>
+      <caption>Queue list in compact layout</caption>
+      <image>https://github.com/asa-degroff/mtoc/blob/dabf456470906a48653f2bed84a5aa73519128e1/resources/banner/queue-compact-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Artist, album, and now playing in wide layout with dark mode</caption>
+      <image>https://github.com/asa-degroff/mtoc/raw/dabf456470906a48653f2bed84a5aa73519128e1/resources/banner/album-wide-dark.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Queue list in wide layout</caption>
+      <image>https://github.com/asa-degroff/mtoc/raw/dabf456470906a48653f2bed84a5aa73519128e1/resources/banner/queue-wide-light.png</image>
     </screenshot>
   </screenshots>
 
