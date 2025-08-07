@@ -193,6 +193,7 @@ ApplicationWindow {
                                     default: return 0
                                 }
                             }
+                            displayText: model[currentIndex] || ""
                             
                             onActivated: function(index) {
                                 switch (index) {
@@ -219,6 +220,7 @@ ApplicationWindow {
                             }
                             
                             indicator: Canvas {
+                                id: themeIndicatorCanvas
                                 x: parent.width - width - 8
                                 y: parent.height / 2 - height / 2
                                 width: 12
@@ -239,7 +241,7 @@ ApplicationWindow {
                                 Connections {
                                     target: Theme
                                     function onIsDarkChanged() {
-                                        requestPaint()
+                                        themeIndicatorCanvas.requestPaint()
                                     }
                                 }
                             }
@@ -339,6 +341,7 @@ ApplicationWindow {
                             }
                             
                             indicator: Canvas {
+                                id: layoutIndicatorCanvas
                                 x: parent.width - width - 8
                                 y: parent.height / 2 - height / 2
                                 width: 12
@@ -359,7 +362,7 @@ ApplicationWindow {
                                 Connections {
                                     target: Theme
                                     function onIsDarkChanged() {
-                                        requestPaint()
+                                        layoutIndicatorCanvas.requestPaint()
                                     }
                                 }
                             }

@@ -99,7 +99,7 @@ ApplicationWindow {
             SettingsManager.windowHeight = window.height
             SettingsManager.windowX = window.x
             SettingsManager.windowY = window.y
-            console.log("Main.qml: Saved window geometry - " + window.width + "x" + window.height + " at " + window.x + "," + window.y)
+            //console.log("Main.qml: Saved window geometry - " + window.width + "x" + window.height + " at " + window.x + "," + window.y)
         }
     }
     

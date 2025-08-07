@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <QGuiApplication>
 #include <QPalette>
+#include <QEvent>
 
 SettingsManager* SettingsManager::s_instance = nullptr;
 
@@ -253,17 +254,20 @@ bool SettingsManager::isSystemDark() const
 
 void SettingsManager::setupSystemThemeDetection()
 {
-    // Connect to palette change events to detect system theme changes
-    connect(qApp, &QGuiApplication::paletteChanged, this, &SettingsManager::onSystemThemeChanged);
+    // Event handling for palette changes is done in event() method
 }
 
-void SettingsManager::onSystemThemeChanged()
+bool SettingsManager::event(QEvent *event)
 {
-    // Emit signal when system theme changes
-    emit systemThemeChanged();
-    
-    // If we're using the System theme, also emit themeChanged
-    if (m_theme == System) {
-        emit themeChanged(m_theme);
+    if (event->type() == QEvent::ApplicationPaletteChange) {
+        // Emit signal when system theme changes
+        emit systemThemeChanged();
+        
+        // If we're using the System theme, also emit themeChanged
+        if (m_theme == System) {
+            emit themeChanged(m_theme);
+        }
+        return true;
     }
+    return QObject::event(event);
 }

@@ -86,6 +86,9 @@ public:
     void setTheme(Theme theme);
     void setLayoutMode(LayoutMode mode);
 
+protected:
+    bool event(QEvent *event) override;
+
 signals:
     void queueActionDefaultChanged(QueueAction action);
     void showTrackInfoByDefaultChanged(bool show);
@@ -105,7 +108,6 @@ signals:
     void layoutModeChanged(LayoutMode mode);
 
 private slots:
-    void onSystemThemeChanged();
 
 private:
     explicit SettingsManager(QObject *parent = nullptr);
