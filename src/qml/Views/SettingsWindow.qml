@@ -61,7 +61,7 @@ ApplicationWindow {
                     
                     ComboBox {
                         id: queueActionCombo
-                        Layout.fillWidth: true
+                        Layout.preferredWidth: 200
                         Layout.preferredHeight: 36
                         model: ["Replace queue", "Play next", "Play last", "Ask every time"]
                         currentIndex: SettingsManager.queueActionDefault
@@ -177,6 +177,7 @@ ApplicationWindow {
                             text: "Theme:"
                             font.pixelSize: 14
                             color: Theme.secondaryText
+                            Layout.preferredWidth: 100
                         }
                         
                         ComboBox {
@@ -296,6 +297,7 @@ ApplicationWindow {
                             text: "Layout Mode:"
                             font.pixelSize: 14
                             color: Theme.secondaryText
+                            Layout.preferredWidth: 100
                         }
                         
                         ComboBox {
