@@ -1,3 +1,12 @@
+# 2.1
+### Compact layout mode and light theme
+- Compact layout moves the playback controls to below the library, and the queue and full-size album art to their own popups; ideal for use on small screens and tiling setups
+- Light theme brings a new white and and pastel-colored interface
+- Options in settings for compact & wide layouts, light & dark modes, and automatic switching for both
+- Contextual queue header labels the current queue source
+- Performance and image quality improvements for the album carousel with better anti-aliasing, and a slightly compacted layout
+- Improved sorting consistency for artists with locale-aware handling of accented characters
+
 # 2.0.2
 ### New icon and layout tweaks for small screens
 - New icon to match the updated branding
