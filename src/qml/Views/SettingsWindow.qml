@@ -11,7 +11,7 @@ ApplicationWindow {
     
     flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint
     
-    color: "#2a2a2a"
+    color: Theme.backgroundColor
     
     ScrollView {
         anchors.fill: parent
@@ -27,7 +27,7 @@ ApplicationWindow {
                 text: "Settings"
                 font.pixelSize: 20
                 font.bold: true
-                color: "white"
+                color: Theme.primaryText
                 Layout.fillWidth: true
             }
             
@@ -35,7 +35,7 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: queueBehaviorLayout.implicitHeight + 24
-                color: "#333333"
+                color: Theme.panelBackground
                 radius: 4
                 
                 ColumnLayout {
@@ -48,20 +48,20 @@ ApplicationWindow {
                         text: "Queue Behavior"
                         font.pixelSize: 16
                         font.bold: true
-                        color: "white"
+                        color: Theme.primaryText
                     }
                     
                     Label {
                         text: "Default action for playing an album or playlist if queue has been modified:"
                         font.pixelSize: 14
-                        color: "#cccccc"
+                        color: Theme.secondaryText
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                     }
                     
                     ComboBox {
                         id: queueActionCombo
-                        Layout.fillWidth: true
+                        Layout.preferredWidth: 200
                         Layout.preferredHeight: 36
                         model: ["Replace queue", "Play next", "Play last", "Ask every time"]
                         currentIndex: SettingsManager.queueActionDefault
@@ -71,15 +71,15 @@ ApplicationWindow {
                         }
                         
                         background: Rectangle {
-                            color: parent.hovered ? "#404040" : "#383838"
+                            color: parent.hovered ? Theme.inputBackgroundHover : Theme.inputBackground
                             radius: 4
                             border.width: 1
-                            border.color: "#505050"
+                            border.color: Theme.borderColor
                         }
                         
                         contentItem: Text {
                             text: parent.displayText
-                            color: "white"
+                            color: Theme.primaryText
                             font.pixelSize: 14
                             verticalAlignment: Text.AlignVCenter
                             leftPadding: 8
@@ -121,8 +121,8 @@ ApplicationWindow {
                             }
                             
                             background: Rectangle {
-                                color: "#2a2a2a"
-                                border.color: "#505050"
+                                color: Theme.backgroundColor
+                                border.color: Theme.borderColor
                                 border.width: 1
                                 radius: 4
                             }
@@ -134,14 +134,14 @@ ApplicationWindow {
                             
                             contentItem: Text {
                                 text: modelData
-                                color: parent.hovered ? "white" : "#cccccc"
+                                color: parent.hovered ? Theme.primaryText : Theme.secondaryText
                                 font.pixelSize: 14
                                 verticalAlignment: Text.AlignVCenter
                                 leftPadding: 8
                             }
                             
                             background: Rectangle {
-                                color: parent.hovered ? "#4a5fba" : "transparent"
+                                color: parent.hovered ? Theme.selectedBackground : "transparent"
                                 radius: 2
                             }
                         }
@@ -153,7 +153,7 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: displayLayout.implicitHeight + 24
-                color: "#333333"
+                color: Theme.panelBackground
                 radius: 4
                 
                 ColumnLayout {
@@ -166,7 +166,257 @@ ApplicationWindow {
                         text: "Display Options"
                         font.pixelSize: 16
                         font.bold: true
-                        color: "white"
+                        color: Theme.primaryText
+                    }
+                    
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 12
+                        
+                        Label {
+                            text: "Theme:"
+                            font.pixelSize: 14
+                            color: Theme.secondaryText
+                            Layout.preferredWidth: 100
+                        }
+                        
+                        ComboBox {
+                            id: themeComboBox
+                            Layout.preferredWidth: 150
+                            Layout.preferredHeight: 36
+                            model: ["Dark", "Light", "System"]
+                            currentIndex: {
+                                switch (SettingsManager.theme) {
+                                    case SettingsManager.Dark: return 0
+                                    case SettingsManager.Light: return 1
+                                    case SettingsManager.System: return 2
+                                    default: return 0
+                                }
+                            }
+                            
+                            onActivated: function(index) {
+                                switch (index) {
+                                    case 0: SettingsManager.theme = SettingsManager.Dark; break
+                                    case 1: SettingsManager.theme = SettingsManager.Light; break
+                                    case 2: SettingsManager.theme = SettingsManager.System; break
+                                }
+                            }
+                            
+                            background: Rectangle {
+                                color: parent.hovered ? Theme.inputBackgroundHover : Theme.inputBackground
+                                radius: 4
+                                border.width: 1
+                                border.color: Theme.borderColor
+                            }
+                            
+                            contentItem: Text {
+                                text: parent.displayText
+                                color: Theme.primaryText
+                                font.pixelSize: 14
+                                verticalAlignment: Text.AlignVCenter
+                                leftPadding: 8
+                                rightPadding: 30  // Leave space for indicator
+                            }
+                            
+                            indicator: Canvas {
+                                x: parent.width - width - 8
+                                y: parent.height / 2 - height / 2
+                                width: 12
+                                height: 8
+                                contextType: "2d"
+                                
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.reset()
+                                    ctx.moveTo(0, 0)
+                                    ctx.lineTo(width, 0)
+                                    ctx.lineTo(width / 2, height)
+                                    ctx.closePath()
+                                    ctx.fillStyle = "#cccccc"
+                                    ctx.fill()
+                                }
+                                
+                                Connections {
+                                    target: Theme
+                                    function onIsDarkChanged() {
+                                        requestPaint()
+                                    }
+                                }
+                            }
+                            
+                            popup: Popup {
+                                y: parent.height + 2
+                                width: parent.width
+                                implicitHeight: contentItem.implicitHeight + 2
+                                padding: 1
+                                
+                                contentItem: ListView {
+                                    clip: true
+                                    implicitHeight: contentHeight
+                                    model: parent.visible ? themeComboBox.delegateModel : null
+                                    currentIndex: themeComboBox.highlightedIndex
+                                    
+                                    ScrollIndicator.vertical: ScrollIndicator { }
+                                }
+                                
+                                background: Rectangle {
+                                    color: Theme.backgroundColor
+                                    border.color: Theme.borderColor
+                                    border.width: 1
+                                    radius: 4
+                                }
+                            }
+                            
+                            delegate: ItemDelegate {
+                                width: themeComboBox.width
+                                height: 36
+                                
+                                contentItem: Text {
+                                    text: modelData
+                                    color: parent.hovered ? Theme.primaryText : Theme.secondaryText
+                                    font.pixelSize: 14
+                                    verticalAlignment: Text.AlignVCenter
+                                    leftPadding: 8
+                                }
+                                
+                                background: Rectangle {
+                                    color: parent.hovered ? Theme.selectedBackground : "transparent"
+                                    radius: 2
+                                }
+                            }
+                        }
+                        
+                        Item { Layout.fillWidth: true }
+                    }
+                    
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 12
+                        
+                        Label {
+                            text: "Layout Mode:"
+                            font.pixelSize: 14
+                            color: Theme.secondaryText
+                            Layout.preferredWidth: 100
+                        }
+                        
+                        ComboBox {
+                            id: layoutModeComboBox
+                            Layout.preferredWidth: 150
+                            Layout.preferredHeight: 36
+                            model: ["Wide", "Compact", "Automatic"]
+                            currentIndex: {
+                                switch(SettingsManager.layoutMode) {
+                                    case SettingsManager.Wide: return 0
+                                    case SettingsManager.Compact: return 1
+                                    case SettingsManager.Automatic: return 2
+                                    default: return 2
+                                }
+                            }
+                            
+                            onActivated: function(index) {
+                                switch(index) {
+                                    case 0: SettingsManager.layoutMode = SettingsManager.Wide; break
+                                    case 1: SettingsManager.layoutMode = SettingsManager.Compact; break
+                                    case 2: SettingsManager.layoutMode = SettingsManager.Automatic; break
+                                }
+                            }
+                            
+                            background: Rectangle {
+                                color: parent.hovered ? Theme.inputBackgroundHover : Theme.inputBackground
+                                radius: 4
+                                border.width: 1
+                                border.color: Theme.borderColor
+                            }
+                            
+                            contentItem: Text {
+                                text: parent.displayText
+                                color: Theme.primaryText
+                                font.pixelSize: 14
+                                verticalAlignment: Text.AlignVCenter
+                                leftPadding: 8
+                                rightPadding: 30  // Leave space for indicator
+                            }
+                            
+                            indicator: Canvas {
+                                x: parent.width - width - 8
+                                y: parent.height / 2 - height / 2
+                                width: 12
+                                height: 8
+                                contextType: "2d"
+                                
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.reset()
+                                    ctx.moveTo(0, 0)
+                                    ctx.lineTo(width, 0)
+                                    ctx.lineTo(width / 2, height)
+                                    ctx.closePath()
+                                    ctx.fillStyle = "#cccccc"
+                                    ctx.fill()
+                                }
+                                
+                                Connections {
+                                    target: Theme
+                                    function onIsDarkChanged() {
+                                        requestPaint()
+                                    }
+                                }
+                            }
+                            
+                            popup: Popup {
+                                y: parent.height + 2
+                                width: parent.width
+                                implicitHeight: contentItem.implicitHeight + 2
+                                padding: 1
+                                
+                                contentItem: ListView {
+                                    clip: true
+                                    implicitHeight: contentHeight
+                                    model: parent.visible ? layoutModeComboBox.delegateModel : null
+                                    currentIndex: layoutModeComboBox.highlightedIndex
+                                    
+                                    ScrollIndicator.vertical: ScrollIndicator { }
+                                }
+                                
+                                background: Rectangle {
+                                    color: Theme.backgroundColor
+                                    border.color: Theme.borderColor
+                                    border.width: 1
+                                    radius: 4
+                                }
+                            }
+                            
+                            delegate: ItemDelegate {
+                                width: layoutModeComboBox.width
+                                height: 36
+                                
+                                contentItem: Text {
+                                    text: modelData
+                                    color: parent.hovered ? Theme.primaryText : Theme.secondaryText
+                                    font.pixelSize: 14
+                                    verticalAlignment: Text.AlignVCenter
+                                    leftPadding: 8
+                                }
+                                
+                                background: Rectangle {
+                                    color: parent.hovered ? Theme.selectedBackground : "transparent"
+                                    radius: 2
+                                }
+                            }
+                        }
+                        
+                        Item { Layout.fillWidth: true }
+                    }
+                    
+                    // Help text for automatic mode
+                    Label {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 20
+                        text: "Automatic mode switches to Compact when window width < 1200px"
+                        font.pixelSize: 12
+                        color: Theme.tertiaryText
+                        visible: layoutModeComboBox.currentIndex === 2
                     }
                     
                     CheckBox {
@@ -181,7 +431,7 @@ ApplicationWindow {
                         contentItem: Text {
                             text: parent.text
                             font.pixelSize: 14
-                            color: "#cccccc"
+                            color: Theme.secondaryText
                             verticalAlignment: Text.AlignVCenter
                             leftPadding: parent.indicator.width + parent.spacing
                         }
@@ -192,8 +442,8 @@ ApplicationWindow {
                             x: parent.leftPadding
                             y: parent.height / 2 - height / 2
                             radius: 3
-                            color: parent.checked ? "#4a5fba" : "#383838"
-                            border.color: parent.checked ? "#5a6fca" : "#505050"
+                            color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                            border.color: parent.checked ? Theme.linkColor : Theme.borderColor
                             
                             Canvas {
                                 anchors.fill: parent
@@ -223,7 +473,7 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: playbackLayout.implicitHeight + 24
-                color: "#333333"
+                color: Theme.panelBackground
                 radius: 4
                 
                 ColumnLayout {
@@ -236,7 +486,7 @@ ApplicationWindow {
                         text: "Playback"
                         font.pixelSize: 16
                         font.bold: true
-                        color: "white"
+                        color: Theme.primaryText
                     }
                     
                     CheckBox {
@@ -251,7 +501,7 @@ ApplicationWindow {
                         contentItem: Text {
                             text: parent.text
                             font.pixelSize: 14
-                            color: "#cccccc"
+                            color: Theme.secondaryText
                             verticalAlignment: Text.AlignVCenter
                             leftPadding: parent.indicator.width + parent.spacing
                         }
@@ -262,8 +512,8 @@ ApplicationWindow {
                             x: parent.leftPadding
                             y: parent.height / 2 - height / 2
                             radius: 3
-                            color: parent.checked ? "#4a5fba" : "#383838"
-                            border.color: parent.checked ? "#5a6fca" : "#505050"
+                            color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                            border.color: parent.checked ? Theme.linkColor : Theme.borderColor
                             
                             Canvas {
                                 anchors.fill: parent
@@ -293,7 +543,7 @@ ApplicationWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: aboutLayout.implicitHeight + 24
-                color: "#333333"
+                color: Theme.panelBackground
                 radius: 4
                 
                 ColumnLayout {
@@ -306,25 +556,25 @@ ApplicationWindow {
                         text: "About"
                         font.pixelSize: 16
                         font.bold: true
-                        color: "white"
+                        color: Theme.primaryText
                     }
                     
                     Label {
                         text: "mtoc - Music Library and Player"
                         font.pixelSize: 14
-                        color: "#cccccc"
+                        color: Theme.secondaryText
                     }
                     
                     Label {
-                        text: "Version 2.0"
+                        text: "Version 2.1"
                         font.pixelSize: 12
-                        color: "#999999"
+                        color: Theme.tertiaryText
                     }
                     
                     Label {
                         text: "© 2025 Asa DeGroff"
                         font.pixelSize: 12
-                        color: "#999999"
+                        color: Theme.tertiaryText
                     }
                     
                     Item { height: 8 }
@@ -333,13 +583,13 @@ ApplicationWindow {
                         text: "Acknowledgements"
                         font.pixelSize: 14
                         font.bold: true
-                        color: "#cccccc"
+                        color: Theme.secondaryText
                     }
                     
                     Label {
                         text: "Built with Qt, TagLib, and GStreamer"
                         font.pixelSize: 12
-                        color: "#999999"
+                        color: Theme.tertiaryText
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
                     }
@@ -348,7 +598,7 @@ ApplicationWindow {
                         text: "License"
                         font.pixelSize: 14
                         font.bold: true
-                        color: "#cccccc"
+                        color: Theme.secondaryText
                     }
 
                     Text {
@@ -358,7 +608,7 @@ mtoc is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY
 
 You should have received a copy of the GNU General Public License along with mtoc. If not, see: <a href=\"https://www.gnu.org/licenses/gpl-3.0.html\">https://www.gnu.org/licenses/gpl-3.0.html</a>"
                         font.pixelSize: 12
-                        color: "#999999"
+                        color: Theme.tertiaryText
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
                         textFormat: Text.RichText

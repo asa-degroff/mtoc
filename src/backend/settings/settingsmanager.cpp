@@ -1,13 +1,17 @@
 #include "settingsmanager.h"
 #include <QDebug>
+#include <QGuiApplication>
+#include <QPalette>
 
 SettingsManager* SettingsManager::s_instance = nullptr;
 
 SettingsManager::SettingsManager(QObject *parent)
     : QObject(parent)
     , m_settings("mtoc", "mtoc")
+    , m_layoutMode(Wide)
 {
     loadSettings();
+    setupSystemThemeDetection();
 }
 
 SettingsManager::~SettingsManager()
@@ -143,6 +147,24 @@ void SettingsManager::setWindowY(int y)
     }
 }
 
+void SettingsManager::setTheme(Theme theme)
+{
+    if (m_theme != theme) {
+        m_theme = theme;
+        emit themeChanged(theme);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setLayoutMode(LayoutMode mode)
+{
+    if (m_layoutMode != mode) {
+        m_layoutMode = mode;
+        emit layoutModeChanged(mode);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -151,6 +173,8 @@ void SettingsManager::loadSettings()
     
     m_settings.beginGroup("Display");
     m_showTrackInfoByDefault = m_settings.value("showTrackInfoByDefault", false).toBool();
+    m_theme = static_cast<Theme>(m_settings.value("theme", Dark).toInt());
+    m_layoutMode = static_cast<LayoutMode>(m_settings.value("layoutMode", Wide).toInt());
     m_settings.endGroup();
     
     m_settings.beginGroup("Playback");
@@ -188,6 +212,8 @@ void SettingsManager::saveSettings()
     
     m_settings.beginGroup("Display");
     m_settings.setValue("showTrackInfoByDefault", m_showTrackInfoByDefault);
+    m_settings.setValue("theme", static_cast<int>(m_theme));
+    m_settings.setValue("layoutMode", static_cast<int>(m_layoutMode));
     m_settings.endGroup();
     
     m_settings.beginGroup("Playback");
@@ -212,4 +238,32 @@ void SettingsManager::saveSettings()
     
     m_settings.sync();
     qDebug() << "SettingsManager: Settings saved";
+}
+
+bool SettingsManager::isSystemDark() const
+{
+    // Get the system palette to detect if we're in dark mode
+    QPalette palette = QGuiApplication::palette();
+    QColor windowColor = palette.color(QPalette::Window);
+    
+    // Consider it dark mode if the window background is dark
+    // Using a threshold of 128 for the lightness value
+    return windowColor.lightness() < 128;
+}
+
+void SettingsManager::setupSystemThemeDetection()
+{
+    // Connect to palette change events to detect system theme changes
+    connect(qApp, &QGuiApplication::paletteChanged, this, &SettingsManager::onSystemThemeChanged);
+}
+
+void SettingsManager::onSystemThemeChanged()
+{
+    // Emit signal when system theme changes
+    emit systemThemeChanged();
+    
+    // If we're using the System theme, also emit themeChanged
+    if (m_theme == System) {
+        emit themeChanged(m_theme);
+    }
 }

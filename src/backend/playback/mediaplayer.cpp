@@ -671,6 +671,16 @@ void MediaPlayer::playAlbum(Mtoc::Album* album, int startIndex)
     m_currentAlbum = album;
     emit currentAlbumChanged(m_currentAlbum);
     
+    // Set queue source album info
+    if (m_queueSourceAlbumName != album->title()) {
+        m_queueSourceAlbumName = album->title();
+        emit queueSourceAlbumNameChanged(m_queueSourceAlbumName);
+    }
+    if (m_queueSourceAlbumArtist != album->artist()) {
+        m_queueSourceAlbumArtist = album->artist();
+        emit queueSourceAlbumArtistChanged(m_queueSourceAlbumArtist);
+    }
+    
     m_playbackQueue = album->tracks();
     m_currentQueueIndex = qBound(0, startIndex, m_playbackQueue.size() - 1);
     
@@ -1071,6 +1081,16 @@ void MediaPlayer::clearQueue()
         emit currentPlaylistNameChanged(m_currentPlaylistName);
     }
     
+    // Clear album source info
+    if (!m_queueSourceAlbumName.isEmpty()) {
+        m_queueSourceAlbumName.clear();
+        emit queueSourceAlbumNameChanged(m_queueSourceAlbumName);
+    }
+    if (!m_queueSourceAlbumArtist.isEmpty()) {
+        m_queueSourceAlbumArtist.clear();
+        emit queueSourceAlbumArtistChanged(m_queueSourceAlbumArtist);
+    }
+    
     // Clean up any tracks we created
     for (auto track : m_playbackQueue) {
         if (track && track->parent() == this) {
@@ -1099,6 +1119,9 @@ void MediaPlayer::clearQueueForUndo()
     m_undoQueueIndex = m_currentQueueIndex;
     m_undoCurrentTrack = m_currentTrack;
     m_undoQueueModified = m_isQueueModified;
+    m_undoQueueSourceAlbumName = m_queueSourceAlbumName;
+    m_undoQueueSourceAlbumArtist = m_queueSourceAlbumArtist;
+    m_undoCurrentPlaylistName = m_currentPlaylistName;
     
     // Stop audio playback without clearing the queue
     m_audioEngine->stop();
@@ -1108,6 +1131,20 @@ void MediaPlayer::clearQueueForUndo()
     m_currentQueueIndex = -1;
     updateCurrentTrack(nullptr);
     setQueueModified(false);
+    
+    // Clear the queue source info now that we've saved it for undo
+    if (!m_currentPlaylistName.isEmpty()) {
+        m_currentPlaylistName.clear();
+        emit currentPlaylistNameChanged(m_currentPlaylistName);
+    }
+    if (!m_queueSourceAlbumName.isEmpty()) {
+        m_queueSourceAlbumName.clear();
+        emit queueSourceAlbumNameChanged(m_queueSourceAlbumName);
+    }
+    if (!m_queueSourceAlbumArtist.isEmpty()) {
+        m_queueSourceAlbumArtist.clear();
+        emit queueSourceAlbumArtistChanged(m_queueSourceAlbumArtist);
+    }
     
     emit playbackQueueChanged();
     emit canUndoClearChanged(true);
@@ -1130,11 +1167,28 @@ void MediaPlayer::undoClearQueue()
     m_currentTrack = m_undoCurrentTrack;
     setQueueModified(m_undoQueueModified);
     
+    // Restore the queue source info
+    if (!m_undoQueueSourceAlbumName.isEmpty()) {
+        m_queueSourceAlbumName = m_undoQueueSourceAlbumName;
+        emit queueSourceAlbumNameChanged(m_queueSourceAlbumName);
+    }
+    if (!m_undoQueueSourceAlbumArtist.isEmpty()) {
+        m_queueSourceAlbumArtist = m_undoQueueSourceAlbumArtist;
+        emit queueSourceAlbumArtistChanged(m_queueSourceAlbumArtist);
+    }
+    if (!m_undoCurrentPlaylistName.isEmpty()) {
+        m_currentPlaylistName = m_undoCurrentPlaylistName;
+        emit currentPlaylistNameChanged(m_currentPlaylistName);
+    }
+    
     // Clear undo state
     m_undoQueue.clear();
     m_undoQueueIndex = -1;
     m_undoCurrentTrack = nullptr;
     m_undoQueueModified = false;
+    m_undoQueueSourceAlbumName.clear();
+    m_undoQueueSourceAlbumArtist.clear();
+    m_undoCurrentPlaylistName.clear();
     
     // Emit signals
     emit playbackQueueChanged();
@@ -1176,6 +1230,16 @@ void MediaPlayer::playAlbumByName(const QString& artist, const QString& title, i
         
         // Set the current album info
         m_currentAlbum = nullptr; // We don't have the actual album object
+        
+        // Set queue source album info
+        if (m_queueSourceAlbumName != title) {
+            m_queueSourceAlbumName = title;
+            emit queueSourceAlbumNameChanged(m_queueSourceAlbumName);
+        }
+        if (m_queueSourceAlbumArtist != artist) {
+            m_queueSourceAlbumArtist = artist;
+            emit queueSourceAlbumArtistChanged(m_queueSourceAlbumArtist);
+        }
         
         // Build the queue from track data
         for (const auto& trackData : trackList) {
@@ -2235,6 +2299,16 @@ void MediaPlayer::restoreAlbumByName(const QString& artist, const QString& title
         
         // Set the current album info
         m_currentAlbum = nullptr; // We don't have the actual album object
+        
+        // Set queue source album info for the header display
+        if (m_queueSourceAlbumName != title) {
+            m_queueSourceAlbumName = title;
+            emit queueSourceAlbumNameChanged(m_queueSourceAlbumName);
+        }
+        if (m_queueSourceAlbumArtist != artist) {
+            m_queueSourceAlbumArtist = artist;
+            emit queueSourceAlbumArtistChanged(m_queueSourceAlbumArtist);
+        }
         
         // Build the queue from track data
         for (const auto& trackData : trackList) {

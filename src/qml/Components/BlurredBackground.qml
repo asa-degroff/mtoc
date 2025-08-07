@@ -39,6 +39,11 @@ Item {
             }
             // Toggle to the layer with the new image
             currentImageIndex = 1 - currentImageIndex
+        } else {
+            // Source is empty, clear both images to show black background
+            image1Source = ""
+            image2Source = ""
+            currentImageIndex = 0
         }
     }
     

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Shapes
+import QtQuick.Effects
 import Mtoc.Backend 1.0
 
 Item {
@@ -44,6 +45,7 @@ Item {
         property string iconPressedSource: ""
         property bool isPressed: false
         property bool isHovered: false
+        property bool addShadow: false
         signal clicked()
         
         scale: isPressed ? 0.9 : (isHovered ? 1.1 : 1.0)
@@ -62,6 +64,17 @@ Item {
             smooth: true
             antialiasing: false
             fillMode: Image.PreserveAspectFit
+            
+            // Drop shadow for better contrast in light mode
+            layer.enabled: buttonRoot.addShadow && !Theme.isDark
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowHorizontalOffset: 0
+                shadowVerticalOffset: 1
+                shadowBlur: 0.3
+                shadowColor: "#000000"
+                shadowOpacity: 0.5
+            }
         }
         
         MouseArea {
@@ -93,8 +106,8 @@ Item {
                 Layout.preferredHeight: 31
                 Layout.alignment: Qt.AlignVCenter
                 radius: 25
-                color: Qt.rgba(1, 1, 1, 0.05)
-                border.color: Qt.rgba(1, 1, 1, 0.2)
+                color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
+                border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(0, 0, 0, 0.2)
                 border.width: 1
                 
                 RowLayout {
@@ -111,7 +124,7 @@ Item {
                             anchors.fill: parent
                             anchors.margins: 2
                             radius: parent.height / 2
-                            color: root.repeatEnabled ? Qt.rgba(1, 1, 1, 0.2) : "transparent"
+                            color: root.repeatEnabled ? (Theme.isDark ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(0, 0, 0, 0.2)) : "transparent"
                             
                             Behavior on color {
                                 ColorAnimation { duration: 200 }
@@ -119,11 +132,13 @@ Item {
                         }
                         
                         IconButton {
+                            id: repeatButton
                             anchors.centerIn: parent
                             width: 18
                             height: 18
                             iconSource: "qrc:/resources/icons/repeat.svg"
                             opacity: root.repeatEnabled ? 1.0 : 0.6
+                            addShadow: true
                             onClicked: root.repeatToggled()
                             
                             Behavior on opacity {
@@ -138,7 +153,7 @@ Item {
                         Layout.fillHeight: true
                         Layout.topMargin: 8
                         Layout.bottomMargin: 8
-                        color: Qt.rgba(1, 1, 1, 0.2)
+                        color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(0, 0, 0, 0.2)
                     }
                     
                     // Shuffle button
@@ -150,7 +165,7 @@ Item {
                             anchors.fill: parent
                             anchors.margins: 2
                             radius: parent.height / 2
-                            color: root.shuffleEnabled ? Qt.rgba(1, 1, 1, 0.2) : "transparent"
+                            color: root.shuffleEnabled ? (Theme.isDark ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(0, 0, 0, 0.2)) : "transparent"
                             
                             Behavior on color {
                                 ColorAnimation { duration: 200 }
@@ -158,11 +173,13 @@ Item {
                         }
                         
                         IconButton {
+                            id: shuffleButton
                             anchors.centerIn: parent
                             width: 20
                             height: 20
                             iconSource: "qrc:/resources/icons/shuffle.svg"
                             opacity: root.shuffleEnabled ? 1.0 : 0.6
+                            addShadow: true
                             onClicked: root.shuffleToggled()
                             
                             Behavior on opacity {
@@ -224,6 +241,7 @@ Item {
                     height: 30
                     iconSource: "qrc:/resources/icons/queue.svg"
                     opacity: root.queueVisible ? 1.0 : 0.6
+                    addShadow: true
                     onClicked: root.queueToggled()
                     
                     Behavior on opacity {
@@ -242,7 +260,7 @@ Item {
             
             Label {
                 text: formatTime(MediaPlayer.savedPosition > 0 ? MediaPlayer.savedPosition : progressSlider.value)
-                color: "#b0b0b0"
+                color: Theme.secondaryText
                 font.pixelSize: 14
                 Layout.preferredWidth: 45  // Fixed width for consistent alignment
                 horizontalAlignment: Text.AlignRight
@@ -337,9 +355,9 @@ Item {
                     radius: 5
                     gradient: Gradient {
                         orientation: Gradient.Vertical
-                        GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.15) }
-                        GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.17) }
-                        GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0.19) }
+                        GradientStop { position: 0.0; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(0, 0, 0, 0.19) }
+                        GradientStop { position: 0.5; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.17) : Qt.rgba(0, 0, 0, 0.17) }
+                        GradientStop { position: 1.0; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.19) : Qt.rgba(0, 0, 0, 0.15) }
                     }
                     opacity: 0.8
                     
@@ -351,9 +369,9 @@ Item {
                         
                         gradient: Gradient {
                             orientation: Gradient.Vertical
-                            GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.8) }
-                            GradientStop { position: 0.5; color: Qt.rgba(1, 1, 1, 0.6) }
-                            GradientStop { position: 1.0; color: Qt.rgba(1, 1, 1, 0.35) }
+                            GradientStop { position: 0.0; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.8) : Qt.rgba(0, 0, 0, 0.25) }
+                            GradientStop { position: 0.5; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.6) : Qt.rgba(0, 0, 0, 0.35) }
+                            GradientStop { position: 1.0; color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.35) : Qt.rgba(0, 0, 0, 0.4) }
                         }
                     }
                 }
@@ -409,7 +427,7 @@ Item {
             
             Label {
                 text: formatTime(MediaPlayer.duration)
-                color: "#b0b0b0"
+                color: Theme.secondaryText
                 font.pixelSize: 14
                 Layout.preferredWidth: 45  // Fixed width for consistent alignment
                 horizontalAlignment: Text.AlignLeft

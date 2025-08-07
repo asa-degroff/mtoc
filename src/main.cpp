@@ -233,6 +233,9 @@ int main(int argc, char *argv[])
     engine.addImageProvider("albumart", new Mtoc::AlbumArtImageProvider(libraryManager));
     qDebug() << "Main: Album art image provider registered";
 
+    // Register QML singletons
+    qmlRegisterSingletonType(QUrl("qrc:/src/qml/Theme.qml"), "Mtoc.Backend", 1, 0, "Theme");
+
     qDebug() << "Main: About to load QML...";
     
     const QUrl url(QStringLiteral("qrc:/src/qml/Main.qml"));

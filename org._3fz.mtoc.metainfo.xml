@@ -59,6 +59,20 @@
 
   <releases>
 
+    <release version="2.1" date="2025-08-07">
+      <description>
+        <p>Compact layout mode and light theme</p>
+        <ul>
+          <li>Compact layout moves the playback controls to below the library, and the queue and full-size album art to their own popups; ideal for use on small screens and tiling setups</li>
+          <li>Light theme brings a new white and and pastel-colored interface</li>
+          <li>Options in settings for compact & wide layouts, light & dark modes, and automatic switching for both</li>
+          <li>Contextual queue header labels the current queue source</li>
+          <li>Performance and image quality improvements for the album carousel with better anti-aliasing, and a slightly compacted layout</li>
+          <li>Improved sorting consistency for artists with locale-aware handling of accented characters</li>
+        </ul>
+      </description>
+    </release>
+
     <release version="2.0.2" date="2025-07-31">
       <description>
         <p>Updated icon and improved layout on small displays</p>

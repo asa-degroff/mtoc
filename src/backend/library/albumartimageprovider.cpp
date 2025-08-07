@@ -113,7 +113,7 @@ void AlbumArtImageResponse::loadImage()
     
     // Determine the actual size to use
     int actualSize = targetSize > 0 ? targetSize : (m_requestedSize.isValid() ? qMax(m_requestedSize.width(), m_requestedSize.height()) : 0);
-    
+
     // Two-tier cache system: only cache thumbnail (256) and full size
     // For other sizes, we'll scale from the nearest cached version
     bool needsScaling = false;

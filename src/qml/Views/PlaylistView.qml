@@ -117,16 +117,16 @@ Item {
             height: 60
             color: {
                 if (index === root.keyboardSelectedIndex) {
-                    return Qt.rgba(0.25, 0.32, 0.71, 0.15)  // Keyboard selected
+                    return Theme.isDark ? Qt.rgba(0.25, 0.32, 0.71, 0.15) : Qt.rgba(0.25, 0.32, 0.71, 0.08)  // Keyboard selected
                 } else if (mouseArea.containsMouse) {
-                    return Qt.rgba(1, 1, 1, 0.06)  // Hover
+                    return Theme.hoverBackground  // Hover
                 } else {
-                    return Qt.rgba(1, 1, 1, 0.03)  // Default
+                    return Theme.isDark ? Qt.rgba(1, 1, 1, 0.03) : Qt.rgba(0, 0, 0, 0.02)  // Default
                 }
             }
             radius: 6
             border.width: 1
-            border.color: index === root.keyboardSelectedIndex ? Qt.rgba(0.25, 0.32, 0.71, 0.3) : Qt.rgba(1, 1, 1, 0.06)
+            border.color: index === root.keyboardSelectedIndex ? Theme.selectedBackground : Theme.isDark ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(0, 0, 0, 0.08)
             
             Behavior on color {
                 ColorAnimation { duration: 150 }
@@ -141,14 +141,14 @@ Item {
                 Rectangle {
                     Layout.preferredWidth: 44
                     Layout.preferredHeight: 44
-                    color: Qt.rgba(1, 1, 1, 0.05)
+                    color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
                     radius: 4
                     
                     Text {
                         anchors.centerIn: parent
                         text: PlaylistManager.isSpecialPlaylist(modelData) ? "♫" : "♪"
                         font.pixelSize: 24
-                        color: PlaylistManager.isSpecialPlaylist(modelData) ? "#4a9eff" : "#808080"
+                        color: PlaylistManager.isSpecialPlaylist(modelData) ? "#4a9eff" : Theme.tertiaryText
                     }
                 }
                 
@@ -159,7 +159,7 @@ Item {
                     
                     Label {
                         text: modelData
-                        color: "white"
+                        color: Theme.primaryText
                         font.pixelSize: 14
                         font.weight: Font.DemiBold
                         elide: Text.ElideRight
@@ -176,13 +176,13 @@ Item {
                                 var count = PlaylistManager.getPlaylistTrackCount(modelData)
                                 return count + " track" + (count !== 1 ? "s" : "")
                             }
-                            color: "#808080"
+                            color: Theme.tertiaryText
                             font.pixelSize: 11
                         }
                         
                         Label {
                             text: "•"
-                            color: "#606060"
+                            color: Theme.tertiaryText
                             font.pixelSize: 11
                         }
                         
@@ -191,19 +191,19 @@ Item {
                                 var duration = PlaylistManager.getPlaylistDuration(modelData)
                                 return formatDuration(duration)
                             }
-                            color: "#808080"
+                            color: Theme.tertiaryText
                             font.pixelSize: 11
                         }
                         
                         Label {
                             text: "•"
-                            color: "#606060"
+                            color: Theme.tertiaryText
                             font.pixelSize: 11
                         }
                         
                         Label {
                             text: PlaylistManager.getPlaylistModifiedDate(modelData)
-                            color: "#808080"
+                            color: Theme.tertiaryText
                             font.pixelSize: 11
                         }
                     }
@@ -219,14 +219,14 @@ Item {
                         width: 28
                         height: 28
                         radius: 4
-                        color: renameMouseArea.containsMouse ? Qt.rgba(0, 0.5, 1, 0.2) : Qt.rgba(1, 1, 1, 0.05)
+                        color: renameMouseArea.containsMouse ? Qt.rgba(0, 0.5, 1, 0.2) : Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
                         visible: (mouseArea.containsMouse || renameMouseArea.containsMouse || deleteMouseArea.containsMouse) && !PlaylistManager.isSpecialPlaylist(modelData)
                         
                         Image {
                             anchors.centerIn: parent
                             width: 16
                             height: 16
-                            source: "qrc:/resources/icons/text-input.svg"
+                            source: Theme.isDark ? "qrc:/resources/icons/text-input.svg" : "qrc:/resources/icons/text-input-dark.svg"
                             sourceSize.width: 32
                             sourceSize.height: 32
                         }
@@ -252,16 +252,39 @@ Item {
                         width: 28
                         height: 28
                         radius: 4
-                        color: deleteMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
+                        color: deleteMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
                         visible: (mouseArea.containsMouse || renameMouseArea.containsMouse || deleteMouseArea.containsMouse) && !PlaylistManager.isSpecialPlaylist(modelData)
                         
-                        Image {
+                        Item {
                             anchors.centerIn: parent
                             width: 16
                             height: 16
-                            source: deleteMouseArea.containsMouse ? "qrc:/resources/icons/trash-can-open-lid.svg" : "qrc:/resources/icons/trash-can-closed-lid.svg"
-                            sourceSize.width: 32
-                            sourceSize.height: 32
+                            
+                            Image {
+                                id: closedLidIcon
+                                anchors.fill: parent
+                                source: Theme.isDark ? "qrc:/resources/icons/trash-can-closed-lid.svg" : "qrc:/resources/icons/trash-can-closed-lid-dark.svg"
+                                sourceSize.width: 32
+                                sourceSize.height: 32
+                                opacity: deleteMouseArea.containsMouse ? 0 : 1
+                                
+                                Behavior on opacity {
+                                    NumberAnimation { duration: 150 }
+                                }
+                            }
+                            
+                            Image {
+                                id: openLidIcon
+                                anchors.fill: parent
+                                source: Theme.isDark ? "qrc:/resources/icons/trash-can-open-lid.svg" : "qrc:/resources/icons/trash-can-open-lid-dark.svg"
+                                sourceSize.width: 32
+                                sourceSize.height: 32
+                                opacity: deleteMouseArea.containsMouse ? 1 : 0
+                                
+                                Behavior on opacity {
+                                    NumberAnimation { duration: 150 }
+                                }
+                            }
                         }
                         
                         MouseArea {
@@ -325,7 +348,7 @@ Item {
         Label {
             anchors.centerIn: parent
             text: "No playlists yet\n\nSave the current queue to create your first playlist"
-            color: "#808080"
+            color: Theme.tertiaryText
             font.pixelSize: 12
             horizontalAlignment: Text.AlignHCenter
             visible: playlistListView.count === 0
@@ -404,9 +427,9 @@ Item {
             width: 360
             height: 180
             radius: 8
-            color: Qt.rgba(0.1, 0.1, 0.1, 0.95)
+            color: Theme.isDark ? Qt.rgba(0.1, 0.1, 0.1, 0.95) : Qt.rgba(0.95, 0.95, 0.95, 0.95)
             border.width: 1
-            border.color: Qt.rgba(1, 1, 1, 0.1)
+            border.color: Theme.borderColor
             
             MouseArea {
                 anchors.fill: parent
@@ -420,7 +443,7 @@ Item {
                 
                 Label {
                     text: "Rename playlist"
-                    color: "white"
+                    color: Theme.primaryText
                     font.pixelSize: 16
                     font.weight: Font.DemiBold
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -430,18 +453,18 @@ Item {
                     id: renameTextField
                     width: parent.width
                     text: renamePopup.newPlaylistName
-                    color: "white"
+                    color: Theme.primaryText
                     font.pixelSize: 14
                     selectByMouse: true
                     selectionColor: Qt.rgba(0, 0.5, 1, 0.3)
-                    selectedTextColor: "white"
+                    selectedTextColor: Theme.primaryText
                     placeholderText: "Enter new playlist name"
-                    placeholderTextColor: "#606060"
+                    placeholderTextColor: Theme.tertiaryText
                     
                     background: Rectangle {
-                        color: Qt.rgba(1, 1, 1, 0.05)
+                        color: Theme.inputBackground
                         border.width: 1
-                        border.color: renameTextField.activeFocus ? Qt.rgba(0, 0.5, 1, 0.5) : Qt.rgba(1, 1, 1, 0.1)
+                        border.color: renameTextField.activeFocus ? Theme.linkColor : Theme.borderColor
                         radius: 4
                     }
                     
@@ -493,7 +516,7 @@ Item {
                         width: 100
                         height: 36
                         radius: 4
-                        color: cancelRenameMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(1, 1, 1, 0.1)
+                        color: cancelRenameMouseArea.containsMouse ? Theme.hoverBackground : Theme.isDark ? Qt.rgba(1, 1, 1, 0.1) : Qt.rgba(0, 0, 0, 0.1)
                         
                         Behavior on color {
                             ColorAnimation { duration: 150 }
@@ -502,7 +525,7 @@ Item {
                         Label {
                             anchors.centerIn: parent
                             text: "Cancel"
-                            color: "white"
+                            color: Theme.primaryText
                             font.pixelSize: 13
                         }
                         
@@ -542,7 +565,7 @@ Item {
                         Label {
                             anchors.centerIn: parent
                             text: "Rename"
-                            color: "white"
+                            color: Theme.primaryText
                             font.pixelSize: 13
                             font.weight: Font.DemiBold
                         }
@@ -603,9 +626,9 @@ Item {
             width: 320
             height: 140
             radius: 8
-            color: Qt.rgba(0.1, 0.1, 0.1, 0.95)
+            color: Theme.isDark ? Qt.rgba(0.1, 0.1, 0.1, 0.95) : Qt.rgba(0.95, 0.95, 0.95, 0.95)
             border.width: 1
-            border.color: Qt.rgba(1, 1, 1, 0.1)
+            border.color: Theme.borderColor
             
             MouseArea {
                 anchors.fill: parent
@@ -619,7 +642,7 @@ Item {
                 
                 Label {
                     text: "Delete playlist \"" + deleteConfirmPopup.playlistName + "\"?"
-                    color: "white"
+                    color: Theme.primaryText
                     font.pixelSize: 14
                     anchors.horizontalCenter: parent.horizontalCenter
                     horizontalAlignment: Text.AlignHCenter
@@ -636,7 +659,7 @@ Item {
                         width: 100
                         height: 36
                         radius: 4
-                        color: cancelButtonMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(1, 1, 1, 0.1)
+                        color: cancelButtonMouseArea.containsMouse ? Theme.hoverBackground : Theme.isDark ? Qt.rgba(1, 1, 1, 0.1) : Qt.rgba(0, 0, 0, 0.1)
                         
                         Behavior on color {
                             ColorAnimation { duration: 150 }
@@ -645,7 +668,7 @@ Item {
                         Label {
                             anchors.centerIn: parent
                             text: "Cancel"
-                            color: "white"
+                            color: Theme.primaryText
                             font.pixelSize: 13
                         }
                         
@@ -674,7 +697,7 @@ Item {
                         Label {
                             anchors.centerIn: parent
                             text: "Delete"
-                            color: "white"
+                            color: Theme.primaryText
                             font.pixelSize: 13
                             font.weight: Font.DemiBold
                         }

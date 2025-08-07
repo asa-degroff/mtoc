@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Effects
+import Mtoc.Backend 1.0
 
 Popup {
     id: root
@@ -54,7 +55,7 @@ Popup {
     
     // Semi-transparent background overlay with click handler
     Overlay.modal: Rectangle {
-        color: Qt.rgba(0, 0, 0, 0.3)  // Dark overlay for better contrast
+        color: Theme.isDark ? Qt.rgba(0, 0, 0, 0.3) : Qt.rgba(0, 0, 0, 0.2)
         
         MouseArea {
             anchors.fill: parent
@@ -63,15 +64,21 @@ Popup {
     }
     
     background: Rectangle {
-        color: Qt.rgba(0.12, 0.12, 0.12, 0.5)
+        color: Theme.isDark ? Qt.rgba(0.12, 0.12, 0.12, 0.95) : Qt.rgba(1, 1, 1, 0.95)
         radius: 12
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.15)
+        border.color: Theme.edgeLineColor
         
         // Add a subtle gradient
         gradient: Gradient {
-            GradientStop { position: 0.0; color: Qt.rgba(0.14, 0.14, 0.14, 0.95) }
-            GradientStop { position: 1.0; color: Qt.rgba(0.10, 0.10, 0.10, 0.95) }
+            GradientStop { 
+                position: 0.0
+                color: Theme.isDark ? Qt.rgba(0.14, 0.14, 0.14, 0.95) : Qt.rgba(1, 1, 1, 0.95)
+            }
+            GradientStop { 
+                position: 1.0
+                color: Theme.isDark ? Qt.rgba(0.10, 0.10, 0.10, 0.95) : Qt.rgba(0.98, 0.98, 0.98, 0.95)
+            }
         }
         
         // Drop shadow effect
@@ -81,7 +88,7 @@ Popup {
             shadowHorizontalOffset: 0
             shadowVerticalOffset: 4
             shadowBlur: 0.8
-            shadowColor: Qt.rgba(0, 0, 0, 0.6)
+            shadowColor: Theme.isDark ? Qt.rgba(0, 0, 0, 0.6) : Qt.rgba(0, 0, 0, 0.2)
         }
     }
     
@@ -129,7 +136,7 @@ Popup {
             text: "Queue has been modified"
             font.pixelSize: 16
             font.weight: Font.DemiBold
-            color: "white"
+            color: Theme.primaryText
             horizontalAlignment: Text.AlignHCenter
         }
         
@@ -144,7 +151,7 @@ Popup {
                 }
             }
             font.pixelSize: 14
-            color: "#cccccc"
+            color: Theme.secondaryText
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideMiddle
         }
@@ -170,19 +177,25 @@ Popup {
                 
                 background: Rectangle {
                     color: {
-                        if (parent.isFocused) return Qt.rgba(0.3, 0.36, 0.61, 1.0)
-                        if (parent.hovered) return Qt.rgba(0.23, 0.29, 0.54, 0.9)
-                        return Qt.rgba(0.16, 0.23, 0.48, 0.8)
+                        if (parent.isFocused) {
+                            return Theme.isDark ? Qt.lighter(Theme.selectedBackground, 1.2) : Qt.darker(Theme.selectedBackground, 1.1)
+                        }
+                        if (parent.hovered) {
+                            return Theme.isDark ? Qt.lighter(Theme.selectedBackground, 1.1) : Qt.darker(Theme.selectedBackground, 1.05)
+                        }
+                        return Theme.selectedBackground
                     }
                     radius: 4
                     border.width: parent.isFocused ? 2 : 1
-                    border.color: parent.isFocused ? Qt.rgba(1, 1, 1, 0.4) : Qt.rgba(1, 1, 1, 0.15)
+                    border.color: parent.isFocused ? 
+                        (Theme.isDark ? Qt.rgba(1, 1, 1, 0.4) : Qt.rgba(0, 0, 0, 0.3)) : 
+                        (Theme.isDark ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(0, 0, 0, 0.15))
                 }
                 
                 contentItem: Text {
                     text: parent.text
                     font: parent.font
-                    color: "white"
+                    color: "white"  // Keep white text on primary button
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
@@ -210,19 +223,25 @@ Popup {
                 
                 background: Rectangle {
                     color: {
-                        if (parent.isFocused) return Qt.rgba(0.35, 0.35, 0.35, 0.9)
-                        if (parent.hovered) return Qt.rgba(0.25, 0.25, 0.25, 0.8)
-                        return Qt.rgba(0.2, 0.2, 0.2, 0.7)
+                        if (parent.isFocused) {
+                            return Theme.isDark ? Qt.rgba(0.35, 0.35, 0.35, 0.9) : Qt.rgba(0.85, 0.85, 0.85, 0.9)
+                        }
+                        if (parent.hovered) {
+                            return Theme.isDark ? Qt.rgba(0.25, 0.25, 0.25, 0.8) : Qt.rgba(0.9, 0.9, 0.9, 0.8)
+                        }
+                        return Theme.isDark ? Qt.rgba(0.2, 0.2, 0.2, 0.7) : Qt.rgba(0.95, 0.95, 0.95, 0.7)
                     }
                     radius: 4
                     border.width: parent.isFocused ? 2 : 1
-                    border.color: parent.isFocused ? Qt.rgba(1, 1, 1, 0.3) : Qt.rgba(1, 1, 1, 0.1)
+                    border.color: parent.isFocused ? 
+                        (Theme.isDark ? Qt.rgba(1, 1, 1, 0.3) : Qt.rgba(0, 0, 0, 0.2)) : 
+                        Theme.edgeLineColor
                 }
                 
                 contentItem: Text {
                     text: parent.text
                     font: parent.font
-                    color: "white"
+                    color: Theme.primaryText
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
@@ -250,19 +269,25 @@ Popup {
                 
                 background: Rectangle {
                     color: {
-                        if (parent.isFocused) return Qt.rgba(0.35, 0.35, 0.35, 0.9)
-                        if (parent.hovered) return Qt.rgba(0.25, 0.25, 0.25, 0.8)
-                        return Qt.rgba(0.2, 0.2, 0.2, 0.7)
+                        if (parent.isFocused) {
+                            return Theme.isDark ? Qt.rgba(0.35, 0.35, 0.35, 0.9) : Qt.rgba(0.85, 0.85, 0.85, 0.9)
+                        }
+                        if (parent.hovered) {
+                            return Theme.isDark ? Qt.rgba(0.25, 0.25, 0.25, 0.8) : Qt.rgba(0.9, 0.9, 0.9, 0.8)
+                        }
+                        return Theme.isDark ? Qt.rgba(0.2, 0.2, 0.2, 0.7) : Qt.rgba(0.95, 0.95, 0.95, 0.7)
                     }
                     radius: 4
                     border.width: parent.isFocused ? 2 : 1
-                    border.color: parent.isFocused ? Qt.rgba(1, 1, 1, 0.3) : Qt.rgba(1, 1, 1, 0.1)
+                    border.color: parent.isFocused ? 
+                        (Theme.isDark ? Qt.rgba(1, 1, 1, 0.3) : Qt.rgba(0, 0, 0, 0.2)) : 
+                        Theme.edgeLineColor
                 }
                 
                 contentItem: Text {
                     text: parent.text
                     font: parent.font
-                    color: "white"
+                    color: Theme.primaryText
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
@@ -293,19 +318,25 @@ Popup {
                 
                 background: Rectangle {
                     color: {
-                        if (parent.isFocused) return Qt.rgba(0.33, 0.33, 0.33, 0.7)
-                        if (parent.hovered) return Qt.rgba(0.23, 0.23, 0.23, 0.6)
-                        return Qt.rgba(0.16, 0.16, 0.16, 0.5)
+                        if (parent.isFocused) {
+                            return Theme.isDark ? Qt.rgba(0.33, 0.33, 0.33, 0.7) : Qt.rgba(0.8, 0.8, 0.8, 0.7)
+                        }
+                        if (parent.hovered) {
+                            return Theme.isDark ? Qt.rgba(0.23, 0.23, 0.23, 0.6) : Qt.rgba(0.85, 0.85, 0.85, 0.6)
+                        }
+                        return Theme.isDark ? Qt.rgba(0.16, 0.16, 0.16, 0.5) : Qt.rgba(0.9, 0.9, 0.9, 0.5)
                     }
                     radius: 4
                     border.width: parent.isFocused ? 2 : 1
-                    border.color: parent.isFocused ? Qt.rgba(1, 1, 1, 0.4) : Qt.rgba(1, 1, 1, 0.2)
+                    border.color: parent.isFocused ? 
+                        (Theme.isDark ? Qt.rgba(1, 1, 1, 0.4) : Qt.rgba(0, 0, 0, 0.3)) : 
+                        Theme.edgeLineColor
                 }
                 
                 contentItem: Text {
                     text: parent.text
                     font: parent.font
-                    color: "#cccccc"
+                    color: Theme.secondaryText
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }

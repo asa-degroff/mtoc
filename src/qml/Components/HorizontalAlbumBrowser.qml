@@ -18,12 +18,15 @@ Item {
     property bool isSnapping: false
     property bool isUserScrolling: false
     property int targetJumpIndex: -1  // Index we're jumping to with jumpToAlbum
-    
+
     signal albumClicked(var album)
     signal centerAlbumChanged(var album)
+    signal albumTitleClicked(string artistName, string albumTitle)
     
     // Track component destruction state
     property bool isDestroying: false
+    // Track initialization state to prevent animations during startup
+    property bool isInitializing: true
     
     // Queue action dialog
     QueueActionDialog {
@@ -53,7 +56,7 @@ Item {
         id: sharedAlbumContextMenu
         property var currentAlbumData: null
         
-        MenuItem {
+        StyledMenuItem {
             text: "Play"
             onTriggered: {
                 if (sharedAlbumContextMenu.currentAlbumData) {
@@ -93,7 +96,7 @@ Item {
             }
         }
         
-        MenuItem {
+        StyledMenuItem {
             text: "Play Next"
             onTriggered: {
                 if (sharedAlbumContextMenu.currentAlbumData && MediaPlayer) {
@@ -102,7 +105,7 @@ Item {
             }
         }
         
-        MenuItem {
+        StyledMenuItem {
             text: "Play Last"
             onTriggered: {
                 if (sharedAlbumContextMenu.currentAlbumData && MediaPlayer) {
@@ -112,27 +115,67 @@ Item {
         }
     }
     
+    // Pixel alignment helper functions
+    function snapToPixel(value) {
+        return Math.round(value)
+    }
+    
+    function snapToHalfPixel(value) {
+        return Math.round(value * 2) / 2
+    }
+    
     Component.onCompleted: {
         updateSortedIndices()
         // Restore carousel position after indices are sorted
         restoreCarouselPosition()
+        // Clear initialization flag after component is ready
+        Qt.callLater(function() {
+            if (!root || root.isDestroying) return
+            isInitializing = false
+        })
     }
     
     Component.onDestruction: {
         // Mark that we're destroying to prevent any further operations
         isDestroying = true
         
+        // Force all delegates to clear their resources
+        if (listView && listView.contentItem) {
+            for (var i = 0; i < listView.contentItem.children.length; i++) {
+                var item = listView.contentItem.children[i]
+                if (item) {
+                    // Clear reflection
+                    if (item.reflection) {
+                        item.reflection.sourceItem = null
+                        item.reflection.live = false
+                    }
+                    // Disable connections
+                    if (item.listViewConnection) {
+                        item.listViewConnection.enabled = false
+                    }
+                    if (item.albumImageConnection) {
+                        item.albumImageConnection.enabled = false
+                    }
+                    // Disable layer rendering
+                    if (item.layer) {
+                        item.layer.enabled = false
+                        item.layer.effect = null
+                    }
+                }
+            }
+        }
+        
         // Stop animations
-        snapAnimation.stop()
-        contentXBehavior.enabled = false
+        if (snapAnimation) snapAnimation.stop()
+        if (contentXBehavior) contentXBehavior.enabled = false
         
         // Stop all timers to prevent callbacks during destruction
-        savePositionTimer.stop()
-        velocityTimer.stop()
-        snapIndexTimer.stop()
-        centerAlbumTimer.stop()
-        scrollEndTimer.stop()
-        gcTimer.stop()
+        if (savePositionTimer) savePositionTimer.stop()
+        if (velocityTimer) velocityTimer.stop()
+        if (snapIndexTimer) snapIndexTimer.stop()
+        if (centerAlbumTimer) centerAlbumTimer.stop()
+        if (scrollEndTimer) scrollEndTimer.stop()
+        if (gcTimer) gcTimer.stop()
     }
     
     // Timer to save position after user stops scrolling
@@ -141,8 +184,8 @@ Item {
         interval: 250  // Save 250ms after user stops scrolling
         running: false
         onTriggered: {
-            if (isDestroying) {
-                savePositionTimer.stop()
+            if (!root || isDestroying) {
+                if (savePositionTimer) savePositionTimer.stop()
                 return
             }
             
@@ -167,7 +210,7 @@ Item {
                 var sourceAlbums = (LibraryManager.albumModel) ? LibraryManager.albumModel : []
                 for (var i = 0; i < sourceAlbums.length; i++) {
                     if (sourceAlbums[i].id === currentAlbumId) {
-                        jumpToAlbum(sourceAlbums[i])
+                        jumpToAlbum(sourceAlbums[i], false)  // Use animation for library changes
                         return
                     }
                 }
@@ -245,7 +288,8 @@ Item {
             for (var i = 0; i < sourceAlbums.length; i++) {
                 if (sourceAlbums[i].id === savedAlbumId) {
                     console.log("HorizontalAlbumBrowser: Restoring carousel position to album:", sourceAlbums[i].title)
-                    jumpToAlbum(sourceAlbums[i])
+                    // During initialization, jump without animation
+                    jumpToAlbum(sourceAlbums[i], isInitializing)
                     return
                 }
             }
@@ -255,7 +299,7 @@ Item {
     
     // Manual memory cleanup function that can be called when needed
     function clearDistantCache() {
-        if (isDestroying) return
+        if (!root || isDestroying) return
         
         console.log("HorizontalAlbumBrowser: Clearing distant image cache")
         
@@ -276,7 +320,7 @@ Item {
         }
     }
     
-    function jumpToAlbum(album) {
+    function jumpToAlbum(album, instant) {
         try {
             // Validate album parameter
             if (!album || typeof album !== "object" || typeof album.id === "undefined") {
@@ -297,12 +341,23 @@ Item {
                             // Store the target index for preloading
                             root.targetJumpIndex = sortedIndex
                             
-                            // Animate to the new index instead of jumping
-                            listView.currentIndex = sortedIndex
-                            selectedAlbum = currentAlbum
+                            if (instant) {
+                                // During initialization or when instant jump is requested
+                                // Set contentX directly to avoid animation
+                                var targetContentX = contentXForIndex(sortedIndex)
+                                listView.contentX = targetContentX
+                                listView.currentIndex = sortedIndex
+                                selectedAlbum = currentAlbum
+                                root.currentIndex = sortedIndex
+                            } else {
+                                // Animate to the new index
+                                listView.currentIndex = sortedIndex
+                                selectedAlbum = currentAlbum
+                            }
                             
                             // Clear target index after animation completes
                             Qt.callLater(function() {
+                                if (!root || root.isDestroying) return
                                 root.targetJumpIndex = -1
                             })
                             return
@@ -322,7 +377,8 @@ Item {
     function contentXForIndex(index) {
         var itemWidth = 220 + listView.spacing  // 220 - 165 = 55 effective width
         var centerOffset = listView.width / 2 - 110  // Center position
-        return index * itemWidth - centerOffset
+        // Snap to pixel boundary for sharp rendering
+        return snapToPixel(index * itemWidth - centerOffset)
     }
     
     // Get the minimum allowed contentX value
@@ -342,7 +398,7 @@ Item {
     function nearestIndex() {
         var itemWidth = 220 + listView.spacing  // 55 effective width
         var centerOffset = listView.width / 2 - 110
-        var centerX = listView.contentX + centerOffset
+        var centerX = snapToPixel(listView.contentX) + centerOffset
         var index = Math.round(centerX / itemWidth)
         return Math.max(0, Math.min(sortedAlbumIndices.length - 1, index))
     }
@@ -355,7 +411,7 @@ Item {
         ListView {
             id: listView
             anchors.fill: parent
-            anchors.topMargin: 30      // Increased margin to accommodate rotation
+            anchors.topMargin: 27      // change to slide the carousel up or down
             anchors.bottomMargin: 30    // Bottom margin for reflection and info bar
             model: sortedAlbumIndices.length  // Use length for delegate count
             orientation: ListView.Horizontal
@@ -388,8 +444,8 @@ Item {
                 property int triggerCount: 0
                 
                 onTriggered: {
-                    if (isDestroying || !root) {
-                        gcTimer.stop()
+                    if (!root || isDestroying) {
+                        if (gcTimer) gcTimer.stop()
                         return
                     }
                     
@@ -452,8 +508,8 @@ Item {
                 repeat: true
                 running: false
                 onTriggered: {
-                    if (isDestroying || !listView) {
-                        velocityTimer.stop()
+                    if (!root || isDestroying || !listView) {
+                        if (velocityTimer) velocityTimer.stop()
                         return
                     }
                     
@@ -505,6 +561,7 @@ Item {
                     if (root.isDestroying) return
                     
                     root.isSnapping = false
+
                     // Emit signal when snap animation completes and we have an album
                     if (root.isUserScrolling && root.selectedAlbum) {
                         root.centerAlbumChanged(root.selectedAlbum)
@@ -520,8 +577,8 @@ Item {
                 running: false
                 property int targetIndex: -1
                 onTriggered: {
-                    if (isDestroying || !root) {
-                        snapIndexTimer.stop()
+                    if (!root || isDestroying) {
+                        if (snapIndexTimer) snapIndexTimer.stop()
                         return
                     }
                     
@@ -537,8 +594,8 @@ Item {
                 interval: 100  // Wait for animation to complete
                 running: false
                 onTriggered: {
-                    if (isDestroying || !root) {
-                        centerAlbumTimer.stop()
+                    if (!root || isDestroying) {
+                        if (centerAlbumTimer) centerAlbumTimer.stop()
                         return
                     }
                     
@@ -554,8 +611,8 @@ Item {
                 interval: 100  // Wait 100ms after last scroll event
                 running: false
                 onTriggered: {
-                    if (isDestroying) {
-                        scrollEndTimer.stop()
+                    if (!root || isDestroying) {
+                        if (scrollEndTimer) scrollEndTimer.stop()
                         return
                     }
                     
@@ -642,11 +699,14 @@ Item {
                             snapAnimation.stop();
                             root.isSnapping = false;
                             
-                            // Directly update content position
+                            // Directly update content position with pixel snapping
                             var newContentX = listView.contentX - root.accumulatedDelta;
                             
                             // Clamp to bounds
                             newContentX = Math.max(minContentX(), Math.min(maxContentX(), newContentX));
+                            
+                            // Snap to pixel boundary for sharp rendering during scrolling
+                            newContentX = snapToPixel(newContentX);
                             
                             // Apply the new position
                             listView.contentX = newContentX;
@@ -744,7 +804,16 @@ Item {
             delegate: Item {
                 id: delegateItem
                 width: 220
-                height: 370  // Height for album plus reflection
+                height: 320  // Height for album plus reflection
+                
+                // Calculate if this item needs rotation (for conditional layer rendering)
+                property bool needsRotation: Math.abs(itemAngle) > 0.5
+                
+                // Only enable layer rendering for items that need rotation
+                // This ensures the center album renders directly without FBO overhead
+                layer.enabled: needsRotation
+                layer.samples: needsRotation ? 4 : 0  // 4x multisampling only when rotating
+                layer.smooth: true // Always smooth at the delegate level
                 
                 // Get the actual album data from the model using sorted index
                 property int sortedIndex: index
@@ -771,39 +840,51 @@ Item {
                 
                 // Handle delegate recycling with proper state reset
                 ListView.onReused: {
-                    // Force update sortedIndex to match new index
-                    sortedIndex = index
-                    
-                    // Reset any animation states
-                    if (snapAnimation.running) snapAnimation.stop()
-                    
-                    // Clear reflection and set to live mode temporarily for recycling
+                    // Clear old state
                     if (reflection) {
                         reflection.sourceItem = null
-                        reflection.live = true  // Enable live mode during recycling
+                        reflection.live = false
+                    }
+                    
+                    // Reset index for new use
+                    sortedIndex = index
+                    if (snapAnimation && snapAnimation.running) snapAnimation.stop()
+                    
+                    // Re-enable connections for the new item
+                    if (listViewConnection) listViewConnection.enabled = true
+                    if (albumImageConnection) albumImageConnection.enabled = true
+                    
+                    // Don't touch layer.enabled here - let the binding handle it
+                }
+                
+                // Immediate cleanup when delegate is removed
+                ListView.onRemove: {
+                    // Just clear the reflection to avoid holding references
+                    if (reflection) {
+                        reflection.sourceItem = null
+                        reflection.live = false
                     }
                 }
                 
-                // Animation for cleaning up when delegate is removed
-                SequentialAnimation {
-                    id: removeAnimation
-                    PropertyAction { target: delegateItem; property: "ListView.delayRemove"; value: true }
-                    ScriptAction {
-                        script: {
-                            // Clear all references before removal
-                            if (reflection) {
-                                reflection.sourceItem = null
-                            }
-                        }
+                // Clear all GPU resources when returned to pool
+                ListView.onPooled: {
+                    // Clear GPU resources when pooled
+                    if (reflection) {
+                        reflection.sourceItem = null
+                        reflection.live = false
                     }
-                    PropertyAction { target: delegateItem; property: "ListView.delayRemove"; value: false }
+                    // Connections will be re-enabled in onReused
+                    if (listViewConnection) listViewConnection.enabled = false
+                    if (albumImageConnection) albumImageConnection.enabled = false
+                    // Don't force layer.enabled = false, let binding handle it
                 }
-                
-                // Clean up when delegate is about to be recycled
-                ListView.onRemove: removeAnimation.start()
                 
                 Component.onDestruction: {
-                    // Final cleanup
+                    // Disable connections first
+                    if (listViewConnection) listViewConnection.enabled = false
+                    if (albumImageConnection) albumImageConnection.enabled = false
+                    
+                    // Clear reflection source
                     if (reflection) {
                         reflection.sourceItem = null
                     }
@@ -819,22 +900,24 @@ Item {
                     if (!root.isDestroying && reflection && reflection.live && reflection.sourceItem) {
                         // Set back to static mode after recycling position update
                         Qt.callLater(function() {
-                            if (reflection) {
-                                reflection.live = false
-                            }
+                            if (!delegateItem || root.isDestroying || !reflection) return
+                            reflection.live = false
                         })
                     }
                 }
                 
                 // Watch ListView scrolling to update reflections
                 Connections {
+                    id: listViewConnection
                     target: listView
-                    enabled: !root.isDestroying
+                    enabled: !root.isDestroying && !delegateItem.ListView.isPooled
                     
                     function onContentXChanged() {
+                        if (root.isDestroying || !delegateItem || delegateItem.ListView.isPooled) return
+                        
                         // When scrolling, check if this delegate's reflection state should change
                         if (reflection) {
-                            var shouldHaveReflection = absDistance < 800
+                            var shouldHaveReflection = absDistance < (listView.width / 2)
                             var hasReflection = reflection.sourceItem !== null
                             
                             if (shouldHaveReflection !== hasReflection) {
@@ -843,7 +926,7 @@ Item {
                                 
                                 // If enabling reflection and image is ready, update it
                                 if (shouldHaveReflection && reflection.sourceItem) {
-                                    if (albumImage.status === Image.Ready) {
+                                    if (albumImage && albumImage.status === Image.Ready) {
                                         reflection.scheduleUpdate()
                                     }
                                     // Also ensure it's not in live mode
@@ -857,7 +940,7 @@ Item {
                 }
                 
                 // Optimization: Skip expensive calculations for far-away items
-                property bool isVisible: absDistance < 800
+                property bool isVisible: absDistance < (listView.width / 2)
                 
                 // Track if this delegate is actively being scrolled to
                 property bool isTargetDelegate: listView.currentIndex === index
@@ -880,19 +963,23 @@ Item {
                     var phase3Spacing = 40
                     var sign = distance > 0 ? 1 : -1
                     
+                    var offset = 0
                     if (absDistance < 20) {
                         // Phase 1: Proportional slide in dead zone
-                        return sign * phase1Spacing * (absDistance / 20)
+                        offset = sign * phase1Spacing * (absDistance / 20)
                     } else if (absDistance < 60) {
                         // Phase 2: Maintain slide during rotation
-                        return sign * phase1Spacing
+                        offset = sign * phase1Spacing
                     } else if (absDistance < 80) {
                         // Phase 3: Additional slide after rotation
-                        return sign * (phase1Spacing + phase3Spacing * ((absDistance - 60) / 20))
+                        offset = sign * (phase1Spacing + phase3Spacing * ((absDistance - 60) / 20))
                     } else {
                         // Final spacing
-                        return sign * (phase1Spacing + phase3Spacing)
+                        offset = sign * (phase1Spacing + phase3Spacing)
                     }
+                    
+                    // Round to nearest pixel for sharp rendering
+                    return snapToPixel(offset)
                 }
                 
                 property real itemAngle: {
@@ -913,6 +1000,7 @@ Item {
                 
                 
                 z: {
+                    
                     // Center album has highest z-order
                     if (absDistance < 5) {
                         return 1000  // Ensure center album is always on top
@@ -939,14 +1027,21 @@ Item {
                 property real scaleAmount: {
                     if (!isVisible) return 0.85
                     
+                    var scale = 1.0
                     // Simplified piecewise linear scaling
-                    if (absDistance < 20) {
-                        return 1.0 - 0.001 * absDistance  // 1.0 to 0.98
+                    if (absDistance < 5) {
+                        // Near center - always exactly 1.0 for perfect sharpness
+                        scale = 1.0
+                    } else if (absDistance < 20) {
+                        scale = 1.0 - 0.001 * absDistance  // 1.0 to 0.98
                     } else if (absDistance < 60) {
-                        return 0.98 - 0.00325 * (absDistance - 20)  // 0.98 to 0.85
+                        scale = 0.98 - 0.00325 * (absDistance - 20)  // 0.98 to 0.85
                     } else {
-                        return 0.85
+                        scale = 0.85
                     }
+                    
+                    // Round to nearest 0.01 for precise but clean scaling
+                    return Math.round(scale * 100) / 100
                 }
                 
                 transform: [
@@ -954,8 +1049,8 @@ Item {
                         x: horizontalOffset
                     },
                     Scale {
-                        origin.x: delegateItem.width / 2
-                        origin.y: delegateItem.height / 2
+                        origin.x: snapToPixel(delegateItem.width / 2)
+                        origin.y: snapToPixel(delegateItem.height / 2)
                         xScale: scaleAmount
                         yScale: scaleAmount
                         
@@ -979,16 +1074,16 @@ Item {
                         origin.x: {
                             if (distance > 0) {
                                 // Moving right
-                                return delegateItem.width * 0.75
+                                return snapToPixel(delegateItem.width * 0.75)
                             } else if (distance < 0) {
                                 // Moving left
-                                return delegateItem.width * 0.25
+                                return snapToPixel(delegateItem.width * 0.25)
                             } else {
                                 // Center - default to middle
-                                return delegateItem.width / 2
+                                return snapToPixel(delegateItem.width / 2)
                             }
                         }
-                        origin.y: delegateItem.height / 2
+                        origin.y: snapToPixel(delegateItem.height / 2)
                         axis { x: 0; y: 1; z: 0 }
                         angle: itemAngle
                     }
@@ -1000,11 +1095,7 @@ Item {
                     anchors.top: parent.top
                     anchors.topMargin: 10  // Small margin to shift the album view up
                     width: 220
-                    height: 340  // Height for album + reflection
-                    
-                    // Conditional layer rendering - only for visible items near center
-                    layer.enabled: false // Disabled to improve performance
-                    layer.smooth: false
+                    height: 320  // Height for album + reflection (reduced from 340)
                     
                     Item {
                         id: albumContainer
@@ -1024,17 +1115,18 @@ Item {
                                 if (typeof albumData.hasArt === "undefined" || !albumData.hasArt) return ""
                                 if (typeof albumData.id === "undefined" || !albumData.id) return ""
                                 // Force loading for target delegates or nearby visible items
+                                // Request 400px size for up to 2x resolution scaling
                                 if (forceImageLoad || isVisible) {
                                     return "image://albumart/" + albumData.id + "/thumbnail/400"
                                 }
                                 return ""
                             }
-                            fillMode: Image.PreserveAspectCrop
+                            fillMode: Image.PreserveAspectCrop // Preserve aspect ratio and crop to fit
                             asynchronous: !isTargetDelegate  // Load synchronously for target delegate
-                            antialiasing: true
+                            //smooth: true // redundant with layer.smooth at the delegate level
+                            //smooth: needsRotation || absDistance > 5 // non-smoothed center album, results in pixel misalignment in some cases
+                            mipmap: false  // Disable mipmapping to avoid softness
                             cache: true  // Enable caching to prevent reloading
-                            sourceSize.width: 400  // 2x the display size for retina
-                            sourceSize.height: 400
                             
                             onStatusChanged: {
                                 if (status === Image.Error && !root.isDestroying) {
@@ -1125,10 +1217,11 @@ Item {
                     Item {
                         id: reflectionContainer
                         anchors.top: albumContainer.bottom
-                        anchors.topMargin: 2
+                        anchors.topMargin: 0  // Small overlap to prevent gap
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: albumContainer.width
-                        height: 120
+                        height: 180
+                        clip: true  // Ensure clean edges
                         
                         // Conditional reflection - only for visible items to reduce GPU load
                         ShaderEffectSource {
@@ -1138,8 +1231,14 @@ Item {
                             visible: sourceItem !== null  // Only visible when sourceItem is set
                             live: false  // Static reflection for better performance
                             recursive: false
+                            smooth: true  // Enable antialiasing for reflection
+                            mipmap: false  // Maintain sharpness
+                            format: ShaderEffectSource.RGBA8  // High quality format
+                            // Double texture resolution for better antialiasing (workaround for FBO limitation)
+                            //textureSize: Qt.size(albumContainer.width * 2, 360)
+                            samples: 4  // Enable multisampling where supported
                             // Capture the bottom portion of the album for reflection
-                            sourceRect: Qt.rect(0, albumContainer.height - 120, albumContainer.width, 120)
+                            sourceRect: Qt.rect(0, albumContainer.height - 180, albumContainer.width, 180)
                             transform: [
                                 Scale {
                                     yScale: -1
@@ -1155,22 +1254,37 @@ Item {
                         
                         // Watch for album image load completion to update reflection
                         Connections {
+                            id: albumImageConnection
                             target: albumImage
-                            enabled: !root.isDestroying && reflection
+                            enabled: !root.isDestroying && reflection && !delegateItem.ListView.isPooled
                             
                             function onStatusChanged() {
-                                if (albumImage.status === Image.Ready && reflection && reflection.sourceItem) {
+                                if (root.isDestroying || !delegateItem || delegateItem.ListView.isPooled) return
+                                if (albumImage && albumImage.status === Image.Ready && reflection && reflection.sourceItem) {
                                     reflection.scheduleUpdate()
                                 }
                             }
                         }
                         
-                        // Dark overlay to dim the reflection
+                        // Dark overlay to dim the reflection (60% black)
                         Rectangle {
                             anchors.fill: parent
                             color: Qt.rgba(0, 0, 0, 0.6)  // Semi-transparent black overlay
-                            opacity: 1.0
                         }
+                        
+                        // Gradient overlay for smooth edge transition
+                        // Rectangle {
+                        //     anchors.fill: parent
+                        //     gradient: Gradient {
+                        //         // Feather the top edge from opaque black to transparent
+                        //         GradientStop { position: 0.0; color: Qt.rgba(0, 0, 0, 1.0) }
+                        //         GradientStop { position: 0.02; color: Qt.rgba(0, 0, 0, 0.8) }
+                        //         GradientStop { position: 0.05; color: Qt.rgba(0, 0, 0, 0.5) }
+                        //         GradientStop { position: 0.1; color: Qt.rgba(0, 0, 0, 0.2) }
+                        //         GradientStop { position: 0.15; color: Qt.rgba(0, 0, 0, 0.0) }
+                        //         GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.0) }
+                        //     }
+                        // }
                     }
                 }
             }

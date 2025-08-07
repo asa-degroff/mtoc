@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(mtoc VERSION 0.1 LANGUAGES CXX)
+project(mtoc VERSION 2.1 LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -104,15 +104,25 @@ qt_add_qml_module(mtoc
     VERSION 1.0
     QML_FILES
         src/qml/Main.qml
+        src/qml/Components/AlbumArtPopup.qml
         src/qml/Components/BlurredBackground.qml
+        src/qml/Components/CompactNowPlayingBar.qml
         src/qml/Components/HorizontalAlbumBrowser.qml
         src/qml/Components/PlaybackControls.qml
+        src/qml/Components/QueueActionDialog.qml
+        src/qml/Components/QueueListView.qml
+        src/qml/Components/QueuePopup.qml
+        src/qml/Components/ResizeHandler.qml
+        src/qml/Components/SearchBar.qml
+        src/qml/Components/StyledMenu.qml
+        src/qml/Components/StyledMenuItem.qml
+        src/qml/Components/StyledMenuSeparator.qml
         src/qml/Components/ThumbnailGridDelegate.qml
         src/qml/Views/LibraryPane.qml
         src/qml/Views/NowPlayingPane.qml
         src/qml/Views/PlaylistView.qml
-        src/qml/Constants.qml
-        src/qml/Styles.qml
+        src/qml/Views/SettingsWindow.qml
+        src/qml/Theme.qml
 )
 
 install(TARGETS mtoc_app

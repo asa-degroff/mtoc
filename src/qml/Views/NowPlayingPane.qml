@@ -120,7 +120,7 @@ Item {
     // Temporary debug rectangle
     Rectangle {
         anchors.fill: parent
-        color: "#1a1a1a"
+        color: Theme.backgroundColor
         z: -2
     }
     
@@ -154,19 +154,19 @@ Item {
         }
     }
     
-    // Blurred background using thumbnail for efficiency
+    // Blurred background
     BlurredBackground {
         anchors.fill: parent
         source: thumbnailUrl
         blurRadius: 512
-        backgroundOpacity: 0.4
+        backgroundOpacity: 0.7
     }
     
-    // Dark overlay for better contrast
+    // Overlay for better contrast
     Rectangle {
         anchors.fill: parent
-        color: "black"
-        opacity: 0.4
+        color: Theme.overlayColor
+        opacity: Theme.nowPlayingOverlayOpacity
     }
     
     ColumnLayout {
@@ -266,14 +266,14 @@ Item {
                                 // Placeholder when no album art
                                 Rectangle {
                                     anchors.fill: parent
-                                    color: "#202020"
+                                    color: Theme.panelBackground
                                     visible: parent.status !== Image.Ready || parent.source == ""
                                     
                                     Text {
                                         anchors.centerIn: parent
                                         text: "♪"
                                         font.pixelSize: parent.width * 0.3
-                                        color: "#404040"
+                                        color: Theme.inputBackgroundHover
                                     }
                                 }
                                 
@@ -322,14 +322,14 @@ Item {
                         // Placeholder when no album art
                         Rectangle {
                             anchors.fill: parent
-                            color: "#202020"
+                            color: Theme.panelBackground
                             visible: albumArt.status !== Image.Ready || !albumArtUrl
                             
                             Text {
                                 anchors.centerIn: parent
                                 text: "♪"
                                 font.pixelSize: parent.width * 0.3
-                                color: "#404040"
+                                color: Theme.inputBackgroundHover
                             }
                         }
                     }
@@ -373,127 +373,13 @@ Item {
                             spacing: 8
                         
                         // Queue header
-                        RowLayout {
+                        QueueHeader {
                             Layout.fillWidth: true
+                            showPlaylistSavedMessage: root.showPlaylistSavedMessage
+                            forceLightText: true // Always use light text on dark background
                             
-                            Label {
-                                text: "Queue"
-                                font.pixelSize: 16
-                                font.weight: Font.DemiBold
-                                color: "white"
-                            }
-                            
-                            Item { Layout.fillWidth: true }
-                            
-                            Label {
-                                text: showPlaylistSavedMessage ? "Playlist Saved" : 
-                                      MediaPlayer.queueLength + " track" + (MediaPlayer.queueLength !== 1 ? "s" : "") + ", " + formatQueueDuration(MediaPlayer.totalQueueDuration)
-                                font.pixelSize: 12
-                                color: showPlaylistSavedMessage ? "#60ff60" : "#808080"
-                                
-                                Behavior on color {
-                                    ColorAnimation { duration: 200 }
-                                }
-                                
-                                Behavior on opacity {
-                                    NumberAnimation { duration: 200 }
-                                }
-                            }
-                            
-                            // Save queue button
-                            Rectangle {
-                                Layout.preferredWidth: 30
-                                Layout.preferredHeight: 30
-                                radius: 4
-                                color: saveQueueMouseArea.containsMouse ? Qt.rgba(0, 1, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
-                                border.width: 1
-                                border.color: Qt.rgba(1, 1, 1, 0.3)
-                                visible: MediaPlayer.queueLength > 0 && !MediaPlayer.isPlayingVirtualPlaylist
-                                
-                                Behavior on color {
-                                    ColorAnimation { duration: 150 }
-                                }
-                                
-                                Image {
-                                    anchors.centerIn: parent
-                                    width: 18
-                                    height: 18
-                                    source: "qrc:/resources/icons/save.svg"
-                                    sourceSize.width: 40
-                                    sourceSize.height: 40
-                                    opacity: saveQueueMouseArea.containsMouse ? 0.7 : 1.0
-                                    
-                                    Behavior on opacity {
-                                        NumberAnimation { duration: 150 }
-                                    }
-                                }
-                                
-                                MouseArea {
-                                    id: saveQueueMouseArea
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        if (PlaylistManager.saveQueueAsPlaylist()) {
-                                            console.log("Queue saved as playlist");
-                                        }
-                                    }
-                                }
-                                
-                                ToolTip {
-                                    visible: saveQueueMouseArea.containsMouse
-                                    text: "Save queue as playlist"
-                                    delay: 500
-                                }
-                            }
-                            
-                            // Clear queue button
-                            Rectangle {
-                                Layout.preferredWidth: 30
-                                Layout.preferredHeight: 30
-                                radius: 4
-                                color: clearQueueMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
-                                border.width: 1
-                                border.color: Qt.rgba(1, 1, 1, 0.3)
-                                visible: (MediaPlayer.queueLength > 0 || MediaPlayer.canUndoClear) && !MediaPlayer.isPlayingVirtualPlaylist
-                                
-                                Behavior on color {
-                                    ColorAnimation { duration: 150 }
-                                }
-                                
-                                Image {
-                                    anchors.centerIn: parent
-                                    width: 18
-                                    height: 18
-                                    source: MediaPlayer.canUndoClear ? "qrc:/resources/icons/undo.svg" : "qrc:/resources/icons/bomb.svg"
-                                    sourceSize.width: 40
-                                    sourceSize.height: 40
-                                    opacity: clearQueueMouseArea.containsMouse ? 0.7 : 1.0
-                                    
-                                    Behavior on opacity {
-                                        NumberAnimation { duration: 150 }
-                                    }
-                                }
-                                
-                                MouseArea {
-                                    id: clearQueueMouseArea
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        if (MediaPlayer.canUndoClear) {
-                                            MediaPlayer.undoClearQueue();
-                                        } else {
-                                            queueListView.clearAllTracks();
-                                        }
-                                    }
-                                }
-                                
-                                ToolTip {
-                                    visible: clearQueueMouseArea.containsMouse
-                                    text: MediaPlayer.canUndoClear ? "Undo clear queue" : "Clear queue"
-                                    delay: 500
-                                }
+                            onClearQueueRequested: {
+                                queueListView.clearAllTracks();
                             }
                         }
                         
@@ -505,6 +391,7 @@ Item {
                             queueModel: MediaPlayer.queue
                             currentPlayingIndex: MediaPlayer.currentQueueIndex
                             focus: root.queueVisible
+                            forceLightText: true // Always use light text on dark background
                             
                             onTrackDoubleClicked: function(index) {
                                 MediaPlayer.playTrackAt(index);
@@ -541,7 +428,7 @@ Item {
                     text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.title : ""
                     font.pixelSize: 24
                     font.weight: Font.DemiBold
-                    color: titleMouseArea.containsMouse ? "#ffffff" : "#e0e0e0"
+                    color: titleMouseArea.containsMouse ? Theme.primaryText : Theme.secondaryText
                     elide: Text.ElideRight
                     horizontalAlignment: Text.AlignHCenter
                     
@@ -578,7 +465,7 @@ Item {
                     anchors.fill: parent
                     text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.artist : ""
                     font.pixelSize: 18
-                    color: artistMouseArea.containsMouse ? "#d0d0d0" : "#b0b0b0"
+                    color: artistMouseArea.containsMouse ? Theme.secondaryText : Theme.tertiaryText
                     elide: Text.ElideRight
                     horizontalAlignment: Text.AlignHCenter
                     
@@ -615,7 +502,7 @@ Item {
                     anchors.fill: parent
                     text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.album : ""
                     font.pixelSize: 16
-                    color: albumMouseArea.containsMouse ? "#a0a0a0" : "#808080"
+                    color: albumMouseArea.containsMouse ? Theme.tertiaryText : Theme.tertiaryText
                     elide: Text.ElideRight
                     horizontalAlignment: Text.AlignHCenter
                     
@@ -695,14 +582,14 @@ Item {
                     text: "No Music"
                     font.pixelSize: 32
                     font.bold: true
-                    color: "white"
+                    color: Theme.primaryText
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
                 
                 Label {
                     text: "Add a folder and scan to build your library"
                     font.pixelSize: 16
-                    color: placeholderMouseArea.containsMouse ? "white" : Qt.rgba(1, 1, 1, 0.7)
+                    color: placeholderMouseArea.containsMouse ? Theme.primaryText : Theme.secondaryText
                     anchors.horizontalCenter: parent.horizontalCenter
                     font.underline: placeholderMouseArea.containsMouse
                     

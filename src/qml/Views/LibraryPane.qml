@@ -14,10 +14,10 @@ Item {
     height: parent.height
     focus: true  // Enable keyboard focus for the whole pane
     
-    // Ensure we have a dark background as a base
+    // Ensure we have a background as a base
     Rectangle {
         anchors.fill: parent
-        color: "#1a1a1a"
+        color: Theme.backgroundColor
         z: -3  // Behind everything else
     }
     
@@ -686,15 +686,15 @@ Item {
         id: blurredBg
         anchors.fill: parent
         source: thumbnailUrl
-        backgroundOpacity: 0.8
+        backgroundOpacity: 0.9
         z: -2  // Put this behind the dark overlay
     }
     
-    // Dark overlay for better contrast
+    // Overlay for better contrast
     Rectangle {
         anchors.fill: parent
-        color: "black"
-        opacity: 0.65  // Increased to compensate for reduced blur
+        color: Theme.overlayColor
+        opacity: Theme.overlayOpacity
         z: -1  // This should be above the blurred background but below content
     }
     
@@ -704,8 +704,8 @@ Item {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         width: 1
-        color: Qt.rgba(1, 1, 1, 0.1)  // Transparent white that takes on background color
-        opacity: 0.6
+        color: Theme.edgeLineColor
+        opacity: Theme.edgeLineOpacity
         z: 10  // Ensure it's above other content
         
         // Gradient for fade effect at top and bottom
@@ -736,7 +736,7 @@ Item {
                     text: "Music Library"
                     font.pixelSize: 18  // Slightly smaller
                     font.bold: true
-                    color: "white"
+                    color: Theme.primaryText
                 }
                 
                 Item { Layout.fillWidth: true } // Spacer
@@ -753,13 +753,13 @@ Item {
                         
                         //light border
                         border.width: 1
-                        border.color: Qt.rgba(1, 1, 1, 0.06)  // Subtle top highlight
+                        border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(0, 0, 0, 0.06)
 
                     }
                     
                     contentItem: Text {
                         text: parent.text
-                        color: "white"
+                        color: Theme.primaryText
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         font.pixelSize: 12  // Smaller font
@@ -780,8 +780,8 @@ Item {
                         when: buttonMouseArea.containsMouse
                         PropertyChanges {
                             target: buttonRect
-                            color: Qt.rgba(1, 1, 1, 0.06)
-                            border.color: Qt.rgba(1, 1, 1, 0.09)
+                            color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
+                            border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.09) : Qt.rgba(0, 0, 0, 0.09)
                         }
                     }
                     
@@ -806,12 +806,12 @@ Item {
                         
                         //light border
                         border.width: 1
-                        border.color: Qt.rgba(1, 1, 1, 0.06)  // Subtle top highlight
+                        border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(0, 0, 0, 0.06)
                     }
                     
                     contentItem: Text {
                         text: parent.text
-                        color: "white"
+                        color: Theme.primaryText
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         font.pixelSize: 12  // Same font size
@@ -832,7 +832,8 @@ Item {
                         when: settingsButtonMouseArea.containsMouse
                         PropertyChanges {
                             target: settingsButtonRect
-                            color: Qt.rgba(1, 1, 1, 0.05)
+                            color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
+                            border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.09) : Qt.rgba(0, 0, 0, 0.09)
                         }
                     }
                     
@@ -864,7 +865,7 @@ Item {
         // Horizontal Album Browser with width constraint
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 360  // Height for albums with reflections
+            Layout.preferredHeight: 340  // Height for albums with reflections (reduced from 360)
             color: Qt.rgba(0, 0, 0, 0.5)  // Semi-transparent dark to match other panes
             radius: 8
             clip: true  // Clip content to rounded corners
@@ -886,8 +887,8 @@ Item {
             HorizontalAlbumBrowser {
                 id: albumBrowser
                 anchors.centerIn: parent
-                width: Math.min(parent.width - 16, 1600)  // Max width with margins
-                height: parent.height - 16  // Account for margins
+                width: Math.min(parent.width - 4, 1600)  // Max width with very thin margin for borders
+                height: parent.height - 3  // Account for margins
                 
                 onAlbumClicked: function(album) {
                     root.selectedAlbum = album
@@ -915,12 +916,17 @@ Item {
                         }
                     }
                 }
+                
+                onAlbumTitleClicked: function(artistName, albumTitle) {
+                    // Jump to the artist and select the album in the artist list
+                    root.jumpToAlbum(artistName, albumTitle)
+                }
             }
             
             // Gradient overlay to fade the bottom to black
             Item {
                 anchors.fill: parent
-                anchors.margins: 2  // Keep gradient inside borders
+                anchors.margins: 1  // Keep gradient inside borders
                 z: 10  // Above album browser but below any text
                 clip: true
                 
@@ -931,9 +937,9 @@ Item {
                     gradient: Gradient {
                         orientation: Gradient.Vertical
                         GradientStop { position: 0.0; color: "transparent" }
-                        GradientStop { position: 0.7; color: "transparent" }
-                        GradientStop { position: 0.82; color: Qt.rgba(0, 0, 0, 0.5) }
-                        GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 1.0) }
+                        GradientStop { position: 0.74; color: "transparent" } 
+                        GradientStop { position: 0.85; color: Theme.upperGradientColor }  
+                        GradientStop { position: 1.0; color: Theme.lowerGradientColor }  // Use theme color for lower gradient
                     }
                 }
             }
@@ -947,11 +953,12 @@ Item {
                 z: 20  // Higher z-order than gradient overlay
                 
                 Label {
+                    id: albumTitleLabel
                     anchors.centerIn: parent
                     anchors.bottomMargin: 12
                     text: albumBrowser.selectedAlbum && albumBrowser.selectedAlbum.albumArtist && albumBrowser.selectedAlbum.title ? 
                           albumBrowser.selectedAlbum.albumArtist + " - " + albumBrowser.selectedAlbum.title : ""
-                    color: "white"
+                    color: "white"  // Always white due to dark gradient overlay
                     font.pixelSize: 16
                     font.bold: true
                     elide: Text.ElideRight
@@ -963,11 +970,23 @@ Item {
                         anchors.horizontalCenterOffset: 1
                         anchors.verticalCenterOffset: 1
                         text: parent.text
-                        color: "#80000000"
+                        color: Theme.isDark ? "#80000000" : "#40000000"
                         font: parent.font
                         elide: parent.elide
                         horizontalAlignment: parent.horizontalAlignment
                         z: -1
+                    }
+                    
+                    // Make the label clickable
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (albumBrowser.selectedAlbum && albumBrowser.selectedAlbum.albumArtist && albumBrowser.selectedAlbum.title) {
+                                // Emit signal to jump to artist
+                                albumBrowser.albumTitleClicked(albumBrowser.selectedAlbum.albumArtist, albumBrowser.selectedAlbum.title)
+                            }
+                        }
                     }
                 }
             }
@@ -1094,10 +1113,10 @@ Item {
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            color: Qt.rgba(1, 1, 1, 0.03)
+                            color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.03) : Qt.rgba(1, 1, 1, 0.15)
                             radius: 4
                             border.width: 1
-                            border.color: Qt.rgba(1, 1, 1, 0.06)
+                            border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(1, 1, 1, 0.18)
                             
                             Item {
                                 anchors.fill: parent
@@ -1108,7 +1127,7 @@ Item {
                                     id: tabIndicator
                                     width: (parent.width - 2) / 2  // Account for spacing
                                     height: parent.height
-                                    color: Qt.rgba(1, 1, 1, 0.08)
+                                    color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(1, 1, 1, 0.25)
                                     radius: 3
                                     x: root.currentTab === 0 ? 0 : parent.width / 2 + 1
                                     
@@ -1134,7 +1153,7 @@ Item {
                                             anchors.centerIn: parent
                                             text: "Artists"
                                             font.pixelSize: 12
-                                            color: root.currentTab === 0 ? "white" : "#808080"
+                                            color: root.currentTab === 0 ? Theme.primaryText : Theme.tertiaryText
                                             
                                             Behavior on color {
                                                 ColorAnimation { duration: 150 }
@@ -1165,7 +1184,7 @@ Item {
                                             anchors.centerIn: parent
                                             text: "Playlists"
                                             font.pixelSize: 12
-                                            color: root.currentTab === 1 ? "white" : "#808080"
+                                            color: root.currentTab === 1 ? Theme.primaryText : Theme.tertiaryText
                                             
                                             Behavior on color {
                                                 ColorAnimation { duration: 150 }
@@ -1349,7 +1368,7 @@ Item {
                                 
                                 Label {
                                     text: artistData.name
-                                    color: "white"
+                                    color: Theme.primaryText
                                     font.pixelSize: 14
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
@@ -1358,7 +1377,7 @@ Item {
                                 Label {
                                     id: chevronLabel
                                     text: "\u203A" // Right-pointing chevron
-                                    color: "white"
+                                    color: Theme.primaryText
                                     font.pixelSize: 16
                                     Layout.rightMargin: 4
                                     
@@ -1646,7 +1665,7 @@ Item {
                                                 // Placeholder when no art available
                                                 Rectangle {
                                                     anchors.fill: parent
-                                                    color: "#444444"
+                                                    color: Theme.isDark ? "#444444" : "#dddddd"
                                                     visible: parent.status !== Image.Ready
                                                     radius: 3
                                                     
@@ -1654,7 +1673,7 @@ Item {
                                                         anchors.centerIn: parent
                                                         text: "♪"
                                                         font.pixelSize: 32
-                                                        color: "#666666"
+                                                        color: Theme.tertiaryText
                                                     }
                                                 }
                                             }
@@ -1664,7 +1683,7 @@ Item {
                                                 id: selectionIndicator
                                                 color: "transparent"
                                                 border.width: 2
-                                                border.color: "#ffffff"
+                                                border.color: Theme.primaryText
                                                 radius: 3
                                                 visible: root.selectedAlbum && root.selectedAlbum.id === modelData.id
                                                 opacity: 0.8
@@ -1716,7 +1735,7 @@ Item {
                                             anchors.right: parent.right
                                             height: 30  // Fixed height for 2 lines max
                                             text: modelData.title
-                                            color: "white"
+                                            color: Theme.primaryText
                                             font.pixelSize: 11
                                             font.underline: root.navigationMode === "album" && 
                                                     root.selectedArtistName === artistData.name && 
@@ -1763,7 +1782,7 @@ Item {
                                     StyledMenu {
                                         id: albumContextMenu
                                         
-                                        MenuItem {
+                                        StyledMenuItem {
                                             text: "Play"
                                             onTriggered: {
                                                 var globalPos = artistAlbumMouseArea.parent.mapToGlobal(artistAlbumMouseArea.width / 2, artistAlbumMouseArea.height / 2);
@@ -1778,14 +1797,14 @@ Item {
                                             }
                                         }
                                         
-                                        MenuItem {
+                                        StyledMenuItem {
                                             text: "Play Next"
                                             onTriggered: {
                                                 MediaPlayer.playAlbumNext(modelData.albumArtist, modelData.title);
                                             }
                                         }
                                         
-                                        MenuItem {
+                                        StyledMenuItem {
                                             text: "Play Last"
                                             onTriggered: {
                                                 MediaPlayer.playAlbumLast(modelData.albumArtist, modelData.title);
@@ -1990,6 +2009,16 @@ Item {
                 color: Qt.rgba(0.1, 0.1, 0.1, 0.25)  // Semi-transparent dark with smoky tint
                 radius: 8
                 clip: true
+
+                // Inner shadow for depth
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    radius: parent.radius - 1
+                    color: "transparent"
+                    border.width: 1
+                    border.color: Qt.rgba(0, 0, 0, 0.15) // Slightly lighter shadow than left pane
+                }
                 
                 //border
                 border.width: 1
@@ -2041,10 +2070,10 @@ Item {
                         Layout.fillWidth: true
                         Layout.margins: 4
                         height: 60
-                        color: Qt.rgba(1, 1, 1, 0.07)
+                        color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.07) : Qt.rgba(1, 1, 1, 0.15) // Track info panel background
                         radius: 6
                         border.width: 1
-                        border.color: Qt.rgba(1, 1, 1, 0.13)
+                        border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.13) : Qt.rgba(1, 1, 1, 0.21) 
                         
                         RowLayout {
                             anchors.fill: parent
@@ -2072,7 +2101,7 @@ Item {
                                                 anchors.centerIn: parent
                                                 width: parent.width
                                                 text: rightPane.albumTitleText
-                                                color: albumTitleMouseArea.containsMouse ? "#ffffff" : "#e0e0e0"
+                                                color: albumTitleMouseArea.containsMouse ? Theme.primaryText : Theme.secondaryText
                                                 font.pixelSize: 16
                                                 font.bold: true
                                                 elide: Text.ElideRight
@@ -2102,7 +2131,7 @@ Item {
                                             id: titleTextField
                                             anchors.fill: parent
                                             text: root.editingPlaylistName
-                                            color: "white"
+                                            color: Theme.primaryText
                                             font.pixelSize: 16
                                             font.bold: true
                                             selectByMouse: true
@@ -2164,7 +2193,7 @@ Item {
                                     
                                     Label {
                                         text: root.selectedAlbum && root.selectedAlbum.year ? root.selectedAlbum.year : ""
-                                        color: "#b0b0b0"
+                                        color: Theme.secondaryText
                                         font.pixelSize: 12
                                         visible: text !== ""
                                     }
@@ -2172,14 +2201,14 @@ Item {
                                     Label {
                                         text: rightPane.currentAlbumTracks.length > 0 ? 
                                               (rightPane.currentAlbumTracks.length === 1 ? "1 track" : rightPane.currentAlbumTracks.length + " tracks") : ""
-                                        color: "#b0b0b0"
+                                        color: Theme.secondaryText
                                         font.pixelSize: 12
                                         visible: text !== "" && !(root.playlistEditMode && root.playlistNameError !== "") && root.playlistStatusMessage === ""
                                     }
                                     
                                     Label {
                                         text: rightPane.currentAlbumTracks.length > 0 ? formatAlbumDuration() : ""
-                                        color: "#b0b0b0"
+                                        color: Theme.secondaryText
                                         font.pixelSize: 12
                                         visible: text !== "" && !(root.playlistEditMode && root.playlistNameError !== "") && root.playlistStatusMessage === ""
                                     }
@@ -2227,7 +2256,7 @@ Item {
                                         anchors.centerIn: parent
                                         width: 18
                                         height: 18
-                                        source: "qrc:/resources/icons/edit.svg"
+                                        source: Theme.isDark ? "qrc:/resources/icons/edit.svg" : "qrc:/resources/icons/edit-dark.svg"
                                         sourceSize.width: 36
                                         sourceSize.height: 36
                                     }
@@ -2265,7 +2294,7 @@ Item {
                                         anchors.centerIn: parent
                                         width: 18
                                         height: 18
-                                        source: "qrc:/resources/icons/save.svg"
+                                        source: Theme.isDark ? "qrc:/resources/icons/save.svg" : "qrc:/resources/icons/save-dark.svg"
                                         sourceSize.width: 36
                                         sourceSize.height: 36
                                     }
@@ -2340,7 +2369,7 @@ Item {
                                         anchors.centerIn: parent
                                         width: 18
                                         height: 18
-                                        source: "qrc:/resources/icons/cancel.svg"
+                                        source: Theme.isDark ? "qrc:/resources/icons/cancel.svg" : "qrc:/resources/icons/cancel-dark.svg"
                                         sourceSize.width: 36
                                         sourceSize.height: 36
                                     }
@@ -2468,7 +2497,7 @@ Item {
                                     anchors.leftMargin: 12
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: "Disc " + (trackData.discNumber || 1)
-                                    color: "#cccccc"
+                                    color: Theme.secondaryText
                                     font.pixelSize: 11
                                     font.weight: Font.Medium
                                 }
@@ -2478,13 +2507,16 @@ Item {
                                 id: trackDelegate
                                 width: parent.width
                                 height: 45
+                                
+                                property bool isHovered: trackHoverArea.containsMouse
+                                
                                 color: {
                                     if (root.selectedTrackIndices.indexOf(index) !== -1) {
                                         return Qt.rgba(0.25, 0.32, 0.71, 0.25)  // Selected track
                                     } else if (root.selectedTrackIndex === index) {
                                         return Qt.rgba(0.25, 0.32, 0.71, 0.15)  // Current track (lighter)
                                     } else {
-                                        return Qt.rgba(1, 1, 1, 0.02)  // Default background
+                                        return Theme.isDark ? Qt.rgba(1, 1, 1, 0.03) : Qt.rgba(1, 1, 1, 0.12) // Track background
                                     }
                                 }
                                 radius: 4
@@ -2492,6 +2524,13 @@ Item {
                                 //border
                                 border.width: 1
                                 border.color: Qt.rgba(1, 1, 1, 0.04)
+                                
+                                MouseArea {
+                                    id: trackHoverArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    acceptedButtons: Qt.NoButton
+                                }
                                 
                                 // Animated vertical offset for drag feedback
                                 transform: Translate {
@@ -2550,7 +2589,7 @@ Item {
                                     // Drag handle (only in edit mode for playlists)
                                     Image {
                                         id: dragHandle
-                                        source: "qrc:/resources/icons/list-drag-handle.svg"
+                                        source: Theme.isDark ? "qrc:/resources/icons/list-drag-handle.svg" : "qrc:/resources/icons/list-drag-handle-dark.svg"
                                         Layout.preferredWidth: 20
                                         Layout.preferredHeight: 20
                                         sourceSize.width: 40
@@ -2620,7 +2659,7 @@ Item {
 
                                     Label { // Track Number
                                         text: trackData.trackNumber ? String(trackData.trackNumber).padStart(1, '0') : "--"
-                                        color: "#aaaaaa"
+                                        color: Theme.tertiaryText
                                         font.pixelSize: 12
                                         Layout.preferredWidth: 25
                                         horizontalAlignment: Text.AlignRight
@@ -2638,7 +2677,7 @@ Item {
                                         Label {
                                             anchors.fill: parent
                                             text: trackData.title || "Unknown Track"
-                                            color: "white"
+                                            color: Theme.primaryText
                                             font.pixelSize: 13
                                             elide: Text.ElideRight
                                             visible: !parent.isPlaylist
@@ -2653,7 +2692,7 @@ Item {
                                             // Track title - prioritized, takes space it needs
                                             Label {
                                                 text: trackData.title || "Unknown Track"
-                                                color: "white"
+                                                color: Theme.primaryText
                                                 font.pixelSize: 13
                                                 elide: Text.ElideRight
                                                 Layout.fillWidth: false
@@ -2664,7 +2703,7 @@ Item {
                                             // Artist name - gets remaining space, truncated as needed
                                             Label {
                                                 text: trackData.artist || "Unknown Artist"
-                                                color: "#808080"
+                                                color: Theme.tertiaryText
                                                 font.pixelSize: 13
                                                 elide: Text.ElideRight
                                                 Layout.fillWidth: true
@@ -2676,7 +2715,7 @@ Item {
 
                                     // Now Playing Indicator
                                     Image {
-                                        source: "qrc:/resources/icons/speaker.svg"
+                                        source: Theme.isDark ? "qrc:/resources/icons/speaker.svg" : "qrc:/resources/icons/speaker-dark.svg"
                                         Layout.preferredWidth: 16
                                         Layout.preferredHeight: 16
                                         sourceSize.width: 32  // 2x for retina
@@ -2690,7 +2729,7 @@ Item {
 
                                     Label { // Track Duration
                                         text: trackData.duration ? formatDuration(trackData.duration) : "0:00"
-                                        color: "#aaaaaa"
+                                        color: Theme.tertiaryText
                                         font.pixelSize: 12
                                         Layout.preferredWidth: 40
                                         visible: !root.playlistEditMode
@@ -2698,19 +2737,48 @@ Item {
                                     
                                     // Delete button (only in edit mode for playlists)
                                     Rectangle {
+                                        id: deleteButton
                                         width: 28
                                         height: 28
                                         radius: 4
                                         color: deleteTrackMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
-                                        visible: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist
+                                        visible: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist && (trackDelegate.isHovered || deleteTrackMouseArea.containsMouse)
+                                        opacity: visible ? 1.0 : 0.0
                                         
-                                        Image {
+                                        Behavior on opacity {
+                                            NumberAnimation { duration: 150 }
+                                        }
+                                        
+                                        Item {
                                             anchors.centerIn: parent
                                             width: 16
                                             height: 16
-                                            source: deleteTrackMouseArea.containsMouse ? "qrc:/resources/icons/trash-can-open-lid.svg" : "qrc:/resources/icons/trash-can-closed-lid.svg"
-                                            sourceSize.width: 32
-                                            sourceSize.height: 32
+                                            
+                                            Image {
+                                                id: closedLidIcon
+                                                anchors.fill: parent
+                                                source: Theme.isDark ? "qrc:/resources/icons/trash-can-closed-lid.svg" : "qrc:/resources/icons/trash-can-closed-lid-dark.svg"
+                                                sourceSize.width: 32
+                                                sourceSize.height: 32
+                                                opacity: deleteTrackMouseArea.containsMouse ? 0 : 1
+                                                
+                                                Behavior on opacity {
+                                                    NumberAnimation { duration: 150 }
+                                                }
+                                            }
+                                            
+                                            Image {
+                                                id: openLidIcon
+                                                anchors.fill: parent
+                                                source: Theme.isDark ? "qrc:/resources/icons/trash-can-open-lid.svg" : "qrc:/resources/icons/trash-can-open-lid-dark.svg"
+                                                sourceSize.width: 32
+                                                sourceSize.height: 32
+                                                opacity: deleteTrackMouseArea.containsMouse ? 1 : 0
+                                                
+                                                Behavior on opacity {
+                                                    NumberAnimation { duration: 150 }
+                                                }
+                                            }
                                         }
                                         
                                         MouseArea {
@@ -2824,7 +2892,7 @@ Item {
                                     StyledMenu {
                                         id: trackContextMenu
                                         
-                                        MenuItem {
+                                        StyledMenuItem {
                                             text: root.selectedTrackIndices.length > 1 ? 
                                                   "Play " + root.selectedTrackIndices.length + " Tracks Next" : 
                                                   "Play Next"
@@ -2855,7 +2923,7 @@ Item {
                                             }
                                         }
                                         
-                                        MenuItem {
+                                        StyledMenuItem {
                                             text: root.selectedTrackIndices.length > 1 ? 
                                                   "Play " + root.selectedTrackIndices.length + " Tracks Last" : 
                                                   "Play Last"
@@ -2891,7 +2959,7 @@ Item {
                                             height: visible ? implicitHeight : 0
                                         }
                                         
-                                        MenuItem {
+                                        StyledMenuItem {
                                             text: "Show info"
                                             visible: root.selectedTrackIndices.length === 1
                                             height: visible ? implicitHeight : 0
@@ -2942,7 +3010,7 @@ Item {
                             }
                         }
                         Layout.topMargin: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist ? 8 : 0
-                        color: Qt.rgba(1, 1, 1, 0.05)
+                        color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(1, 1, 1, 0.20) // Background color for the track selector
                         radius: 6
                         visible: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist
                         clip: true
@@ -3021,7 +3089,7 @@ Item {
                                         anchors.centerIn: parent
                                         width: 18
                                         height: 18
-                                        source: "qrc:/resources/icons/cancel.svg"
+                                        source: Theme.isDark ? "qrc:/resources/icons/cancel.svg" : "qrc:/resources/icons/cancel-dark.svg"
                                         sourceSize.width: 36
                                         sourceSize.height: 36
                                         rotation: root.showTrackSelector ? 0 : -45  // 45 degrees for plus sign
@@ -3070,7 +3138,7 @@ Item {
                                 delegate: Rectangle {
                                     width: ListView.view.width
                                     height: 56
-                                    color: trackItemMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.1) : "transparent"
+                                    color: trackItemMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(1, 1, 1, 0.05)
                                     radius: 4
                                     
                                     Behavior on color {
@@ -3093,7 +3161,7 @@ Item {
                                                 text: modelData.title || "Unknown Title"
                                                 font.pixelSize: 14
                                                 font.weight: Font.Medium
-                                                color: "white"
+                                                color: Theme.primaryText
                                                 elide: Text.ElideRight
                                             }
                                             
@@ -3105,7 +3173,7 @@ Item {
                                                     return artist + " - " + album
                                                 }
                                                 font.pixelSize: 12
-                                                color: "#808080"
+                                                color: Theme.tertiaryText
                                                 elide: Text.ElideMiddle
                                             }
                                         }
@@ -3125,7 +3193,7 @@ Item {
                                                 anchors.centerIn: parent
                                                 width: 16
                                                 height: 16
-                                                source: "qrc:/resources/icons/add.svg"
+                                                source: Theme.isDark ? "qrc:/resources/icons/add.svg" : "qrc:/resources/icons/add-dark.svg"
                                                 sourceSize.width: 32
                                                 sourceSize.height: 32
                                             }
@@ -3183,7 +3251,7 @@ Item {
                                 Label {
                                     anchors.centerIn: parent
                                     text: root.trackSelectorSearchTerm.trim().length > 0 ? "No tracks found" : "Type to search for tracks"
-                                    color: "#808080"
+                                    color: Theme.tertiaryText
                                     font.pixelSize: 14
                                 }
                             }
@@ -3199,7 +3267,7 @@ Item {
                         Layout.leftMargin: root.showTrackInfoPanel && root.trackInfoPanelY < 10 ? 4 : 0
                         Layout.rightMargin: root.showTrackInfoPanel && root.trackInfoPanelY < 10 ? 4 : 0
                         Layout.bottomMargin: root.showTrackInfoPanel && root.trackInfoPanelY < 10 ? 4 : 0
-                        color: Qt.rgba(1, 1, 1, 0.07)
+                        color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.07) : Qt.rgba(1, 1, 1, 0.25) // Track info panel background
                         radius: 6
                         border.width: 1
                         border.color: Qt.rgba(1, 1, 1, 0.13)
@@ -3281,14 +3349,106 @@ Item {
                             RowLayout {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 16
+                                spacing: 8
                                 
-                                // Use track title as header
-                                Label {
-                                    text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.title || "Unknown") : ""
-                                    color: "white"
-                                    font.pixelSize: 12
-                                    font.bold: true
+                                // Scrolling track title
+                                Flickable {
                                     Layout.fillWidth: true
+                                    Layout.preferredHeight: 16
+                                    contentHeight: height
+                                    interactive: false
+                                    clip: true
+                                    
+                                    // Container for the label with opacity mask
+                                    Item {
+                                        id: titleLabelContainer
+                                        anchors.fill: parent
+                                        
+                                        // Row containing duplicated text for seamless scrolling
+                                        Row {
+                                            id: titleRow
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            spacing: 60  // Gap between duplicates
+                                            
+                                            // Properties for scrolling
+                                            property string titleText: root.selectedTrackForInfo ? (root.selectedTrackForInfo.title || "Unknown") : ""
+                                            property bool needsScrolling: titleLabel1.contentWidth > titleLabelContainer.width
+                                            property real scrollOffset: 0
+                                            property real pauseDuration: 1500  // Pause at end in ms
+                                            property real scrollDuration: 8000  // Time to scroll full width in ms
+                                            
+                                            // Position for scrolling
+                                            x: needsScrolling ? -scrollOffset : 0
+                                            
+                                            // Update scrolling when text changes
+                                            onTitleTextChanged: {
+                                                scrollOffset = 0
+                                                titleScrollAnimation.stop()
+                                                if (needsScrolling) {
+                                                    titleScrollAnimation.start()
+                                                }
+                                            }
+                                            
+                                            onNeedsScrollingChanged: {
+                                                scrollOffset = 0
+                                                titleScrollAnimation.stop()
+                                                if (needsScrolling) {
+                                                    titleScrollAnimation.start()
+                                                }
+                                            }
+                                            
+                                            // First copy of the text
+                                            Label {
+                                                id: titleLabel1
+                                                text: parent.titleText
+                                                color: Theme.primaryText
+                                                font.pixelSize: 12
+                                                font.bold: true
+                                            }
+                                            
+                                            // Second copy for seamless wrap-around (only visible when scrolling)
+                                            Label {
+                                                text: parent.titleText
+                                                color: Theme.primaryText
+                                                font.pixelSize: 12
+                                                font.bold: true
+                                                visible: parent.needsScrolling
+                                            }
+                                            
+                                            // Continuous scrolling animation
+                                            SequentialAnimation {
+                                                id: titleScrollAnimation
+                                                loops: Animation.Infinite
+                                                
+                                                // Scroll continuously to show second copy
+                                                NumberAnimation {
+                                                    target: titleRow
+                                                    property: "scrollOffset"
+                                                    from: 0
+                                                    to: titleLabel1.contentWidth + titleRow.spacing  // Scroll one full text width + gap
+                                                    duration: titleRow.scrollDuration
+                                                    easing.type: Easing.InOutQuad
+                                                }
+                                                
+                                                // Brief pause at the wrap point
+                                                PauseAnimation {
+                                                    duration: titleRow.pauseDuration
+                                                }
+                                                
+                                                // Instant reset to beginning (seamless wrap)
+                                                PropertyAction {
+                                                    target: titleRow
+                                                    property: "scrollOffset"
+                                                    value: 0
+                                                }
+                                                
+                                                // Brief pause at the beginning
+                                                PauseAnimation {
+                                                    duration: titleRow.pauseDuration
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                                 
                                 // Close button
@@ -3302,7 +3462,7 @@ Item {
                                         anchors.centerIn: parent
                                         width: 12
                                         height: 12
-                                        source: "qrc:/resources/icons/close-button.svg"
+                                        source: Theme.isDark ? "qrc:/resources/icons/close-button.svg" : "qrc:/resources/icons/close-button-dark.svg"
                                         sourceSize.width: 24
                                         sourceSize.height: 24
                                         smooth: true
@@ -3345,13 +3505,13 @@ Item {
                                             Layout.fillWidth: true
                                             Label {
                                                 text: "Artist:"
-                                                color: "#b0b0b0"
+                                                color: Theme.secondaryText
                                                 font.pixelSize: 10
                                                 Layout.preferredWidth: 80
                                             }
                                             Label {
                                                 text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.artist || "Unknown") : ""
-                                                color: "white"
+                                                color: Theme.primaryText
                                                 font.pixelSize: 10
                                                 Layout.fillWidth: true
                                                 elide: Text.ElideRight
@@ -3363,13 +3523,13 @@ Item {
                                             Layout.fillWidth: true
                                             Label {
                                                 text: "Album:"
-                                                color: "#b0b0b0"
+                                                color: Theme.secondaryText
                                                 font.pixelSize: 10
                                                 Layout.preferredWidth: 80
                                             }
                                             Label {
                                                 text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.album || "Unknown") : ""
-                                                color: "white"
+                                                color: Theme.primaryText
                                                 font.pixelSize: 10
                                                 Layout.fillWidth: true
                                                 elide: Text.ElideRight
@@ -3381,13 +3541,13 @@ Item {
                                             Layout.fillWidth: true
                                             Label {
                                                 text: "Album Artist:"
-                                                color: "#b0b0b0"
+                                                color: Theme.secondaryText
                                                 font.pixelSize: 10
                                                 Layout.preferredWidth: 80
                                             }
                                             Label {
                                                 text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.albumArtist || root.selectedTrackForInfo.artist || "Unknown") : ""
-                                                color: "white"
+                                                color: Theme.primaryText
                                                 font.pixelSize: 10
                                                 Layout.fillWidth: true
                                                 elide: Text.ElideRight
@@ -3419,7 +3579,7 @@ Item {
                                                 Layout.fillWidth: true
                                                 Label {
                                                     text: "Track:"
-                                                    color: "#b0b0b0"
+                                                    color: Theme.secondaryText
                                                     font.pixelSize: 10
                                                     Layout.preferredWidth: 50
                                                 }
@@ -3436,7 +3596,7 @@ Item {
                                                             return "Unknown"
                                                         }
                                                     }
-                                                    color: "white"
+                                                    color: Theme.primaryText
                                                     font.pixelSize: 10
                                                     Layout.fillWidth: true
                                                     elide: Text.ElideRight
@@ -3449,13 +3609,13 @@ Item {
                                                 visible: root.selectedTrackForInfo && root.selectedTrackForInfo.year > 0
                                                 Label {
                                                     text: "Year:"
-                                                    color: "#b0b0b0"
+                                                    color: Theme.secondaryText
                                                     font.pixelSize: 10
                                                     Layout.preferredWidth: 50
                                                 }
                                                 Label {
                                                     text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.year || "") : ""
-                                                    color: "white"
+                                                    color: Theme.primaryText
                                                     font.pixelSize: 10
                                                     Layout.fillWidth: true
                                                 }
@@ -3467,13 +3627,13 @@ Item {
                                                 visible: root.selectedTrackForInfo && root.selectedTrackForInfo.genre
                                                 Label {
                                                     text: "Genre:"
-                                                    color: "#b0b0b0"
+                                                    color: Theme.secondaryText
                                                     font.pixelSize: 10
                                                     Layout.preferredWidth: 50
                                                 }
                                                 Label {
                                                     text: root.selectedTrackForInfo ? (root.selectedTrackForInfo.genre || "") : ""
-                                                    color: "white"
+                                                    color: Theme.primaryText
                                                     font.pixelSize: 10
                                                     Layout.fillWidth: true
                                                     elide: Text.ElideRight
@@ -3491,13 +3651,13 @@ Item {
                                                 Layout.fillWidth: true
                                                 Label {
                                                     text: "Duration:"
-                                                    color: "#b0b0b0"
+                                                    color: Theme.secondaryText
                                                     font.pixelSize: 10
                                                     Layout.preferredWidth: 60
                                                 }
                                                 Label {
                                                     text: root.selectedTrackForInfo ? formatDuration(root.selectedTrackForInfo.duration || 0) : ""
-                                                    color: "white"
+                                                    color: Theme.primaryText
                                                     font.pixelSize: 10
                                                     Layout.fillWidth: true
                                                 }
@@ -3508,7 +3668,7 @@ Item {
                                                 Layout.fillWidth: true
                                                 Label {
                                                     text: "Format:"
-                                                    color: "#b0b0b0"
+                                                    color: Theme.secondaryText
                                                     font.pixelSize: 10
                                                     Layout.preferredWidth: 60
                                                 }
@@ -3522,7 +3682,7 @@ Item {
                                                         }
                                                         return "Unknown"
                                                     }
-                                                    color: "white"
+                                                    color: Theme.primaryText
                                                     font.pixelSize: 10
                                                     Layout.fillWidth: true
                                                 }
@@ -3533,13 +3693,13 @@ Item {
                                                 Layout.fillWidth: true
                                                 Label {
                                                     text: "File Size:"
-                                                    color: "#b0b0b0"
+                                                    color: Theme.secondaryText
                                                     font.pixelSize: 10
                                                     Layout.preferredWidth: 60
                                                 }
                                                 Label {
                                                     text: root.selectedTrackForInfo ? formatFileSize(root.selectedTrackForInfo.fileSize || 0) : ""
-                                                    color: "white"
+                                                    color: Theme.primaryText
                                                     font.pixelSize: 10
                                                     Layout.fillWidth: true
                                                 }
@@ -3561,7 +3721,7 @@ Item {
                                         Layout.fillWidth: true
                                         Label {
                                             text: "File Path:"
-                                            color: "#b0b0b0"
+                                            color: Theme.secondaryText
                                             font.pixelSize: 10
                                             Layout.preferredWidth: 80
                                         }
@@ -3614,14 +3774,14 @@ Item {
                                                     Label {
                                                         id: filePathLabel1
                                                         text: parent.pathText
-                                                        color: "white"
+                                                        color: Theme.primaryText
                                                         font.pixelSize: 10
                                                     }
                                                     
                                                     // Second copy for seamless wrap-around (only visible when scrolling)
                                                     Label {
                                                         text: parent.pathText
-                                                        color: "white"
+                                                        color: Theme.primaryText
                                                         font.pixelSize: 10
                                                         visible: parent.needsScrolling
                                                     }
@@ -3690,7 +3850,7 @@ Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         text: rightPane.selectedAlbum ? "No tracks found for this album." : "Select an album to view tracks."
-                        color: "#808080"
+                        color: Theme.tertiaryText
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         wrapMode: Text.WordWrap
@@ -4703,11 +4863,31 @@ Item {
         }
     }
     
+    // Helper function to get current album from browser
+    function getCurrentAlbum() {
+        if (albumBrowser && albumBrowser.selectedAlbum) {
+            return albumBrowser.selectedAlbum
+        }
+        return null
+    }
+    
+    // Helper function to restore album position
+    function restoreAlbumPosition() {
+        if (albumBrowser) {
+            albumBrowser.restoreCarouselPosition()
+        }
+    }
+    
     // Functions for Now Playing Panel integration
     function jumpToArtist(artistName) {
         try {
             console.log("jumpToArtist called with:", artistName)
             if (!artistName || typeof artistName !== "string") return
+            
+            // Switch to Artists tab if currently showing Playlists
+            if (currentTab === 1) {
+                currentTab = 0
+            }
             
             // Prevent concurrent jump operations
             if (isJumping) {
