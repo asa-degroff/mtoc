@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.0.2.1.1
+Version:        2.1
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,177 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Thu Aug 07 2025 Asa DeGroff <asa@3fz.org> 2.1-1
+- Refactor combo box interaction to use onActivated for better handling of user
+  selections (asa@3fz.org)
+- Refactor combo box item delegates for improved visibility and interaction;
+  update model binding logic (asa@3fz.org)
+- Improve close button size and responsiveness in QueuePopup (asa@3fz.org)
+- update close icon in queue popup header to use proper size (asa@3fz.org)
+- Refactor SettingsWindow layout and improve theme selection handling; ensure
+  proper content width and remove unnecessary bindings (asa@3fz.org)
+- Improve display text handling in SettingsWindow; ensure initial update on
+  component completion (asa@3fz.org)
+- Refactor theme detection and event handling in SettingsManager; update QML
+  indicators for better clarity (asa@3fz.org)
+- escape ampersands in metainfo (asa@3fz.org)
+- metainfo updates (asa@3fz.org)
+- metainfo updates (asa@3fz.org)
+- add library editor screenshot (asa@3fz.org)
+- update screenshots (asa@3fz.org)
+- adjust preferred widths for ComboBox labels in SettingsWindow for better
+  layout consistency (asa@3fz.org)
+- version bump in settings window (asa@3fz.org)
+- bump version to 2.1 and update changelog (asa@3fz.org)
+- feat: switch to Artists tab when jumping to an artist from Playlists
+  (asa@3fz.org)
+- feat: refine QueueHeader layout by adjusting font size and enhancing
+  scrolling animation for improved user experience (asa@3fz.org)
+- feat: ensure black background is displayed when source is empty by clearing
+  image sources (asa@3fz.org)
+- feat: improve QueueHeader layout by enhancing context text visibility and
+  removing redundant modified indicator (asa@3fz.org)
+- feat: enhance queue management with undo functionality for source album and
+  playlist info (asa@3fz.org)
+- feat: enhance QueueHeader with seamless scrolling context text and improved
+  display logic (asa@3fz.org)
+- feat: add QueueHeader component and integrate it into NowPlayingPane and
+  QueuePopup for improved queue display with contextual information
+  (asa@3fz.org)
+- feat: implement locale-aware sorting for artist retrieval in database manager
+  (asa@3fz.org)
+- feat: add file size retrieval for tracks in playlist manager from database
+  and properly display all tags when viewing track info from a playlist
+  (asa@3fz.org)
+- style tweaks for buttons and headers in popup views, theme tweaks
+  (asa@3fz.org)
+- adjust margins for horizontal album browser to prevent corner overlap, tweak
+  gradient stops (asa@3fz.org)
+- feat: enhance layout mode change handling by saving and restoring album
+  position (asa@3fz.org)
+- feat: add automatic layout mode and update settings UI for layout selection
+  (asa@3fz.org)
+- fix: update drag handle icon source based on theme and text color
+  (asa@3fz.org)
+- button theming (asa@3fz.org)
+- reduce animation duration of popup visibility for responsiveness
+  (asa@3fz.org)
+- fix: toggle visibility of album art and queue popups on click (asa@3fz.org)
+- refactor: improve AlbumArtPopup layout for better responsiveness and sizing
+  (asa@3fz.org)
+- easing (asa@3fz.org)
+- icon theming (asa@3fz.org)
+- refactor: update QueuePopup structure for compact mode integration and
+  improve visibility handling (asa@3fz.org)
+- fix: toggle album art popup visibility on click (asa@3fz.org)
+- refactor AlbumArtPopup to improve structure and integrate into LibraryPane
+  for compact mode (asa@3fz.org)
+- fix: improve layout and styling of AlbumArtPopup, update close button icon,
+  and enhance album art container (asa@3fz.org)
+- reduce horizontal album browser height by 20px (asa@3fz.org)
+- fix: ensure consistent image smoothing and preserve aspect ratio for album
+  images (asa@3fz.org)
+- fix: enhance resource cleanup during component destruction and delegate
+  recycling, implement GPU resource pooling and cleanup (asa@3fz.org)
+- fix: prevent operations during component destruction and improve memory
+  management (asa@3fz.org)
+- feat: update album image loading to support higher resolution and improve
+  rendering quality (asa@3fz.org)
+- feat: removed special case snapping for smoother animation (asa@3fz.org)
+- feat: add pixel alignment helper functions and improved pixel snapping for
+  improved rendering (asa@3fz.org)
+- cleanup removed property (asa@3fz.org)
+- feat: simplify touchpad scrolling logic (asa@3fz.org)
+- feat: enhance album jumping behavior with initialization handling and
+  animation control (asa@3fz.org)
+- feat: reduce thumbnail size to 256 for improved performance and caching
+  (asa@3fz.org)
+- feat: update thumbnail size to 256 for improved caching efficiency
+  (asa@3fz.org)
+- feat: enhance touchpad scrolling with visual center tracking and smooth index
+  updates (asa@3fz.org)
+- feat: optimize touchpad scrolling behavior by refining index updates and
+  highlight range restoration (asa@3fz.org)
+- feat: implement hysteresis for touchpad input in album selection to improve
+  scrolling stability and reduce rapid switching (asa@3fz.org)
+- moved the layer multisampling configuration from visualContainer to
+  delegateItem so it's properly applied to the delegate and all children with
+  transforms (asa@3fz.org)
+- feat: enhance rendering quality with multisampling and improved antialiasing
+  for album reflections (asa@3fz.org)
+- feat: adjust reflection container size and source rectangle for improved
+  visual quality in HorizontalAlbumBrowser (asa@3fz.org)
+- feat: enhance image rendering quality by enabling smoothing and antialiasing
+  for album items, simplify effects to remove redundancy (asa@3fz.org)
+- feat: improve scaling and rendering quality for album items in
+  HorizontalAlbumBrowser fpr razor sharp pixel alignment (asa@3fz.org)
+- feat: update thumbnail size to 400 for improved image quality and adjust
+  related caching logic (asa@3fz.org)
+- feat: enhance album scaling effects for improved visual sharpness
+  (asa@3fz.org)
+- feat: implement scrolling track title with seamless wrap-around effect in
+  LibraryPane (asa@3fz.org)
+- feat: add dark mode support for undo icon and update QueuePopup and
+  NowPlayingPane to use the new icon (asa@3fz.org)
+- use light icons and add shadow effect to light icon buttons for improved
+  visibility in light mode (asa@3fz.org)
+- feat: add slide animations and fade effects for AlbumArtPopup and QueuePopup
+  (asa@3fz.org)
+- feat: update icon sources for repeat, shuffle, and queue buttons with
+  consistent appearance and shadow effect (asa@3fz.org)
+- feat: implement forceLightText property for consistent text color in dark
+  backgrounds (asa@3fz.org)
+- feat: add dark mode icons for close button and bomb, and implement playlist
+  saved message in QueuePopup (asa@3fz.org)
+- fix: update queue duration reference and improve icon handling in QueuePopup
+  (asa@3fz.org)
+- decrease opacity of compact now playing bar top border (asa@3fz.org)
+- update styling of repeat and shuffle buttons in compact now playing bar with
+  pill-shaped container and activated indicators to match now playing pane
+  (asa@3fz.org)
+- feat: add drop shadow to icon buttons for better contrast in light mode
+  (asa@3fz.org)
+- feat: add blurred background to compact now playing bar (asa@3fz.org)
+- fix: adjust progress slider positioning for better alignment (asa@3fz.org)
+- layout changes in CompactNowPlayingBar (asa@3fz.org)
+- use custom buttons in compact mode and update minium width (asa@3fz.org)
+- implement compact view components and add new layout mode (asa@3fz.org)
+- implement system theme detection and update theme settings UI (asa@3fz.org)
+- add dark mode icons and update references in LibraryPane (asa@3fz.org)
+- theme tweaks for improved contrast in library (asa@3fz.org)
+- enhance hover effects and icon animations in LibraryPane and PlaylistView
+  (asa@3fz.org)
+- add dark mode icons and update references in LibraryPane and PlaylistView
+  (asa@3fz.org)
+- refactor QueueActionDialog with theming and styling (asa@3fz.org)
+- remove redundant MenuItem delegate from StyledMenu (asa@3fz.org)
+- add StyledMenu and StyledMenuItem components for improved menu styling
+  (asa@3fz.org)
+- update theming for StyledMenu and StyledMenuSeparator components
+  (asa@3fz.org)
+- theming for text in queue list (asa@3fz.org)
+- color tweaks (asa@3fz.org)
+- theming for library editor window (asa@3fz.org)
+- color tweaks (asa@3fz.org)
+- svg tweaks (asa@3fz.org)
+- style updates (asa@3fz.org)
+- feat: add light mode icons for shuffle, repeat, and queue buttons
+  (asa@3fz.org)
+- feat: add clickable album title to jump to artist in LibraryPane
+  (asa@3fz.org)
+- fix for gradient overlay gap at edges (asa@3fz.org)
+- refactor: optimize reflection and visibility calculations based on viewport
+  width (asa@3fz.org)
+- improve reflection rendering (asa@3fz.org)
+- reduced horizontal album browser margins (asa@3fz.org)
+- track info theme (asa@3fz.org)
+- playlist view theme (asa@3fz.org)
+- search bar light theme (asa@3fz.org)
+- theme tweaks for carousel gradient (asa@3fz.org)
+- light theme tweaks for improved contrast (asa@3fz.org)
+- Implement light mode (asa@3fz.org)
+- update changelog (asa@3fz.org)
+
 * Thu Jul 31 2025 Asa DeGroff <asa@3fz.org> 2.0.2.1.1-1
 - add pixpap icon to cmakelists (asa@3fz.org)
 
