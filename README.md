@@ -30,7 +30,7 @@ Album browsing is core to the experience. mtoc is made for the music fan who lik
 ![carousel animation](resources/banner/carousel-animation.webp)
 
 ### Layout and Navigation
-mtoc features a user-friendly "bento box" layout that places the album art, playback and queue in the largest section, with the carousel, artists/playlists column, and tracklist column on the left. 
+mtoc features two layout options: wide mode uses a "bento box" layout that places the album art, playback and queue in the largest section, with the carousel, artists/playlists column, and tracklist column on the left. Compact mode hides the right pane, placing the playback controls at the bottom and the queue and full-size album art in popups. 
 
 The artists list features album artists sorted alphabetically. An artist can be expanded to reveal their albums, represented in a thumbnail grid, and sorted by year. The tracklist for the current album selection occupies the right column. Continuous navigation is enabled between interface elements by links that animate scrolling to and revealing the selection in its relevant list. 
 
@@ -173,9 +173,9 @@ On first launch, mtoc will feature an empty library. Click "Edit Library" (or th
 ## Roadmap
 The following features are in development or planned for a future release: 
 
-- Additional layout options optimized for narrow width and vertical arrangements
+- Additional grid view option in the library
+- Mini player with a thumbnail-sized album art and minimal playback control interface
 - Gamepad input support for steam deck and similar devices
-- Podcast library with streaming and online search
 
 ## License
 
