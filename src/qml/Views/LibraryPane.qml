@@ -3359,6 +3359,26 @@ Item {
                                     interactive: false
                                     clip: true
                                     
+                                    // MouseArea to detect hover over the title text
+                                    MouseArea {
+                                        id: titleHoverArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        property bool animationRunning: false
+                                        
+                                        onEntered: {
+                                            // Start animation on hover if text needs scrolling
+                                            if (titleRow.needsScrolling && titleRow.titleText !== "") {
+                                                titleRow.startHoverAnimation()
+                                            }
+                                        }
+                                        
+                                        onExited: {
+                                            // Let current cycle complete, then stop
+                                            animationRunning = false
+                                        }
+                                    }
+                                    
                                     // Container for the label with opacity mask
                                     Item {
                                         id: titleLabelContainer
@@ -3374,8 +3394,15 @@ Item {
                                             property string titleText: root.selectedTrackForInfo ? (root.selectedTrackForInfo.title || "Unknown") : ""
                                             property bool needsScrolling: titleLabel1.contentWidth > titleLabelContainer.width
                                             property real scrollOffset: 0
-                                            property real pauseDuration: 1500  // Pause at end in ms
-                                            property real scrollDuration: 8000  // Time to scroll full width in ms
+                                            property real scrollDuration: Math.max(4000, titleLabel1.contentWidth * 20)  // Speed based on text length
+                                            
+                                            // Function to start hover-based animation
+                                            function startHoverAnimation() {
+                                                scrollOffset = 0
+                                                titleHoverArea.animationRunning = true
+                                                titleScrollAnimation.loops = 1  // Run once
+                                                titleScrollAnimation.start()
+                                            }
                                             
                                             // Position for scrolling
                                             x: needsScrolling ? -scrollOffset : 0
@@ -3384,17 +3411,13 @@ Item {
                                             onTitleTextChanged: {
                                                 scrollOffset = 0
                                                 titleScrollAnimation.stop()
-                                                if (needsScrolling) {
-                                                    titleScrollAnimation.start()
-                                                }
+                                                // Don't auto-start anymore, wait for hover
                                             }
                                             
                                             onNeedsScrollingChanged: {
                                                 scrollOffset = 0
                                                 titleScrollAnimation.stop()
-                                                if (needsScrolling) {
-                                                    titleScrollAnimation.start()
-                                                }
+                                                // Don't auto-start anymore, wait for hover
                                             }
                                             
                                             // First copy of the text
@@ -3415,10 +3438,23 @@ Item {
                                                 visible: parent.needsScrolling
                                             }
                                             
-                                            // Continuous scrolling animation
+                                            // Scrolling animation (controlled by hover)
                                             SequentialAnimation {
                                                 id: titleScrollAnimation
-                                                loops: Animation.Infinite
+                                                loops: 1  // Default to single loop, changed when hovering
+                                                
+                                                onStopped: {
+                                                    // When animation completes, check if we should continue
+                                                    if (titleHoverArea.containsMouse && titleHoverArea.animationRunning) {
+                                                        // Mouse is still hovering, run another cycle
+                                                        loops = 1
+                                                        start()
+                                                    } else {
+                                                        // Reset for next hover
+                                                        titleRow.scrollOffset = 0
+                                                        titleHoverArea.animationRunning = false
+                                                    }
+                                                }
                                                 
                                                 // Scroll continuously to show second copy
                                                 NumberAnimation {
@@ -3442,7 +3478,7 @@ Item {
                                                     value: 0
                                                 }
                                                 
-                                                // Brief pause at the beginning
+                                                // Initial pause at the beginning
                                                 PauseAnimation {
                                                     duration: titleRow.pauseDuration
                                                 }
@@ -3732,6 +3768,26 @@ Item {
                                             Layout.preferredHeight: 20  // Increased height to prevent text clipping
                                             clip: true
                                             
+                                            // MouseArea to detect hover over the file path text
+                                            MouseArea {
+                                                id: pathHoverArea
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                property bool animationRunning: false
+                                                
+                                                onEntered: {
+                                                    // Start animation on hover if text needs scrolling
+                                                    if (filePathRow.needsScrolling && filePathRow.pathText !== "") {
+                                                        filePathRow.startHoverAnimation()
+                                                    }
+                                                }
+                                                
+                                                onExited: {
+                                                    // Let current cycle complete, then stop
+                                                    animationRunning = false
+                                                }
+                                            }
+                                            
                                             // Container for the label with opacity mask
                                             Item {
                                                 id: labelContainer
@@ -3747,8 +3803,15 @@ Item {
                                                     property string pathText: root.selectedTrackForInfo ? (root.selectedTrackForInfo.filePath || "") : ""
                                                     property bool needsScrolling: filePathLabel1.contentWidth > labelContainer.width
                                                     property real scrollOffset: 0
-                                                    property real pauseDuration: 1500  // Pause at end in ms
-                                                    property real scrollDuration: 10000  // Time to scroll full width in ms
+                                                    property real scrollDuration: Math.max(4000, filePathLabel1.contentWidth * 20)  // Speed based on text length
+                                                    
+                                                    // Function to start hover-based animation
+                                                    function startHoverAnimation() {
+                                                        scrollOffset = 0
+                                                        pathHoverArea.animationRunning = true
+                                                        pathScrollAnimation.loops = 1  // Run once
+                                                        pathScrollAnimation.start()
+                                                    }
                                                     
                                                     // Position for scrolling
                                                     x: needsScrolling ? -scrollOffset : 0
@@ -3757,17 +3820,13 @@ Item {
                                                     onPathTextChanged: {
                                                         scrollOffset = 0
                                                         pathScrollAnimation.stop()
-                                                        if (needsScrolling) {
-                                                            pathScrollAnimation.start()
-                                                        }
+                                                        // Don't auto-start anymore, wait for hover
                                                     }
                                                     
                                                     onNeedsScrollingChanged: {
                                                         scrollOffset = 0
                                                         pathScrollAnimation.stop()
-                                                        if (needsScrolling) {
-                                                            pathScrollAnimation.start()
-                                                        }
+                                                        // Don't auto-start anymore, wait for hover
                                                     }
                                                     
                                                     // First copy of the text
@@ -3786,10 +3845,23 @@ Item {
                                                         visible: parent.needsScrolling
                                                     }
                                                     
-                                                    // Continuous scrolling animation
+                                                    // Scrolling animation (controlled by hover)
                                                     SequentialAnimation {
                                                         id: pathScrollAnimation
-                                                        loops: Animation.Infinite
+                                                        loops: 1  // Default to single loop, changed when hovering
+                                                        
+                                                        onStopped: {
+                                                            // When animation completes, check if we should continue
+                                                            if (pathHoverArea.containsMouse && pathHoverArea.animationRunning) {
+                                                                // Mouse is still hovering, run another cycle
+                                                                loops = 1
+                                                                start()
+                                                            } else {
+                                                                // Reset for next hover
+                                                                filePathRow.scrollOffset = 0
+                                                                pathHoverArea.animationRunning = false
+                                                            }
+                                                        }
                                                         
                                                         // Scroll continuously to show second copy
                                                         NumberAnimation {
@@ -3812,25 +3884,13 @@ Item {
                                                             property: "scrollOffset"
                                                             value: 0
                                                         }
+                                                        
+                                                        // Brief pause at the beginning
+                                                        PauseAnimation {
+                                                            duration: filePathRow.pauseDuration
+                                                        }
                                                     }
                                                 }
-                                            }
-                                            
-                                            // Hover to pause scrolling
-                                            MouseArea {
-                                                anchors.fill: parent
-                                                hoverEnabled: true
-                                                onEntered: pathScrollAnimation.pause()
-                                                onExited: {
-                                                    if (filePathRow.needsScrolling) {
-                                                        pathScrollAnimation.resume()
-                                                    }
-                                                }
-                                                
-                                                // Tooltip for full path
-                                                ToolTip.visible: containsMouse
-                                                ToolTip.text: filePathRow.pathText
-                                                ToolTip.delay: 500
                                             }
                                         }
                                     }
