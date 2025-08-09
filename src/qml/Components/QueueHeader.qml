@@ -100,7 +100,7 @@ RowLayout {
                     onContextTextChanged: {
                         scrollOffset = 0
                         contextScrollAnimation.stop()
-                        if (needsScrolling && contextText !== "") {
+                        if (needsScrolling && contextText !== "" && root.visible) {
                             contextScrollAnimation.start()
                         }
                     }
@@ -108,9 +108,29 @@ RowLayout {
                     onNeedsScrollingChanged: {
                         scrollOffset = 0
                         contextScrollAnimation.stop()
-                        if (needsScrolling && contextText !== "") {
+                        if (needsScrolling && contextText !== "" && root.visible) {
                             contextScrollAnimation.start()
                         }
+                    }
+                    
+                    Connections {
+                        target: root
+                        function onVisibleChanged() {
+                            if (root.visible) {
+                                // Start animation if needed when becoming visible
+                                if (contextTextRow.needsScrolling && contextTextRow.contextText !== "") {
+                                    contextScrollAnimation.start()
+                                }
+                            } else {
+                                // Stop animation when becoming invisible
+                                contextScrollAnimation.stop()
+                            }
+                        }
+                    }
+                    
+                    Component.onDestruction: {
+                        // Clean up animation when component is destroyed
+                        contextScrollAnimation.stop()
                     }
                     
                     // First copy of the text
