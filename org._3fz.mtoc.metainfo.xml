@@ -71,6 +71,15 @@
 
   <releases>
 
+    <release version="2.1.1" date="2025-08-09">
+      <description>
+        <p>Bug fixes for elevated GPU usage and missing close button icon</p>
+          <ul>
+            <li>Scrolling text now scrolls on hover to prevent high GPU usage from nonstop scrolling animations</li>
+            <li>Fixed a bug causing the icon in the close button in the album art popup to be invisible</li>
+        </ul>
+      </description>
+
     <release version="2.1" date="2025-08-07">
       <description>
         <p>Compact layout mode and light theme</p>
