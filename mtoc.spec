@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.1
+Version:        2.1.1
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,16 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Sat Aug 09 2025 Asa DeGroff <asa@3fz.org> 2.1.1-1
+- version bump and release notes (asa@3fz.org)
+- bug fix for close button visibility in album art popup (asa@3fz.org)
+- Implement hover-based scrolling animations for title and file path text in
+  LibraryPane (asa@3fz.org)
+- Add hover-based scrolling animation for context text in QueueHeader
+  (asa@3fz.org)
+- fixed background GPU usage in context text scrolling behavior by adding
+  visibility checks and cleanup on destruction (asa@3fz.org)
+
 * Thu Aug 07 2025 Asa DeGroff <asa@3fz.org> 2.1-1
 - Refactor combo box interaction to use onActivated for better handling of user
   selections (asa@3fz.org)
