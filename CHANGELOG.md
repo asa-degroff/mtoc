@@ -1,3 +1,8 @@
+# 2.1.1
+### Bug fixes for elevated GPU usage and missing close button icon
+- Scrolling text now scrolls on hover to prevent high GPU usage from nonstop scrolling animations
+- Fixed a bug causing the icon in the close button in the album art popup to be invisible
+
 # 2.1
 ### Compact layout mode and light theme
 - Compact layout moves the playback controls to below the library, and the queue and full-size album art to their own popups; ideal for use on small screens and tiling setups

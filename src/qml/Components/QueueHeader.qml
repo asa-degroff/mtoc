@@ -69,6 +69,26 @@ RowLayout {
         Layout.fillWidth: true
         Layout.preferredHeight: 20
         
+        // MouseArea to detect hover over the context text
+        MouseArea {
+            id: contextHoverArea
+            anchors.fill: parent
+            hoverEnabled: true
+            property bool animationRunning: false
+            
+            onEntered: {
+                // Start animation on hover if text needs scrolling
+                if (contextTextRow.needsScrolling && contextTextRow.contextText !== "" && root.visible) {
+                    contextTextRow.startHoverAnimation()
+                }
+            }
+            
+            onExited: {
+                // Let current cycle complete, then stop
+                animationRunning = false
+            }
+        }
+        
         Flickable {
             anchors.fill: parent
             contentHeight: height
@@ -90,8 +110,15 @@ RowLayout {
                     property string contextText: getContextText()
                     property bool needsScrolling: contextLabel1.contentWidth > contextTextContainer.width
                     property real scrollOffset: 0
-                    property real pauseDuration: 500  // Pause at end in ms
                     property real scrollDuration: Math.max(4000, contextLabel1.contentWidth * 20)  // Speed based on text length
+                    
+                    // Function to start hover-based animation
+                    function startHoverAnimation() {
+                        scrollOffset = 0
+                        contextHoverArea.animationRunning = true
+                        contextScrollAnimation.loops = 1  // Run once
+                        contextScrollAnimation.start()
+                    }
                     
                     // Position for scrolling
                     x: needsScrolling ? -scrollOffset : 0
@@ -100,17 +127,27 @@ RowLayout {
                     onContextTextChanged: {
                         scrollOffset = 0
                         contextScrollAnimation.stop()
-                        if (needsScrolling && contextText !== "") {
-                            contextScrollAnimation.start()
-                        }
                     }
                     
                     onNeedsScrollingChanged: {
                         scrollOffset = 0
                         contextScrollAnimation.stop()
-                        if (needsScrolling && contextText !== "") {
-                            contextScrollAnimation.start()
+                    }
+                    
+                    Connections {
+                        target: root
+                        function onVisibleChanged() {
+                            if (!root.visible) {
+                                // Stop animation when becoming invisible
+                                contextScrollAnimation.stop()
+                                contextHoverArea.animationRunning = false
+                            }
                         }
+                    }
+                    
+                    Component.onDestruction: {
+                        // Clean up animation when component is destroyed
+                        contextScrollAnimation.stop()
                     }
                     
                     // First copy of the text
@@ -131,10 +168,23 @@ RowLayout {
                         visible: parent.needsScrolling
                     }
                     
-                    // Continuous scrolling animation
+                    // Scrolling animation (controlled by hover)
                     SequentialAnimation {
                         id: contextScrollAnimation
-                        loops: Animation.Infinite
+                        loops: 1  // Default to single loop, changed when hovering
+                        
+                        onStopped: {
+                            // When animation completes, check if we should continue
+                            if (contextHoverArea.containsMouse && contextHoverArea.animationRunning && root.visible) {
+                                // Mouse is still hovering, run another cycle
+                                loops = 1
+                                start()
+                            } else {
+                                // Reset for next hover
+                                contextTextRow.scrollOffset = 0
+                                contextHoverArea.animationRunning = false
+                            }
+                        }
                         
                         // Initial pause
                         PauseAnimation {

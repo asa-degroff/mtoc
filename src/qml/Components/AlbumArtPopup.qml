@@ -128,10 +128,23 @@ Item {
                     ToolButton {
                         Layout.preferredWidth: 30
                         Layout.preferredHeight: 30
-                        icon.source: Theme.isDark ? "qrc:/resources/icons/close-button.svg" : "qrc:/resources/icons/close-button-dark.svg"
-                        icon.width: 18
-                        icon.height: 18
                         onClicked: root.closed()
+                        
+                        contentItem: Item {
+                            anchors.fill: parent
+                            
+                            Image {
+                                anchors.centerIn: parent
+                                width: Math.min(18, parent.width * 0.6)
+                                height: Math.min(18, parent.height * 0.6)
+                                source: Theme.isDark ? "qrc:/resources/icons/close-button.svg" : "qrc:/resources/icons/close-button-dark.svg"
+                                sourceSize.width: 64
+                                sourceSize.height: 64
+                                fillMode: Image.PreserveAspectFit
+                                smooth: true
+                                opacity: Theme.isDark ? 1.0 : 0.8
+                            }
+                        }
                         
                         background: Rectangle {
                             color: parent.hovered ? Theme.inputBackgroundHover : Theme.inputBackground
