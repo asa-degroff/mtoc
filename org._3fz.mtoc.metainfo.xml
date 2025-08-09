@@ -79,6 +79,7 @@
             <li>Fixed a bug causing the icon in the close button in the album art popup to be invisible</li>
         </ul>
       </description>
+    </release>
 
     <release version="2.1" date="2025-08-07">
       <description>
