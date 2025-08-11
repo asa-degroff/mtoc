@@ -72,7 +72,7 @@ mtoc saves your position in the interface as well playback state including your 
 ### High Performance
 Performance is a core design principle. mtoc aims for visual appeal and and continuity in browsing. 
 - Hardware-accelerated rendering
-- MVC architecture fine-tuned for efficiency
+- Even-driven MVC architecture fine-tuned for efficiency
 - Asynchronous metadata extraction and image loading
 - Optimized for smooth scrolling and searching even with thousands of albums
 #### Implementation Guidelines
@@ -140,11 +140,6 @@ On first launch, mtoc will feature an empty library. Click "Edit Library" (or th
 ### Usage Tips
 - mtoc works best with well-tagged music libraries. At a minimum, all tracks should have a title, artist, and album artist to be properly displayed and sorted. 
 - mtoc may not suit libraries that contain a lot of singles. Tracks are grouped by album, and libraries with a high track:album ratio may make the interface feel cluttered. 
-
-### Out of Scope
-- mtoc is not a tag editor and will not fix broken metadata. 
-- mtoc treats all music files as read-only. As such, writing tags like rating and play count is not supported. 
-- mtoc does not have any online features. 
 
 ## Architecture
 
