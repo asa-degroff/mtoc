@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QUrl>
 #include <QPointer>
+#include <QFileInfo>
 
 bool AudioEngine::s_gstInitialized = false;
 
@@ -77,9 +78,10 @@ void AudioEngine::initializePipeline()
         
         // Set rgvolume as the audio filter for playbin
         g_object_set(m_playbin, "audio-filter", m_rgvolume, nullptr);
-        qDebug() << "Replay gain support enabled";
+        qDebug() << "[ReplayGain] GStreamer rgvolume element created and configured successfully";
     } else {
-        qWarning() << "Failed to create rgvolume element - replay gain will not be available";
+        qWarning() << "[ReplayGain] Failed to create rgvolume element - replay gain will not be available";
+        qWarning() << "[ReplayGain] Make sure gstreamer1.0-plugins-good is installed";
     }
     
     g_signal_connect(m_playbin, "about-to-finish", G_CALLBACK(aboutToFinishCallback), this);
@@ -125,6 +127,34 @@ void AudioEngine::loadTrack(const QString &filePath)
     stop();
     
     m_currentTrack = filePath;
+    
+    // Log replay gain status when loading a track
+    if (m_rgvolume) {
+        gboolean enabled = FALSE;
+        gboolean albumMode = FALSE;
+        gdouble preAmp = 0.0;
+        gdouble fallbackGain = 0.0;
+        
+        // Check if rgvolume is currently set as audio filter
+        GstElement* currentFilter = nullptr;
+        g_object_get(m_playbin, "audio-filter", &currentFilter, nullptr);
+        enabled = (currentFilter == m_rgvolume);
+        if (currentFilter) {
+            gst_object_unref(currentFilter);
+        }
+        
+        g_object_get(m_rgvolume, 
+            "album-mode", &albumMode,
+            "pre-amp", &preAmp,
+            "fallback-gain", &fallbackGain,
+            nullptr);
+        
+        qDebug() << "[ReplayGain] Loading track:" << QFileInfo(filePath).fileName();
+        qDebug() << "[ReplayGain] Status: Enabled=" << enabled 
+                 << "| Mode=" << (albumMode ? "Album" : "Track")
+                 << "| PreAmp=" << preAmp << "dB"
+                 << "| Fallback=" << fallbackGain << "dB";
+    }
     
     QUrl url = QUrl::fromLocalFile(filePath);
     g_object_set(m_playbin, "uri", url.toString().toUtf8().constData(), nullptr);
@@ -312,6 +342,22 @@ gboolean AudioEngine::busCallback(GstBus *bus, GstMessage *message, gpointer dat
                 gint64 duration;
                 if (gst_element_query_duration(engine->m_pipeline, GST_FORMAT_TIME, &duration)) {
                     emit engine->durationChanged(duration / GST_MSECOND);
+                }
+                
+                // Log replay gain values that will be applied
+                if (engine->m_rgvolume) {
+                    gdouble targetGain = 0.0;
+                    gdouble resultGain = 0.0;
+                    g_object_get(engine->m_rgvolume,
+                        "target-gain", &targetGain,
+                        "result-gain", &resultGain,
+                        nullptr);
+                    
+                    if (targetGain != 0.0 || resultGain != 0.0) {
+                        qDebug() << "[ReplayGain] Applied gains - Target:" << targetGain << "dB | Result:" << resultGain << "dB";
+                    } else {
+                        qDebug() << "[ReplayGain] No replay gain tags found in track, using fallback gain";
+                    }
                 }
             }
         }

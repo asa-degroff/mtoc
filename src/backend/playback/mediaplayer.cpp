@@ -164,6 +164,13 @@ void MediaPlayer::applyReplayGainSettings()
     bool enabled = m_settingsManager->replayGainEnabled();
     m_audioEngine->setReplayGainEnabled(enabled);
     
+    qDebug() << "[ReplayGain] Configuration:"
+             << "Enabled=" << enabled
+             << "| Mode=" << (m_settingsManager->replayGainMode() == SettingsManager::Off ? "Off" :
+                             m_settingsManager->replayGainMode() == SettingsManager::Track ? "Track" : "Album")
+             << "| PreAmp=" << m_settingsManager->replayGainPreAmp() << "dB"
+             << "| Fallback=" << m_settingsManager->replayGainFallbackGain() << "dB";
+    
     if (enabled) {
         // Set mode (album vs track)
         bool albumMode = (m_settingsManager->replayGainMode() == SettingsManager::Album);

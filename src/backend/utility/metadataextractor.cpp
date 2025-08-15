@@ -150,15 +150,19 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                             if (desc == "REPLAYGAIN_TRACK_GAIN") {
                                 meta.replayGainTrackGain = parseReplayGainValue(value);
                                 meta.hasReplayGainTrackGain = true;
+                                qDebug() << "[ReplayGain] Found TRACK_GAIN:" << value << "=" << meta.replayGainTrackGain << "dB";
                             } else if (desc == "REPLAYGAIN_TRACK_PEAK") {
                                 meta.replayGainTrackPeak = value.toDouble();
                                 meta.hasReplayGainTrackPeak = true;
+                                qDebug() << "[ReplayGain] Found TRACK_PEAK:" << value << "=" << meta.replayGainTrackPeak;
                             } else if (desc == "REPLAYGAIN_ALBUM_GAIN") {
                                 meta.replayGainAlbumGain = parseReplayGainValue(value);
                                 meta.hasReplayGainAlbumGain = true;
+                                qDebug() << "[ReplayGain] Found ALBUM_GAIN:" << value << "=" << meta.replayGainAlbumGain << "dB";
                             } else if (desc == "REPLAYGAIN_ALBUM_PEAK") {
                                 meta.replayGainAlbumPeak = value.toDouble();
                                 meta.hasReplayGainAlbumPeak = true;
+                                qDebug() << "[ReplayGain] Found ALBUM_PEAK:" << value << "=" << meta.replayGainAlbumPeak;
                             }
                         }
                     }
@@ -471,6 +475,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                         QString value = QString::fromStdString(trackGainList.front().to8Bit(true));
                         meta.replayGainTrackGain = parseReplayGainValue(value);
                         meta.hasReplayGainTrackGain = true;
+                        qDebug() << "[ReplayGain] Found TRACK_GAIN (Xiph):" << value << "=" << meta.replayGainTrackGain << "dB";
                     }
                     
                     // Track peak
@@ -479,6 +484,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                         QString value = QString::fromStdString(trackPeakList.front().to8Bit(true));
                         meta.replayGainTrackPeak = value.toDouble();
                         meta.hasReplayGainTrackPeak = true;
+                        qDebug() << "[ReplayGain] Found TRACK_PEAK (Xiph):" << value << "=" << meta.replayGainTrackPeak;
                     }
                     
                     // Album gain
@@ -487,6 +493,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                         QString value = QString::fromStdString(albumGainList.front().to8Bit(true));
                         meta.replayGainAlbumGain = parseReplayGainValue(value);
                         meta.hasReplayGainAlbumGain = true;
+                        qDebug() << "[ReplayGain] Found ALBUM_GAIN (Xiph):" << value << "=" << meta.replayGainAlbumGain << "dB";
                     }
                     
                     // Album peak
@@ -495,6 +502,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                         QString value = QString::fromStdString(albumPeakList.front().to8Bit(true));
                         meta.replayGainAlbumPeak = value.toDouble();
                         meta.hasReplayGainAlbumPeak = true;
+                        qDebug() << "[ReplayGain] Found ALBUM_PEAK (Xiph):" << value << "=" << meta.replayGainAlbumPeak;
                     }
                 } catch (const std::exception& e) {
                     qDebug() << "MetadataExtractor: Exception accessing replay gain properties:" << e.what();
@@ -673,6 +681,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                         QString value = QString::fromStdString(trackGainList.front().to8Bit(true));
                         meta.replayGainTrackGain = parseReplayGainValue(value);
                         meta.hasReplayGainTrackGain = true;
+                        qDebug() << "[ReplayGain] Found TRACK_GAIN (Xiph):" << value << "=" << meta.replayGainTrackGain << "dB";
                     }
                     
                     // Track peak
@@ -681,6 +690,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                         QString value = QString::fromStdString(trackPeakList.front().to8Bit(true));
                         meta.replayGainTrackPeak = value.toDouble();
                         meta.hasReplayGainTrackPeak = true;
+                        qDebug() << "[ReplayGain] Found TRACK_PEAK (Xiph):" << value << "=" << meta.replayGainTrackPeak;
                     }
                     
                     // Album gain
@@ -689,6 +699,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                         QString value = QString::fromStdString(albumGainList.front().to8Bit(true));
                         meta.replayGainAlbumGain = parseReplayGainValue(value);
                         meta.hasReplayGainAlbumGain = true;
+                        qDebug() << "[ReplayGain] Found ALBUM_GAIN (Xiph):" << value << "=" << meta.replayGainAlbumGain << "dB";
                     }
                     
                     // Album peak
@@ -697,6 +708,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                         QString value = QString::fromStdString(albumPeakList.front().to8Bit(true));
                         meta.replayGainAlbumPeak = value.toDouble();
                         meta.hasReplayGainAlbumPeak = true;
+                        qDebug() << "[ReplayGain] Found ALBUM_PEAK (Xiph):" << value << "=" << meta.replayGainAlbumPeak;
                     }
                 } catch (const std::exception& e) {
                     qDebug() << "MetadataExtractor: Exception accessing replay gain properties:" << e.what();

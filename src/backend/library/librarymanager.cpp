@@ -1002,6 +1002,23 @@ void LibraryManager::syncWithDatabase(const QString &filePath)
     Mtoc::MetadataExtractor localExtractor;
     QVariantMap metadata = localExtractor.extractAsVariantMap(filePath);
     
+    // Log replay gain data if present
+    if (metadata.contains("replayGainTrackGain") || metadata.contains("replayGainAlbumGain")) {
+        qDebug() << "[ReplayGain] Found tags for:" << QFileInfo(filePath).fileName();
+        if (metadata.contains("replayGainTrackGain")) {
+            qDebug() << "  Track Gain:" << metadata["replayGainTrackGain"].toDouble() << "dB";
+            if (metadata.contains("replayGainTrackPeak")) {
+                qDebug() << "  Track Peak:" << metadata["replayGainTrackPeak"].toDouble();
+            }
+        }
+        if (metadata.contains("replayGainAlbumGain")) {
+            qDebug() << "  Album Gain:" << metadata["replayGainAlbumGain"].toDouble() << "dB";
+            if (metadata.contains("replayGainAlbumPeak")) {
+                qDebug() << "  Album Peak:" << metadata["replayGainAlbumPeak"].toDouble();
+            }
+        }
+    }
+    
     // Add file info to metadata
     metadata["fileSize"] = fileInfo.size();
     metadata["fileModified"] = fileInfo.lastModified();
