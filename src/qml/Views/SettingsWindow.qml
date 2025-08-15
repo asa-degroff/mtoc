@@ -566,6 +566,298 @@ ApplicationWindow {
                 }
             }
             
+            // Replay Gain Section
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: replayGainLayout.implicitHeight + 24
+                color: Theme.panelBackground
+                radius: 4
+                
+                ColumnLayout {
+                    id: replayGainLayout
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 12
+                    
+                    Label {
+                        text: "Replay Gain"
+                        font.pixelSize: 16
+                        font.bold: true
+                        color: Theme.primaryText
+                    }
+                    
+                    Label {
+                        text: "Normalizes volume across tracks and albums"
+                        font.pixelSize: 12
+                        color: Theme.tertiaryText
+                        Layout.fillWidth: true
+                    }
+                    
+                    CheckBox {
+                        id: replayGainEnabledCheck
+                        text: "Enable Replay Gain"
+                        checked: SettingsManager.replayGainEnabled
+                        
+                        onToggled: {
+                            SettingsManager.replayGainEnabled = checked
+                        }
+                        
+                        contentItem: Text {
+                            text: parent.text
+                            font.pixelSize: 14
+                            color: Theme.secondaryText
+                            verticalAlignment: Text.AlignVCenter
+                            leftPadding: parent.indicator.width + parent.spacing
+                        }
+                        
+                        indicator: Rectangle {
+                            implicitWidth: 20
+                            implicitHeight: 20
+                            x: parent.leftPadding
+                            y: parent.height / 2 - height / 2
+                            radius: 3
+                            color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                            border.color: parent.checked ? Theme.linkColor : Theme.borderColor
+                            
+                            Canvas {
+                                anchors.fill: parent
+                                anchors.margins: 4
+                                visible: parent.parent.checked
+                                
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.reset()
+                                    ctx.strokeStyle = "white"
+                                    ctx.lineWidth = 2
+                                    ctx.lineCap = "round"
+                                    ctx.lineJoin = "round"
+                                    ctx.beginPath()
+                                    ctx.moveTo(width * 0.2, height * 0.5)
+                                    ctx.lineTo(width * 0.45, height * 0.75)
+                                    ctx.lineTo(width * 0.8, height * 0.25)
+                                    ctx.stroke()
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Mode selection
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 12
+                        enabled: replayGainEnabledCheck.checked
+                        opacity: enabled ? 1.0 : 0.5
+                        
+                        Label {
+                            text: "Mode:"
+                            font.pixelSize: 14
+                            color: Theme.secondaryText
+                            Layout.preferredWidth: 100
+                        }
+                        
+                        ComboBox {
+                            id: replayGainModeCombo
+                            Layout.preferredWidth: 150
+                            Layout.preferredHeight: 36
+                            model: ["Off", "Track", "Album"]
+                            currentIndex: SettingsManager.replayGainMode
+                            
+                            onActivated: function(index) {
+                                SettingsManager.replayGainMode = index
+                            }
+                            
+                            background: Rectangle {
+                                color: parent.hovered ? Theme.inputBackgroundHover : Theme.inputBackground
+                                radius: 4
+                                border.width: 1
+                                border.color: Theme.borderColor
+                            }
+                            
+                            contentItem: Text {
+                                text: parent.displayText
+                                color: Theme.primaryText
+                                font.pixelSize: 14
+                                verticalAlignment: Text.AlignVCenter
+                                leftPadding: 8
+                                rightPadding: 30
+                            }
+                            
+                            indicator: Canvas {
+                                x: parent.width - width - 8
+                                y: parent.height / 2 - height / 2
+                                width: 12
+                                height: 8
+                                contextType: "2d"
+                                
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.reset()
+                                    ctx.moveTo(0, 0)
+                                    ctx.lineTo(width, 0)
+                                    ctx.lineTo(width / 2, height)
+                                    ctx.closePath()
+                                    ctx.fillStyle = "#cccccc"
+                                    ctx.fill()
+                                }
+                            }
+                        }
+                        
+                        Item { Layout.fillWidth: true }
+                    }
+                    
+                    Label {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 20
+                        text: "Track: Apply gain per track • Album: Preserve relative volume within albums"
+                        font.pixelSize: 12
+                        color: Theme.tertiaryText
+                        visible: replayGainEnabledCheck.checked
+                        wrapMode: Text.WordWrap
+                    }
+                    
+                    // Pre-amplification
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+                        enabled: replayGainEnabledCheck.checked
+                        opacity: enabled ? 1.0 : 0.5
+                        
+                        RowLayout {
+                            Layout.fillWidth: true
+                            
+                            Label {
+                                text: "Pre-amplification:"
+                                font.pixelSize: 14
+                                color: Theme.secondaryText
+                                Layout.preferredWidth: 120
+                            }
+                            
+                            Slider {
+                                id: preAmpSlider
+                                Layout.fillWidth: true
+                                from: -15.0
+                                to: 15.0
+                                value: SettingsManager.replayGainPreAmp
+                                stepSize: 0.5
+                                
+                                onValueChanged: {
+                                    SettingsManager.replayGainPreAmp = value
+                                }
+                                
+                                background: Rectangle {
+                                    x: preAmpSlider.leftPadding
+                                    y: preAmpSlider.topPadding + preAmpSlider.availableHeight / 2 - height / 2
+                                    implicitWidth: 200
+                                    implicitHeight: 4
+                                    width: preAmpSlider.availableWidth
+                                    height: implicitHeight
+                                    radius: 2
+                                    color: Theme.inputBackground
+                                    
+                                    Rectangle {
+                                        width: preAmpSlider.visualPosition * parent.width
+                                        height: parent.height
+                                        color: Theme.linkColor
+                                        radius: 2
+                                    }
+                                }
+                                
+                                handle: Rectangle {
+                                    x: preAmpSlider.leftPadding + preAmpSlider.visualPosition * (preAmpSlider.availableWidth - width)
+                                    y: preAmpSlider.topPadding + preAmpSlider.availableHeight / 2 - height / 2
+                                    implicitWidth: 16
+                                    implicitHeight: 16
+                                    radius: 8
+                                    color: preAmpSlider.pressed ? Theme.selectedBackground : Theme.linkColor
+                                }
+                            }
+                            
+                            Label {
+                                text: preAmpSlider.value.toFixed(1) + " dB"
+                                font.pixelSize: 14
+                                color: Theme.secondaryText
+                                Layout.preferredWidth: 60
+                            }
+                        }
+                    }
+                    
+                    // Fallback gain
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+                        enabled: replayGainEnabledCheck.checked
+                        opacity: enabled ? 1.0 : 0.5
+                        
+                        RowLayout {
+                            Layout.fillWidth: true
+                            
+                            Label {
+                                text: "Fallback gain:"
+                                font.pixelSize: 14
+                                color: Theme.secondaryText
+                                Layout.preferredWidth: 120
+                            }
+                            
+                            Slider {
+                                id: fallbackGainSlider
+                                Layout.fillWidth: true
+                                from: -15.0
+                                to: 15.0
+                                value: SettingsManager.replayGainFallbackGain
+                                stepSize: 0.5
+                                
+                                onValueChanged: {
+                                    SettingsManager.replayGainFallbackGain = value
+                                }
+                                
+                                background: Rectangle {
+                                    x: fallbackGainSlider.leftPadding
+                                    y: fallbackGainSlider.topPadding + fallbackGainSlider.availableHeight / 2 - height / 2
+                                    implicitWidth: 200
+                                    implicitHeight: 4
+                                    width: fallbackGainSlider.availableWidth
+                                    height: implicitHeight
+                                    radius: 2
+                                    color: Theme.inputBackground
+                                    
+                                    Rectangle {
+                                        width: fallbackGainSlider.visualPosition * parent.width
+                                        height: parent.height
+                                        color: Theme.linkColor
+                                        radius: 2
+                                    }
+                                }
+                                
+                                handle: Rectangle {
+                                    x: fallbackGainSlider.leftPadding + fallbackGainSlider.visualPosition * (fallbackGainSlider.availableWidth - width)
+                                    y: fallbackGainSlider.topPadding + fallbackGainSlider.availableHeight / 2 - height / 2
+                                    implicitWidth: 16
+                                    implicitHeight: 16
+                                    radius: 8
+                                    color: fallbackGainSlider.pressed ? Theme.selectedBackground : Theme.linkColor
+                                }
+                            }
+                            
+                            Label {
+                                text: fallbackGainSlider.value.toFixed(1) + " dB"
+                                font.pixelSize: 14
+                                color: Theme.secondaryText
+                                Layout.preferredWidth: 60
+                            }
+                        }
+                        
+                        Label {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: 20
+                            text: "Applied when tracks don't have replay gain metadata"
+                            font.pixelSize: 12
+                            color: Theme.tertiaryText
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+                }
+            }
+            
             // About Section
             Rectangle {
                 Layout.fillWidth: true

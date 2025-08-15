@@ -10,6 +10,10 @@ SettingsManager::SettingsManager(QObject *parent)
     : QObject(parent)
     , m_settings("mtoc", "mtoc")
     , m_layoutMode(Wide)
+    , m_replayGainEnabled(false)
+    , m_replayGainMode(Off)
+    , m_replayGainPreAmp(0.0)
+    , m_replayGainFallbackGain(0.0)
 {
     loadSettings();
     setupSystemThemeDetection();
@@ -166,6 +170,46 @@ void SettingsManager::setLayoutMode(LayoutMode mode)
     }
 }
 
+void SettingsManager::setReplayGainEnabled(bool enabled)
+{
+    if (m_replayGainEnabled != enabled) {
+        m_replayGainEnabled = enabled;
+        emit replayGainEnabledChanged(enabled);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setReplayGainMode(ReplayGainMode mode)
+{
+    if (m_replayGainMode != mode) {
+        m_replayGainMode = mode;
+        emit replayGainModeChanged(mode);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setReplayGainPreAmp(double preAmp)
+{
+    // Clamp to reasonable range
+    preAmp = qBound(-15.0, preAmp, 15.0);
+    if (!qFuzzyCompare(m_replayGainPreAmp, preAmp)) {
+        m_replayGainPreAmp = preAmp;
+        emit replayGainPreAmpChanged(preAmp);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setReplayGainFallbackGain(double fallbackGain)
+{
+    // Clamp to reasonable range
+    fallbackGain = qBound(-15.0, fallbackGain, 15.0);
+    if (!qFuzzyCompare(m_replayGainFallbackGain, fallbackGain)) {
+        m_replayGainFallbackGain = fallbackGain;
+        emit replayGainFallbackGainChanged(fallbackGain);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -182,6 +226,13 @@ void SettingsManager::loadSettings()
     m_restorePlaybackPosition = m_settings.value("restorePosition", true).toBool();
     m_repeatEnabled = m_settings.value("repeatEnabled", false).toBool();
     m_shuffleEnabled = m_settings.value("shuffleEnabled", false).toBool();
+    m_settings.endGroup();
+    
+    m_settings.beginGroup("ReplayGain");
+    m_replayGainEnabled = m_settings.value("enabled", false).toBool();
+    m_replayGainMode = static_cast<ReplayGainMode>(m_settings.value("mode", Off).toInt());
+    m_replayGainPreAmp = m_settings.value("preAmp", 0.0).toDouble();
+    m_replayGainFallbackGain = m_settings.value("fallbackGain", 0.0).toDouble();
     m_settings.endGroup();
     
     m_settings.beginGroup("LibraryPane");
@@ -221,6 +272,13 @@ void SettingsManager::saveSettings()
     m_settings.setValue("restorePosition", m_restorePlaybackPosition);
     m_settings.setValue("repeatEnabled", m_repeatEnabled);
     m_settings.setValue("shuffleEnabled", m_shuffleEnabled);
+    m_settings.endGroup();
+    
+    m_settings.beginGroup("ReplayGain");
+    m_settings.setValue("enabled", m_replayGainEnabled);
+    m_settings.setValue("mode", static_cast<int>(m_replayGainMode));
+    m_settings.setValue("preAmp", m_replayGainPreAmp);
+    m_settings.setValue("fallbackGain", m_replayGainFallbackGain);
     m_settings.endGroup();
     
     m_settings.beginGroup("LibraryPane");

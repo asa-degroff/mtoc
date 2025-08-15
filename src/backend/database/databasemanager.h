@@ -98,6 +98,7 @@ signals:
 private:
     bool createTables();
     bool createIndexes();
+    bool applyMigrations(int currentVersion);
     QString getDatabasePath() const;
     void logError(const QString& operation, const QSqlQuery& query);
     

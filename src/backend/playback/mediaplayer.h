@@ -155,6 +155,7 @@ private slots:
 
 private:
     void setupConnections();
+    void applyReplayGainSettings();
     void updateCurrentTrack(Mtoc::Track* track);
     void playNextInQueue();
     void handleTrackFinished();

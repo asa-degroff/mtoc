@@ -97,6 +97,19 @@ void MediaPlayer::setSettingsManager(SettingsManager* settingsManager)
                 m_settingsManager, &SettingsManager::setRepeatEnabled);
         connect(this, &MediaPlayer::shuffleEnabledChanged,
                 m_settingsManager, &SettingsManager::setShuffleEnabled);
+        
+        // Configure replay gain settings
+        applyReplayGainSettings();
+        
+        // Connect to replay gain setting changes
+        connect(m_settingsManager, &SettingsManager::replayGainEnabledChanged,
+                this, &MediaPlayer::applyReplayGainSettings);
+        connect(m_settingsManager, &SettingsManager::replayGainModeChanged,
+                this, &MediaPlayer::applyReplayGainSettings);
+        connect(m_settingsManager, &SettingsManager::replayGainPreAmpChanged,
+                this, &MediaPlayer::applyReplayGainSettings);
+        connect(m_settingsManager, &SettingsManager::replayGainFallbackGainChanged,
+                this, &MediaPlayer::applyReplayGainSettings);
     }
 }
 
@@ -139,6 +152,29 @@ void MediaPlayer::setupConnections()
     
     connect(m_audioEngine.get(), &AudioEngine::error,
             this, &MediaPlayer::error);
+}
+
+void MediaPlayer::applyReplayGainSettings()
+{
+    if (!m_settingsManager || !m_audioEngine) {
+        return;
+    }
+    
+    // Apply replay gain settings to the audio engine
+    bool enabled = m_settingsManager->replayGainEnabled();
+    m_audioEngine->setReplayGainEnabled(enabled);
+    
+    if (enabled) {
+        // Set mode (album vs track)
+        bool albumMode = (m_settingsManager->replayGainMode() == SettingsManager::Album);
+        m_audioEngine->setReplayGainMode(albumMode);
+        
+        // Set pre-amplification
+        m_audioEngine->setReplayGainPreAmp(m_settingsManager->replayGainPreAmp());
+        
+        // Set fallback gain
+        m_audioEngine->setReplayGainFallbackGain(m_settingsManager->replayGainFallbackGain());
+    }
 }
 
 MediaPlayer::State MediaPlayer::state() const

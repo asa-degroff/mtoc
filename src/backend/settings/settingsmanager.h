@@ -24,6 +24,10 @@ class SettingsManager : public QObject
     Q_PROPERTY(Theme theme READ theme WRITE setTheme NOTIFY themeChanged)
     Q_PROPERTY(bool isSystemDark READ isSystemDark NOTIFY systemThemeChanged)
     Q_PROPERTY(LayoutMode layoutMode READ layoutMode WRITE setLayoutMode NOTIFY layoutModeChanged)
+    Q_PROPERTY(bool replayGainEnabled READ replayGainEnabled WRITE setReplayGainEnabled NOTIFY replayGainEnabledChanged)
+    Q_PROPERTY(ReplayGainMode replayGainMode READ replayGainMode WRITE setReplayGainMode NOTIFY replayGainModeChanged)
+    Q_PROPERTY(double replayGainPreAmp READ replayGainPreAmp WRITE setReplayGainPreAmp NOTIFY replayGainPreAmpChanged)
+    Q_PROPERTY(double replayGainFallbackGain READ replayGainFallbackGain WRITE setReplayGainFallbackGain NOTIFY replayGainFallbackGainChanged)
 
 public:
     enum QueueAction {
@@ -48,6 +52,13 @@ public:
     };
     Q_ENUM(LayoutMode)
 
+    enum ReplayGainMode {
+        Off,
+        Track,
+        Album
+    };
+    Q_ENUM(ReplayGainMode)
+
     static SettingsManager* instance();
     ~SettingsManager();
     
@@ -68,6 +79,10 @@ public:
     Theme theme() const { return m_theme; }
     bool isSystemDark() const;
     LayoutMode layoutMode() const { return m_layoutMode; }
+    bool replayGainEnabled() const { return m_replayGainEnabled; }
+    ReplayGainMode replayGainMode() const { return m_replayGainMode; }
+    double replayGainPreAmp() const { return m_replayGainPreAmp; }
+    double replayGainFallbackGain() const { return m_replayGainFallbackGain; }
     
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -85,6 +100,10 @@ public:
     void setWindowY(int y);
     void setTheme(Theme theme);
     void setLayoutMode(LayoutMode mode);
+    void setReplayGainEnabled(bool enabled);
+    void setReplayGainMode(ReplayGainMode mode);
+    void setReplayGainPreAmp(double preAmp);
+    void setReplayGainFallbackGain(double fallbackGain);
 
 protected:
     bool event(QEvent *event) override;
@@ -106,6 +125,10 @@ signals:
     void themeChanged(Theme theme);
     void systemThemeChanged();
     void layoutModeChanged(LayoutMode mode);
+    void replayGainEnabledChanged(bool enabled);
+    void replayGainModeChanged(ReplayGainMode mode);
+    void replayGainPreAmpChanged(double preAmp);
+    void replayGainFallbackGainChanged(double fallbackGain);
 
 private slots:
 
@@ -135,6 +158,10 @@ private:
     int m_windowY;
     Theme m_theme;
     LayoutMode m_layoutMode;
+    bool m_replayGainEnabled;
+    ReplayGainMode m_replayGainMode;
+    double m_replayGainPreAmp;
+    double m_replayGainFallbackGain;
 };
 
 #endif // SETTINGSMANAGER_H

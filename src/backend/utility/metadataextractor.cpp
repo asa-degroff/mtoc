@@ -17,8 +17,25 @@
 #include <taglib/vorbisfile.h>
 #include <taglib/xiphcomment.h>
 #include <taglib/opusfile.h>
+#include <taglib/textidentificationframe.h>
+#include <taglib/id3v2frame.h>
 
 namespace Mtoc {
+
+// Helper function to parse replay gain value from string (format: "+#.## dB" or "-#.## dB")
+static double parseReplayGainValue(const QString& str) {
+    QString trimmed = str.trimmed();
+    
+    // Remove "dB" suffix if present
+    if (trimmed.endsWith(" dB", Qt::CaseInsensitive)) {
+        trimmed = trimmed.left(trimmed.length() - 3).trimmed();
+    }
+    
+    // Convert to double
+    bool ok;
+    double value = trimmed.toDouble(&ok);
+    return ok ? value : 0.0;
+}
 
 MetadataExtractor::MetadataExtractor(QObject *parent)
     : QObject{parent}
@@ -114,6 +131,35 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                             meta.discNumber = discStr.split('/').first().toInt(&ok);
                             if (!ok) meta.discNumber = 0;
                             // qDebug() << "MetadataExtractor: Found ID3v2 disc number (TPOS):" << meta.discNumber;
+                        }
+                    }
+                }
+                
+                // Extract ReplayGain tags from TXXX frames
+                TagLib::ID3v2::FrameList txxxFrames = id3v2Tag->frameList("TXXX");
+                for (auto it = txxxFrames.begin(); it != txxxFrames.end(); ++it) {
+                    auto* txtFrame = dynamic_cast<TagLib::ID3v2::UserTextIdentificationFrame*>(*it);
+                    if (txtFrame) {
+                        TagLib::String description = txtFrame->description();
+                        TagLib::StringList values = txtFrame->fieldList();
+                        
+                        if (values.size() > 1) {
+                            QString desc = QString::fromStdString(description.to8Bit(true)).toUpper();
+                            QString value = QString::fromStdString(values[1].to8Bit(true));
+                            
+                            if (desc == "REPLAYGAIN_TRACK_GAIN") {
+                                meta.replayGainTrackGain = parseReplayGainValue(value);
+                                meta.hasReplayGainTrackGain = true;
+                            } else if (desc == "REPLAYGAIN_TRACK_PEAK") {
+                                meta.replayGainTrackPeak = value.toDouble();
+                                meta.hasReplayGainTrackPeak = true;
+                            } else if (desc == "REPLAYGAIN_ALBUM_GAIN") {
+                                meta.replayGainAlbumGain = parseReplayGainValue(value);
+                                meta.hasReplayGainAlbumGain = true;
+                            } else if (desc == "REPLAYGAIN_ALBUM_PEAK") {
+                                meta.replayGainAlbumPeak = value.toDouble();
+                                meta.hasReplayGainAlbumPeak = true;
+                            }
                         }
                     }
                 }
@@ -417,6 +463,45 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                     qDebug() << "MetadataExtractor: Failed to access DISCNUMBER property";
                 }
                 
+                // Extract ReplayGain tags from Xiph comments
+                try {
+                    // Track gain
+                    TagLib::StringList trackGainList = properties.value("REPLAYGAIN_TRACK_GAIN");
+                    if (!trackGainList.isEmpty() && trackGainList.size() > 0) {
+                        QString value = QString::fromStdString(trackGainList.front().to8Bit(true));
+                        meta.replayGainTrackGain = parseReplayGainValue(value);
+                        meta.hasReplayGainTrackGain = true;
+                    }
+                    
+                    // Track peak
+                    TagLib::StringList trackPeakList = properties.value("REPLAYGAIN_TRACK_PEAK");
+                    if (!trackPeakList.isEmpty() && trackPeakList.size() > 0) {
+                        QString value = QString::fromStdString(trackPeakList.front().to8Bit(true));
+                        meta.replayGainTrackPeak = value.toDouble();
+                        meta.hasReplayGainTrackPeak = true;
+                    }
+                    
+                    // Album gain
+                    TagLib::StringList albumGainList = properties.value("REPLAYGAIN_ALBUM_GAIN");
+                    if (!albumGainList.isEmpty() && albumGainList.size() > 0) {
+                        QString value = QString::fromStdString(albumGainList.front().to8Bit(true));
+                        meta.replayGainAlbumGain = parseReplayGainValue(value);
+                        meta.hasReplayGainAlbumGain = true;
+                    }
+                    
+                    // Album peak
+                    TagLib::StringList albumPeakList = properties.value("REPLAYGAIN_ALBUM_PEAK");
+                    if (!albumPeakList.isEmpty() && albumPeakList.size() > 0) {
+                        QString value = QString::fromStdString(albumPeakList.front().to8Bit(true));
+                        meta.replayGainAlbumPeak = value.toDouble();
+                        meta.hasReplayGainAlbumPeak = true;
+                    }
+                } catch (const std::exception& e) {
+                    qDebug() << "MetadataExtractor: Exception accessing replay gain properties:" << e.what();
+                } catch (...) {
+                    qDebug() << "MetadataExtractor: Failed to access replay gain properties";
+                }
+                
                 // Extract album art from Xiph comment
                 if (extractAlbumArt) {
                     qDebug() << "MetadataExtractor: Attempting to extract album art from OGG file";
@@ -578,6 +663,45 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                     qDebug() << "MetadataExtractor: Exception accessing DISCNUMBER property:" << e.what();
                 } catch (...) {
                     qDebug() << "MetadataExtractor: Failed to access DISCNUMBER property";
+                }
+                
+                // Extract ReplayGain tags from Xiph comments
+                try {
+                    // Track gain
+                    TagLib::StringList trackGainList = properties.value("REPLAYGAIN_TRACK_GAIN");
+                    if (!trackGainList.isEmpty() && trackGainList.size() > 0) {
+                        QString value = QString::fromStdString(trackGainList.front().to8Bit(true));
+                        meta.replayGainTrackGain = parseReplayGainValue(value);
+                        meta.hasReplayGainTrackGain = true;
+                    }
+                    
+                    // Track peak
+                    TagLib::StringList trackPeakList = properties.value("REPLAYGAIN_TRACK_PEAK");
+                    if (!trackPeakList.isEmpty() && trackPeakList.size() > 0) {
+                        QString value = QString::fromStdString(trackPeakList.front().to8Bit(true));
+                        meta.replayGainTrackPeak = value.toDouble();
+                        meta.hasReplayGainTrackPeak = true;
+                    }
+                    
+                    // Album gain
+                    TagLib::StringList albumGainList = properties.value("REPLAYGAIN_ALBUM_GAIN");
+                    if (!albumGainList.isEmpty() && albumGainList.size() > 0) {
+                        QString value = QString::fromStdString(albumGainList.front().to8Bit(true));
+                        meta.replayGainAlbumGain = parseReplayGainValue(value);
+                        meta.hasReplayGainAlbumGain = true;
+                    }
+                    
+                    // Album peak
+                    TagLib::StringList albumPeakList = properties.value("REPLAYGAIN_ALBUM_PEAK");
+                    if (!albumPeakList.isEmpty() && albumPeakList.size() > 0) {
+                        QString value = QString::fromStdString(albumPeakList.front().to8Bit(true));
+                        meta.replayGainAlbumPeak = value.toDouble();
+                        meta.hasReplayGainAlbumPeak = true;
+                    }
+                } catch (const std::exception& e) {
+                    qDebug() << "MetadataExtractor: Exception accessing replay gain properties:" << e.what();
+                } catch (...) {
+                    qDebug() << "MetadataExtractor: Failed to access replay gain properties";
                 }
                 
                 // Extract album art from Xiph comment
@@ -880,6 +1004,19 @@ QVariantMap MetadataExtractor::extractAsVariantMap(const QString &filePath, bool
     map.insert("hasAlbumArt", !details.albumArtData.isEmpty());
     map.insert("albumArtData", details.albumArtData);
     map.insert("albumArtMimeType", details.albumArtMimeType);
+    // Include replay gain data if present
+    if (details.hasReplayGainTrackGain) {
+        map.insert("replayGainTrackGain", details.replayGainTrackGain);
+    }
+    if (details.hasReplayGainTrackPeak) {
+        map.insert("replayGainTrackPeak", details.replayGainTrackPeak);
+    }
+    if (details.hasReplayGainAlbumGain) {
+        map.insert("replayGainAlbumGain", details.replayGainAlbumGain);
+    }
+    if (details.hasReplayGainAlbumPeak) {
+        map.insert("replayGainAlbumPeak", details.replayGainAlbumPeak);
+    }
     return map;
 }
 

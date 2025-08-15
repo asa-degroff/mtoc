@@ -37,6 +37,12 @@ public:
     
     State state() const { return m_state; }
     QString currentTrack() const { return m_currentTrack; }
+    
+    // Replay gain control
+    void setReplayGainEnabled(bool enabled);
+    void setReplayGainMode(bool albumMode);
+    void setReplayGainPreAmp(double preAmp);
+    void setReplayGainFallbackGain(double fallbackGain);
 
 signals:
     void stateChanged(AudioEngine::State state);
@@ -57,6 +63,7 @@ private:
     
     GstElement *m_pipeline = nullptr;
     GstElement *m_playbin = nullptr;
+    GstElement *m_rgvolume = nullptr;
     GstBus *m_bus = nullptr;
     guint m_busWatchId = 0;
     

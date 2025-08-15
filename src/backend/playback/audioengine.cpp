@@ -65,6 +65,23 @@ void AudioEngine::initializePipeline()
     g_object_set(m_playbin, "buffer-size", 512 * 1024, nullptr);
     g_object_set(m_playbin, "buffer-duration", 2 * GST_SECOND, nullptr);
     
+    // Create and configure replay gain element
+    m_rgvolume = gst_element_factory_make("rgvolume", "rgvolume");
+    if (m_rgvolume) {
+        // Set default replay gain properties
+        g_object_set(m_rgvolume, 
+            "album-mode", FALSE,        // Start with track mode
+            "pre-amp", 0.0,            // No pre-amplification by default
+            "fallback-gain", 0.0,       // 0 dB fallback gain
+            nullptr);
+        
+        // Set rgvolume as the audio filter for playbin
+        g_object_set(m_playbin, "audio-filter", m_rgvolume, nullptr);
+        qDebug() << "Replay gain support enabled";
+    } else {
+        qWarning() << "Failed to create rgvolume element - replay gain will not be available";
+    }
+    
     g_signal_connect(m_playbin, "about-to-finish", G_CALLBACK(aboutToFinishCallback), this);
     
     m_bus = gst_element_get_bus(m_pipeline);
@@ -323,4 +340,54 @@ void AudioEngine::aboutToFinishCallback(GstElement *playbin, gpointer data)
     
     AudioEngine *engine = static_cast<AudioEngine*>(data);
     emit engine->aboutToFinish();
+}
+
+void AudioEngine::setReplayGainEnabled(bool enabled)
+{
+    if (!m_rgvolume) {
+        qWarning() << "Replay gain not available - rgvolume element not created";
+        return;
+    }
+    
+    if (enabled) {
+        // Re-add rgvolume as audio filter
+        g_object_set(m_playbin, "audio-filter", m_rgvolume, nullptr);
+    } else {
+        // Remove audio filter to disable replay gain
+        g_object_set(m_playbin, "audio-filter", nullptr, nullptr);
+    }
+}
+
+void AudioEngine::setReplayGainMode(bool albumMode)
+{
+    if (!m_rgvolume) {
+        qWarning() << "Replay gain not available - rgvolume element not created";
+        return;
+    }
+    
+    g_object_set(m_rgvolume, "album-mode", albumMode ? TRUE : FALSE, nullptr);
+}
+
+void AudioEngine::setReplayGainPreAmp(double preAmp)
+{
+    if (!m_rgvolume) {
+        qWarning() << "Replay gain not available - rgvolume element not created";
+        return;
+    }
+    
+    // Clamp pre-amp to reasonable range (-15 to +15 dB)
+    preAmp = qBound(-15.0, preAmp, 15.0);
+    g_object_set(m_rgvolume, "pre-amp", preAmp, nullptr);
+}
+
+void AudioEngine::setReplayGainFallbackGain(double fallbackGain)
+{
+    if (!m_rgvolume) {
+        qWarning() << "Replay gain not available - rgvolume element not created";
+        return;
+    }
+    
+    // Clamp fallback gain to reasonable range (-15 to +15 dB)
+    fallbackGain = qBound(-15.0, fallbackGain, 15.0);
+    g_object_set(m_rgvolume, "fallback-gain", fallbackGain, nullptr);
 }
