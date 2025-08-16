@@ -85,10 +85,8 @@ private:
     
     // Gapless playback tracking
     bool m_hasQueuedTrack = false;
-    bool m_transitionPending = false;
-    QTimer *m_transitionTimer = nullptr;
-    qint64 m_lastPosition = 0;
     bool m_trackTransitionDetected = false;
+    QTimer *m_transitionTimer = nullptr;
     QTimer *m_transitionFallbackTimer = nullptr;
     qint64 m_lastKnownDuration = 0;
     
