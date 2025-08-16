@@ -566,22 +566,110 @@ ApplicationWindow {
                 }
             }
             
-            // Replay Gain Section
+            // Audio Engine Section
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: replayGainLayout.implicitHeight + 24
+                Layout.preferredHeight: audioEngineLayout.implicitHeight + 24
                 color: Theme.panelBackground
                 radius: 4
                 
                 ColumnLayout {
-                    id: replayGainLayout
+                    id: audioEngineLayout
                     anchors.fill: parent
                     anchors.margins: 12
                     spacing: 12
                     
                     Label {
-                        text: "Replay Gain"
+                        text: "Audio Engine"
                         font.pixelSize: 16
+                        font.bold: true
+                        color: Theme.primaryText
+                    }
+                    
+                    // Pre-amplification (always available)
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+                        
+                        RowLayout {
+                            Layout.fillWidth: true
+                            
+                            Label {
+                                text: "Pre-amplification:"
+                                font.pixelSize: 14
+                                color: Theme.secondaryText
+                                Layout.preferredWidth: 120
+                            }
+                            
+                            Slider {
+                                id: preAmpSlider
+                                Layout.fillWidth: true
+                                from: -15.0
+                                to: 15.0
+                                value: SettingsManager.replayGainPreAmp
+                                stepSize: 0.5
+                                
+                                onValueChanged: {
+                                    SettingsManager.replayGainPreAmp = value
+                                }
+                                
+                                background: Rectangle {
+                                    x: preAmpSlider.leftPadding
+                                    y: preAmpSlider.topPadding + preAmpSlider.availableHeight / 2 - height / 2
+                                    implicitWidth: 200
+                                    implicitHeight: 4
+                                    width: preAmpSlider.availableWidth
+                                    height: implicitHeight
+                                    radius: 2
+                                    color: Theme.inputBackground
+                                    
+                                    Rectangle {
+                                        width: preAmpSlider.visualPosition * parent.width
+                                        height: parent.height
+                                        color: Theme.linkColor
+                                        radius: 2
+                                    }
+                                }
+                                
+                                handle: Rectangle {
+                                    x: preAmpSlider.leftPadding + preAmpSlider.visualPosition * (preAmpSlider.availableWidth - width)
+                                    y: preAmpSlider.topPadding + preAmpSlider.availableHeight / 2 - height / 2
+                                    implicitWidth: 16
+                                    implicitHeight: 16
+                                    radius: 8
+                                    color: preAmpSlider.pressed ? Theme.selectedBackground : Theme.linkColor
+                                }
+                            }
+                            
+                            Label {
+                                text: preAmpSlider.value.toFixed(1) + " dB"
+                                font.pixelSize: 14
+                                color: Theme.secondaryText
+                                Layout.preferredWidth: 60
+                            }
+                        }
+                        
+                        Label {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: 20
+                            text: "Adjust overall volume level"
+                            font.pixelSize: 12
+                            color: Theme.tertiaryText
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+                    
+                    // Separator line
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 1
+                        color: Theme.borderColor
+                        opacity: 0.3
+                    }
+                    
+                    Label {
+                        text: "Replay Gain"
+                        font.pixelSize: 14
                         font.bold: true
                         color: Theme.primaryText
                     }
@@ -641,12 +729,11 @@ ApplicationWindow {
                         }
                     }
                     
-                    // Mode selection
+                    // Mode selection (only visible when enabled)
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 12
-                        enabled: replayGainEnabledCheck.checked
-                        opacity: enabled ? 1.0 : 0.5
+                        visible: replayGainEnabledCheck.checked
                         
                         Label {
                             text: "Mode:"
@@ -659,11 +746,19 @@ ApplicationWindow {
                             id: replayGainModeCombo
                             Layout.preferredWidth: 150
                             Layout.preferredHeight: 36
-                            model: ["Off", "Track", "Album"]
-                            currentIndex: SettingsManager.replayGainMode
+                            model: ["Track", "Album"]
+                            currentIndex: {
+                                // Map SettingsManager mode to combo index (skip Off = 0)
+                                var mode = SettingsManager.replayGainMode
+                                if (mode === SettingsManager.Track) return 0
+                                if (mode === SettingsManager.Album) return 1
+                                return 0 // Default to Track
+                            }
                             
                             onActivated: function(index) {
-                                SettingsManager.replayGainMode = index
+                                // Map combo index to SettingsManager mode
+                                if (index === 0) SettingsManager.replayGainMode = SettingsManager.Track
+                                else if (index === 1) SettingsManager.replayGainMode = SettingsManager.Album
                             }
                             
                             background: Rectangle {
@@ -715,78 +810,11 @@ ApplicationWindow {
                         wrapMode: Text.WordWrap
                     }
                     
-                    // Pre-amplification
+                    // Fallback gain (only visible when enabled)
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 4
-                        enabled: replayGainEnabledCheck.checked
-                        opacity: enabled ? 1.0 : 0.5
-                        
-                        RowLayout {
-                            Layout.fillWidth: true
-                            
-                            Label {
-                                text: "Pre-amplification:"
-                                font.pixelSize: 14
-                                color: Theme.secondaryText
-                                Layout.preferredWidth: 120
-                            }
-                            
-                            Slider {
-                                id: preAmpSlider
-                                Layout.fillWidth: true
-                                from: -15.0
-                                to: 15.0
-                                value: SettingsManager.replayGainPreAmp
-                                stepSize: 0.5
-                                
-                                onValueChanged: {
-                                    SettingsManager.replayGainPreAmp = value
-                                }
-                                
-                                background: Rectangle {
-                                    x: preAmpSlider.leftPadding
-                                    y: preAmpSlider.topPadding + preAmpSlider.availableHeight / 2 - height / 2
-                                    implicitWidth: 200
-                                    implicitHeight: 4
-                                    width: preAmpSlider.availableWidth
-                                    height: implicitHeight
-                                    radius: 2
-                                    color: Theme.inputBackground
-                                    
-                                    Rectangle {
-                                        width: preAmpSlider.visualPosition * parent.width
-                                        height: parent.height
-                                        color: Theme.linkColor
-                                        radius: 2
-                                    }
-                                }
-                                
-                                handle: Rectangle {
-                                    x: preAmpSlider.leftPadding + preAmpSlider.visualPosition * (preAmpSlider.availableWidth - width)
-                                    y: preAmpSlider.topPadding + preAmpSlider.availableHeight / 2 - height / 2
-                                    implicitWidth: 16
-                                    implicitHeight: 16
-                                    radius: 8
-                                    color: preAmpSlider.pressed ? Theme.selectedBackground : Theme.linkColor
-                                }
-                            }
-                            
-                            Label {
-                                text: preAmpSlider.value.toFixed(1) + " dB"
-                                font.pixelSize: 14
-                                color: Theme.secondaryText
-                                Layout.preferredWidth: 60
-                            }
-                        }
-                    }
-                    
-                    // Fallback gain
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 4
-                        enabled: replayGainEnabledCheck.checked
-                        opacity: enabled ? 1.0 : 0.5
+                        visible: replayGainEnabledCheck.checked
                         
                         RowLayout {
                             Layout.fillWidth: true
