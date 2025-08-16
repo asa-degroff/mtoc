@@ -18,6 +18,7 @@
 #include <QVariantList>
 #include <QVariantMap>
 #include <QPixmapCache>
+#include <QThread>
 #include <QPointer>
 #include <algorithm>
 #include <random>
@@ -628,6 +629,15 @@ void MediaPlayer::loadTrack(Mtoc::Track* track, bool autoPlay)
     if (!track) {
         qWarning() << "MediaPlayer::loadTrack called with null track";
         return;
+    }
+    
+    // If this is a virtual playlist track, preload neighboring tracks for gapless playback
+    if (m_isVirtualPlaylist && m_virtualPlaylist) {
+        int virtualIndex = track->property("virtualIndex").toInt();
+        if (virtualIndex >= 0) {
+            // Preload next few tracks to ensure gapless works
+            preloadVirtualTracks(virtualIndex);
+        }
     }
     
     // Log to file only to reduce overhead
@@ -1865,14 +1875,41 @@ void MediaPlayer::onAboutToFinish()
     if (m_isVirtualPlaylist && m_virtualPlaylist) {
         // Handle virtual playlist mode
         if (m_shuffleEnabled) {
+            // In shuffle mode, we need to check our position in the shuffle order
+            // If we're at the end of the shuffle order, check if repeat is enabled
             QVector<int> nextIndices = m_virtualPlaylist->getNextShuffleIndices(m_virtualCurrentIndex, 1);
+            
             if (!nextIndices.isEmpty()) {
                 m_pendingVirtualIndex = nextIndices.first();
+                qDebug() << "[MediaPlayer::onAboutToFinish] Found next shuffle index:" << m_pendingVirtualIndex;
+                
+                // Ensure the track is loaded before trying to get it
+                m_virtualPlaylist->ensureLoaded(m_pendingVirtualIndex);
                 nextTrack = getOrCreateTrackFromVirtual(m_pendingVirtualIndex);
-            } else if (m_repeatEnabled) {
-                // Will re-shuffle when transition occurs
-                m_pendingVirtualIndex = 0;  // Will be set properly in onTrackTransitioned
-                nextTrack = getOrCreateTrackFromVirtual(0);
+                
+                if (!nextTrack) {
+                    qDebug() << "[MediaPlayer::onAboutToFinish] Track at index" << m_pendingVirtualIndex 
+                             << "not loaded yet, checking if in valid range";
+                    // Track might not be loaded yet - this is a problem for gapless
+                    // Try to force load it synchronously (risky but necessary for gapless)
+                    if (m_pendingVirtualIndex >= 0 && m_pendingVirtualIndex < m_virtualPlaylist->trackCount()) {
+                        // Give it one more chance after ensuring it's loaded
+                        QThread::msleep(10); // Small delay to allow loading
+                        nextTrack = getOrCreateTrackFromVirtual(m_pendingVirtualIndex);
+                    }
+                }
+            } else if (m_repeatEnabled && m_virtualPlaylist->trackCount() > 0) {
+                // End of shuffle order with repeat enabled - regenerate shuffle and start from beginning
+                qDebug() << "[MediaPlayer::onAboutToFinish] End of shuffle order, repeat enabled - will reshuffle";
+                // Note: We'll regenerate the shuffle order in onTrackTransitioned
+                // For now, just queue the first track in the current shuffle order
+                m_virtualPlaylist->generateShuffleOrder(m_virtualCurrentIndex);
+                m_pendingVirtualIndex = m_virtualPlaylist->getShuffledIndex(0);
+                if (m_pendingVirtualIndex >= 0) {
+                    nextTrack = getOrCreateTrackFromVirtual(m_pendingVirtualIndex);
+                }
+            } else {
+                qDebug() << "[MediaPlayer::onAboutToFinish] No next shuffle index available, repeat disabled";
             }
         } else {
             m_pendingVirtualIndex = m_virtualCurrentIndex + 1;

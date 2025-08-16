@@ -294,17 +294,17 @@ QVector<int> VirtualPlaylist::getNextShuffleIndices(int currentShuffledIndex, in
     
     QVector<int> indices;
     if (m_shuffleOrder.isEmpty() || count <= 0) {
+        qDebug() << "[VirtualPlaylist::getNextShuffleIndices] Empty shuffle order or invalid count";
         return indices;
     }
     
-    // Prevent infinite recursion by not calling getLinearIndex from within a mutex lock
-    int linearIndex = -1;
-    {
-        // Find the position without calling getLinearIndex (which also locks the mutex)
-        linearIndex = m_shuffleOrder.indexOf(currentShuffledIndex);
-    }
+    // Find where the current index is in the shuffle order
+    int linearIndex = m_shuffleOrder.indexOf(currentShuffledIndex);
     
     if (linearIndex < 0) {
+        qDebug() << "[VirtualPlaylist::getNextShuffleIndices] Current index" << currentShuffledIndex 
+                 << "not found in shuffle order. Shuffle order size:" << m_shuffleOrder.size()
+                 << "First few items:" << m_shuffleOrder.mid(0, 5);
         return indices;
     }
     
