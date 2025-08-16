@@ -43,6 +43,9 @@ public:
     void setReplayGainMode(bool albumMode);
     void setReplayGainPreAmp(double preAmp);
     void setReplayGainFallbackGain(double fallbackGain);
+    
+    // Gapless playback support
+    void queueNextTrack(const QString &filePath);
 
 signals:
     void stateChanged(AudioEngine::State state);
@@ -51,6 +54,7 @@ signals:
     void trackFinished();
     void error(const QString &message);
     void aboutToFinish();
+    void requestNextTrack();
 
 private:
     void initializePipeline();

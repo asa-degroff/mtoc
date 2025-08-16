@@ -150,6 +150,10 @@ void MediaPlayer::setupConnections()
     connect(m_audioEngine.get(), &AudioEngine::trackFinished,
             this, &MediaPlayer::handleTrackFinished);
     
+    // Connect for gapless playback
+    connect(m_audioEngine.get(), &AudioEngine::requestNextTrack,
+            this, &MediaPlayer::onAboutToFinish);
+    
     connect(m_audioEngine.get(), &AudioEngine::error,
             this, &MediaPlayer::error);
 }
@@ -1835,17 +1839,127 @@ void MediaPlayer::updateCurrentTrack(Mtoc::Track* track)
     }
 }
 
+void MediaPlayer::onAboutToFinish()
+{
+    qDebug() << "[MediaPlayer::onAboutToFinish] Called - preparing next track for gapless playback";
+    
+    // Check if there's a next track to queue
+    if (!hasNext()) {
+        qDebug() << "[MediaPlayer::onAboutToFinish] No next track available";
+        return;
+    }
+    
+    // Determine the next track based on current playback mode
+    Mtoc::Track* nextTrack = nullptr;
+    
+    if (m_isVirtualPlaylist && m_virtualPlaylist) {
+        // Handle virtual playlist mode
+        int nextIndex;
+        if (m_shuffleEnabled) {
+            nextIndex = getNextShuffleIndex();
+            if (nextIndex >= 0 && nextIndex < m_virtualPlaylist->trackCount()) {
+                nextTrack = getOrCreateTrackFromVirtual(nextIndex);
+            }
+        } else {
+            nextIndex = m_virtualCurrentIndex + 1;
+            if (nextIndex < m_virtualPlaylist->trackCount()) {
+                nextTrack = getOrCreateTrackFromVirtual(nextIndex);
+            } else if (m_repeatEnabled) {
+                // Loop back to start if repeat is on
+                nextTrack = getOrCreateTrackFromVirtual(0);
+            }
+        }
+    } else if (m_shuffleEnabled) {
+        // Handle shuffle mode for regular queue
+        int nextShuffleIndex = getNextShuffleIndex();
+        if (nextShuffleIndex >= 0 && nextShuffleIndex < m_playbackQueue.size()) {
+            nextTrack = m_playbackQueue[nextShuffleIndex];
+        }
+    } else {
+        // Normal sequential playback
+        int nextIndex = m_currentQueueIndex + 1;
+        if (nextIndex < m_playbackQueue.size()) {
+            nextTrack = m_playbackQueue[nextIndex];
+        } else if (m_repeatEnabled && !m_playbackQueue.isEmpty()) {
+            // Loop back to start if repeat is on
+            nextTrack = m_playbackQueue[0];
+        }
+    }
+    
+    // Queue the next track if we found one
+    if (nextTrack && !nextTrack->filePath().isEmpty()) {
+        qDebug() << "[MediaPlayer::onAboutToFinish] Queuing next track:" 
+                 << nextTrack->title() << "by" << nextTrack->artist();
+        m_audioEngine->queueNextTrack(nextTrack->filePath());
+    } else {
+        qDebug() << "[MediaPlayer::onAboutToFinish] Failed to determine next track";
+    }
+}
+
 void MediaPlayer::handleTrackFinished()
 {
     QFile debugFile(getDebugLogPath());
     if (debugFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
         QTextStream stream(&debugFile);
         stream << QDateTime::currentDateTime().toString() 
-               << " - Track finished, checking for next track" << Qt::endl;
+               << " - Track finished, transitioning to next track" << Qt::endl;
     }
     
+    // With gapless playback, the next track should already be queued and playing
+    // We just need to update our internal state to reflect the track change
     if (hasNext()) {
-        next();
+        // Update the queue index and current track without reloading
+        // The next track is already playing via gapless transition
+        
+        if (m_isVirtualPlaylist && m_virtualPlaylist) {
+            // Update virtual playlist index
+            if (m_shuffleEnabled) {
+                QVector<int> nextIndices = m_virtualPlaylist->getNextShuffleIndices(m_virtualCurrentIndex, 1);
+                if (!nextIndices.isEmpty()) {
+                    m_virtualCurrentIndex = nextIndices.first();
+                    m_virtualShuffleIndex++;
+                } else if (m_repeatEnabled) {
+                    // Re-shuffle and start from beginning
+                    m_virtualPlaylist->generateShuffleOrder();
+                    m_virtualShuffleIndex = 0;
+                    if (m_virtualPlaylist->trackCount() > 0) {
+                        m_virtualCurrentIndex = m_virtualPlaylist->getShuffledIndex(0);
+                    }
+                }
+            } else {
+                // Sequential playback
+                m_virtualCurrentIndex++;
+                if (m_virtualCurrentIndex >= m_virtualPlaylist->trackCount() && m_repeatEnabled) {
+                    m_virtualCurrentIndex = 0;
+                }
+            }
+            
+            // Update current track from virtual playlist
+            if (m_virtualCurrentIndex >= 0 && m_virtualCurrentIndex < m_virtualPlaylist->trackCount()) {
+                Mtoc::Track* nextTrack = getOrCreateTrackFromVirtual(m_virtualCurrentIndex);
+                updateCurrentTrack(nextTrack);
+            }
+        } else {
+            // Regular queue update
+            if (m_shuffleEnabled) {
+                m_shuffleIndex = getNextShuffleIndex();
+                if (m_shuffleIndex >= 0 && m_shuffleIndex < m_shuffleOrder.size()) {
+                    m_currentQueueIndex = m_shuffleOrder[m_shuffleIndex];
+                }
+            } else {
+                m_currentQueueIndex++;
+                if (m_currentQueueIndex >= m_playbackQueue.size() && m_repeatEnabled) {
+                    m_currentQueueIndex = 0;
+                }
+            }
+            
+            // Update current track from queue
+            if (m_currentQueueIndex >= 0 && m_currentQueueIndex < m_playbackQueue.size()) {
+                updateCurrentTrack(m_playbackQueue[m_currentQueueIndex]);
+            }
+        }
+        
+        emit playbackQueueChanged();
     } else {
         // No more tracks and repeat is off
         m_state = StoppedState;

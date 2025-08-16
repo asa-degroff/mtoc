@@ -438,6 +438,8 @@ void AudioEngine::aboutToFinishCallback(GstElement *playbin, gpointer data)
     
     AudioEngine *engine = static_cast<AudioEngine*>(data);
     emit engine->aboutToFinish();
+    // Request the next track from the MediaPlayer
+    emit engine->requestNextTrack();
 }
 
 void AudioEngine::setReplayGainEnabled(bool enabled)
@@ -505,4 +507,23 @@ void AudioEngine::setReplayGainFallbackGain(double fallbackGain)
     // Clamp fallback gain to reasonable range (-15 to +15 dB)
     fallbackGain = qBound(-15.0, fallbackGain, 15.0);
     g_object_set(m_rgvolume, "fallback-gain", fallbackGain, nullptr);
+}
+
+void AudioEngine::queueNextTrack(const QString &filePath)
+{
+    if (!m_playbin) {
+        qWarning() << "AudioEngine::queueNextTrack - playbin not initialized";
+        return;
+    }
+    
+    if (filePath.isEmpty()) {
+        qDebug() << "[AudioEngine::queueNextTrack] No next track to queue";
+        return;
+    }
+    
+    QUrl url = QUrl::fromLocalFile(filePath);
+    qDebug() << "[AudioEngine::queueNextTrack] Queuing next track for gapless playback:" << QFileInfo(filePath).fileName();
+    
+    // Set the next URI for gapless playback
+    g_object_set(m_playbin, "uri", url.toString().toUtf8().constData(), nullptr);
 }

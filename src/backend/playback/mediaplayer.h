@@ -152,6 +152,7 @@ private slots:
     void periodicStateSave();
     void onTrackLoadedForRestore();
     void onTrackLoadTimeout();
+    void onAboutToFinish();
 
 private:
     void setupConnections();
