@@ -105,6 +105,9 @@ void AudioEngine::initializePipeline()
                     "fallback-gain", 0.0,       // 0 dB fallback gain
                     nullptr);
                 
+                // Add a reference to keep the bin alive
+                gst_object_ref(m_audioFilterBin);
+                
                 // Set the bin as the audio filter for playbin
                 g_object_set(m_playbin, "audio-filter", m_audioFilterBin, nullptr);
                 qDebug() << "[ReplayGain] GStreamer replay gain pipeline created successfully (audioconvert -> rgvolume -> audioconvert)";
@@ -150,6 +153,13 @@ void AudioEngine::cleanupPipeline()
     if (m_bus) {
         gst_object_unref(m_bus);
         m_bus = nullptr;
+    }
+    
+    if (m_audioFilterBin) {
+        // Release our extra reference to the audio filter bin
+        gst_object_unref(m_audioFilterBin);
+        m_audioFilterBin = nullptr;
+        m_rgvolume = nullptr;  // This was part of the bin, don't unref separately
     }
     
     if (m_pipeline) {
@@ -437,12 +447,29 @@ void AudioEngine::setReplayGainEnabled(bool enabled)
         return;
     }
     
+    if (!m_playbin) {
+        qWarning() << "Playbin not available";
+        return;
+    }
+    
     if (enabled) {
+        // Add reference before setting to prevent it from being freed
+        gst_object_ref(m_audioFilterBin);
         // Re-add audio filter bin to enable replay gain
         g_object_set(m_playbin, "audio-filter", m_audioFilterBin, nullptr);
     } else {
         // Remove audio filter to disable replay gain
-        g_object_set(m_playbin, "audio-filter", nullptr, nullptr);
+        // First check if it's currently set
+        GstElement* currentFilter = nullptr;
+        g_object_get(m_playbin, "audio-filter", &currentFilter, nullptr);
+        if (currentFilter) {
+            // Add reference to keep it alive after removal
+            if (currentFilter == m_audioFilterBin) {
+                gst_object_ref(m_audioFilterBin);
+            }
+            g_object_set(m_playbin, "audio-filter", nullptr, nullptr);
+            gst_object_unref(currentFilter);
+        }
     }
 }
 
