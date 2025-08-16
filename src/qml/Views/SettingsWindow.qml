@@ -746,19 +746,19 @@ ApplicationWindow {
                             id: replayGainModeCombo
                             Layout.preferredWidth: 150
                             Layout.preferredHeight: 36
-                            model: ["Track", "Album"]
+                            model: ["Album", "Track"]
                             currentIndex: {
                                 // Map SettingsManager mode to combo index (skip Off = 0)
                                 var mode = SettingsManager.replayGainMode
-                                if (mode === SettingsManager.Track) return 0
-                                if (mode === SettingsManager.Album) return 1
-                                return 0 // Default to Track
+                                if (mode === SettingsManager.Album) return 0
+                                if (mode === SettingsManager.Track) return 1
+                                return 0 // Default to Album
                             }
                             
                             onActivated: function(index) {
                                 // Map combo index to SettingsManager mode
-                                if (index === 0) SettingsManager.replayGainMode = SettingsManager.Track
-                                else if (index === 1) SettingsManager.replayGainMode = SettingsManager.Album
+                                if (index === 0) SettingsManager.replayGainMode = SettingsManager.Album
+                                else if (index === 1) SettingsManager.replayGainMode = SettingsManager.Track
                             }
                             
                             background: Rectangle {
