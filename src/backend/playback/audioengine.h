@@ -87,6 +87,10 @@ private:
     bool m_hasQueuedTrack = false;
     bool m_transitionPending = false;
     QTimer *m_transitionTimer = nullptr;
+    qint64 m_lastPosition = 0;
+    bool m_trackTransitionDetected = false;
+    QTimer *m_transitionFallbackTimer = nullptr;
+    qint64 m_lastKnownDuration = 0;
     
     static bool s_gstInitialized;
 };

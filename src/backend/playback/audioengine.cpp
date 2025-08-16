@@ -26,14 +26,19 @@ AudioEngine::AudioEngine(QObject *parent)
     m_positionTimer->setInterval(250);
     connect(m_positionTimer, &QTimer::timeout, this, &AudioEngine::updatePosition);
     
-    // Timer for delayed transition notification
-    m_transitionTimer = new QTimer(this);
-    m_transitionTimer->setSingleShot(true);
-    m_transitionTimer->setInterval(100); // 100ms delay to ensure smooth transition
-    connect(m_transitionTimer, &QTimer::timeout, this, [this]() {
-        if (m_transitionPending) {
-            m_transitionPending = false;
+    // We don't need complex timers anymore since STREAM_START gives us the exact transition point
+    // Keep a simple fallback timer just in case
+    m_transitionTimer = nullptr;
+    
+    // Fallback timer in case STREAM_START doesn't arrive (shouldn't happen but be safe)
+    m_transitionFallbackTimer = new QTimer(this);
+    m_transitionFallbackTimer->setSingleShot(true);
+    m_transitionFallbackTimer->setInterval(1000); // 1 second fallback
+    connect(m_transitionFallbackTimer, &QTimer::timeout, this, [this]() {
+        if (m_hasQueuedTrack && !m_trackTransitionDetected) {
+            qDebug() << "[AudioEngine] Warning: Using fallback transition detection (no STREAM_START received)";
             m_hasQueuedTrack = false;
+            m_trackTransitionDetected = false;
             
             // Emit signal to notify that the track transition has occurred
             emit trackTransitioned();
@@ -62,6 +67,12 @@ AudioEngine::~AudioEngine()
         m_transitionTimer->stop();
         delete m_transitionTimer;
         m_transitionTimer = nullptr;
+    }
+    
+    if (m_transitionFallbackTimer) {
+        m_transitionFallbackTimer->stop();
+        delete m_transitionFallbackTimer;
+        m_transitionFallbackTimer = nullptr;
     }
     
     // Stop playback before cleanup
@@ -207,8 +218,12 @@ void AudioEngine::loadTrack(const QString &filePath)
     m_currentTrack = filePath;
     m_hasQueuedTrack = false;  // Reset gapless tracking
     m_transitionPending = false;
-    if (m_transitionTimer) {
-        m_transitionTimer->stop();
+    m_trackTransitionDetected = false;
+    m_lastPosition = 0;
+    m_lastKnownDuration = 0;  // Reset duration
+    // No need to stop transition timer anymore
+    if (m_transitionFallbackTimer) {
+        m_transitionFallbackTimer->stop();
     }
     
     // Log replay gain status when loading a track
@@ -249,7 +264,8 @@ void AudioEngine::loadTrack(const QString &filePath)
     if (gst_element_get_state(m_pipeline, &state, nullptr, 2 * GST_SECOND) == GST_STATE_CHANGE_SUCCESS) {
         gint64 duration;
         if (gst_element_query_duration(m_pipeline, GST_FORMAT_TIME, &duration)) {
-            emit durationChanged(duration / GST_MSECOND);
+            m_lastKnownDuration = duration / GST_MSECOND;
+            emit durationChanged(m_lastKnownDuration);
         }
     }
 }
@@ -400,20 +416,102 @@ gboolean AudioEngine::busCallback(GstBus *bus, GstMessage *message, gpointer dat
         break;
     
     case GST_MESSAGE_TAG: {
-        // Tag messages indicate metadata changes - use them to detect track transitions
-        if (engine->m_hasQueuedTrack && !engine->m_transitionPending) {
+        // Use TAG messages to detect track transitions during gapless playback
+        // But with proper duration checking to ensure the transition actually happened
+        if (engine->m_hasQueuedTrack && !engine->m_trackTransitionDetected) {
             GstTagList *tags = nullptr;
             gst_message_parse_tag(message, &tags);
             if (tags) {
                 gchar *title = nullptr;
                 if (gst_tag_list_get_string(tags, GST_TAG_TITLE, &title)) {
-                    qDebug() << "[AudioEngine] TAG message with title:" << title << "- scheduling transition";
+                    qDebug() << "[AudioEngine] TAG message with new title:" << title << "- checking duration change";
                     g_free(title);
                     
-                    // Schedule the transition notification with a delay
-                    // This ensures the audio has actually transitioned before updating UI
-                    engine->m_transitionPending = true;
-                    engine->m_transitionTimer->start();
+                    // Check if duration has changed (indicating new track metadata is available)
+                    gint64 currentDuration;
+                    if (gst_element_query_duration(engine->m_pipeline, GST_FORMAT_TIME, &currentDuration)) {
+                        currentDuration = currentDuration / GST_MSECOND;
+                        
+                        if (engine->m_lastKnownDuration > 0 && 
+                            abs(currentDuration - engine->m_lastKnownDuration) > 1000) {
+                            // Duration changed - new track metadata is loaded
+                            // But we need to wait for the actual audio transition
+                            qDebug() << "[AudioEngine] Duration changed from" << engine->m_lastKnownDuration 
+                                     << "to" << currentDuration << "- waiting for position reset";
+                            
+                            engine->m_transitionFallbackTimer->stop();
+                            
+                            // Start monitoring position for the actual transition
+                            // The position should reset to near-zero when the new track actually starts
+                            if (!engine->m_transitionTimer) {
+                                engine->m_transitionTimer = new QTimer(engine);
+                                engine->m_transitionTimer->setInterval(50);
+                            }
+                            
+                            // Store the new duration for later
+                            qint64 newDuration = currentDuration;
+                            
+                            // Disconnect any existing connections
+                            QObject::disconnect(engine->m_transitionTimer, nullptr, nullptr, nullptr);
+                            
+                            // Monitor position until it resets
+                            QObject::connect(engine->m_transitionTimer, &QTimer::timeout, engine, [engine, newDuration]() {
+                                static int checkCount = 0;
+                                static qint64 lastSeenPos = 0;
+                                checkCount++;
+                                
+                                qint64 currentPos = engine->position();
+                                
+                                // Log every 10 checks (500ms)
+                                if (checkCount % 10 == 0) {
+                                    qDebug() << "[AudioEngine] Position check #" << checkCount << ":" << currentPos << "ms";
+                                }
+                                
+                                // Detect when position resets to near beginning (actual transition)
+                                if (lastSeenPos > 100000 && currentPos < 5000) {
+                                    qDebug() << "[AudioEngine] Position reset detected - transition complete";
+                                    
+                                    engine->m_transitionTimer->stop();
+                                    engine->m_trackTransitionDetected = true;
+                                    engine->m_lastKnownDuration = newDuration;
+                                    checkCount = 0;
+                                    lastSeenPos = 0;
+                                    
+                                    // Now we can safely update the UI
+                                    engine->m_hasQueuedTrack = false;
+                                    engine->m_trackTransitionDetected = false;
+                                    
+                                    emit engine->trackTransitioned();
+                                    emit engine->durationChanged(newDuration);
+                                } 
+                                // Also check if we've been monitoring for too long (2 seconds)
+                                else if (checkCount > 40) {
+                                    qDebug() << "[AudioEngine] Position monitoring timeout - using current state";
+                                    
+                                    engine->m_transitionTimer->stop();
+                                    engine->m_trackTransitionDetected = true;
+                                    engine->m_lastKnownDuration = newDuration;
+                                    checkCount = 0;
+                                    lastSeenPos = 0;
+                                    
+                                    engine->m_hasQueuedTrack = false;
+                                    engine->m_trackTransitionDetected = false;
+                                    
+                                    emit engine->trackTransitioned();
+                                    emit engine->durationChanged(newDuration);
+                                }
+                                
+                                lastSeenPos = currentPos;
+                            });
+                            
+                            engine->m_transitionTimer->start();
+                            
+                        } else if (engine->m_lastKnownDuration == 0) {
+                            // First time getting duration, store it
+                            engine->m_lastKnownDuration = currentDuration;
+                            qDebug() << "[AudioEngine] Initial duration stored:" << currentDuration;
+                        }
+                    }
                 }
                 gst_tag_list_unref(tags);
             }
@@ -446,7 +544,12 @@ gboolean AudioEngine::busCallback(GstBus *bus, GstMessage *message, gpointer dat
             if (newState == GST_STATE_PLAYING && oldState != GST_STATE_PLAYING) {
                 gint64 duration;
                 if (gst_element_query_duration(engine->m_pipeline, GST_FORMAT_TIME, &duration)) {
-                    emit engine->durationChanged(duration / GST_MSECOND);
+                    qint64 durationMs = duration / GST_MSECOND;
+                    // Only update duration if we're not in a gapless transition
+                    if (!engine->m_hasQueuedTrack) {
+                        engine->m_lastKnownDuration = durationMs;
+                        emit engine->durationChanged(durationMs);
+                    }
                 }
                 
                 // Log replay gain values that will be applied
@@ -579,6 +682,19 @@ void AudioEngine::queueNextTrack(const QString &filePath)
     
     // Mark that we have a queued track for gapless transition detection
     m_hasQueuedTrack = true;
+    m_trackTransitionDetected = false;
+    
+    // Store current duration before transition
+    gint64 duration;
+    if (gst_element_query_duration(m_pipeline, GST_FORMAT_TIME, &duration)) {
+        m_lastKnownDuration = duration / GST_MSECOND;
+        qDebug() << "[AudioEngine::queueNextTrack] Current track duration:" << m_lastKnownDuration << "ms";
+    }
+    
+    // Start fallback timer
+    m_transitionFallbackTimer->start();
+    
+    qDebug() << "[AudioEngine::queueNextTrack] Waiting for duration change to detect transition";
     
     // Set the next URI for gapless playback
     g_object_set(m_playbin, "uri", url.toString().toUtf8().constData(), nullptr);

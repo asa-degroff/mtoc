@@ -38,7 +38,9 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context, const QSt
             } else if (msg.contains("jumpToArtist") || msg.contains("scrollToArtistIndex") || 
                       msg.contains("calculateArtistPosition") || msg.contains("updateArtistIndexMapping") ||
                       msg.contains("MediaPlayer::") || msg.contains("PlaylistManager::") ||
-                      msg.contains("[ReplayGain]") || msg.contains("AudioEngine") || msg.contains("rgvolume")) {
+                      msg.contains("[ReplayGain]") || msg.contains("AudioEngine") || msg.contains("rgvolume") ||
+                      msg.contains("[AudioEngine] Transition check")
+                    ) {
                 // Also show our specific debug messages even if not properly prefixed
                 fprintf(stderr, "[Debug] %s\n", qPrintable(msg));
             }
