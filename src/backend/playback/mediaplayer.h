@@ -153,6 +153,7 @@ private slots:
     void onTrackLoadedForRestore();
     void onTrackLoadTimeout();
     void onAboutToFinish();
+    void onTrackTransitioned();
 
 private:
     void setupConnections();
@@ -227,6 +228,12 @@ private:
     QMetaObject::Connection m_virtualTrackLoadConnection;  // Connection for virtual track loading
     void preloadVirtualTracks(int centerIndex);
     Mtoc::Track* getOrCreateTrackFromVirtual(int index);
+    
+    // Pending track info for gapless transitions
+    Mtoc::Track* m_pendingTrack = nullptr;
+    int m_pendingQueueIndex = -1;
+    int m_pendingVirtualIndex = -1;
+    int m_pendingShuffleIndex = -1;
 };
 
 #endif // MEDIAPLAYER_H

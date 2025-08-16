@@ -179,6 +179,9 @@ void AudioEngine::loadTrack(const QString &filePath)
     stop();
     
     m_currentTrack = filePath;
+    m_hasQueuedTrack = false;  // Reset gapless tracking
+    m_lastPosition = 0;
+    m_positionResetCount = 0;
     
     // Log replay gain status when loading a track
     if (m_rgvolume) {
@@ -367,6 +370,36 @@ gboolean AudioEngine::busCallback(GstBus *bus, GstMessage *message, gpointer dat
         engine->stop();
         emit engine->trackFinished();
         break;
+    
+    case GST_MESSAGE_TAG: {
+        // Tag messages indicate metadata changes - use them to detect track transitions
+        if (engine->m_hasQueuedTrack) {
+            GstTagList *tags = nullptr;
+            gst_message_parse_tag(message, &tags);
+            if (tags) {
+                gchar *title = nullptr;
+                if (gst_tag_list_get_string(tags, GST_TAG_TITLE, &title)) {
+                    qDebug() << "[AudioEngine] TAG message with title:" << title << "- track transition detected";
+                    g_free(title);
+                    
+                    // TAG messages indicate the new track is playing
+                    engine->m_hasQueuedTrack = false;
+                    engine->m_positionResetCount = 0;
+                    
+                    // Emit signal to notify that the track transition has occurred
+                    emit engine->trackTransitioned();
+                    
+                    // Query and emit duration for the new track
+                    gint64 duration;
+                    if (gst_element_query_duration(engine->m_pipeline, GST_FORMAT_TIME, &duration)) {
+                        emit engine->durationChanged(duration / GST_MSECOND);
+                    }
+                }
+                gst_tag_list_unref(tags);
+            }
+        }
+        break;
+    }
         
     case GST_MESSAGE_ERROR: {
         GError *error;
@@ -523,6 +556,9 @@ void AudioEngine::queueNextTrack(const QString &filePath)
     
     QUrl url = QUrl::fromLocalFile(filePath);
     qDebug() << "[AudioEngine::queueNextTrack] Queuing next track for gapless playback:" << QFileInfo(filePath).fileName();
+    
+    // Mark that we have a queued track for gapless transition detection
+    m_hasQueuedTrack = true;
     
     // Set the next URI for gapless playback
     g_object_set(m_playbin, "uri", url.toString().toUtf8().constData(), nullptr);

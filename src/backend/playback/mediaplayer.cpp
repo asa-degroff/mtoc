@@ -154,6 +154,10 @@ void MediaPlayer::setupConnections()
     connect(m_audioEngine.get(), &AudioEngine::requestNextTrack,
             this, &MediaPlayer::onAboutToFinish);
     
+    // Connect for track transition detection
+    connect(m_audioEngine.get(), &AudioEngine::trackTransitioned,
+            this, &MediaPlayer::onTrackTransitioned);
+    
     connect(m_audioEngine.get(), &AudioEngine::error,
             this, &MediaPlayer::error);
 }
@@ -1843,6 +1847,12 @@ void MediaPlayer::onAboutToFinish()
 {
     qDebug() << "[MediaPlayer::onAboutToFinish] Called - preparing next track for gapless playback";
     
+    // Clear any previous pending track
+    m_pendingTrack = nullptr;
+    m_pendingQueueIndex = -1;
+    m_pendingVirtualIndex = -1;
+    m_pendingShuffleIndex = -1;
+    
     // Check if there's a next track to queue
     if (!hasNext()) {
         qDebug() << "[MediaPlayer::onAboutToFinish] No next track available";
@@ -1851,51 +1861,46 @@ void MediaPlayer::onAboutToFinish()
     
     // Determine the next track based on current playback mode
     Mtoc::Track* nextTrack = nullptr;
-    int nextQueueIndex = -1;
-    int nextVirtualIndex = -1;
     
     if (m_isVirtualPlaylist && m_virtualPlaylist) {
         // Handle virtual playlist mode
         if (m_shuffleEnabled) {
             QVector<int> nextIndices = m_virtualPlaylist->getNextShuffleIndices(m_virtualCurrentIndex, 1);
             if (!nextIndices.isEmpty()) {
-                nextVirtualIndex = nextIndices.first();
-                nextTrack = getOrCreateTrackFromVirtual(nextVirtualIndex);
+                m_pendingVirtualIndex = nextIndices.first();
+                nextTrack = getOrCreateTrackFromVirtual(m_pendingVirtualIndex);
             } else if (m_repeatEnabled) {
-                // Re-shuffle and start from beginning
-                m_virtualPlaylist->generateShuffleOrder();
-                if (m_virtualPlaylist->trackCount() > 0) {
-                    nextVirtualIndex = m_virtualPlaylist->getShuffledIndex(0);
-                    nextTrack = getOrCreateTrackFromVirtual(nextVirtualIndex);
-                }
+                // Will re-shuffle when transition occurs
+                m_pendingVirtualIndex = 0;  // Will be set properly in onTrackTransitioned
+                nextTrack = getOrCreateTrackFromVirtual(0);
             }
         } else {
-            nextVirtualIndex = m_virtualCurrentIndex + 1;
-            if (nextVirtualIndex < m_virtualPlaylist->trackCount()) {
-                nextTrack = getOrCreateTrackFromVirtual(nextVirtualIndex);
+            m_pendingVirtualIndex = m_virtualCurrentIndex + 1;
+            if (m_pendingVirtualIndex < m_virtualPlaylist->trackCount()) {
+                nextTrack = getOrCreateTrackFromVirtual(m_pendingVirtualIndex);
             } else if (m_repeatEnabled) {
                 // Loop back to start if repeat is on
-                nextVirtualIndex = 0;
+                m_pendingVirtualIndex = 0;
                 nextTrack = getOrCreateTrackFromVirtual(0);
             }
         }
     } else if (m_shuffleEnabled) {
         // Handle shuffle mode for regular queue
-        int nextShuffleIndex = getNextShuffleIndex();
-        if (nextShuffleIndex >= 0 && nextShuffleIndex < m_shuffleOrder.size()) {
-            nextQueueIndex = m_shuffleOrder[nextShuffleIndex];
-            if (nextQueueIndex >= 0 && nextQueueIndex < m_playbackQueue.size()) {
-                nextTrack = m_playbackQueue[nextQueueIndex];
+        m_pendingShuffleIndex = getNextShuffleIndex();
+        if (m_pendingShuffleIndex >= 0 && m_pendingShuffleIndex < m_shuffleOrder.size()) {
+            m_pendingQueueIndex = m_shuffleOrder[m_pendingShuffleIndex];
+            if (m_pendingQueueIndex >= 0 && m_pendingQueueIndex < m_playbackQueue.size()) {
+                nextTrack = m_playbackQueue[m_pendingQueueIndex];
             }
         }
     } else {
         // Normal sequential playback
-        nextQueueIndex = m_currentQueueIndex + 1;
-        if (nextQueueIndex < m_playbackQueue.size()) {
-            nextTrack = m_playbackQueue[nextQueueIndex];
+        m_pendingQueueIndex = m_currentQueueIndex + 1;
+        if (m_pendingQueueIndex < m_playbackQueue.size()) {
+            nextTrack = m_playbackQueue[m_pendingQueueIndex];
         } else if (m_repeatEnabled && !m_playbackQueue.isEmpty()) {
             // Loop back to start if repeat is on
-            nextQueueIndex = 0;
+            m_pendingQueueIndex = 0;
             nextTrack = m_playbackQueue[0];
         }
     }
@@ -1905,36 +1910,11 @@ void MediaPlayer::onAboutToFinish()
         qDebug() << "[MediaPlayer::onAboutToFinish] Queuing next track:" 
                  << nextTrack->title() << "by" << nextTrack->artist();
         
+        // Store the pending track for when transition actually occurs
+        m_pendingTrack = nextTrack;
+        
         // Queue the track in GStreamer for gapless playback
         m_audioEngine->queueNextTrack(nextTrack->filePath());
-        
-        // Update our internal state immediately for UI updates
-        // This ensures the UI updates as soon as the track transitions
-        if (m_isVirtualPlaylist && nextVirtualIndex >= 0) {
-            m_virtualCurrentIndex = nextVirtualIndex;
-            if (m_shuffleEnabled) {
-                m_virtualShuffleIndex++;
-            }
-        } else if (nextQueueIndex >= 0) {
-            if (m_shuffleEnabled) {
-                m_shuffleIndex = getNextShuffleIndex();
-            }
-            m_currentQueueIndex = nextQueueIndex;
-        }
-        
-        // Update the current track to trigger UI updates
-        updateCurrentTrack(nextTrack);
-        
-        // Emit queue changed signal
-        emit playbackQueueChanged();
-        
-        // Schedule a duration update after a short delay to ensure GStreamer has transitioned
-        QTimer::singleShot(500, this, [this]() {
-            qint64 newDuration = m_audioEngine->duration();
-            if (newDuration > 0) {
-                emit durationChanged(newDuration);
-            }
-        });
     } else {
         qDebug() << "[MediaPlayer::onAboutToFinish] Failed to determine next track";
     }
@@ -1980,6 +1960,51 @@ void MediaPlayer::handleTrackFinished()
         m_state = StoppedState;
         emit stateChanged(m_state);
     }
+}
+
+void MediaPlayer::onTrackTransitioned()
+{
+    qDebug() << "[MediaPlayer::onTrackTransitioned] Track transition detected - updating UI";
+    
+    // Check if we have a pending track to transition to
+    if (!m_pendingTrack) {
+        qDebug() << "[MediaPlayer::onTrackTransitioned] No pending track, ignoring transition";
+        return;
+    }
+    
+    // Update indices based on pending values
+    if (m_isVirtualPlaylist && m_pendingVirtualIndex >= 0) {
+        // Handle special case of re-shuffle at end of playlist
+        if (m_shuffleEnabled && m_pendingVirtualIndex == 0 && 
+            m_virtualCurrentIndex >= m_virtualPlaylist->trackCount() - 1) {
+            // Re-shuffle occurred
+            m_virtualPlaylist->generateShuffleOrder();
+            m_virtualShuffleIndex = 0;
+            m_pendingVirtualIndex = m_virtualPlaylist->getShuffledIndex(0);
+        }
+        
+        m_virtualCurrentIndex = m_pendingVirtualIndex;
+        if (m_shuffleEnabled) {
+            m_virtualShuffleIndex++;
+        }
+    } else if (m_pendingQueueIndex >= 0) {
+        m_currentQueueIndex = m_pendingQueueIndex;
+        if (m_shuffleEnabled && m_pendingShuffleIndex >= 0) {
+            m_shuffleIndex = m_pendingShuffleIndex;
+        }
+    }
+    
+    // Update the current track to trigger UI updates
+    updateCurrentTrack(m_pendingTrack);
+    
+    // Clear pending track info
+    m_pendingTrack = nullptr;
+    m_pendingQueueIndex = -1;
+    m_pendingVirtualIndex = -1;
+    m_pendingShuffleIndex = -1;
+    
+    // Emit queue changed signal
+    emit playbackQueueChanged();
 }
 
 void MediaPlayer::onEngineStateChanged(AudioEngine::State state)

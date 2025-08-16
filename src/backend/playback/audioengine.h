@@ -55,6 +55,7 @@ signals:
     void error(const QString &message);
     void aboutToFinish();
     void requestNextTrack();
+    void trackTransitioned();  // Emitted when gapless transition actually occurs
 
 private:
     void initializePipeline();
@@ -81,6 +82,11 @@ private:
     // Seek tracking
     bool m_seekPending = false;
     qint64 m_seekTarget = 0;
+    
+    // Gapless playback tracking
+    bool m_hasQueuedTrack = false;
+    qint64 m_lastPosition = 0;
+    int m_positionResetCount = 0;
     
     static bool s_gstInitialized;
 };
