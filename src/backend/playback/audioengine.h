@@ -64,6 +64,7 @@ private:
     GstElement *m_pipeline = nullptr;
     GstElement *m_playbin = nullptr;
     GstElement *m_rgvolume = nullptr;
+    GstElement *m_audioFilterBin = nullptr;
     GstBus *m_bus = nullptr;
     guint m_busWatchId = 0;
     

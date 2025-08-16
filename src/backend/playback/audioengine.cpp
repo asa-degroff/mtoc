@@ -66,19 +66,61 @@ void AudioEngine::initializePipeline()
     g_object_set(m_playbin, "buffer-size", 512 * 1024, nullptr);
     g_object_set(m_playbin, "buffer-duration", 2 * GST_SECOND, nullptr);
     
-    // Create and configure replay gain element
+    // Create and configure replay gain element with audioconvert for format compatibility
     m_rgvolume = gst_element_factory_make("rgvolume", "rgvolume");
     if (m_rgvolume) {
-        // Set default replay gain properties
-        g_object_set(m_rgvolume, 
-            "album-mode", FALSE,        // Start with track mode
-            "pre-amp", 0.0,            // No pre-amplification by default
-            "fallback-gain", 0.0,       // 0 dB fallback gain
-            nullptr);
+        // Create audioconvert elements for format conversion
+        GstElement* audioconvert1 = gst_element_factory_make("audioconvert", "audioconvert1");
+        GstElement* audioconvert2 = gst_element_factory_make("audioconvert", "audioconvert2");
         
-        // Set rgvolume as the audio filter for playbin
-        g_object_set(m_playbin, "audio-filter", m_rgvolume, nullptr);
-        qDebug() << "[ReplayGain] GStreamer rgvolume element created and configured successfully";
+        if (audioconvert1 && audioconvert2) {
+            // Create a bin to contain the audio filter pipeline
+            m_audioFilterBin = gst_bin_new("audio-filter-bin");
+            
+            // Add elements to the bin
+            gst_bin_add_many(GST_BIN(m_audioFilterBin), audioconvert1, m_rgvolume, audioconvert2, nullptr);
+            
+            // Link the elements: audioconvert1 -> rgvolume -> audioconvert2
+            if (gst_element_link_many(audioconvert1, m_rgvolume, audioconvert2, nullptr)) {
+                // Create ghost pads to expose the bin's sink and src
+                GstPad* sinkPad = gst_element_get_static_pad(audioconvert1, "sink");
+                GstPad* srcPad = gst_element_get_static_pad(audioconvert2, "src");
+                
+                GstPad* ghostSink = gst_ghost_pad_new("sink", sinkPad);
+                GstPad* ghostSrc = gst_ghost_pad_new("src", srcPad);
+                
+                gst_pad_set_active(ghostSink, TRUE);
+                gst_pad_set_active(ghostSrc, TRUE);
+                
+                gst_element_add_pad(m_audioFilterBin, ghostSink);
+                gst_element_add_pad(m_audioFilterBin, ghostSrc);
+                
+                gst_object_unref(sinkPad);
+                gst_object_unref(srcPad);
+                
+                // Set default replay gain properties
+                g_object_set(m_rgvolume, 
+                    "album-mode", FALSE,        // Start with track mode
+                    "pre-amp", 0.0,            // No pre-amplification by default
+                    "fallback-gain", 0.0,       // 0 dB fallback gain
+                    nullptr);
+                
+                // Set the bin as the audio filter for playbin
+                g_object_set(m_playbin, "audio-filter", m_audioFilterBin, nullptr);
+                qDebug() << "[ReplayGain] GStreamer replay gain pipeline created successfully (audioconvert -> rgvolume -> audioconvert)";
+            } else {
+                qWarning() << "[ReplayGain] Failed to link audio filter elements";
+                gst_object_unref(m_audioFilterBin);
+                m_audioFilterBin = nullptr;
+                m_rgvolume = nullptr;
+            }
+        } else {
+            qWarning() << "[ReplayGain] Failed to create audioconvert elements for replay gain";
+            if (audioconvert1) gst_object_unref(audioconvert1);
+            if (audioconvert2) gst_object_unref(audioconvert2);
+            gst_object_unref(m_rgvolume);
+            m_rgvolume = nullptr;
+        }
     } else {
         qWarning() << "[ReplayGain] Failed to create rgvolume element - replay gain will not be available";
         qWarning() << "[ReplayGain] Make sure gstreamer1.0-plugins-good is installed";
@@ -135,10 +177,10 @@ void AudioEngine::loadTrack(const QString &filePath)
         gdouble preAmp = 0.0;
         gdouble fallbackGain = 0.0;
         
-        // Check if rgvolume is currently set as audio filter
+        // Check if audio filter bin is currently set as audio filter
         GstElement* currentFilter = nullptr;
         g_object_get(m_playbin, "audio-filter", &currentFilter, nullptr);
-        enabled = (currentFilter == m_rgvolume);
+        enabled = (currentFilter == m_audioFilterBin);
         if (currentFilter) {
             gst_object_unref(currentFilter);
         }
@@ -390,14 +432,14 @@ void AudioEngine::aboutToFinishCallback(GstElement *playbin, gpointer data)
 
 void AudioEngine::setReplayGainEnabled(bool enabled)
 {
-    if (!m_rgvolume) {
+    if (!m_rgvolume || !m_audioFilterBin) {
         qWarning() << "Replay gain not available - rgvolume element not created";
         return;
     }
     
     if (enabled) {
-        // Re-add rgvolume as audio filter
-        g_object_set(m_playbin, "audio-filter", m_rgvolume, nullptr);
+        // Re-add audio filter bin to enable replay gain
+        g_object_set(m_playbin, "audio-filter", m_audioFilterBin, nullptr);
     } else {
         // Remove audio filter to disable replay gain
         g_object_set(m_playbin, "audio-filter", nullptr, nullptr);
