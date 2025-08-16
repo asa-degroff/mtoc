@@ -85,8 +85,8 @@ private:
     
     // Gapless playback tracking
     bool m_hasQueuedTrack = false;
-    qint64 m_lastPosition = 0;
-    int m_positionResetCount = 0;
+    bool m_transitionPending = false;
+    QTimer *m_transitionTimer = nullptr;
     
     static bool s_gstInitialized;
 };

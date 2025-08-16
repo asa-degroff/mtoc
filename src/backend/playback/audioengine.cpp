@@ -25,17 +25,43 @@ AudioEngine::AudioEngine(QObject *parent)
     m_positionTimer = new QTimer(this);
     m_positionTimer->setInterval(250);
     connect(m_positionTimer, &QTimer::timeout, this, &AudioEngine::updatePosition);
+    
+    // Timer for delayed transition notification
+    m_transitionTimer = new QTimer(this);
+    m_transitionTimer->setSingleShot(true);
+    m_transitionTimer->setInterval(100); // 100ms delay to ensure smooth transition
+    connect(m_transitionTimer, &QTimer::timeout, this, [this]() {
+        if (m_transitionPending) {
+            m_transitionPending = false;
+            m_hasQueuedTrack = false;
+            
+            // Emit signal to notify that the track transition has occurred
+            emit trackTransitioned();
+            
+            // Query and emit duration for the new track
+            gint64 duration;
+            if (gst_element_query_duration(m_pipeline, GST_FORMAT_TIME, &duration)) {
+                emit durationChanged(duration / GST_MSECOND);
+            }
+        }
+    });
 }
 
 AudioEngine::~AudioEngine()
 {
     qDebug() << "[AudioEngine::~AudioEngine] Destructor called, cleaning up...";
     
-    // Ensure timer is deleted
+    // Ensure timers are deleted
     if (m_positionTimer) {
         m_positionTimer->stop();
         delete m_positionTimer;  // Use delete instead of deleteLater in destructor
         m_positionTimer = nullptr;
+    }
+    
+    if (m_transitionTimer) {
+        m_transitionTimer->stop();
+        delete m_transitionTimer;
+        m_transitionTimer = nullptr;
     }
     
     // Stop playback before cleanup
@@ -180,8 +206,10 @@ void AudioEngine::loadTrack(const QString &filePath)
     
     m_currentTrack = filePath;
     m_hasQueuedTrack = false;  // Reset gapless tracking
-    m_lastPosition = 0;
-    m_positionResetCount = 0;
+    m_transitionPending = false;
+    if (m_transitionTimer) {
+        m_transitionTimer->stop();
+    }
     
     // Log replay gain status when loading a track
     if (m_rgvolume) {
@@ -373,27 +401,19 @@ gboolean AudioEngine::busCallback(GstBus *bus, GstMessage *message, gpointer dat
     
     case GST_MESSAGE_TAG: {
         // Tag messages indicate metadata changes - use them to detect track transitions
-        if (engine->m_hasQueuedTrack) {
+        if (engine->m_hasQueuedTrack && !engine->m_transitionPending) {
             GstTagList *tags = nullptr;
             gst_message_parse_tag(message, &tags);
             if (tags) {
                 gchar *title = nullptr;
                 if (gst_tag_list_get_string(tags, GST_TAG_TITLE, &title)) {
-                    qDebug() << "[AudioEngine] TAG message with title:" << title << "- track transition detected";
+                    qDebug() << "[AudioEngine] TAG message with title:" << title << "- scheduling transition";
                     g_free(title);
                     
-                    // TAG messages indicate the new track is playing
-                    engine->m_hasQueuedTrack = false;
-                    engine->m_positionResetCount = 0;
-                    
-                    // Emit signal to notify that the track transition has occurred
-                    emit engine->trackTransitioned();
-                    
-                    // Query and emit duration for the new track
-                    gint64 duration;
-                    if (gst_element_query_duration(engine->m_pipeline, GST_FORMAT_TIME, &duration)) {
-                        emit engine->durationChanged(duration / GST_MSECOND);
-                    }
+                    // Schedule the transition notification with a delay
+                    // This ensures the audio has actually transitioned before updating UI
+                    engine->m_transitionPending = true;
+                    engine->m_transitionTimer->start();
                 }
                 gst_tag_list_unref(tags);
             }
