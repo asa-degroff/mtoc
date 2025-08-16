@@ -2089,7 +2089,7 @@ Item {
                                     id: titleLoader
                                     Layout.fillWidth: true
                                     height: 24
-                                    sourceComponent: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist ? editableTitleComponent : readOnlyTitleComponent
+                                    sourceComponent: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist && !PlaylistManager.isSpecialPlaylist(root.selectedAlbum.title) ? editableTitleComponent : readOnlyTitleComponent
                                     
                                     Component {
                                         id: readOnlyTitleComponent
@@ -2229,11 +2229,11 @@ Item {
                                 }
                             }
                             
-                            // Edit/Save/Cancel buttons for playlists
+                            // Edit/Save/Cancel buttons for playlists (excluding special playlists like "All Songs")
                             Item {
                                 Layout.preferredWidth: childrenRect.width
                                 Layout.fillHeight: true
-                                visible: root.selectedAlbum && root.selectedAlbum.isPlaylist === true
+                                visible: root.selectedAlbum && root.selectedAlbum.isPlaylist === true && !PlaylistManager.isSpecialPlaylist(root.selectedAlbum.title)
                                 
                                 Row {
                                     anchors.centerIn: parent
@@ -2595,7 +2595,7 @@ Item {
                                         sourceSize.width: 40
                                         sourceSize.height: 40
                                         opacity: 0.5
-                                        visible: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist
+                                        visible: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist && !PlaylistManager.isSpecialPlaylist(root.selectedAlbum.title) && !PlaylistManager.isSpecialPlaylist(root.selectedAlbum.title)
                                         
                                         MouseArea {
                                             id: dragArea
@@ -2742,7 +2742,7 @@ Item {
                                         height: 28
                                         radius: 4
                                         color: deleteTrackMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Qt.rgba(1, 1, 1, 0.05)
-                                        visible: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist && (trackDelegate.isHovered || deleteTrackMouseArea.containsMouse)
+                                        visible: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist && !PlaylistManager.isSpecialPlaylist(root.selectedAlbum.title) && !PlaylistManager.isSpecialPlaylist(root.selectedAlbum.title) && (trackDelegate.isHovered || deleteTrackMouseArea.containsMouse)
                                         opacity: visible ? 1.0 : 0.0
                                         
                                         Behavior on opacity {
@@ -2995,7 +2995,7 @@ Item {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: {
-                            if (!root.playlistEditMode || !root.selectedAlbum || !root.selectedAlbum.isPlaylist) {
+                            if (!root.playlistEditMode || !root.selectedAlbum || !root.selectedAlbum.isPlaylist || PlaylistManager.isSpecialPlaylist(root.selectedAlbum.title)) {
                                 return 0
                             }
                             if (root.showTrackSelector) {
@@ -3009,10 +3009,10 @@ Item {
                                 return 52
                             }
                         }
-                        Layout.topMargin: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist ? 8 : 0
+                        Layout.topMargin: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist && !PlaylistManager.isSpecialPlaylist(root.selectedAlbum.title) ? 8 : 0
                         color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(1, 1, 1, 0.20) // Background color for the track selector
                         radius: 6
-                        visible: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist
+                        visible: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist && !PlaylistManager.isSpecialPlaylist(root.selectedAlbum.title)
                         clip: true
                         
                         Behavior on Layout.preferredHeight {
