@@ -9,14 +9,31 @@ import "../"
 
 ApplicationWindow {
     id: miniPlayerWindow
-    width: SettingsManager.miniPlayerLayout === SettingsManager.Horizontal ? 400 : 220
-    height: SettingsManager.miniPlayerLayout === SettingsManager.Horizontal ? 200 : 300
+    width: targetWidth
+    height: targetHeight
     x: SettingsManager.miniPlayerX >= 0 ? SettingsManager.miniPlayerX : Screen.width / 2 - width / 2
     y: SettingsManager.miniPlayerY >= 0 ? SettingsManager.miniPlayerY : Screen.height / 2 - height / 2
-    minimumWidth: width
-    maximumWidth: width
-    minimumHeight: height
-    maximumHeight: height
+    minimumWidth: targetWidth
+    maximumWidth: targetWidth
+    minimumHeight: targetHeight
+    maximumHeight: targetHeight
+    
+    // Dynamic dimensions that update when layout changes
+    property int targetWidth: SettingsManager.miniPlayerLayout === SettingsManager.Horizontal ? 400 : 220
+    property int targetHeight: SettingsManager.miniPlayerLayout === SettingsManager.Horizontal ? 200 : 300
+    
+    // Recenter window when layout changes (if using default position)
+    Connections {
+        target: SettingsManager
+        function onMiniPlayerLayoutChanged() {
+            if (SettingsManager.miniPlayerX < 0 || SettingsManager.miniPlayerY < 0) {
+                // Recenter if using default position
+                miniPlayerWindow.x = Screen.width / 2 - miniPlayerWindow.width / 2
+                miniPlayerWindow.y = Screen.height / 2 - miniPlayerWindow.height / 2
+            }
+        }
+    }
+    
     visible: false
     title: SystemInfo.appName + " - Mini Player"
     flags: Qt.Window | Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint
@@ -149,31 +166,23 @@ ApplicationWindow {
         opacity: Theme.nowPlayingOverlayOpacity * 0.7
     }
     
-    // Drag area for moving the window (since it's frameless)
-    MouseArea {
-        id: dragArea
-        anchors.fill: parent
-        property point startPos: Qt.point(0, 0)
-        z: -1  // Below all content
-        
-        onPressed: function(mouse) {
-            startPos = Qt.point(mouse.x, mouse.y)
-        }
-        
-        onPositionChanged: function(mouse) {
-            if (pressed) {
-                var dx = mouse.x - startPos.x
-                var dy = mouse.y - startPos.y
-                miniPlayerWindow.x += dx
-                miniPlayerWindow.y += dy
-            }
-        }
-    }
-    
     // Main content - layout depends on setting
     Item {
         anchors.fill: parent
         anchors.margins: 12
+        
+        // Drag area for moving the window (since it's frameless)
+        // This covers the background but not interactive elements
+        MouseArea {
+            id: dragArea
+            anchors.fill: parent
+            z: -1  // Behind content but above background
+            
+            onPressed: function(mouse) {
+                // Use the window's built-in drag functionality for frameless windows
+                miniPlayerWindow.startSystemMove()
+            }
+        }
         
         // Vertical layout
         ColumnLayout {
