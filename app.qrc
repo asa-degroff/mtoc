@@ -70,5 +70,7 @@
         <file>resources/icons/add.svg</file>
         <file>resources/icons/add-dark.svg</file>
         <file>resources/icons/list-drag-handle-dark.svg</file>
+        <file>resources/icons/info.svg</file>
+        <file>resources/icons/info-dark.svg</file>
     </qresource>
 </RCC>

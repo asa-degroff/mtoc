@@ -647,15 +647,40 @@ ApplicationWindow {
                                 color: Theme.secondaryText
                                 Layout.preferredWidth: 60
                             }
-                        }
-                        
-                        Label {
-                            Layout.fillWidth: true
-                            Layout.leftMargin: 20
-                            text: "Adjust overall volume level"
-                            font.pixelSize: 12
-                            color: Theme.tertiaryText
-                            wrapMode: Text.WordWrap
+                            
+                            Image {
+                                source: Theme.isDark ? "qrc:/resources/icons/info.svg" : "qrc:/resources/icons/info-dark.svg"
+                                Layout.preferredWidth: 16
+                                Layout.preferredHeight: 16
+                                Layout.leftMargin: 4
+                                sourceSize.width: 16
+                                sourceSize.height: 16
+                                
+                                MouseArea {
+                                    anchors.centerIn: parent
+                                    width: 24
+                                    height: 24
+                                    hoverEnabled: true
+                                    
+                                    ToolTip {
+                                        id: preAmpTooltip
+                                        visible: parent.containsMouse
+                                        text: "Positive values may cause clipping"
+                                        delay: 200
+                                        timeout: 5000
+                                        background: Rectangle {
+                                            color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                                            border.color: Theme.borderColor
+                                            radius: 4
+                                        }
+                                        contentItem: Text {
+                                            text: preAmpTooltip.text
+                                            font.pixelSize: 12
+                                            color: Theme.primaryText
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     
@@ -667,18 +692,51 @@ ApplicationWindow {
                         opacity: 0.3
                     }
                     
-                    Label {
-                        text: "Replay Gain"
-                        font.pixelSize: 14
-                        font.bold: true
-                        color: Theme.primaryText
-                    }
-                    
-                    Label {
-                        text: "Normalizes volume across tracks and albums"
-                        font.pixelSize: 12
-                        color: Theme.tertiaryText
+                    RowLayout {
                         Layout.fillWidth: true
+                        spacing: 8
+                        
+                        Label {
+                            text: "Replay Gain"
+                            font.pixelSize: 14
+                            font.bold: true
+                            color: Theme.primaryText
+                        }
+                        
+                        Image {
+                            source: Theme.isDark ? "qrc:/resources/icons/info.svg" : "qrc:/resources/icons/info-dark.svg"
+                            Layout.preferredWidth: 16
+                            Layout.preferredHeight: 16
+                            sourceSize.width: 16
+                            sourceSize.height: 16
+                            
+                            MouseArea {
+                                anchors.centerIn: parent
+                                width: 24
+                                height: 24
+                                hoverEnabled: true
+                                
+                                ToolTip {
+                                    id: replayGainTooltip
+                                    visible: parent.containsMouse
+                                    text: "Uses ReplayGain metadata to adjust volume\nfor consistent playback levels"
+                                    delay: 200
+                                    timeout: 5000
+                                    background: Rectangle {
+                                        color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                                        border.color: Theme.borderColor
+                                        radius: 4
+                                    }
+                                    contentItem: Text {
+                                        text: replayGainTooltip.text
+                                        font.pixelSize: 12
+                                        color: Theme.primaryText
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Item { Layout.fillWidth: true }
                     }
                     
                     CheckBox {
@@ -797,17 +855,42 @@ ApplicationWindow {
                             }
                         }
                         
+                        Image {
+                            source: Theme.isDark ? "qrc:/resources/icons/info.svg" : "qrc:/resources/icons/info-dark.svg"
+                            Layout.preferredWidth: 16
+                            Layout.preferredHeight: 16
+                            Layout.leftMargin: 4
+                            sourceSize.width: 16
+                            sourceSize.height: 16
+                            visible: replayGainEnabledCheck.checked
+                            
+                            MouseArea {
+                                anchors.centerIn: parent
+                                width: 24
+                                height: 24
+                                hoverEnabled: true
+                                
+                                ToolTip {
+                                    id: replayGainModeTooltip
+                                    visible: parent.containsMouse
+                                    text: "Album: Preserve relative volume within albums\nTrack: Apply gain per track"
+                                    delay: 200
+                                    timeout: 5000
+                                    background: Rectangle {
+                                        color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                                        border.color: Theme.borderColor
+                                        radius: 4
+                                    }
+                                    contentItem: Text {
+                                        text: replayGainModeTooltip.text
+                                        font.pixelSize: 12
+                                        color: Theme.primaryText
+                                    }
+                                }
+                            }
+                        }
+                        
                         Item { Layout.fillWidth: true }
-                    }
-                    
-                    Label {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 20
-                        text: "Track: Apply gain per track • Album: Preserve relative volume within albums"
-                        font.pixelSize: 12
-                        color: Theme.tertiaryText
-                        visible: replayGainEnabledCheck.checked
-                        wrapMode: Text.WordWrap
                     }
                     
                     // Fallback gain (only visible when enabled)
@@ -872,15 +955,40 @@ ApplicationWindow {
                                 color: Theme.secondaryText
                                 Layout.preferredWidth: 60
                             }
-                        }
-                        
-                        Label {
-                            Layout.fillWidth: true
-                            Layout.leftMargin: 20
-                            text: "Applied when tracks don't have replay gain metadata"
-                            font.pixelSize: 12
-                            color: Theme.tertiaryText
-                            wrapMode: Text.WordWrap
+                            
+                            Image {
+                                source: Theme.isDark ? "qrc:/resources/icons/info.svg" : "qrc:/resources/icons/info-dark.svg"
+                                Layout.preferredWidth: 16
+                                Layout.preferredHeight: 16
+                                Layout.leftMargin: 4
+                                sourceSize.width: 16
+                                sourceSize.height: 16
+                                
+                                MouseArea {
+                                    anchors.centerIn: parent
+                                    width: 24
+                                    height: 24
+                                    hoverEnabled: true
+                                    
+                                    ToolTip {
+                                        id: fallbackGainTooltip
+                                        visible: parent.containsMouse
+                                        text: "Applied to tracks without replay gain metadata"
+                                        delay: 200
+                                        timeout: 5000
+                                        background: Rectangle {
+                                            color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                                            border.color: Theme.borderColor
+                                            radius: 4
+                                        }
+                                        contentItem: Text {
+                                            text: fallbackGainTooltip.text
+                                            font.pixelSize: 12
+                                            color: Theme.primaryText
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
