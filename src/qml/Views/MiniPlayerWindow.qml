@@ -35,7 +35,7 @@ ApplicationWindow {
     }
     
     visible: false
-    title: SystemInfo.appName + " - Mini Player"
+    title: SystemInfo.appName + " mini player"
     flags: Qt.Window | Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint
     
     property string currentAlbumId: ""

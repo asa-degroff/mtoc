@@ -110,7 +110,6 @@ int main(int argc, char *argv[])
     // Set application metadata
     app.setOrganizationName("mtoc");
     app.setApplicationName("mtoc");
-    app.setApplicationDisplayName("mtoc Music Player");
     
     // Set application icon
     // Check if running in Flatpak
