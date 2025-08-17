@@ -479,11 +479,14 @@ ApplicationWindow {
                 // Playback controls
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 16
+                    Layout.alignment: Qt.AlignHCenter
+                    spacing: 14
+                    
+                    Item { Layout.fillWidth: true }
                     
                     IconButton {
-                        Layout.preferredWidth: 24
-                        Layout.preferredHeight: 24
+                        Layout.preferredWidth: 28
+                        Layout.preferredHeight: 28
                         iconSource: "qrc:/resources/icons/previous-button-normal.svg"
                         iconPressedSource: "qrc:/resources/icons/previous-button-pressed.svg"
                         addShadow: true
@@ -491,8 +494,8 @@ ApplicationWindow {
                     }
                     
                     IconButton {
-                        Layout.preferredWidth: 32
-                        Layout.preferredHeight: 32
+                        Layout.preferredWidth: 36
+                        Layout.preferredHeight: 36
                         iconSource: MediaPlayer.state === MediaPlayer.PlayingState ? 
                             "qrc:/resources/icons/pause-button-normal.svg" : 
                             "qrc:/resources/icons/play-button-normal.svg"
@@ -504,8 +507,8 @@ ApplicationWindow {
                     }
                     
                     IconButton {
-                        Layout.preferredWidth: 24
-                        Layout.preferredHeight: 24
+                        Layout.preferredWidth: 28
+                        Layout.preferredHeight: 28
                         iconSource: "qrc:/resources/icons/skip-button-normal.svg"
                         iconPressedSource: "qrc:/resources/icons/skip-button-pressed.svg"
                         addShadow: true
