@@ -21,6 +21,7 @@
         <file>src/qml/Views/SettingsWindow.qml</file>
         <file>src/qml/Views/NowPlayingPane.qml</file>
         <file>src/qml/Views/PlaylistView.qml</file>
+        <file>src/qml/Views/MiniPlayerWindow.qml</file>
         <file>src/qml/Constants.qml</file>
         <file>src/qml/Styles.qml</file>
         <file>src/qml/Theme.qml</file>

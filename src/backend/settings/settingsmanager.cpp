@@ -14,6 +14,9 @@ SettingsManager::SettingsManager(QObject *parent)
     , m_replayGainMode(Off)
     , m_replayGainPreAmp(0.0)
     , m_replayGainFallbackGain(0.0)
+    , m_miniPlayerLayout(Vertical)
+    , m_miniPlayerX(-1)
+    , m_miniPlayerY(-1)
 {
     loadSettings();
     setupSystemThemeDetection();
@@ -210,6 +213,33 @@ void SettingsManager::setReplayGainFallbackGain(double fallbackGain)
     }
 }
 
+void SettingsManager::setMiniPlayerLayout(MiniPlayerLayout layout)
+{
+    if (m_miniPlayerLayout != layout) {
+        m_miniPlayerLayout = layout;
+        emit miniPlayerLayoutChanged(layout);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setMiniPlayerX(int x)
+{
+    if (m_miniPlayerX != x) {
+        m_miniPlayerX = x;
+        emit miniPlayerXChanged(x);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setMiniPlayerY(int y)
+{
+    if (m_miniPlayerY != y) {
+        m_miniPlayerY = y;
+        emit miniPlayerYChanged(y);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -247,6 +277,12 @@ void SettingsManager::loadSettings()
     m_windowHeight = m_settings.value("height", 1200).toInt();
     m_windowX = m_settings.value("x", -1).toInt();  // -1 means use default positioning
     m_windowY = m_settings.value("y", -1).toInt();
+    m_settings.endGroup();
+    
+    m_settings.beginGroup("MiniPlayer");
+    m_miniPlayerLayout = static_cast<MiniPlayerLayout>(m_settings.value("layout", Vertical).toInt());
+    m_miniPlayerX = m_settings.value("x", -1).toInt();  // -1 means use default positioning
+    m_miniPlayerY = m_settings.value("y", -1).toInt();
     m_settings.endGroup();
     
     qDebug() << "SettingsManager: Loaded settings - Queue action:" << m_queueActionDefault 
@@ -293,6 +329,12 @@ void SettingsManager::saveSettings()
     m_settings.setValue("height", m_windowHeight);
     m_settings.setValue("x", m_windowX);
     m_settings.setValue("y", m_windowY);
+    m_settings.endGroup();
+    
+    m_settings.beginGroup("MiniPlayer");
+    m_settings.setValue("layout", static_cast<int>(m_miniPlayerLayout));
+    m_settings.setValue("x", m_miniPlayerX);
+    m_settings.setValue("y", m_miniPlayerY);
     m_settings.endGroup();
     
     m_settings.sync();

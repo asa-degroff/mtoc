@@ -28,6 +28,9 @@ class SettingsManager : public QObject
     Q_PROPERTY(ReplayGainMode replayGainMode READ replayGainMode WRITE setReplayGainMode NOTIFY replayGainModeChanged)
     Q_PROPERTY(double replayGainPreAmp READ replayGainPreAmp WRITE setReplayGainPreAmp NOTIFY replayGainPreAmpChanged)
     Q_PROPERTY(double replayGainFallbackGain READ replayGainFallbackGain WRITE setReplayGainFallbackGain NOTIFY replayGainFallbackGainChanged)
+    Q_PROPERTY(MiniPlayerLayout miniPlayerLayout READ miniPlayerLayout WRITE setMiniPlayerLayout NOTIFY miniPlayerLayoutChanged)
+    Q_PROPERTY(int miniPlayerX READ miniPlayerX WRITE setMiniPlayerX NOTIFY miniPlayerXChanged)
+    Q_PROPERTY(int miniPlayerY READ miniPlayerY WRITE setMiniPlayerY NOTIFY miniPlayerYChanged)
 
 public:
     enum QueueAction {
@@ -59,6 +62,12 @@ public:
     };
     Q_ENUM(ReplayGainMode)
 
+    enum MiniPlayerLayout {
+        Vertical,
+        Horizontal
+    };
+    Q_ENUM(MiniPlayerLayout)
+
     static SettingsManager* instance();
     ~SettingsManager();
     
@@ -83,6 +92,9 @@ public:
     ReplayGainMode replayGainMode() const { return m_replayGainMode; }
     double replayGainPreAmp() const { return m_replayGainPreAmp; }
     double replayGainFallbackGain() const { return m_replayGainFallbackGain; }
+    MiniPlayerLayout miniPlayerLayout() const { return m_miniPlayerLayout; }
+    int miniPlayerX() const { return m_miniPlayerX; }
+    int miniPlayerY() const { return m_miniPlayerY; }
     
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -104,6 +116,9 @@ public:
     void setReplayGainMode(ReplayGainMode mode);
     void setReplayGainPreAmp(double preAmp);
     void setReplayGainFallbackGain(double fallbackGain);
+    void setMiniPlayerLayout(MiniPlayerLayout layout);
+    void setMiniPlayerX(int x);
+    void setMiniPlayerY(int y);
 
 protected:
     bool event(QEvent *event) override;
@@ -129,6 +144,9 @@ signals:
     void replayGainModeChanged(ReplayGainMode mode);
     void replayGainPreAmpChanged(double preAmp);
     void replayGainFallbackGainChanged(double fallbackGain);
+    void miniPlayerLayoutChanged(MiniPlayerLayout layout);
+    void miniPlayerXChanged(int x);
+    void miniPlayerYChanged(int y);
 
 private slots:
 
@@ -162,6 +180,9 @@ private:
     ReplayGainMode m_replayGainMode;
     double m_replayGainPreAmp;
     double m_replayGainFallbackGain;
+    MiniPlayerLayout m_miniPlayerLayout;
+    int m_miniPlayerX;
+    int m_miniPlayerY;
 };
 
 #endif // SETTINGSMANAGER_H

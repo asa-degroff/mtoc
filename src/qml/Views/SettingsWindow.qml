@@ -446,6 +446,142 @@ ApplicationWindow {
                         visible: layoutModeComboBox.currentIndex === 2
                     }
                     
+                    // Mini Player Layout
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 20
+                        Layout.rightMargin: 20
+                        Layout.topMargin: 10
+                        spacing: 20
+                        
+                        Label {
+                            text: "Mini Player Layout:"
+                            font.pixelSize: 14
+                            color: Theme.secondaryText
+                            Layout.preferredWidth: 100
+                        }
+                        
+                        ComboBox {
+                            id: miniPlayerLayoutComboBox
+                            Layout.preferredWidth: 150
+                            Layout.preferredHeight: 36
+                            model: ["Vertical", "Horizontal"]
+                            currentIndex: {
+                                switch(SettingsManager.miniPlayerLayout) {
+                                    case SettingsManager.Vertical: return 0
+                                    case SettingsManager.Horizontal: return 1
+                                    default: return 0
+                                }
+                            }
+                            
+                            onActivated: function(index) {
+                                switch(index) {
+                                    case 0: SettingsManager.miniPlayerLayout = SettingsManager.Vertical; break
+                                    case 1: SettingsManager.miniPlayerLayout = SettingsManager.Horizontal; break
+                                }
+                            }
+                            
+                            background: Rectangle {
+                                color: parent.hovered ? Theme.inputBackgroundHover : Theme.inputBackground
+                                radius: 4
+                                border.width: 1
+                                border.color: Theme.borderColor
+                            }
+                            
+                            contentItem: Text {
+                                text: parent.displayText
+                                color: Theme.primaryText
+                                font.pixelSize: 14
+                                verticalAlignment: Text.AlignVCenter
+                                leftPadding: 8
+                                rightPadding: 30  // Leave space for indicator
+                            }
+                            
+                            indicator: Canvas {
+                                id: miniPlayerIndicatorCanvas
+                                x: parent.width - width - 8
+                                y: parent.height / 2 - height / 2
+                                width: 12
+                                height: 8
+                                contextType: "2d"
+                                
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.reset()
+                                    ctx.moveTo(0, 0)
+                                    ctx.lineTo(width, 0)
+                                    ctx.lineTo(width / 2, height)
+                                    ctx.closePath()
+                                    ctx.fillStyle = "#cccccc"
+                                    ctx.fill()
+                                }
+                                
+                                Connections {
+                                    target: Theme
+                                    function onIsDarkChanged() {
+                                        miniPlayerIndicatorCanvas.requestPaint()
+                                    }
+                                }
+                            }
+                            
+                            popup: Popup {
+                                y: parent.height + 2
+                                width: parent.width
+                                implicitHeight: contentItem.implicitHeight + 2
+                                padding: 1
+                                
+                                contentItem: ListView {
+                                    clip: true
+                                    implicitHeight: contentHeight
+                                    model: miniPlayerLayoutComboBox.popup.visible ? miniPlayerLayoutComboBox.delegateModel : null
+                                    currentIndex: miniPlayerLayoutComboBox.highlightedIndex
+                                    
+                                    delegate: ItemDelegate {
+                                        width: miniPlayerLayoutComboBox.width
+                                        contentItem: Text {
+                                            text: modelData
+                                            color: Theme.primaryText
+                                            font.pixelSize: 14
+                                            elide: Text.ElideRight
+                                            verticalAlignment: Text.AlignVCenter
+                                        }
+                                        highlighted: miniPlayerLayoutComboBox.highlightedIndex === index
+                                        
+                                        background: Rectangle {
+                                            color: parent.hovered ? Theme.inputBackgroundHover : "transparent"
+                                        }
+                                        
+                                        onClicked: {
+                                            miniPlayerLayoutComboBox.currentIndex = index
+                                            miniPlayerLayoutComboBox.activated(index)
+                                            miniPlayerLayoutComboBox.popup.close()
+                                        }
+                                    }
+                                    
+                                    ScrollIndicator.vertical: ScrollIndicator { }
+                                }
+                                
+                                background: Rectangle {
+                                    color: Theme.backgroundColor
+                                    border.color: Theme.borderColor
+                                    border.width: 1
+                                    radius: 4
+                                }
+                            }
+                        }
+                        
+                        Item { Layout.fillWidth: true }
+                    }
+                    
+                    // Help text for mini player layout
+                    Label {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 20
+                        text: "Vertical: Controls below artwork | Horizontal: Controls to the right"
+                        font.pixelSize: 12
+                        color: Theme.tertiaryText
+                    }
+                    
                     CheckBox {
                         id: showTrackInfoCheck
                         text: "Show track info panel by default"

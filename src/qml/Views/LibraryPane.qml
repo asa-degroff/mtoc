@@ -745,6 +745,14 @@ Item {
                     implicitHeight: 28
                     implicitWidth: 28
                     icon.source: "qrc:/resources/icons/minimize.svg"
+                    
+                    onClicked: {
+                        // Find the main window and call showMiniPlayer
+                        var mainWindow = root.Window.window
+                        if (mainWindow && mainWindow.showMiniPlayer) {
+                            mainWindow.showMiniPlayer()
+                        }
+                    }
 
                     background: Rectangle {
                         id: buttonRect
