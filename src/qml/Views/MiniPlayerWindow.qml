@@ -19,8 +19,8 @@ ApplicationWindow {
     maximumHeight: targetHeight
     
     // Dynamic dimensions that update when layout changes
-    property int targetWidth: SettingsManager.miniPlayerLayout === SettingsManager.Horizontal ? 400 : 220
-    property int targetHeight: SettingsManager.miniPlayerLayout === SettingsManager.Horizontal ? 200 : 300
+    property int targetWidth: SettingsManager.miniPlayerLayout === SettingsManager.Horizontal ? 350 : 220
+    property int targetHeight: SettingsManager.miniPlayerLayout === SettingsManager.Horizontal ? 180 : 300
     
     // Recenter window when layout changes (if using default position)
     Connections {
@@ -317,7 +317,7 @@ ApplicationWindow {
             // Progress bar
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 2
+                spacing: 6  // Increased spacing between slider and time labels
                 
                 Slider {
                     id: progressSliderVertical
@@ -358,6 +358,7 @@ ApplicationWindow {
                 
                 RowLayout {
                     Layout.fillWidth: true
+                    Layout.topMargin: 2  // Small additional margin for visual balance
                     
                     Label {
                         text: formatTime(MediaPlayer.position)
@@ -517,7 +518,7 @@ ApplicationWindow {
                 // Progress bar
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 2
+                    spacing: 6  // Increased spacing between slider and time labels
                     
                     Slider {
                         id: progressSliderHorizontal
@@ -558,6 +559,7 @@ ApplicationWindow {
                     
                     RowLayout {
                         Layout.fillWidth: true
+                        Layout.topMargin: 2  // Small additional margin for visual balance
                         
                         Label {
                             text: formatTime(MediaPlayer.position)
