@@ -3395,7 +3395,6 @@ Item {
                                             property bool needsScrolling: titleLabel1.contentWidth > titleLabelContainer.width
                                             property real scrollOffset: 0
                                             property real scrollDuration: Math.max(4000, titleLabel1.contentWidth * 20)  // Speed based on text length
-                                            
                                             // Function to start hover-based animation
                                             function startHoverAnimation() {
                                                 scrollOffset = 0
@@ -3466,21 +3465,11 @@ Item {
                                                     easing.type: Easing.InOutQuad
                                                 }
                                                 
-                                                // Brief pause at the wrap point
-                                                PauseAnimation {
-                                                    duration: titleRow.pauseDuration
-                                                }
-                                                
                                                 // Instant reset to beginning (seamless wrap)
                                                 PropertyAction {
                                                     target: titleRow
                                                     property: "scrollOffset"
                                                     value: 0
-                                                }
-                                                
-                                                // Initial pause at the beginning
-                                                PauseAnimation {
-                                                    duration: titleRow.pauseDuration
                                                 }
                                             }
                                         }
@@ -3804,7 +3793,6 @@ Item {
                                                     property bool needsScrolling: filePathLabel1.contentWidth > labelContainer.width
                                                     property real scrollOffset: 0
                                                     property real scrollDuration: Math.max(4000, filePathLabel1.contentWidth * 20)  // Speed based on text length
-                                                    
                                                     // Function to start hover-based animation
                                                     function startHoverAnimation() {
                                                         scrollOffset = 0
@@ -3873,21 +3861,11 @@ Item {
                                                             easing.type: Easing.InOutQuad
                                                         }
                                                         
-                                                        // Brief pause at the wrap point
-                                                        PauseAnimation {
-                                                            duration: filePathRow.pauseDuration
-                                                        }
-                                                        
                                                         // Instant reset to beginning (seamless wrap)
                                                         PropertyAction {
                                                             target: filePathRow
                                                             property: "scrollOffset"
                                                             value: 0
-                                                        }
-                                                        
-                                                        // Brief pause at the beginning
-                                                        PauseAnimation {
-                                                            duration: filePathRow.pauseDuration
                                                         }
                                                     }
                                                 }

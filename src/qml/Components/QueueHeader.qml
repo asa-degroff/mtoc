@@ -186,11 +186,6 @@ RowLayout {
                             }
                         }
                         
-                        // Initial pause
-                        PauseAnimation {
-                            duration: contextTextRow.pauseDuration
-                        }
-                        
                         // Single smooth scrolling animation with subtle easing
                         NumberAnimation {
                             target: contextTextRow
@@ -199,11 +194,6 @@ RowLayout {
                             to: contextLabel1.contentWidth + contextTextRow.spacing  // Scroll one full text width + gap
                             duration: contextTextRow.scrollDuration
                             easing.type: Easing.InOutQuad  // Smooth acceleration and deceleration
-                        }
-                        
-                        // Brief pause at the wrap point
-                        PauseAnimation {
-                            duration: contextTextRow.pauseDuration
                         }
                         
                         // Instant reset to beginning (seamless wrap)
