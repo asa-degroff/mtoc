@@ -261,7 +261,7 @@ ApplicationWindow {
                     text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.title : ""
                     font.pixelSize: 14
                     font.weight: Font.Medium
-                    color: Theme.textColor
+                    color: "#ffffff"  // Always white on dark background
                     horizontalAlignment: Text.AlignHCenter
                     elide: Text.ElideRight
                 }
@@ -270,7 +270,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.artist : ""
                     font.pixelSize: 12
-                    color: Theme.secondaryTextColor
+                    color: "#cccccc"  // Light gray for secondary text
                     horizontalAlignment: Text.AlignHCenter
                     elide: Text.ElideRight
                 }
@@ -335,13 +335,13 @@ ApplicationWindow {
                     background: Rectangle {
                         height: 4
                         radius: 2
-                        color: Qt.rgba(1, 1, 1, 0.1)
+                        color: Qt.rgba(1, 1, 1, 0.2)  // More visible on dark background
                         
                         Rectangle {
                             width: progressSliderVertical.visualPosition * parent.width
                             height: parent.height
                             radius: 2
-                            color: Theme.accentColor
+                            color: "#ffffff"  // White progress bar
                         }
                     }
                     
@@ -351,7 +351,7 @@ ApplicationWindow {
                         width: 12
                         height: 12
                         radius: 6
-                        color: Theme.accentColor
+                        color: "#ffffff"  // White handle
                         visible: progressSliderVertical.pressed || progressSliderVertical.hovered
                     }
                 }
@@ -362,7 +362,7 @@ ApplicationWindow {
                     Label {
                         text: formatTime(MediaPlayer.position)
                         font.pixelSize: 10
-                        color: Theme.secondaryTextColor
+                        color: "#aaaaaa"  // Light gray for time labels
                     }
                     
                     Item { Layout.fillWidth: true }
@@ -370,7 +370,7 @@ ApplicationWindow {
                     Label {
                         text: formatTime(MediaPlayer.duration)
                         font.pixelSize: 10
-                        color: Theme.secondaryTextColor
+                        color: "#aaaaaa"  // Light gray for time labels
                     }
                 }
             }
@@ -462,7 +462,7 @@ ApplicationWindow {
                         text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.title : ""
                         font.pixelSize: 14
                         font.weight: Font.Medium
-                        color: Theme.textColor
+                        color: "#ffffff"  // Always white on dark background
                         elide: Text.ElideRight
                     }
                     
@@ -470,7 +470,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.artist : ""
                         font.pixelSize: 12
-                        color: Theme.secondaryTextColor
+                        color: "#cccccc"  // Light gray for secondary text
                         elide: Text.ElideRight
                     }
                 }
@@ -535,13 +535,13 @@ ApplicationWindow {
                         background: Rectangle {
                             height: 4
                             radius: 2
-                            color: Qt.rgba(1, 1, 1, 0.1)
+                            color: Qt.rgba(1, 1, 1, 0.2)  // More visible on dark background
                             
                             Rectangle {
                                 width: progressSliderHorizontal.visualPosition * parent.width
                                 height: parent.height
                                 radius: 2
-                                color: Theme.accentColor
+                                color: "#ffffff"  // White progress bar
                             }
                         }
                         
@@ -551,7 +551,7 @@ ApplicationWindow {
                             width: 12
                             height: 12
                             radius: 6
-                            color: Theme.accentColor
+                            color: "#ffffff"  // White handle
                             visible: progressSliderHorizontal.pressed || progressSliderHorizontal.hovered
                         }
                     }
@@ -562,7 +562,7 @@ ApplicationWindow {
                         Label {
                             text: formatTime(MediaPlayer.position)
                             font.pixelSize: 10
-                            color: Theme.secondaryTextColor
+                            color: "#aaaaaa"  // Light gray for time labels
                         }
                         
                         Item { Layout.fillWidth: true }
@@ -570,7 +570,7 @@ ApplicationWindow {
                         Label {
                             text: formatTime(MediaPlayer.duration)
                             font.pixelSize: 10
-                            color: Theme.secondaryTextColor
+                            color: "#aaaaaa"  // Light gray for time labels
                         }
                     }
                 }
