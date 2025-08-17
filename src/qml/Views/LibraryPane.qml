@@ -740,6 +740,46 @@ Item {
                 }
                 
                 Item { Layout.fillWidth: true } // Spacer
+
+                Button {
+                    implicitHeight: 28
+                    implicitWidth: 28
+                    icon.source: "qrc:/resources/icons/minimize.svg"
+
+                    background: Rectangle {
+                        id: buttonRect
+                        color: Qt.rgba(1, 1, 1, 0.03)  // Subtle background like artist items
+                        radius: 4  // Smaller radius
+                        
+                        //light border
+                        border.width: 1
+                        border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(0, 0, 0, 0.06)
+
+                    }
+
+                    MouseArea {
+                        id: buttonMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        
+                        onClicked: parent.clicked()
+                    }
+                    
+                    // Hover effect matching artist items
+                    states: State {
+                        when: buttonMouseArea.containsMouse
+                        PropertyChanges {
+                            target: buttonRect
+                            color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
+                            border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.09) : Qt.rgba(0, 0, 0, 0.09)
+                        }
+                    }
+                    
+                    transitions: Transition {
+                        ColorAnimation { duration: 150 }
+                    }
+                }
                 
                 Button {
                     text: "Edit Library"
@@ -747,7 +787,7 @@ Item {
                     implicitWidth: 100  // Smaller width
                     
                     background: Rectangle {
-                        id: buttonRect
+                        id: minimizeButtonRect
                         color: Qt.rgba(1, 1, 1, 0.03)  // Subtle background like artist items
                         radius: 4  // Smaller radius
                         
@@ -767,7 +807,7 @@ Item {
                     
                     // Add mouse area for hover effects
                     MouseArea {
-                        id: buttonMouseArea
+                        id: minimizeButtonMouseArea
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
@@ -777,9 +817,9 @@ Item {
                     
                     // Hover effect matching artist items
                     states: State {
-                        when: buttonMouseArea.containsMouse
+                        when: minimizeButtonMouseArea.containsMouse
                         PropertyChanges {
-                            target: buttonRect
+                            target: minimizeButtonRect
                             color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
                             border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.09) : Qt.rgba(0, 0, 0, 0.09)
                         }
