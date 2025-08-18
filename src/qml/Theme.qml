@@ -10,6 +10,9 @@ QtObject {
         return SettingsManager.theme === SettingsManager.Dark
     }
     
+    // System accent color
+    property color systemAccentColor: SettingsManager.systemAccentColor
+    
     // Primary colors
     property color primaryText: isDark ? "white" : "#333333"
     property color secondaryText: isDark ? "#cccccc" : "#3d3d3d"
@@ -26,13 +29,13 @@ QtObject {
     property color inputBackground: isDark ? "#383838" : "#ffffff"
     property color inputBackgroundHover: isDark ? "#404040" : "#f0f0f0"
     property color borderColor: isDark ? "#505050" : "#d0d0d0"
-    property color selectedBackground: isDark ? "#4a5fba" : "#2196F3"
+    property color selectedBackground: systemAccentColor
     property color hoverBackground: isDark ? Qt.rgba(1, 1, 1, 0.1) : Qt.rgba(0, 0, 0, 0.05)
     
     // Special UI elements
     property color errorText: "#ff6b6b"
     property color successText: "#51cf66"
-    property color linkColor: isDark ? "#5a6fca" : "#1976D2"
+    property color linkColor: Qt.lighter(systemAccentColor, isDark ? 1.3 : 1.0)
     
     // Edge/separator colors
     property color edgeLineColor: isDark ? Qt.rgba(1, 1, 1, 0.1) : Qt.rgba(0, 0, 0, 0.1)

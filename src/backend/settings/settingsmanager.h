@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QSettings>
 #include <QString>
+#include <QColor>
 
 class SettingsManager : public QObject
 {
@@ -23,6 +24,7 @@ class SettingsManager : public QObject
     Q_PROPERTY(int windowY READ windowY WRITE setWindowY NOTIFY windowYChanged)
     Q_PROPERTY(Theme theme READ theme WRITE setTheme NOTIFY themeChanged)
     Q_PROPERTY(bool isSystemDark READ isSystemDark NOTIFY systemThemeChanged)
+    Q_PROPERTY(QColor systemAccentColor READ systemAccentColor NOTIFY systemAccentColorChanged)
     Q_PROPERTY(LayoutMode layoutMode READ layoutMode WRITE setLayoutMode NOTIFY layoutModeChanged)
     Q_PROPERTY(bool replayGainEnabled READ replayGainEnabled WRITE setReplayGainEnabled NOTIFY replayGainEnabledChanged)
     Q_PROPERTY(ReplayGainMode replayGainMode READ replayGainMode WRITE setReplayGainMode NOTIFY replayGainModeChanged)
@@ -88,6 +90,7 @@ public:
     int windowY() const { return m_windowY; }
     Theme theme() const { return m_theme; }
     bool isSystemDark() const;
+    QColor systemAccentColor() const;
     LayoutMode layoutMode() const { return m_layoutMode; }
     bool replayGainEnabled() const { return m_replayGainEnabled; }
     ReplayGainMode replayGainMode() const { return m_replayGainMode; }
@@ -140,6 +143,7 @@ signals:
     void windowYChanged(int y);
     void themeChanged(Theme theme);
     void systemThemeChanged();
+    void systemAccentColorChanged();
     void layoutModeChanged(LayoutMode mode);
     void replayGainEnabledChanged(bool enabled);
     void replayGainModeChanged(ReplayGainMode mode);

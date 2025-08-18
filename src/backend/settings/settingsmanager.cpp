@@ -352,6 +352,16 @@ bool SettingsManager::isSystemDark() const
     return windowColor.lightness() < 128;
 }
 
+QColor SettingsManager::systemAccentColor() const
+{
+    // Get the system palette
+    QPalette palette = QGuiApplication::palette();
+    
+    // Return the system's highlight color (accent color)
+    // This is typically the selection/accent color on most platforms
+    return palette.color(QPalette::Highlight);
+}
+
 void SettingsManager::setupSystemThemeDetection()
 {
     // Event handling for palette changes is done in event() method
@@ -362,6 +372,9 @@ bool SettingsManager::event(QEvent *event)
     if (event->type() == QEvent::ApplicationPaletteChange) {
         // Emit signal when system theme changes
         emit systemThemeChanged();
+        
+        // Emit signal when system accent color might have changed
+        emit systemAccentColorChanged();
         
         // If we're using the System theme, also emit themeChanged
         if (m_theme == System) {
