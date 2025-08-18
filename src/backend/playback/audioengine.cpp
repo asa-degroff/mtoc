@@ -634,31 +634,33 @@ void AudioEngine::queueNextTrack(const QString &filePath)
         m_transitionTimer->setInterval(100); // Check every 100ms
     }
     
+    // Reset monitoring state for new track
+    m_transitionCheckCount = 0;
+    m_transitionLastPos = 0;
+    m_transitionPeakPos = 0;
+    m_transitionDurationChangedFlag = false;
+    
     // Disconnect any existing connections
     QObject::disconnect(m_transitionTimer, nullptr, nullptr, nullptr);
     
     // Set up new monitoring
     QObject::connect(m_transitionTimer, &QTimer::timeout, this, [this]() {
-        static int checkCount = 0;
-        static qint64 lastPos = 0;
-        static qint64 peakPos = 0;
-        static bool durationChangedFlag = false;
-        checkCount++;
+        m_transitionCheckCount++;
         
         qint64 currentPos = this->position();
         qint64 currentDuration = this->duration();
         
         // Track peak position
-        if (currentPos > peakPos) {
-            peakPos = currentPos;
+        if (currentPos > m_transitionPeakPos) {
+            m_transitionPeakPos = currentPos;
         }
         
         // Check for duration change
-        if (!durationChangedFlag && m_lastKnownDuration > 0 && 
+        if (!m_transitionDurationChangedFlag && m_lastKnownDuration > 0 && 
             abs(currentDuration - m_lastKnownDuration) > 1000) {
             qDebug() << "[AudioEngine] Duration changed from" << m_lastKnownDuration 
                      << "to" << currentDuration << "- new track metadata loaded";
-            durationChangedFlag = true;
+            m_transitionDurationChangedFlag = true;
             m_lastKnownDuration = currentDuration;
         }
         
@@ -666,26 +668,26 @@ void AudioEngine::queueNextTrack(const QString &filePath)
         bool transitionDetected = false;
         
         // Method 1: Position drops significantly from peak
-        if (peakPos > 100000 && currentPos < 5000) {
-            qDebug() << "[AudioEngine] Transition detected: position reset from" << peakPos << "to" << currentPos;
+        if (m_transitionPeakPos > 100000 && currentPos < 5000) {
+            qDebug() << "[AudioEngine] Transition detected: position reset from" << m_transitionPeakPos << "to" << currentPos;
             transitionDetected = true;
         }
         // Method 2: Position was near end and suddenly resets
-        else if (lastPos > m_lastKnownDuration - 5000 && currentPos < 5000) {
+        else if (m_transitionLastPos > m_lastKnownDuration - 5000 && currentPos < 5000) {
             qDebug() << "[AudioEngine] Transition detected: position reset from near-end to" << currentPos;
             transitionDetected = true;
         }
         // Method 3: Duration changed AND position is low (for quick skips)
-        else if (durationChangedFlag && currentPos < 5000 && checkCount > 5) {
+        else if (m_transitionDurationChangedFlag && currentPos < 5000 && m_transitionCheckCount > 5) {
             qDebug() << "[AudioEngine] Transition detected: duration changed and position is low";
             transitionDetected = true;
         }
         
         // Log periodically
-        if (checkCount % 10 == 0) {
-            qDebug() << "[AudioEngine] Transition check #" << checkCount 
+        if (m_transitionCheckCount % 10 == 0) {
+            qDebug() << "[AudioEngine] Transition check #" << m_transitionCheckCount 
                      << "- pos:" << currentPos << "duration:" << currentDuration 
-                     << "peak:" << peakPos;
+                     << "peak:" << m_transitionPeakPos;
         }
         
         if (transitionDetected) {
@@ -693,11 +695,11 @@ void AudioEngine::queueNextTrack(const QString &filePath)
             m_transitionFallbackTimer->stop();
             m_trackTransitionDetected = true;
             
-            // Reset static variables
-            checkCount = 0;
-            lastPos = 0;
-            peakPos = 0;
-            durationChangedFlag = false;
+            // Reset monitoring variables
+            m_transitionCheckCount = 0;
+            m_transitionLastPos = 0;
+            m_transitionPeakPos = 0;
+            m_transitionDurationChangedFlag = false;
             
             // Store the new duration for delayed emission
             qint64 newDuration = currentDuration;
@@ -711,26 +713,31 @@ void AudioEngine::queueNextTrack(const QString &filePath)
             
             // Delay duration change slightly to ensure position has stabilized
             // This prevents the progress bar from jumping
-            QTimer::singleShot(150, this, [this, newDuration]() {
+            // Use QPointer to guard against object destruction
+            QPointer<AudioEngine> safeThis(this);
+            QTimer::singleShot(150, this, [safeThis, newDuration]() {
+                if (!safeThis) {
+                    return; // Object was destroyed, don't access it
+                }
                 // Emit a position update first to ensure UI is synchronized
-                emit this->positionChanged(this->position());
+                emit safeThis->positionChanged(safeThis->position());
                 // Then update the duration
-                emit this->durationChanged(newDuration);
+                emit safeThis->durationChanged(newDuration);
             });
         }
         // Timeout after 10 seconds
-        else if (checkCount > 100) {
+        else if (m_transitionCheckCount > 100) {
             qDebug() << "[AudioEngine] Transition monitoring timeout";
             m_transitionTimer->stop();
             
-            // Reset static variables
-            checkCount = 0;
-            lastPos = 0;
-            peakPos = 0;
-            durationChangedFlag = false;
+            // Reset monitoring variables
+            m_transitionCheckCount = 0;
+            m_transitionLastPos = 0;
+            m_transitionPeakPos = 0;
+            m_transitionDurationChangedFlag = false;
         }
         
-        lastPos = currentPos;
+        m_transitionLastPos = currentPos;
     });
     
     m_transitionTimer->start();

@@ -90,6 +90,12 @@ private:
     QTimer *m_transitionFallbackTimer = nullptr;
     qint64 m_lastKnownDuration = 0;
     
+    // Transition monitoring state (moved from static variables in lambda)
+    int m_transitionCheckCount = 0;
+    qint64 m_transitionLastPos = 0;
+    qint64 m_transitionPeakPos = 0;
+    bool m_transitionDurationChangedFlag = false;
+    
     static bool s_gstInitialized;
 };
 

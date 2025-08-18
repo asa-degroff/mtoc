@@ -1839,6 +1839,20 @@ void MediaPlayer::playPlaylistLast(const QString& playlistName)
 
 void MediaPlayer::updateCurrentTrack(Mtoc::Track* track)
 {
+    // Validate the track pointer is still valid before using it
+    if (!track) {
+        // Handle null track case - clear current track
+        if (m_currentTrack) {
+            m_currentTrack = nullptr;
+            emit currentTrackChanged(nullptr);
+        }
+        if (m_currentAlbum) {
+            m_currentAlbum = nullptr;
+            emit currentAlbumChanged(nullptr);
+        }
+        return;
+    }
+    
     if (m_currentTrack != track) {
         m_currentTrack = track;
         emit currentTrackChanged(track);
@@ -2009,10 +2023,13 @@ void MediaPlayer::onTrackTransitioned()
         return;
     }
     
+    // Store a local copy of the pending track pointer before we clear it
+    Mtoc::Track* trackToUpdate = m_pendingTrack;
+    
     // Update indices based on pending values
     if (m_isVirtualPlaylist && m_pendingVirtualIndex >= 0) {
         // Handle special case of re-shuffle at end of playlist
-        if (m_shuffleEnabled && m_pendingVirtualIndex == 0 && 
+        if (m_virtualPlaylist && m_shuffleEnabled && m_pendingVirtualIndex == 0 && 
             m_virtualCurrentIndex >= m_virtualPlaylist->trackCount() - 1) {
             // Re-shuffle occurred
             m_virtualPlaylist->generateShuffleOrder();
@@ -2031,14 +2048,16 @@ void MediaPlayer::onTrackTransitioned()
         }
     }
     
-    // Update the current track to trigger UI updates
-    updateCurrentTrack(m_pendingTrack);
-    
-    // Clear pending track info
+    // Clear pending track info before updating (to avoid potential re-entrancy issues)
     m_pendingTrack = nullptr;
     m_pendingQueueIndex = -1;
     m_pendingVirtualIndex = -1;
     m_pendingShuffleIndex = -1;
+    
+    // Update the current track to trigger UI updates (only if track is still valid)
+    if (trackToUpdate) {
+        updateCurrentTrack(trackToUpdate);
+    }
     
     // Emit queue changed signal
     emit playbackQueueChanged();
