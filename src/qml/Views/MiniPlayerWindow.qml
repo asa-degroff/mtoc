@@ -190,13 +190,14 @@ ApplicationWindow {
         ColumnLayout {
             anchors.fill: parent
             visible: SettingsManager.miniPlayerLayout === SettingsManager.Vertical
-            spacing: 12
+            spacing: 8
             
             // Album art - clickable for maximize
             Item {
-                Layout.preferredWidth: 140
-                Layout.preferredHeight: 140
+                Layout.preferredWidth: 150
+                Layout.preferredHeight: 150
                 Layout.alignment: Qt.AlignHCenter
+                Layout.topMargin: 4
                 
                 Image {
                     id: albumArtVertical
@@ -462,8 +463,8 @@ ApplicationWindow {
             
             // Album art - clickable for maximize
             Item {
-                Layout.preferredWidth: 160
-                Layout.preferredHeight: 160
+                Layout.preferredWidth: 158
+                Layout.preferredHeight: 158
                 Layout.alignment: Qt.AlignVCenter
                 
                 Image {
