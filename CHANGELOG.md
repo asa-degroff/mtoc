@@ -1,3 +1,9 @@
+# 2.2
+### Mini player, gapless playback, and ReplayGain support
+- New mini player hides the main window and shows basic playback controls in a compact window, with three layout modes to choose from
+- Precise gapless playback for supported files, with a continuous audio pipeline, next track preloading, and seamless transitions
+- New audio engine features including ReplayGain support for volume normalization on supported tracks and albums, fallback gain setting, and preamplification slider
+
 # 2.1.1
 ### Bug fixes for elevated GPU usage and missing close button icon
 - Scrolling text now scrolls on hover to prevent high GPU usage from nonstop scrolling animations
