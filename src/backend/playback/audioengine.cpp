@@ -152,7 +152,7 @@ void AudioEngine::initializePipeline()
                 
                 // Set the bin as the audio filter for playbin
                 g_object_set(m_playbin, "audio-filter", m_audioFilterBin, nullptr);
-                qDebug() << "[ReplayGain] GStreamer replay gain pipeline created successfully (audioconvert -> rgvolume -> audioconvert)";
+                //qDebug() << "[ReplayGain] GStreamer replay gain pipeline created successfully (audioconvert -> rgvolume -> audioconvert)";
             } else {
                 qWarning() << "[ReplayGain] Failed to link audio filter elements";
                 gst_object_unref(m_audioFilterBin);
@@ -250,11 +250,11 @@ void AudioEngine::loadTrack(const QString &filePath)
             "fallback-gain", &fallbackGain,
             nullptr);
         
-        qDebug() << "[ReplayGain] Loading track:" << QFileInfo(filePath).fileName();
-        qDebug() << "[ReplayGain] Status: Enabled=" << enabled 
-                 << "| Mode=" << (albumMode ? "Album" : "Track")
-                 << "| PreAmp=" << preAmp << "dB"
-                 << "| Fallback=" << fallbackGain << "dB";
+        // qDebug() << "[ReplayGain] Loading track:" << QFileInfo(filePath).fileName();
+        // qDebug() << "[ReplayGain] Status: Enabled=" << enabled 
+        //          << "| Mode=" << (albumMode ? "Album" : "Track")
+        //          << "| PreAmp=" << preAmp << "dB"
+        //          << "| Fallback=" << fallbackGain << "dB";
     }
     
     QUrl url = QUrl::fromLocalFile(filePath);
@@ -427,7 +427,7 @@ gboolean AudioEngine::busCallback(GstBus *bus, GstMessage *message, gpointer dat
             if (tags) {
                 gchar *title = nullptr;
                 if (gst_tag_list_get_string(tags, GST_TAG_TITLE, &title)) {
-                    qDebug() << "[AudioEngine] TAG message - new track metadata:" << title;
+                    //qDebug() << "[AudioEngine] TAG message - new track metadata:" << title;
                     g_free(title);
                 }
                 gst_tag_list_unref(tags);
@@ -479,9 +479,9 @@ gboolean AudioEngine::busCallback(GstBus *bus, GstMessage *message, gpointer dat
                         nullptr);
                     
                     if (targetGain != 0.0 || resultGain != 0.0) {
-                        qDebug() << "[ReplayGain] Applied gains - Target:" << targetGain << "dB | Result:" << resultGain << "dB";
+                        //qDebug() << "[ReplayGain] Applied gains - Target:" << targetGain << "dB | Result:" << resultGain << "dB";
                     } else {
-                        qDebug() << "[ReplayGain] No replay gain tags found in track, using fallback gain";
+                        //qDebug() << "[ReplayGain] No replay gain tags found in track, using fallback gain";
                     }
                 }
             }
@@ -604,7 +604,7 @@ void AudioEngine::queueNextTrack(const QString &filePath)
     }
     
     if (filePath.isEmpty()) {
-        qDebug() << "[AudioEngine::queueNextTrack] No next track to queue";
+        //qDebug() << "[AudioEngine::queueNextTrack] No next track to queue";
         return;
     }
     
@@ -669,26 +669,26 @@ void AudioEngine::queueNextTrack(const QString &filePath)
         
         // Method 1: Position drops significantly from peak
         if (m_transitionPeakPos > 100000 && currentPos < 5000) {
-            qDebug() << "[AudioEngine] Transition detected: position reset from" << m_transitionPeakPos << "to" << currentPos;
+            //qDebug() << "[AudioEngine] Transition detected: position reset from" << m_transitionPeakPos << "to" << currentPos;
             transitionDetected = true;
         }
         // Method 2: Position was near end and suddenly resets
         else if (m_transitionLastPos > m_lastKnownDuration - 5000 && currentPos < 5000) {
-            qDebug() << "[AudioEngine] Transition detected: position reset from near-end to" << currentPos;
+            //qDebug() << "[AudioEngine] Transition detected: position reset from near-end to" << currentPos;
             transitionDetected = true;
         }
         // Method 3: Duration changed AND position is low (for quick skips)
         else if (m_transitionDurationChangedFlag && currentPos < 5000 && m_transitionCheckCount > 5) {
-            qDebug() << "[AudioEngine] Transition detected: duration changed and position is low";
+            //qDebug() << "[AudioEngine] Transition detected: duration changed and position is low";
             transitionDetected = true;
         }
         
         // Log periodically
-        if (m_transitionCheckCount % 10 == 0) {
-            qDebug() << "[AudioEngine] Transition check #" << m_transitionCheckCount 
-                     << "- pos:" << currentPos << "duration:" << currentDuration 
-                     << "peak:" << m_transitionPeakPos;
-        }
+        // if (m_transitionCheckCount % 10 == 0) {
+        //     qDebug() << "[AudioEngine] Transition check #" << m_transitionCheckCount 
+        //              << "- pos:" << currentPos << "duration:" << currentDuration 
+        //              << "peak:" << m_transitionPeakPos;
+        // }
         
         if (transitionDetected) {
             m_transitionTimer->stop();
