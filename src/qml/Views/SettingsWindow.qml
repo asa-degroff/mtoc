@@ -488,6 +488,7 @@ ApplicationWindow {
                             Layout.preferredWidth: 150
                             Layout.preferredHeight: 36
                             model: ["Vertical", "Horizontal", "Compact"]
+                            editable: false
                             currentIndex: {
                                 switch(SettingsManager.miniPlayerLayout) {
                                     case SettingsManager.Vertical: return 0
@@ -496,7 +497,6 @@ ApplicationWindow {
                                     default: return 0
                                 }
                             }
-                            displayText: currentIndex >= 0 ? model[currentIndex] : ""
                             
                             onActivated: function(index) {
                                 switch(index) {
@@ -514,7 +514,7 @@ ApplicationWindow {
                             }
                             
                             contentItem: Text {
-                                text: miniPlayerLayoutComboBox.displayText || miniPlayerLayoutComboBox.currentText
+                                text: parent.displayText
                                 color: Theme.primaryText
                                 font.pixelSize: 14
                                 verticalAlignment: Text.AlignVCenter
@@ -558,22 +558,24 @@ ApplicationWindow {
                                 contentItem: ListView {
                                     clip: true
                                     implicitHeight: contentHeight
-                                    model: miniPlayerLayoutComboBox.popup.visible ? miniPlayerLayoutComboBox.delegateModel : null
+                                    model: miniPlayerLayoutComboBox.popup.visible ? miniPlayerLayoutComboBox.model : null
                                     currentIndex: miniPlayerLayoutComboBox.highlightedIndex
                                     
                                     delegate: ItemDelegate {
                                         width: miniPlayerLayoutComboBox.width
+                                        height: 36
+                                        
                                         contentItem: Text {
                                             text: modelData
-                                            color: Theme.primaryText
+                                            color: parent.hovered ? Theme.primaryText : Theme.secondaryText
                                             font.pixelSize: 14
-                                            elide: Text.ElideRight
                                             verticalAlignment: Text.AlignVCenter
+                                            leftPadding: 8
                                         }
-                                        highlighted: miniPlayerLayoutComboBox.highlightedIndex === index
                                         
                                         background: Rectangle {
-                                            color: parent.hovered ? Theme.inputBackgroundHover : "transparent"
+                                            color: parent.hovered ? Theme.selectedBackground : "transparent"
+                                            radius: 2
                                         }
                                         
                                         onClicked: {
