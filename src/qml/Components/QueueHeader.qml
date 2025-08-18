@@ -266,9 +266,21 @@ RowLayout {
         }
         
         ToolTip {
+            id: saveQueueTooltip
             visible: saveQueueMouseArea.containsMouse
             text: "Save queue as playlist"
             delay: 500
+            timeout: 5000
+            background: Rectangle {
+                color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                border.color: Theme.borderColor
+                radius: 4
+            }
+            contentItem: Text {
+                text: saveQueueTooltip.text
+                font.pixelSize: 12
+                color: Theme.primaryText
+            }
         }
     }
     
@@ -318,9 +330,21 @@ RowLayout {
         }
         
         ToolTip {
+            id: clearQueueTooltip
             visible: clearQueueMouseArea.containsMouse
             text: MediaPlayer.canUndoClear ? "Undo clear queue" : "Clear queue"
             delay: 500
+            timeout: 5000
+            background: Rectangle {
+                color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                border.color: Theme.borderColor
+                radius: 4
+            }
+            contentItem: Text {
+                text: clearQueueTooltip.text
+                font.pixelSize: 12
+                color: Theme.primaryText
+            }
         }
     }
 }

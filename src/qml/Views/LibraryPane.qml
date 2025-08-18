@@ -746,6 +746,24 @@ Item {
                     implicitWidth: 28
                     icon.source: Theme.isDark ? "qrc:/resources/icons/minimize.svg" : "qrc:/resources/icons/minimize-dark.svg"
                     
+                    ToolTip {
+                        id: miniPlayerTooltip
+                        visible: parent.hovered
+                        text: "Mini Player"
+                        delay: 500
+                        timeout: 5000
+                        background: Rectangle {
+                            color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                            border.color: Theme.borderColor
+                            radius: 4
+                        }
+                        contentItem: Text {
+                            text: miniPlayerTooltip.text
+                            font.pixelSize: 12
+                            color: Theme.primaryText
+                        }
+                    }
+                    
                     onClicked: {
                         // Find the main window and call showMiniPlayer
                         var mainWindow = root.Window.window
