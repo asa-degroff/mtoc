@@ -293,7 +293,7 @@ ApplicationWindow {
                     text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.title : ""
                     font.pixelSize: 14
                     font.weight: Font.Medium
-                    color: "#ffffff"  // Always white on dark background
+                    color: Theme.primaryText
                     horizontalAlignment: Text.AlignHCenter
                     elide: Text.ElideRight
                 }
@@ -302,7 +302,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.artist : ""
                     font.pixelSize: 12
-                    color: "#cccccc"  // Light gray for secondary text
+                    color: Theme.secondaryText
                     horizontalAlignment: Text.AlignHCenter
                     elide: Text.ElideRight
                 }
@@ -468,7 +468,7 @@ ApplicationWindow {
                     Label {
                         text: formatTime(MediaPlayer.position)
                         font.pixelSize: 10
-                        color: "#aaaaaa"  // Light gray for time labels
+                        color: Theme.tertiaryText
                     }
                     
                     Item { Layout.fillWidth: true }
@@ -476,7 +476,7 @@ ApplicationWindow {
                     Label {
                         text: formatTime(MediaPlayer.duration)
                         font.pixelSize: 10
-                        color: "#aaaaaa"  // Light gray for time labels
+                        color: Theme.tertiaryText
                     }
                 }
             }
@@ -568,7 +568,7 @@ ApplicationWindow {
                         text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.title : ""
                         font.pixelSize: 14
                         font.weight: Font.Medium
-                        color: "#ffffff"  // Always white on dark background
+                        color: Theme.primaryText
                         elide: Text.ElideRight
                     }
                     
@@ -576,7 +576,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.artist : ""
                         font.pixelSize: 12
-                        color: "#cccccc"  // Light gray for secondary text
+                        color: Theme.secondaryText
                         elide: Text.ElideRight
                     }
                 }
@@ -745,7 +745,7 @@ ApplicationWindow {
                         Label {
                             text: formatTime(MediaPlayer.position)
                             font.pixelSize: 10
-                            color: "#aaaaaa"  // Light gray for time labels
+                            color: Theme.tertiaryText
                         }
                         
                         Item { Layout.fillWidth: true }
@@ -753,7 +753,7 @@ ApplicationWindow {
                         Label {
                             text: formatTime(MediaPlayer.duration)
                             font.pixelSize: 10
-                            color: "#aaaaaa"  // Light gray for time labels
+                            color: Theme.tertiaryText
                         }
                     }
                 }
@@ -853,7 +853,7 @@ ApplicationWindow {
                             text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.title : ""
                             font.pixelSize: 12
                             font.weight: Font.Medium
-                            color: "#ffffff"
+                            color: Theme.primaryText
                             elide: Text.ElideRight
                         }
                         
@@ -861,7 +861,7 @@ ApplicationWindow {
                             Layout.fillWidth: true
                             text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.artist : ""
                             font.pixelSize: 10
-                            color: "#cccccc"
+                            color: Theme.secondaryText
                             elide: Text.ElideRight
                         }
                     }
@@ -875,7 +875,7 @@ ApplicationWindow {
                     Label {
                         text: formatTime(MediaPlayer.position)
                         font.pixelSize: 9
-                        color: "#aaaaaa"
+                        color: Theme.tertiaryText
                     }
                     
                     Slider {
@@ -984,7 +984,7 @@ ApplicationWindow {
                     Label {
                         text: formatTime(MediaPlayer.duration)
                         font.pixelSize: 9
-                        color: "#aaaaaa"
+                        color: Theme.tertiaryText
                     }
                 }
             }
