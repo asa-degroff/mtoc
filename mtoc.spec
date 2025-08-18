@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.1.1
+Version:        2.2
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,84 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Mon Aug 18 2025 Asa DeGroff <asa@3fz.org> 2.2-1
+- update metainfo with mini player screenshot (asa@3fz.org)
+- added mini player screenshot (asa@3fz.org)
+- feat: add system accent color support and update theme properties
+  (asa@3fz.org)
+- fix: improve item display in mini player layout combo box (asa@3fz.org)
+- fix: adjust progress slider positioning for better alignment (asa@3fz.org)
+- cleaned up debug logging (asa@3fz.org)
+- refactor minimize button to rectangle with hover effects and tooltip
+  (asa@3fz.org)
+- closing tag in metainfo (asa@3fz.org)
+- version bump (asa@3fz.org)
+- changelog (asa@3fz.org)
+- tooltip styling (asa@3fz.org)
+- Add tooltips for layout options in SettingsWindow and MiniPlayer
+  (asa@3fz.org)
+- miniplayer theme tweaks for light mode (asa@3fz.org)
+- Add CompactBar layout option to MiniPlayer and update settings UI
+  (asa@3fz.org)
+- settings window layout tweaks (asa@3fz.org)
+- Add light mode icons for minimize and maximize buttons in the mini player
+  (asa@3fz.org)
+- miniplayer layout tweaks (asa@3fz.org)
+- Refine MiniPlayerWindow interaction and layout: improve drag area behavior,
+  adjust spacing, and enhance slider functionality for better user experience
+  (asa@3fz.org)
+- Memory safety: enhance transition monitoring in AudioEngine and validate
+  track pointers in MediaPlayer and MPRISManager (asa@3fz.org)
+- miniplayer button size and spacing (asa@3fz.org)
+- simplify application display name and mini player title for consistency
+  (asa@3fz.org)
+- miniplayer layout adjustments (asa@3fz.org)
+- Update MiniPlayerWindow colors for better visibility on dark backgrounds
+  (asa@3fz.org)
+- Refactor MiniPlayerWindow dimensions and improve layout handling for dynamic
+  resizing (asa@3fz.org)
+- Add Mini Player feature with layout options and integration in SettingsWindow
+  (asa@3fz.org)
+- Add minimize and maximize icons, add minimize button to LibraryPane header
+  (asa@3fz.org)
+- clean up unused text scrolling pause duration references (asa@3fz.org)
+- Add info icons with tooltips for Replay Gain and fallback gain settings in
+  SettingsWindow (asa@3fz.org)
+- Enhance gapless playback support when shuffling All Songs by preloading
+  neighboring tracks in virtual playlists and improving shuffle index handling
+  in MediaPlayer. (asa@3fz.org)
+- Cleanup: refactor gapless playback handling in AudioEngine by streamlining
+  transition detection and improving fallback mechanisms for enhanced track
+  transitions. (asa@3fz.org)
+- Enhance transition detection in AudioEngine with proactive monitoring and
+  improved fallback handling for gapless playback (asa@3fz.org)
+- Refactor transition handling in AudioEngine to improve gapless playback
+  transition detection with duration change monitoring (asa@3fz.org)
+- Restrict playlist edit options to non-special playlists in LibraryPane
+  (asa@3fz.org)
+- Implement delayed transition notifications in AudioEngine for smoother track
+  changes and improved consistency in progress bar updates during gapless
+  transitions (asa@3fz.org)
+- gapless playback tracking and transition handling in AudioEngine and
+  MediaPlayer (asa@3fz.org)
+- Enhance UI updates during gapless playback by improving track transition
+  handling and state updates (asa@3fz.org)
+- Improved gapless playback support by preloading the next track and handling
+  transitions (asa@3fz.org)
+- rearrange settings (asa@3fz.org)
+- Manage audio filter bin references in replay gain functionality to prevent
+  premature deallocation (asa@3fz.org)
+- Refactor replay gain settings in settings window, add pre-amplification
+  slider and improve layout (asa@3fz.org)
+- add audio filter bin containing audioconvert for replay gain functionality
+  (asa@3fz.org)
+- Add detailed logging for Replay Gain features across components (asa@3fz.org)
+- Implement Replay Gain feature with settings and metadata extraction
+  (asa@3fz.org)
+- update readme (asa@3fz.org)
+- update readme (asa@3fz.org)
+- Add missing closing tag for release 2.1.1 in metainfo.xml (asa@3fz.org)
+
 * Sat Aug 09 2025 Asa DeGroff <asa@3fz.org> 2.1.1-1
 - version bump and release notes (asa@3fz.org)
 - bug fix for close button visibility in album art popup (asa@3fz.org)
