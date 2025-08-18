@@ -1207,7 +1207,7 @@ ApplicationWindow {
                     }
                     
                     Label {
-                        text: "Version 2.1.1"
+                        text: "Version 2.2"
                         font.pixelSize: 12
                         color: Theme.tertiaryText
                     }
