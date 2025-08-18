@@ -463,11 +463,12 @@ ApplicationWindow {
                             id: miniPlayerLayoutComboBox
                             Layout.preferredWidth: 150
                             Layout.preferredHeight: 36
-                            model: ["Vertical", "Horizontal"]
+                            model: ["Vertical", "Horizontal", "Compact"]
                             currentIndex: {
                                 switch(SettingsManager.miniPlayerLayout) {
                                     case SettingsManager.Vertical: return 0
                                     case SettingsManager.Horizontal: return 1
+                                    case SettingsManager.CompactBar: return 2
                                     default: return 0
                                 }
                             }
@@ -477,6 +478,7 @@ ApplicationWindow {
                                 switch(index) {
                                     case 0: SettingsManager.miniPlayerLayout = SettingsManager.Vertical; break
                                     case 1: SettingsManager.miniPlayerLayout = SettingsManager.Horizontal; break
+                                    case 2: SettingsManager.miniPlayerLayout = SettingsManager.CompactBar; break
                                 }
                             }
                             

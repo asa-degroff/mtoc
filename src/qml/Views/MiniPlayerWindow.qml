@@ -19,8 +19,10 @@ ApplicationWindow {
     maximumHeight: targetHeight
     
     // Dynamic dimensions that update when layout changes
-    property int targetWidth: SettingsManager.miniPlayerLayout === SettingsManager.Horizontal ? 350 : 220
-    property int targetHeight: SettingsManager.miniPlayerLayout === SettingsManager.Horizontal ? 180 : 300
+    property int targetWidth: SettingsManager.miniPlayerLayout === SettingsManager.Horizontal ? 350 : 
+                             (SettingsManager.miniPlayerLayout === SettingsManager.CompactBar ? 400 : 220)
+    property int targetHeight: SettingsManager.miniPlayerLayout === SettingsManager.Horizontal ? 180 : 
+                              (SettingsManager.miniPlayerLayout === SettingsManager.CompactBar ? 70 : 300)
     
     // Recenter window when layout changes (if using default position)
     Connections {
@@ -151,17 +153,44 @@ ApplicationWindow {
         color: Theme.backgroundColor
     }
     
-    // Blurred background
+    // Blurred background - full window for vertical/horizontal layouts
     BlurredBackground {
         anchors.fill: parent
+        visible: SettingsManager.miniPlayerLayout !== SettingsManager.CompactBar
         source: thumbnailUrl
         blurRadius: 128
         backgroundOpacity: 0.6
     }
     
-    // Overlay for better contrast
+    // Blurred background - only right side for compact layout
+    BlurredBackground {
+        anchors.left: parent.left
+        anchors.leftMargin: 70  // Start after album art
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        visible: SettingsManager.miniPlayerLayout === SettingsManager.CompactBar
+        source: thumbnailUrl
+        blurRadius: 128
+        backgroundOpacity: 0.6
+    }
+    
+    // Overlay for better contrast - full window for vertical/horizontal
     Rectangle {
         anchors.fill: parent
+        visible: SettingsManager.miniPlayerLayout !== SettingsManager.CompactBar
+        color: Theme.overlayColor
+        opacity: Theme.nowPlayingOverlayOpacity * 0.7
+    }
+    
+    // Overlay for better contrast - only right side for compact
+    Rectangle {
+        anchors.left: parent.left
+        anchors.leftMargin: 70  // Start after album art
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        visible: SettingsManager.miniPlayerLayout === SettingsManager.CompactBar
         color: Theme.overlayColor
         opacity: Theme.nowPlayingOverlayOpacity * 0.7
     }
@@ -498,7 +527,7 @@ ApplicationWindow {
                         anchors.centerIn: parent
                         width: 32
                         height: 32
-                        source: Theme.isdark ? "qrc:/resources/icons/maximize.svg" : "qrc:/resources/icons/maximize-dark.svg"
+                        source: Theme.isDark ? "qrc:/resources/icons/maximize.svg" : "qrc:/resources/icons/maximize-dark.svg"
                         sourceSize.width: 64
                         sourceSize.height: 64
                         opacity: 0.9
@@ -730,6 +759,271 @@ ApplicationWindow {
                 }
                 
                 Item { Layout.fillHeight: true }
+            }
+        }
+        
+        // Compact layout
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: -12  // Override parent margin for album art
+            anchors.topMargin: -12
+            anchors.bottomMargin: -12
+            anchors.rightMargin: 0
+            visible: SettingsManager.miniPlayerLayout === SettingsManager.CompactBar
+            spacing: 12
+            
+            // Album art - clickable for maximize (full height on left edge)
+            Item {
+                Layout.preferredWidth: 70
+                Layout.preferredHeight: 70
+                Layout.alignment: Qt.AlignVCenter
+                
+                Image {
+                    id: albumArtCompact
+                    anchors.fill: parent
+                    source: thumbnailUrl
+                    fillMode: Image.PreserveAspectCrop
+                    smooth: true
+                    
+                    Rectangle {
+                        anchors.fill: parent
+                        color: "transparent"
+                        border.color: Theme.borderColor
+                        border.width: 1
+                        opacity: 0.3
+                    }
+                }
+                
+                // Maximize icon overlay (visible on hover)
+                Rectangle {
+                    id: maximizeOverlayC
+                    anchors.fill: parent
+                    color: Theme.backgroundColor
+                    opacity: 0.0
+                    
+                    Behavior on opacity {
+                        NumberAnimation { duration: 200 }
+                    }
+                    
+                    Image {
+                        anchors.centerIn: parent
+                        width: 24
+                        height: 24
+                        source: Theme.isDark ? "qrc:/resources/icons/maximize.svg" : "qrc:/resources/icons/maximize-dark.svg"
+                        sourceSize.width: 48
+                        sourceSize.height: 48
+                        opacity: 0.9
+                    }
+                }
+                
+                // MouseArea for the entire album art
+                MouseArea {
+                    id: albumClickAreaC
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    
+                    onEntered: maximizeOverlayC.opacity = 0.7
+                    onExited: maximizeOverlayC.opacity = 0.0
+                    onClicked: {
+                        console.log("Album art clicked - maximizing")
+                        miniPlayerWindow.maximizeRequested()
+                    }
+                }
+            }
+            
+            // Track info and progress section
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                spacing: 2
+                
+                // Track info row
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    
+                    // Track title and artist
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+                        
+                        Label {
+                            Layout.fillWidth: true
+                            text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.title : ""
+                            font.pixelSize: 12
+                            font.weight: Font.Medium
+                            color: "#ffffff"
+                            elide: Text.ElideRight
+                        }
+                        
+                        Label {
+                            Layout.fillWidth: true
+                            text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.artist : ""
+                            font.pixelSize: 10
+                            color: "#cccccc"
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+                
+                // Progress bar with time labels
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+                    
+                    Label {
+                        text: formatTime(MediaPlayer.position)
+                        font.pixelSize: 9
+                        color: "#aaaaaa"
+                    }
+                    
+                    Slider {
+                        id: progressSliderCompact
+                        Layout.fillWidth: true
+                        from: 0
+                        to: MediaPlayer.duration
+                        
+                        // Prevent keyboard focus to avoid arrow key conflicts
+                        focusPolicy: Qt.NoFocus
+                        
+                        property real targetValue: 0
+                        property bool isSeeking: false
+                        
+                        // Use Binding for cleaner logic
+                        Binding {
+                            target: progressSliderCompact
+                            property: "value"
+                            value: MediaPlayer.position
+                            when: !progressSliderCompact.isSeeking
+                        }
+                        
+                        Binding {
+                            target: progressSliderCompact
+                            property: "value"
+                            value: progressSliderCompact.targetValue
+                            when: progressSliderCompact.isSeeking
+                        }
+                        
+                        onPressedChanged: {
+                            if (pressed) {
+                                isSeeking = true
+                                targetValue = value
+                                seekTimeoutTimerC.stop()
+                            } else if (isSeeking) {
+                                MediaPlayer.seek(targetValue)
+                                seekTimeoutTimerC.start()
+                            }
+                        }
+                        
+                        Timer {
+                            id: seekTimeoutTimerC
+                            interval: 300
+                            onTriggered: progressSliderCompact.isSeeking = false
+                        }
+                        
+                        onMoved: {
+                            if (pressed) {
+                                targetValue = value
+                            }
+                        }
+                        
+                        Connections {
+                            target: MediaPlayer
+                            function onPositionChanged() {
+                                if (progressSliderCompact.isSeeking && !progressSliderCompact.pressed) {
+                                    var diff = Math.abs(MediaPlayer.position - progressSliderCompact.targetValue)
+                                    if (diff < 500) {
+                                        seekTimeoutTimerC.stop()
+                                        progressSliderCompact.isSeeking = false
+                                    }
+                                }
+                            }
+                        }
+                        
+                        background: Rectangle {
+                            x: progressSliderCompact.leftPadding
+                            y: progressSliderCompact.topPadding + progressSliderCompact.availableHeight / 2 - height / 2
+                            implicitWidth: 200
+                            implicitHeight: 8
+                            width: progressSliderCompact.availableWidth
+                            height: implicitHeight
+                            color: "transparent"
+                            
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: parent.width
+                                height: 2
+                                radius: 1
+                                color: Qt.rgba(1, 1, 1, 0.15)
+                                
+                                Rectangle {
+                                    width: progressSliderCompact.visualPosition * parent.width
+                                    height: parent.height
+                                    radius: 1
+                                    color: Qt.rgba(1, 1, 1, 0.7)
+                                }
+                            }
+                        }
+                        
+                        handle: Rectangle {
+                            x: progressSliderCompact.leftPadding + progressSliderCompact.visualPosition * (progressSliderCompact.availableWidth - width)
+                            y: progressSliderCompact.topPadding + progressSliderCompact.availableHeight / 2 - height / 2
+                            width: 8
+                            height: 8
+                            radius: 4
+                            color: Qt.rgba(1, 1, 1, 0.9)
+                            opacity: progressSliderCompact.pressed || progressSliderCompact.hovered ? 1.0 : 0.0
+                            
+                            Behavior on opacity {
+                                NumberAnimation { duration: 200; easing.type: Easing.InOutQuad }
+                            }
+                        }
+                    }
+                    
+                    Label {
+                        text: formatTime(MediaPlayer.duration)
+                        font.pixelSize: 9
+                        color: "#aaaaaa"
+                    }
+                }
+            }
+            
+            // Playback controls
+            RowLayout {
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 8
+                
+                IconButton {
+                    Layout.preferredWidth: 22
+                    Layout.preferredHeight: 22
+                    iconSource: "qrc:/resources/icons/previous-button-normal.svg"
+                    iconPressedSource: "qrc:/resources/icons/previous-button-pressed.svg"
+                    addShadow: true
+                    onClicked: MediaPlayer.previous()
+                }
+                
+                IconButton {
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    iconSource: MediaPlayer.state === MediaPlayer.PlayingState ? 
+                        "qrc:/resources/icons/pause-button-normal.svg" : 
+                        "qrc:/resources/icons/play-button-normal.svg"
+                    iconPressedSource: MediaPlayer.state === MediaPlayer.PlayingState ? 
+                        "qrc:/resources/icons/pause-button-pressed.svg" : 
+                        "qrc:/resources/icons/play-button-pressed.svg"
+                    addShadow: true
+                    onClicked: MediaPlayer.togglePlayPause()
+                }
+                
+                IconButton {
+                    Layout.preferredWidth: 22
+                    Layout.preferredHeight: 22
+                    iconSource: "qrc:/resources/icons/skip-button-normal.svg"
+                    iconPressedSource: "qrc:/resources/icons/skip-button-pressed.svg"
+                    addShadow: true
+                    onClicked: MediaPlayer.next()
+                }
             }
         }
     }

@@ -64,7 +64,8 @@ public:
 
     enum MiniPlayerLayout {
         Vertical,
-        Horizontal
+        Horizontal,
+        CompactBar
     };
     Q_ENUM(MiniPlayerLayout)
 
