@@ -346,11 +346,11 @@ Rectangle {
                 }
                 
                 background: Rectangle {
-                    x: progressSlider.leftPadding
+                    x: progressSlider.leftPadding + progressSlider.handle.width / 2
                     y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
                     implicitWidth: 200
                     implicitHeight: 6
-                    width: progressSlider.availableWidth
+                    width: progressSlider.availableWidth - progressSlider.handle.width
                     height: implicitHeight
                     radius: 3
                     gradient: Gradient {
@@ -378,7 +378,7 @@ Rectangle {
                 
                 handle: Item {
                     id: sliderHandle
-                    x: progressSlider.leftPadding + progressSlider.visualPosition * progressSlider.availableWidth - width / 2
+                    x: progressSlider.leftPadding + progressSlider.visualPosition * (progressSlider.availableWidth - width)
                     y: progressSlider.topPadding + progressSlider.availableHeight / 2 - height / 2
                     implicitWidth: 20
                     implicitHeight: 20
