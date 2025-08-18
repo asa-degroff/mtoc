@@ -80,6 +80,7 @@
           <li>New audio engine features including ReplayGain support for volume normalization on supported tracks and albums, fallback gain setting, and preamplification slider</li>
         </ul>
       </description>
+    </release>
 
     <release version="2.1.1" date="2025-08-09">
       <description>
