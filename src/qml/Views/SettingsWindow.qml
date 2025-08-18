@@ -189,7 +189,7 @@ ApplicationWindow {
                             text: "Theme:"
                             font.pixelSize: 14
                             color: Theme.secondaryText
-                            Layout.preferredWidth: 100
+                            Layout.preferredWidth: 130
                         }
                         
                         ComboBox {
@@ -317,7 +317,7 @@ ApplicationWindow {
                             text: "Layout Mode:"
                             font.pixelSize: 14
                             color: Theme.secondaryText
-                            Layout.preferredWidth: 100
+                            Layout.preferredWidth: 130
                         }
                         
                         ComboBox {
@@ -449,16 +449,14 @@ ApplicationWindow {
                     // Mini Player Layout
                     RowLayout {
                         Layout.fillWidth: true
-                        Layout.leftMargin: 20
-                        Layout.rightMargin: 20
                         Layout.topMargin: 10
-                        spacing: 20
+                        spacing: 12
                         
                         Label {
                             text: "Mini Player Layout:"
                             font.pixelSize: 14
                             color: Theme.secondaryText
-                            Layout.preferredWidth: 100
+                            Layout.preferredWidth: 130
                         }
                         
                         ComboBox {
@@ -473,6 +471,7 @@ ApplicationWindow {
                                     default: return 0
                                 }
                             }
+                            displayText: currentIndex >= 0 ? model[currentIndex] : ""
                             
                             onActivated: function(index) {
                                 switch(index) {
@@ -489,7 +488,7 @@ ApplicationWindow {
                             }
                             
                             contentItem: Text {
-                                text: parent.displayText
+                                text: miniPlayerLayoutComboBox.displayText || miniPlayerLayoutComboBox.currentText
                                 color: Theme.primaryText
                                 font.pixelSize: 14
                                 verticalAlignment: Text.AlignVCenter
@@ -933,7 +932,7 @@ ApplicationWindow {
                             text: "Mode:"
                             font.pixelSize: 14
                             color: Theme.secondaryText
-                            Layout.preferredWidth: 100
+                            Layout.preferredWidth: 130
                         }
                         
                         ComboBox {
