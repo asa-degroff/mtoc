@@ -186,11 +186,6 @@ RowLayout {
                             }
                         }
                         
-                        // Initial pause
-                        PauseAnimation {
-                            duration: contextTextRow.pauseDuration
-                        }
-                        
                         // Single smooth scrolling animation with subtle easing
                         NumberAnimation {
                             target: contextTextRow
@@ -199,11 +194,6 @@ RowLayout {
                             to: contextLabel1.contentWidth + contextTextRow.spacing  // Scroll one full text width + gap
                             duration: contextTextRow.scrollDuration
                             easing.type: Easing.InOutQuad  // Smooth acceleration and deceleration
-                        }
-                        
-                        // Brief pause at the wrap point
-                        PauseAnimation {
-                            duration: contextTextRow.pauseDuration
                         }
                         
                         // Instant reset to beginning (seamless wrap)
@@ -276,9 +266,21 @@ RowLayout {
         }
         
         ToolTip {
+            id: saveQueueTooltip
             visible: saveQueueMouseArea.containsMouse
             text: "Save queue as playlist"
             delay: 500
+            timeout: 5000
+            background: Rectangle {
+                color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                border.color: Theme.borderColor
+                radius: 4
+            }
+            contentItem: Text {
+                text: saveQueueTooltip.text
+                font.pixelSize: 12
+                color: Theme.primaryText
+            }
         }
     }
     
@@ -328,9 +330,21 @@ RowLayout {
         }
         
         ToolTip {
+            id: clearQueueTooltip
             visible: clearQueueMouseArea.containsMouse
             text: MediaPlayer.canUndoClear ? "Undo clear queue" : "Clear queue"
             delay: 500
+            timeout: 5000
+            background: Rectangle {
+                color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                border.color: Theme.borderColor
+                radius: 4
+            }
+            contentItem: Text {
+                text: clearQueueTooltip.text
+                font.pixelSize: 12
+                color: Theme.primaryText
+            }
         }
     }
 }

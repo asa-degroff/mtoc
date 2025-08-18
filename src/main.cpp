@@ -37,7 +37,11 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context, const QSt
                 fprintf(stderr, "[QML Debug] %s\n", qPrintable(msg));
             } else if (msg.contains("jumpToArtist") || msg.contains("scrollToArtistIndex") || 
                       msg.contains("calculateArtistPosition") || msg.contains("updateArtistIndexMapping") ||
-                      msg.contains("MediaPlayer::") || msg.contains("PlaylistManager::")) {
+                      msg.contains("MediaPlayer::") || msg.contains("PlaylistManager::") ||
+                      msg.contains("[ReplayGain]") || msg.contains("AudioEngine") || msg.contains("rgvolume") ||
+                      msg.contains("[AudioEngine] Transition check") || msg.contains("[VirtualPlaylist::]") ||
+                      msg.contains("[MediaPlayer::onAboutToFinish]")
+                    ) {
                 // Also show our specific debug messages even if not properly prefixed
                 fprintf(stderr, "[Debug] %s\n", qPrintable(msg));
             }
@@ -106,7 +110,6 @@ int main(int argc, char *argv[])
     // Set application metadata
     app.setOrganizationName("mtoc");
     app.setApplicationName("mtoc");
-    app.setApplicationDisplayName("mtoc Music Player");
     
     // Set application icon
     // Check if running in Flatpak

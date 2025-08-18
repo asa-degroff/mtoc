@@ -102,6 +102,23 @@ bool DatabaseManager::createTables()
 {
     QSqlQuery query(m_db);
     
+    // Schema version table
+    if (!query.exec(
+        "CREATE TABLE IF NOT EXISTS schema_version ("
+        "version INTEGER PRIMARY KEY,"
+        "applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        ")")) {
+        logError("Create schema_version table", query);
+        return false;
+    }
+    
+    // Check current version
+    int currentVersion = 0;
+    query.exec("SELECT MAX(version) FROM schema_version");
+    if (query.next()) {
+        currentVersion = query.value(0).toInt();
+    }
+    
     // Artists table
     if (!query.exec(
         "CREATE TABLE IF NOT EXISTS artists ("
@@ -158,6 +175,10 @@ bool DatabaseManager::createTables()
         "last_played TIMESTAMP,"
         "play_count INTEGER DEFAULT 0,"
         "rating INTEGER DEFAULT 0,"
+        "replaygain_track_gain REAL,"
+        "replaygain_track_peak REAL,"
+        "replaygain_album_gain REAL,"
+        "replaygain_album_peak REAL,"
         "FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE SET NULL,"
         "FOREIGN KEY (album_id) REFERENCES albums(id) ON DELETE SET NULL"
         ")")) {
@@ -212,6 +233,62 @@ bool DatabaseManager::createTables()
         return false;
     }
     
+    // Apply migrations after tables are created
+    if (!applyMigrations(currentVersion)) {
+        return false;
+    }
+    
+    return true;
+}
+
+bool DatabaseManager::applyMigrations(int currentVersion)
+{
+    QSqlQuery query(m_db);
+    
+    // Migration 1: Add replay gain columns (if not already present)
+    if (currentVersion < 1) {
+        qDebug() << "Applying migration 1: Adding replay gain columns";
+        
+        // Check if columns already exist (for existing databases)
+        query.exec("PRAGMA table_info(tracks)");
+        bool hasReplayGainColumns = false;
+        while (query.next()) {
+            QString columnName = query.value(1).toString();
+            if (columnName == "replaygain_track_gain") {
+                hasReplayGainColumns = true;
+                break;
+            }
+        }
+        
+        if (!hasReplayGainColumns) {
+            // Add replay gain columns to existing tracks table
+            if (!query.exec("ALTER TABLE tracks ADD COLUMN replaygain_track_gain REAL")) {
+                logError("Add replaygain_track_gain column", query);
+                return false;
+            }
+            if (!query.exec("ALTER TABLE tracks ADD COLUMN replaygain_track_peak REAL")) {
+                logError("Add replaygain_track_peak column", query);
+                return false;
+            }
+            if (!query.exec("ALTER TABLE tracks ADD COLUMN replaygain_album_gain REAL")) {
+                logError("Add replaygain_album_gain column", query);
+                return false;
+            }
+            if (!query.exec("ALTER TABLE tracks ADD COLUMN replaygain_album_peak REAL")) {
+                logError("Add replaygain_album_peak column", query);
+                return false;
+            }
+        }
+        
+        // Record migration
+        query.prepare("INSERT INTO schema_version (version) VALUES (:version)");
+        query.bindValue(":version", 1);
+        if (!query.exec()) {
+            logError("Record migration 1", query);
+            return false;
+        }
+    }
+    
     return true;
 }
 
@@ -253,6 +330,12 @@ bool DatabaseManager::insertTrack(const QVariantMap& trackData)
     qint64 fileSize = trackData.value("fileSize", 0).toLongLong();
     QDateTime fileModified = trackData.value("fileModified").toDateTime();
     
+    // Extract replay gain data
+    double replayGainTrackGain = trackData.value("replayGainTrackGain", QVariant()).toDouble();
+    double replayGainTrackPeak = trackData.value("replayGainTrackPeak", QVariant()).toDouble();
+    double replayGainAlbumGain = trackData.value("replayGainAlbumGain", QVariant()).toDouble();
+    double replayGainAlbumPeak = trackData.value("replayGainAlbumPeak", QVariant()).toDouble();
+    
     // Get or create artist
     int artistId = 0;
     if (!artist.isEmpty()) {
@@ -278,9 +361,11 @@ bool DatabaseManager::insertTrack(const QVariantMap& trackData)
     QSqlQuery query(m_db);
     query.prepare(
         "INSERT INTO tracks (file_path, title, artist_id, album_id, genre, year, "
-        "track_number, disc_number, duration, file_size, file_modified) "
+        "track_number, disc_number, duration, file_size, file_modified, "
+        "replaygain_track_gain, replaygain_track_peak, replaygain_album_gain, replaygain_album_peak) "
         "VALUES (:file_path, :title, :artist_id, :album_id, :genre, :year, "
-        ":track_number, :disc_number, :duration, :file_size, :file_modified)"
+        ":track_number, :disc_number, :duration, :file_size, :file_modified, "
+        ":replaygain_track_gain, :replaygain_track_peak, :replaygain_album_gain, :replaygain_album_peak)"
     );
     
     query.bindValue(":file_path", filePath);
@@ -294,6 +379,12 @@ bool DatabaseManager::insertTrack(const QVariantMap& trackData)
     query.bindValue(":duration", duration > 0 ? duration : QVariant());
     query.bindValue(":file_size", fileSize > 0 ? fileSize : QVariant());
     query.bindValue(":file_modified", fileModified.isValid() ? fileModified : QVariant());
+    
+    // Bind replay gain values (using null if not present)
+    query.bindValue(":replaygain_track_gain", trackData.contains("replayGainTrackGain") ? replayGainTrackGain : QVariant());
+    query.bindValue(":replaygain_track_peak", trackData.contains("replayGainTrackPeak") ? replayGainTrackPeak : QVariant());
+    query.bindValue(":replaygain_album_gain", trackData.contains("replayGainAlbumGain") ? replayGainAlbumGain : QVariant());
+    query.bindValue(":replaygain_album_peak", trackData.contains("replayGainAlbumPeak") ? replayGainAlbumPeak : QVariant());
     
     if (!query.exec()) {
         logError("Insert track", query);
@@ -367,6 +458,27 @@ bool DatabaseManager::updateTrack(int trackId, const QVariantMap& trackData)
         setClauses << "disc_number = :disc_number";
         int discNumber = trackData.value("discNumber").toInt();
         bindValues[":disc_number"] = discNumber > 0 ? discNumber : QVariant();
+    }
+    
+    // Handle replay gain fields
+    if (trackData.contains("replayGainTrackGain")) {
+        setClauses << "replaygain_track_gain = :replaygain_track_gain";
+        bindValues[":replaygain_track_gain"] = trackData.value("replayGainTrackGain");
+    }
+    
+    if (trackData.contains("replayGainTrackPeak")) {
+        setClauses << "replaygain_track_peak = :replaygain_track_peak";
+        bindValues[":replaygain_track_peak"] = trackData.value("replayGainTrackPeak");
+    }
+    
+    if (trackData.contains("replayGainAlbumGain")) {
+        setClauses << "replaygain_album_gain = :replaygain_album_gain";
+        bindValues[":replaygain_album_gain"] = trackData.value("replayGainAlbumGain");
+    }
+    
+    if (trackData.contains("replayGainAlbumPeak")) {
+        setClauses << "replaygain_album_peak = :replaygain_album_peak";
+        bindValues[":replaygain_album_peak"] = trackData.value("replayGainAlbumPeak");
     }
     
     if (setClauses.isEmpty()) {

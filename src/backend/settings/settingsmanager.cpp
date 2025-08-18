@@ -10,6 +10,13 @@ SettingsManager::SettingsManager(QObject *parent)
     : QObject(parent)
     , m_settings("mtoc", "mtoc")
     , m_layoutMode(Wide)
+    , m_replayGainEnabled(false)
+    , m_replayGainMode(Off)
+    , m_replayGainPreAmp(0.0)
+    , m_replayGainFallbackGain(0.0)
+    , m_miniPlayerLayout(Vertical)
+    , m_miniPlayerX(-1)
+    , m_miniPlayerY(-1)
 {
     loadSettings();
     setupSystemThemeDetection();
@@ -166,6 +173,73 @@ void SettingsManager::setLayoutMode(LayoutMode mode)
     }
 }
 
+void SettingsManager::setReplayGainEnabled(bool enabled)
+{
+    if (m_replayGainEnabled != enabled) {
+        m_replayGainEnabled = enabled;
+        emit replayGainEnabledChanged(enabled);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setReplayGainMode(ReplayGainMode mode)
+{
+    if (m_replayGainMode != mode) {
+        m_replayGainMode = mode;
+        emit replayGainModeChanged(mode);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setReplayGainPreAmp(double preAmp)
+{
+    // Clamp to reasonable range
+    preAmp = qBound(-15.0, preAmp, 15.0);
+    if (!qFuzzyCompare(m_replayGainPreAmp, preAmp)) {
+        m_replayGainPreAmp = preAmp;
+        emit replayGainPreAmpChanged(preAmp);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setReplayGainFallbackGain(double fallbackGain)
+{
+    // Clamp to reasonable range
+    fallbackGain = qBound(-15.0, fallbackGain, 15.0);
+    if (!qFuzzyCompare(m_replayGainFallbackGain, fallbackGain)) {
+        m_replayGainFallbackGain = fallbackGain;
+        emit replayGainFallbackGainChanged(fallbackGain);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setMiniPlayerLayout(MiniPlayerLayout layout)
+{
+    if (m_miniPlayerLayout != layout) {
+        m_miniPlayerLayout = layout;
+        emit miniPlayerLayoutChanged(layout);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setMiniPlayerX(int x)
+{
+    if (m_miniPlayerX != x) {
+        m_miniPlayerX = x;
+        emit miniPlayerXChanged(x);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setMiniPlayerY(int y)
+{
+    if (m_miniPlayerY != y) {
+        m_miniPlayerY = y;
+        emit miniPlayerYChanged(y);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -184,6 +258,13 @@ void SettingsManager::loadSettings()
     m_shuffleEnabled = m_settings.value("shuffleEnabled", false).toBool();
     m_settings.endGroup();
     
+    m_settings.beginGroup("ReplayGain");
+    m_replayGainEnabled = m_settings.value("enabled", false).toBool();
+    m_replayGainMode = static_cast<ReplayGainMode>(m_settings.value("mode", Off).toInt());
+    m_replayGainPreAmp = m_settings.value("preAmp", 0.0).toDouble();
+    m_replayGainFallbackGain = m_settings.value("fallbackGain", 0.0).toDouble();
+    m_settings.endGroup();
+    
     m_settings.beginGroup("LibraryPane");
     m_libraryActiveTab = m_settings.value("activeTab", 0).toInt();
     m_lastSelectedAlbumId = m_settings.value("lastSelectedAlbumId", "").toString();
@@ -196,6 +277,12 @@ void SettingsManager::loadSettings()
     m_windowHeight = m_settings.value("height", 1200).toInt();
     m_windowX = m_settings.value("x", -1).toInt();  // -1 means use default positioning
     m_windowY = m_settings.value("y", -1).toInt();
+    m_settings.endGroup();
+    
+    m_settings.beginGroup("MiniPlayer");
+    m_miniPlayerLayout = static_cast<MiniPlayerLayout>(m_settings.value("layout", Vertical).toInt());
+    m_miniPlayerX = m_settings.value("x", -1).toInt();  // -1 means use default positioning
+    m_miniPlayerY = m_settings.value("y", -1).toInt();
     m_settings.endGroup();
     
     qDebug() << "SettingsManager: Loaded settings - Queue action:" << m_queueActionDefault 
@@ -223,6 +310,13 @@ void SettingsManager::saveSettings()
     m_settings.setValue("shuffleEnabled", m_shuffleEnabled);
     m_settings.endGroup();
     
+    m_settings.beginGroup("ReplayGain");
+    m_settings.setValue("enabled", m_replayGainEnabled);
+    m_settings.setValue("mode", static_cast<int>(m_replayGainMode));
+    m_settings.setValue("preAmp", m_replayGainPreAmp);
+    m_settings.setValue("fallbackGain", m_replayGainFallbackGain);
+    m_settings.endGroup();
+    
     m_settings.beginGroup("LibraryPane");
     m_settings.setValue("activeTab", m_libraryActiveTab);
     m_settings.setValue("lastSelectedAlbumId", m_lastSelectedAlbumId);
@@ -235,6 +329,12 @@ void SettingsManager::saveSettings()
     m_settings.setValue("height", m_windowHeight);
     m_settings.setValue("x", m_windowX);
     m_settings.setValue("y", m_windowY);
+    m_settings.endGroup();
+    
+    m_settings.beginGroup("MiniPlayer");
+    m_settings.setValue("layout", static_cast<int>(m_miniPlayerLayout));
+    m_settings.setValue("x", m_miniPlayerX);
+    m_settings.setValue("y", m_miniPlayerY);
     m_settings.endGroup();
     
     m_settings.sync();

@@ -24,6 +24,13 @@ class SettingsManager : public QObject
     Q_PROPERTY(Theme theme READ theme WRITE setTheme NOTIFY themeChanged)
     Q_PROPERTY(bool isSystemDark READ isSystemDark NOTIFY systemThemeChanged)
     Q_PROPERTY(LayoutMode layoutMode READ layoutMode WRITE setLayoutMode NOTIFY layoutModeChanged)
+    Q_PROPERTY(bool replayGainEnabled READ replayGainEnabled WRITE setReplayGainEnabled NOTIFY replayGainEnabledChanged)
+    Q_PROPERTY(ReplayGainMode replayGainMode READ replayGainMode WRITE setReplayGainMode NOTIFY replayGainModeChanged)
+    Q_PROPERTY(double replayGainPreAmp READ replayGainPreAmp WRITE setReplayGainPreAmp NOTIFY replayGainPreAmpChanged)
+    Q_PROPERTY(double replayGainFallbackGain READ replayGainFallbackGain WRITE setReplayGainFallbackGain NOTIFY replayGainFallbackGainChanged)
+    Q_PROPERTY(MiniPlayerLayout miniPlayerLayout READ miniPlayerLayout WRITE setMiniPlayerLayout NOTIFY miniPlayerLayoutChanged)
+    Q_PROPERTY(int miniPlayerX READ miniPlayerX WRITE setMiniPlayerX NOTIFY miniPlayerXChanged)
+    Q_PROPERTY(int miniPlayerY READ miniPlayerY WRITE setMiniPlayerY NOTIFY miniPlayerYChanged)
 
 public:
     enum QueueAction {
@@ -48,6 +55,20 @@ public:
     };
     Q_ENUM(LayoutMode)
 
+    enum ReplayGainMode {
+        Off,
+        Track,
+        Album
+    };
+    Q_ENUM(ReplayGainMode)
+
+    enum MiniPlayerLayout {
+        Vertical,
+        Horizontal,
+        CompactBar
+    };
+    Q_ENUM(MiniPlayerLayout)
+
     static SettingsManager* instance();
     ~SettingsManager();
     
@@ -68,6 +89,13 @@ public:
     Theme theme() const { return m_theme; }
     bool isSystemDark() const;
     LayoutMode layoutMode() const { return m_layoutMode; }
+    bool replayGainEnabled() const { return m_replayGainEnabled; }
+    ReplayGainMode replayGainMode() const { return m_replayGainMode; }
+    double replayGainPreAmp() const { return m_replayGainPreAmp; }
+    double replayGainFallbackGain() const { return m_replayGainFallbackGain; }
+    MiniPlayerLayout miniPlayerLayout() const { return m_miniPlayerLayout; }
+    int miniPlayerX() const { return m_miniPlayerX; }
+    int miniPlayerY() const { return m_miniPlayerY; }
     
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -85,6 +113,13 @@ public:
     void setWindowY(int y);
     void setTheme(Theme theme);
     void setLayoutMode(LayoutMode mode);
+    void setReplayGainEnabled(bool enabled);
+    void setReplayGainMode(ReplayGainMode mode);
+    void setReplayGainPreAmp(double preAmp);
+    void setReplayGainFallbackGain(double fallbackGain);
+    void setMiniPlayerLayout(MiniPlayerLayout layout);
+    void setMiniPlayerX(int x);
+    void setMiniPlayerY(int y);
 
 protected:
     bool event(QEvent *event) override;
@@ -106,6 +141,13 @@ signals:
     void themeChanged(Theme theme);
     void systemThemeChanged();
     void layoutModeChanged(LayoutMode mode);
+    void replayGainEnabledChanged(bool enabled);
+    void replayGainModeChanged(ReplayGainMode mode);
+    void replayGainPreAmpChanged(double preAmp);
+    void replayGainFallbackGainChanged(double fallbackGain);
+    void miniPlayerLayoutChanged(MiniPlayerLayout layout);
+    void miniPlayerXChanged(int x);
+    void miniPlayerYChanged(int y);
 
 private slots:
 
@@ -135,6 +177,13 @@ private:
     int m_windowY;
     Theme m_theme;
     LayoutMode m_layoutMode;
+    bool m_replayGainEnabled;
+    ReplayGainMode m_replayGainMode;
+    double m_replayGainPreAmp;
+    double m_replayGainFallbackGain;
+    MiniPlayerLayout m_miniPlayerLayout;
+    int m_miniPlayerX;
+    int m_miniPlayerY;
 };
 
 #endif // SETTINGSMANAGER_H

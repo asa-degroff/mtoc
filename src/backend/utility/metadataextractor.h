@@ -31,6 +31,15 @@ public:
         // Album art data
         QByteArray albumArtData;
         QString albumArtMimeType;
+        // Replay gain data
+        double replayGainTrackGain = 0.0;
+        double replayGainTrackPeak = 0.0;
+        double replayGainAlbumGain = 0.0;
+        double replayGainAlbumPeak = 0.0;
+        bool hasReplayGainTrackGain = false;
+        bool hasReplayGainTrackPeak = false;
+        bool hasReplayGainAlbumGain = false;
+        bool hasReplayGainAlbumPeak = false;
     };
 
     Q_INVOKABLE TrackMetadata extract(const QString &filePath);

@@ -21,6 +21,11 @@ ApplicationWindow {
     onClosing: function(close) {
         console.log("Main.qml: Window closing, saving playback state");
         
+        // Close mini player window if it exists
+        if (miniPlayerWindow) {
+            miniPlayerWindow.close();
+        }
+        
         // Close all child windows first
         if (libraryPaneWide && libraryPaneWide.closeAllWindows) {
             libraryPaneWide.closeAllWindows();
@@ -36,6 +41,43 @@ ApplicationWindow {
 
     // Property to hold the current track metadata
     property var currentTrack: ({})
+    
+    // Mini player window instance
+    property var miniPlayerWindow: null
+    
+    // Functions to show/hide mini player
+    function showMiniPlayer() {
+        if (!miniPlayerWindow) {
+            var component = Qt.createComponent("Views/MiniPlayerWindow.qml")
+            if (component.status === Component.Ready) {
+                // Create as a separate window, not a child of main window
+                miniPlayerWindow = component.createObject(null)
+                miniPlayerWindow.maximizeRequested.connect(hideMiniPlayer)
+                console.log("Mini player window created and connected")
+            } else if (component.status === Component.Error) {
+                console.error("Error loading MiniPlayerWindow:", component.errorString())
+                return
+            }
+        }
+        
+        if (miniPlayerWindow) {
+            console.log("Showing mini player window")
+            window.hide()
+            miniPlayerWindow.show()
+            miniPlayerWindow.raise()
+            miniPlayerWindow.requestActivate()
+        }
+    }
+    
+    function hideMiniPlayer() {
+        console.log("Hiding mini player and showing main window")
+        if (miniPlayerWindow) {
+            miniPlayerWindow.hide()
+        }
+        window.show()
+        window.raise()
+        window.requestActivate()
+    }
     
     // Responsive layout properties
     property real libraryPaneRatio: mainContent.width < 1250 ? 0.55 : 0.45

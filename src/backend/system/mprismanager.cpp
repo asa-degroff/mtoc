@@ -73,6 +73,11 @@ QVariantMap MediaPlayer2PlayerAdaptor::metadata() const
 
     Mtoc::Track *track = m_mediaPlayer->currentTrack();
     
+    // Double-check track pointer is valid
+    if (!track) {
+        return metadata;
+    }
+    
     // Required MPRIS metadata fields
     metadata["mpris:trackid"] = QDBusObjectPath("/org/mtoc/track/" + QString::number(reinterpret_cast<quintptr>(track)));
     

@@ -37,6 +37,15 @@ public:
     
     State state() const { return m_state; }
     QString currentTrack() const { return m_currentTrack; }
+    
+    // Replay gain control
+    void setReplayGainEnabled(bool enabled);
+    void setReplayGainMode(bool albumMode);
+    void setReplayGainPreAmp(double preAmp);
+    void setReplayGainFallbackGain(double fallbackGain);
+    
+    // Gapless playback support
+    void queueNextTrack(const QString &filePath);
 
 signals:
     void stateChanged(AudioEngine::State state);
@@ -45,6 +54,8 @@ signals:
     void trackFinished();
     void error(const QString &message);
     void aboutToFinish();
+    void requestNextTrack();
+    void trackTransitioned();  // Emitted when gapless transition actually occurs
 
 private:
     void initializePipeline();
@@ -57,6 +68,8 @@ private:
     
     GstElement *m_pipeline = nullptr;
     GstElement *m_playbin = nullptr;
+    GstElement *m_rgvolume = nullptr;
+    GstElement *m_audioFilterBin = nullptr;
     GstBus *m_bus = nullptr;
     guint m_busWatchId = 0;
     
@@ -69,6 +82,19 @@ private:
     // Seek tracking
     bool m_seekPending = false;
     qint64 m_seekTarget = 0;
+    
+    // Gapless playback tracking
+    bool m_hasQueuedTrack = false;
+    bool m_trackTransitionDetected = false;
+    QTimer *m_transitionTimer = nullptr;
+    QTimer *m_transitionFallbackTimer = nullptr;
+    qint64 m_lastKnownDuration = 0;
+    
+    // Transition monitoring state (moved from static variables in lambda)
+    int m_transitionCheckCount = 0;
+    qint64 m_transitionLastPos = 0;
+    qint64 m_transitionPeakPos = 0;
+    bool m_transitionDurationChangedFlag = false;
     
     static bool s_gstInitialized;
 };
