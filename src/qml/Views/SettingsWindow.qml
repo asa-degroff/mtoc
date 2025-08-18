@@ -433,17 +433,41 @@ ApplicationWindow {
                             }
                         }
                         
+                        Image {
+                            source: Theme.isDark ? "qrc:/resources/icons/info.svg" : "qrc:/resources/icons/info-dark.svg"
+                            Layout.preferredWidth: 16
+                            Layout.preferredHeight: 16
+                            Layout.leftMargin: 4
+                            sourceSize.width: 16
+                            sourceSize.height: 16
+                            
+                            MouseArea {
+                                anchors.centerIn: parent
+                                width: 24
+                                height: 24
+                                hoverEnabled: true
+                                
+                                ToolTip {
+                                    id: layoutModeTooltip
+                                    visible: parent.containsMouse
+                                    text: "Wide: Full now playing pane to the right of the library\nCompact: Minimal now playing bar below the library\nAutomatic: Switches to Compact when window width < 1200px"
+                                    delay: 200
+                                    timeout: 8000
+                                    background: Rectangle {
+                                        color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                                        border.color: Theme.borderColor
+                                        radius: 4
+                                    }
+                                    contentItem: Text {
+                                        text: layoutModeTooltip.text
+                                        font.pixelSize: 12
+                                        color: Theme.primaryText
+                                    }
+                                }
+                            }
+                        }
+                        
                         Item { Layout.fillWidth: true }
-                    }
-                    
-                    // Help text for automatic mode
-                    Label {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 20
-                        text: "Automatic mode switches to Compact when window width < 1200px"
-                        font.pixelSize: 12
-                        color: Theme.tertiaryText
-                        visible: layoutModeComboBox.currentIndex === 2
                     }
                     
                     // Mini Player Layout
@@ -571,16 +595,41 @@ ApplicationWindow {
                             }
                         }
                         
+                        Image {
+                            source: Theme.isDark ? "qrc:/resources/icons/info.svg" : "qrc:/resources/icons/info-dark.svg"
+                            Layout.preferredWidth: 16
+                            Layout.preferredHeight: 16
+                            Layout.leftMargin: 4
+                            sourceSize.width: 16
+                            sourceSize.height: 16
+                            
+                            MouseArea {
+                                anchors.centerIn: parent
+                                width: 24
+                                height: 24
+                                hoverEnabled: true
+                                
+                                ToolTip {
+                                    id: miniPlayerLayoutTooltip
+                                    visible: parent.containsMouse
+                                    text: "Vertical: Controls below artwork\nHorizontal: Controls to the right\nCompact: Minimal bar layout"
+                                    delay: 200
+                                    timeout: 5000
+                                    background: Rectangle {
+                                        color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                                        border.color: Theme.borderColor
+                                        radius: 4
+                                    }
+                                    contentItem: Text {
+                                        text: miniPlayerLayoutTooltip.text
+                                        font.pixelSize: 12
+                                        color: Theme.primaryText
+                                    }
+                                }
+                            }
+                        }
+                        
                         Item { Layout.fillWidth: true }
-                    }
-                    
-                    // Help text for mini player layout
-                    Label {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 20
-                        text: "Vertical: Controls below artwork | Horizontal: Controls to the right"
-                        font.pixelSize: 12
-                        color: Theme.tertiaryText
                     }
                     
                     CheckBox {
