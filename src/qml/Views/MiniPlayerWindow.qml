@@ -230,7 +230,7 @@ ApplicationWindow {
                         anchors.centerIn: parent
                         width: 32
                         height: 32
-                        source: "qrc:/resources/icons/maximize.svg"
+                        source: Theme.isDark ? "qrc:/resources/icons/maximize.svg" : "qrc:/resources/icons/maximize-dark.svg"
                         sourceSize.width: 64
                         sourceSize.height: 64
                         opacity: 0.9
@@ -498,7 +498,7 @@ ApplicationWindow {
                         anchors.centerIn: parent
                         width: 32
                         height: 32
-                        source: "qrc:/resources/icons/maximize.svg"
+                        source: Theme.isdark ? "qrc:/resources/icons/maximize.svg" : "qrc:/resources/icons/maximize-dark.svg"
                         sourceSize.width: 64
                         sourceSize.height: 64
                         opacity: 0.9

@@ -744,7 +744,7 @@ Item {
                 Button {
                     implicitHeight: 28
                     implicitWidth: 28
-                    icon.source: "qrc:/resources/icons/minimize.svg"
+                    icon.source: Theme.isDark ? "qrc:/resources/icons/minimize.svg" : "qrc:/resources/icons/minimize-dark.svg"
                     
                     onClicked: {
                         // Find the main window and call showMiniPlayer
