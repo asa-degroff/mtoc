@@ -171,16 +171,18 @@ ApplicationWindow {
         anchors.fill: parent
         anchors.margins: 12
         
-        // Drag area for moving the window (since it's frameless)
-        // This covers the background but not interactive elements
+        // Background drag area that allows events to propagate to children
         MouseArea {
             id: dragArea
             anchors.fill: parent
-            z: -1  // Behind content but above background
+            propagateComposedEvents: true
+            z: -1  // Behind all content
             
             onPressed: function(mouse) {
-                // Use the window's built-in drag functionality for frameless windows
+                // Start window drag
                 miniPlayerWindow.startSystemMove()
+                // Don't accept the event so it can propagate to children
+                mouse.accepted = false
             }
         }
         
@@ -254,7 +256,7 @@ ApplicationWindow {
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter
-                spacing: 4
+                spacing: 2
                 
                 Label {
                     Layout.fillWidth: true
@@ -280,7 +282,7 @@ ApplicationWindow {
             RowLayout {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter
-                spacing: 20
+                spacing: 16
                 
                 IconButton {
                     Layout.preferredWidth: 28
@@ -317,42 +319,115 @@ ApplicationWindow {
             // Progress bar
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 6  // Increased spacing between slider and time labels
+                spacing: 4  // Increased spacing between slider and time labels
                 
                 Slider {
                     id: progressSliderVertical
                     Layout.fillWidth: true
                     from: 0
                     to: MediaPlayer.duration
-                    value: MediaPlayer.position
+                    
+                    // Prevent keyboard focus to avoid arrow key conflicts
+                    focusPolicy: Qt.NoFocus
+                    
+                    property real targetValue: 0
+                    property bool isSeeking: false
+                    
+                    // Use Binding for cleaner logic
+                    Binding {
+                        target: progressSliderVertical
+                        property: "value"
+                        value: MediaPlayer.position
+                        when: !progressSliderVertical.isSeeking
+                    }
+                    
+                    Binding {
+                        target: progressSliderVertical
+                        property: "value"
+                        value: progressSliderVertical.targetValue
+                        when: progressSliderVertical.isSeeking
+                    }
                     
                     onPressedChanged: {
-                        if (!pressed) {
-                            MediaPlayer.seek(value)
+                        if (pressed) {
+                            isSeeking = true
+                            targetValue = value
+                            seekTimeoutTimerV.stop()
+                        } else if (isSeeking) {
+                            // Keep showing target value until seek completes
+                            MediaPlayer.seek(targetValue)
+                            // Start timeout timer as fallback
+                            seekTimeoutTimerV.start()
+                        }
+                    }
+                    
+                    // Fallback timer to clear seeking state if position doesn't update
+                    Timer {
+                        id: seekTimeoutTimerV
+                        interval: 300
+                        onTriggered: progressSliderVertical.isSeeking = false
+                    }
+                    
+                    onMoved: {
+                        if (pressed) {
+                            targetValue = value
+                        }
+                    }
+                    
+                    // Monitor position changes to detect when seek completes
+                    Connections {
+                        target: MediaPlayer
+                        function onPositionChanged() {
+                            if (progressSliderVertical.isSeeking && !progressSliderVertical.pressed) {
+                                // Check if position is close to target (within 500ms)
+                                var diff = Math.abs(MediaPlayer.position - progressSliderVertical.targetValue)
+                                if (diff < 500) {
+                                    // Seek completed, stop showing target value
+                                    seekTimeoutTimerV.stop()
+                                    progressSliderVertical.isSeeking = false
+                                }
+                            }
                         }
                     }
                     
                     background: Rectangle {
-                        height: 4
-                        radius: 2
-                        color: Qt.rgba(1, 1, 1, 0.2)  // More visible on dark background
+                        x: progressSliderVertical.leftPadding
+                        y: progressSliderVertical.topPadding + progressSliderVertical.availableHeight / 2 - height / 2
+                        implicitWidth: 200
+                        implicitHeight: 8  // Larger hit area for easier clicking
+                        width: progressSliderVertical.availableWidth
+                        height: implicitHeight
+                        color: "transparent"  // Invisible hit area
                         
+                        // Visual track (smaller than hit area)
                         Rectangle {
-                            width: progressSliderVertical.visualPosition * parent.width
-                            height: parent.height
-                            radius: 2
-                            color: "#ffffff"  // White progress bar
+                            anchors.centerIn: parent
+                            width: parent.width
+                            height: 3  // Visual height is smaller
+                            radius: 1.5
+                            color: Qt.rgba(1, 1, 1, 0.15)  // Semi-transparent background
+                            
+                            Rectangle {
+                                width: progressSliderVertical.visualPosition * parent.width
+                                height: parent.height
+                                radius: 1.5
+                                color: Qt.rgba(1, 1, 1, 0.7)  // Semi-transparent white progress bar
+                            }
                         }
                     }
                     
                     handle: Rectangle {
                         x: progressSliderVertical.leftPadding + progressSliderVertical.visualPosition * (progressSliderVertical.availableWidth - width)
                         y: progressSliderVertical.topPadding + progressSliderVertical.availableHeight / 2 - height / 2
-                        width: 12
-                        height: 12
-                        radius: 6
-                        color: "#ffffff"  // White handle
-                        visible: progressSliderVertical.pressed || progressSliderVertical.hovered
+                        width: 10
+                        height: 10
+                        radius: 5
+                        color: Qt.rgba(1, 1, 1, 0.9)  // Semi-transparent white handle
+                        opacity: progressSliderVertical.pressed || progressSliderVertical.hovered ? 1.0 : 0.0
+                        
+                        Behavior on opacity {
+                            NumberAnimation { duration: 200; easing.type: Easing.InOutQuad }
+                        }
                     }
                 }
                 
@@ -528,35 +603,108 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         from: 0
                         to: MediaPlayer.duration
-                        value: MediaPlayer.position
+                        
+                        // Prevent keyboard focus to avoid arrow key conflicts
+                        focusPolicy: Qt.NoFocus
+                        
+                        property real targetValue: 0
+                        property bool isSeeking: false
+                        
+                        // Use Binding for cleaner logic
+                        Binding {
+                            target: progressSliderHorizontal
+                            property: "value"
+                            value: MediaPlayer.position
+                            when: !progressSliderHorizontal.isSeeking
+                        }
+                        
+                        Binding {
+                            target: progressSliderHorizontal
+                            property: "value"
+                            value: progressSliderHorizontal.targetValue
+                            when: progressSliderHorizontal.isSeeking
+                        }
                         
                         onPressedChanged: {
-                            if (!pressed) {
-                                MediaPlayer.seek(value)
+                            if (pressed) {
+                                isSeeking = true
+                                targetValue = value
+                                seekTimeoutTimerH.stop()
+                            } else if (isSeeking) {
+                                // Keep showing target value until seek completes
+                                MediaPlayer.seek(targetValue)
+                                // Start timeout timer as fallback
+                                seekTimeoutTimerH.start()
+                            }
+                        }
+                        
+                        // Fallback timer to clear seeking state if position doesn't update
+                        Timer {
+                            id: seekTimeoutTimerH
+                            interval: 300
+                            onTriggered: progressSliderHorizontal.isSeeking = false
+                        }
+                        
+                        onMoved: {
+                            if (pressed) {
+                                targetValue = value
+                            }
+                        }
+                        
+                        // Monitor position changes to detect when seek completes
+                        Connections {
+                            target: MediaPlayer
+                            function onPositionChanged() {
+                                if (progressSliderHorizontal.isSeeking && !progressSliderHorizontal.pressed) {
+                                    // Check if position is close to target (within 500ms)
+                                    var diff = Math.abs(MediaPlayer.position - progressSliderHorizontal.targetValue)
+                                    if (diff < 500) {
+                                        // Seek completed, stop showing target value
+                                        seekTimeoutTimerH.stop()
+                                        progressSliderHorizontal.isSeeking = false
+                                    }
+                                }
                             }
                         }
                         
                         background: Rectangle {
-                            height: 4
-                            radius: 2
-                            color: Qt.rgba(1, 1, 1, 0.2)  // More visible on dark background
+                            x: progressSliderHorizontal.leftPadding
+                            y: progressSliderHorizontal.topPadding + progressSliderHorizontal.availableHeight / 2 - height / 2
+                            implicitWidth: 200
+                            implicitHeight: 8  // Larger hit area for easier clicking
+                            width: progressSliderHorizontal.availableWidth
+                            height: implicitHeight
+                            color: "transparent"  // Invisible hit area
                             
+                            // Visual track (smaller than hit area)
                             Rectangle {
-                                width: progressSliderHorizontal.visualPosition * parent.width
-                                height: parent.height
-                                radius: 2
-                                color: "#ffffff"  // White progress bar
+                                anchors.centerIn: parent
+                                width: parent.width
+                                height: 3  // Visual height is smaller
+                                radius: 1.5
+                                color: Qt.rgba(1, 1, 1, 0.15)  // Semi-transparent background
+                                
+                                Rectangle {
+                                    width: progressSliderHorizontal.visualPosition * parent.width
+                                    height: parent.height
+                                    radius: 1.5
+                                    color: Qt.rgba(1, 1, 1, 0.7)  // Semi-transparent white progress bar
+                                }
                             }
                         }
                         
                         handle: Rectangle {
                             x: progressSliderHorizontal.leftPadding + progressSliderHorizontal.visualPosition * (progressSliderHorizontal.availableWidth - width)
                             y: progressSliderHorizontal.topPadding + progressSliderHorizontal.availableHeight / 2 - height / 2
-                            width: 12
-                            height: 12
-                            radius: 6
-                            color: "#ffffff"  // White handle
-                            visible: progressSliderHorizontal.pressed || progressSliderHorizontal.hovered
+                            width: 10
+                            height: 10
+                            radius: 5
+                            color: Qt.rgba(1, 1, 1, 0.9)  // Semi-transparent white handle
+                            opacity: progressSliderHorizontal.pressed || progressSliderHorizontal.hovered ? 1.0 : 0.0
+                            
+                            Behavior on opacity {
+                                NumberAnimation { duration: 200; easing.type: Easing.InOutQuad }
+                            }
                         }
                     }
                     
