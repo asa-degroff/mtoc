@@ -71,7 +71,7 @@
 
   <releases>
 
-    <release version="2.2" date="2025-08-10">
+    <release version="2.2" date="2025-08-18">
       <description>
         <p>Mini player, gapless playback, and ReplayGain support</p>
         <ul>
