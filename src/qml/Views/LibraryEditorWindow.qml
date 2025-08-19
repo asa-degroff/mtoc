@@ -197,7 +197,8 @@ ApplicationWindow {
                     // Scan progress
                     Column {
                         Layout.alignment: Qt.AlignHCenter
-                        Layout.fillWidth: true
+                        Layout.preferredWidth: 150
+                        Layout.maximumWidth: 200
                         spacing: 4
                         visible: LibraryManager.scanning
                         
@@ -209,9 +210,12 @@ ApplicationWindow {
                         }
                         
                         Label {
+                            width: parent.width
                             text: "Scanning: " + LibraryManager.scanProgressText
                             font.pixelSize: 12
                             color: Theme.secondaryText
+                            wrapMode: Text.WordWrap
+                            horizontalAlignment: Text.AlignHCenter
                         }
                     }
                 }
