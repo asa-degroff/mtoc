@@ -62,6 +62,7 @@ private:
     void cleanupPipeline();
     void setState(State state);
     void updatePosition();
+    bool isAACFile(const QString &filePath) const;
     
     static gboolean busCallback(GstBus *bus, GstMessage *message, gpointer data);
     static void aboutToFinishCallback(GstElement *playbin, gpointer data);

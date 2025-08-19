@@ -105,6 +105,7 @@ void AudioEngine::initializePipeline()
     
     m_pipeline = m_playbin;
     
+    // Standard buffer sizes (AAC will use non-gapless playback)
     g_object_set(m_playbin, "buffer-size", 512 * 1024, nullptr);
     g_object_set(m_playbin, "buffer-duration", 2 * GST_SECOND, nullptr);
     
@@ -582,6 +583,15 @@ void AudioEngine::setReplayGainFallbackGain(double fallbackGain)
     g_object_set(m_rgvolume, "fallback-gain", fallbackGain, nullptr);
 }
 
+bool AudioEngine::isAACFile(const QString &filePath) const
+{
+    // Check if the file is an AAC/M4A file based on extension
+    QString lowerPath = filePath.toLower();
+    return lowerPath.endsWith(".m4a") || 
+           lowerPath.endsWith(".aac") ||
+           lowerPath.endsWith(".mp4");  // Some AAC files use .mp4 extension
+}
+
 void AudioEngine::queueNextTrack(const QString &filePath)
 {
     /* Gapless Playback Implementation:
@@ -596,6 +606,9 @@ void AudioEngine::queueNextTrack(const QString &filePath)
      * 
      * This approach ensures track info updates are synchronized with actual audio
      * playback, preventing premature UI updates that were causing visual glitches.
+     * 
+     * NOTE: Gapless playback is disabled for AAC/M4A files which do not work properly. 
+     * Instead, they will load normally when EOS is received.
      */
     
     if (!m_playbin) {
@@ -605,6 +618,19 @@ void AudioEngine::queueNextTrack(const QString &filePath)
     
     if (filePath.isEmpty()) {
         //qDebug() << "[AudioEngine::queueNextTrack] No next track to queue";
+        return;
+    }
+    
+    // Check if the current or next track is an AAC file
+    bool isNextAAC = isAACFile(filePath);
+    bool isCurrentAAC = isAACFile(m_currentTrack);
+    
+    if (isNextAAC || isCurrentAAC) {
+        qDebug() << "[AudioEngine::queueNextTrack] AAC file detected - skipping gapless playback"
+                 << "(current:" << (isCurrentAAC ? "AAC" : "non-AAC") 
+                 << ", next:" << (isNextAAC ? "AAC" : "non-AAC") << ")";
+        // Don't queue the track for gapless playback if AAC is involved
+        // The track will be loaded normally when EOS is received
         return;
     }
     
@@ -669,17 +695,17 @@ void AudioEngine::queueNextTrack(const QString &filePath)
         
         // Method 1: Position drops significantly from peak
         if (m_transitionPeakPos > 100000 && currentPos < 5000) {
-            //qDebug() << "[AudioEngine] Transition detected: position reset from" << m_transitionPeakPos << "to" << currentPos;
+            qDebug() << "[AudioEngine] Transition detected: position reset from" << m_transitionPeakPos << "to" << currentPos;
             transitionDetected = true;
         }
         // Method 2: Position was near end and suddenly resets
         else if (m_transitionLastPos > m_lastKnownDuration - 5000 && currentPos < 5000) {
-            //qDebug() << "[AudioEngine] Transition detected: position reset from near-end to" << currentPos;
+            qDebug() << "[AudioEngine] Transition detected: position reset from near-end to" << currentPos;
             transitionDetected = true;
         }
         // Method 3: Duration changed AND position is low (for quick skips)
         else if (m_transitionDurationChangedFlag && currentPos < 5000 && m_transitionCheckCount > 5) {
-            //qDebug() << "[AudioEngine] Transition detected: duration changed and position is low";
+            qDebug() << "[AudioEngine] Transition detected: duration changed and position is low";
             transitionDetected = true;
         }
         

@@ -1983,6 +1983,37 @@ void MediaPlayer::handleTrackFinished()
     // This is only called when EOS is received, which means:
     // 1. We've reached the end of the queue (no next track was queued for gapless)
     // 2. Or there was an error/interruption in playback
+    // 3. Or we skipped gapless for AAC files
+    
+    // Check if we have a pending track from onAboutToFinish that wasn't queued (AAC case)
+    if (m_pendingTrack) {
+        qDebug() << "[MediaPlayer::handleTrackFinished] Playing pending track that wasn't queued (AAC fallback)";
+        
+        // Update indices based on what was set in onAboutToFinish
+        if (m_pendingQueueIndex >= 0) {
+            m_currentQueueIndex = m_pendingQueueIndex;
+        }
+        if (m_pendingVirtualIndex >= 0) {
+            m_virtualCurrentIndex = m_pendingVirtualIndex;
+        }
+        if (m_pendingShuffleIndex >= 0) {
+            if (m_isVirtualPlaylist && m_virtualPlaylist) {
+                m_virtualShuffleIndex = m_pendingShuffleIndex;
+            } else {
+                m_shuffleIndex = m_pendingShuffleIndex;
+            }
+        }
+        
+        // Load and play the pending track
+        loadTrack(m_pendingTrack, true);
+        
+        // Clear pending state
+        m_pendingTrack = nullptr;
+        m_pendingQueueIndex = -1;
+        m_pendingVirtualIndex = -1;
+        m_pendingShuffleIndex = -1;
+        return;
+    }
     
     // Check if we should restart the queue (repeat mode with no next track)
     if (!hasNext() && m_repeatEnabled && !m_playbackQueue.isEmpty()) {
