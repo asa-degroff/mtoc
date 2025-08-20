@@ -3,7 +3,7 @@
 SystemInfo::SystemInfo(QObject *parent)
     : QObject(parent),
       m_appName("mtoc"),
-      m_appVersion("2.2") // Corresponds to project version in CMakeLists.txt
+      m_appVersion("2.2.1") // Corresponds to project version in CMakeLists.txt
 {
 }
 

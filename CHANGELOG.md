@@ -1,3 +1,9 @@
+# 2.2.1
+### Fix for AAC playback bug, system accent color integration
+- Fixed a bug that caused a few seconds of silence between tracks when playing AAC audio
+- Use system accent color for list selections
+- Artists/Playlists tab selection is maintained when switching layouts
+
 # 2.2
 ### Mini player, gapless playback, and ReplayGain support
 - New mini player hides the main window and shows basic playback controls in a compact window, with three layout modes to choose from

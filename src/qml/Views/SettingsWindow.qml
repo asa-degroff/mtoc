@@ -1209,7 +1209,7 @@ ApplicationWindow {
                     }
                     
                     Label {
-                        text: "Version 2.2"
+                        text: "Version 2.2.1"
                         font.pixelSize: 12
                         color: Theme.tertiaryText
                     }

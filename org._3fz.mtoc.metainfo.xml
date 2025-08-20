@@ -71,6 +71,17 @@
 
   <releases>
 
+    <release version="2.2.1" date="2025-08-20">
+      <description>
+        <p>Fix for AAC playback bug, system accent color integration</p>
+        <ul>
+          <li>Fixed a bug that caused a few seconds of silence between tracks when playing AAC audio</li>
+          <li>Use system accent color for list selections</li>
+          <li>Artists/Playlists tab selection is maintained when switching layouts</li>
+        </ul>
+      </description>
+    </release>
+
     <release version="2.2" date="2025-08-18">
       <description>
         <p>Mini player, gapless playback, and ReplayGain support</p>

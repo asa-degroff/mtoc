@@ -55,8 +55,8 @@ Item {
     property string pendingExpandCollapseArtist: ""  // Artist pending expansion/collapse
     property bool pendingExpandCollapseState: false  // State to apply after debounce
     
-    // Tab state
-    property int currentTab: 0  // 0 = Artists, 1 = Playlists
+    // Tab state - bind to SettingsManager to maintain state across layout changes
+    property int currentTab: SettingsManager.libraryActiveTab  // 0 = Artists, 1 = Playlists
     onCurrentTabChanged: {
         SettingsManager.libraryActiveTab = currentTab
     }
@@ -392,9 +392,6 @@ Item {
         trackInfoPanelY = 184  // Start off-screen
         // Don't auto-select any track - start with no selection
         // Qt.callLater(autoSelectCurrentTrack)
-        
-        // Restore library pane state
-        currentTab = SettingsManager.libraryActiveTab
         
         // Restore selected album or playlist after a delay to ensure everything is loaded
         if (SettingsManager.lastSelectedWasPlaylist && SettingsManager.lastSelectedPlaylistName) {
@@ -1410,11 +1407,11 @@ Item {
                             height: 40
                             color: {
                                 if (artistsListView.currentIndex === index) {
-                                    return Qt.rgba(0.25, 0.32, 0.71, 0.38)  // Selected color with transparency
+                                    return Theme.selectedBackgroundArtist  // Selected color with transparency
                                 } else if (isKeyboardFocused) {
-                                    return Qt.rgba(0.35, 0.42, 0.81, 0.3)  // Keyboard navigation focus
+                                    return Theme.selectedBackgroundHighOpacity  // Keyboard navigation focus
                                 } else if (isHighlighted) {
-                                    return Qt.rgba(0.16, 0.16, 0.31, 0.25)  // Highlighted color with transparency
+                                    return Theme.highlightedBackground  // Highlighted color with transparency
                                 } else {
                                     return Qt.rgba(1, 1, 1, 0.03)  // Subtle background
                                 }
@@ -2576,9 +2573,9 @@ Item {
                                 
                                 color: {
                                     if (root.selectedTrackIndices.indexOf(index) !== -1) {
-                                        return Qt.rgba(0.25, 0.32, 0.71, 0.25)  // Selected track
+                                        return Theme.selectedBackgroundMediumOpacity  // Selected track
                                     } else if (root.selectedTrackIndex === index) {
-                                        return Qt.rgba(0.25, 0.32, 0.71, 0.15)  // Current track (lighter)
+                                        return Theme.selectedBackgroundLowOpacity  // Current track (lighter)
                                     } else {
                                         return Theme.isDark ? Qt.rgba(1, 1, 1, 0.03) : Qt.rgba(1, 1, 1, 0.12) // Track background
                                     }

@@ -316,11 +316,11 @@ ListView {
         height: isRemoving ? 0 : 45
         color: {
             if (root.selectedTrackIndices.indexOf(index) !== -1) {
-                return Qt.rgba(0.25, 0.32, 0.71, 0.35)  // Selected
+                return Theme.selectedBackgroundHighOpacity  // Selected
             } else if (index === root.keyboardSelectedIndex) {
-                return Qt.rgba(0.25, 0.32, 0.71, 0.15)  // Keyboard selected
+                return Theme.selectedBackgroundLowOpacity  // Keyboard selected
             } else if (index === root.currentPlayingIndex) {
-                return Qt.rgba(0.25, 0.32, 0.71, 0.25)  // Currently playing
+                return Theme.selectedBackgroundMediumOpacity  // Currently playing
             } else if (queueItemMouseArea.containsMouse) {
                 return Qt.rgba(1, 1, 1, 0.04)  // Hover
             } else {
