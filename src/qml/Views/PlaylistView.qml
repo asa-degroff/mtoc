@@ -117,7 +117,7 @@ Item {
             height: 60
             color: {
                 if (index === root.keyboardSelectedIndex) {
-                    return Theme.isDark ? Qt.rgba(0.25, 0.32, 0.71, 0.15) : Qt.rgba(0.25, 0.32, 0.71, 0.08)  // Keyboard selected
+                    return Theme.selectedBackgroundVeryLowOpacity  // Keyboard selected
                 } else if (mouseArea.containsMouse) {
                     return Theme.hoverBackground  // Hover
                 } else {
@@ -148,7 +148,7 @@ Item {
                         anchors.centerIn: parent
                         text: PlaylistManager.isSpecialPlaylist(modelData) ? "♫" : "♪"
                         font.pixelSize: 24
-                        color: PlaylistManager.isSpecialPlaylist(modelData) ? "#4a9eff" : Theme.tertiaryText
+                        color: PlaylistManager.isSpecialPlaylist(modelData) ? Theme.specialItemColor : Theme.tertiaryText
                     }
                 }
                 

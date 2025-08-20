@@ -32,10 +32,19 @@ QtObject {
     property color selectedBackground: systemAccentColor
     property color hoverBackground: isDark ? Qt.rgba(1, 1, 1, 0.1) : Qt.rgba(0, 0, 0, 0.05)
     
+    // Selection colors with different opacity levels (derived from system accent)
+    property color selectedBackgroundHighOpacity: Qt.rgba(systemAccentColor.r, systemAccentColor.g, systemAccentColor.b, 0.35)
+    property color selectedBackgroundMediumOpacity: Qt.rgba(systemAccentColor.r, systemAccentColor.g, systemAccentColor.b, 0.25)
+    property color selectedBackgroundLowOpacity: Qt.rgba(systemAccentColor.r, systemAccentColor.g, systemAccentColor.b, 0.15)
+    property color selectedBackgroundVeryLowOpacity: Qt.rgba(systemAccentColor.r, systemAccentColor.g, systemAccentColor.b, isDark ? 0.15 : 0.08)
+    property color highlightedBackground: Qt.rgba(systemAccentColor.r, systemAccentColor.g, systemAccentColor.b, 0.25)
+    property color selectedBackgroundArtist: Qt.rgba(systemAccentColor.r, systemAccentColor.g, systemAccentColor.b, 0.38)
+    
     // Special UI elements
     property color errorText: "#ff6b6b"
     property color successText: "#51cf66"
     property color linkColor: Qt.lighter(systemAccentColor, isDark ? 1.3 : 1.0)
+    property color specialItemColor: Qt.lighter(systemAccentColor, isDark ? 1.4 : 1.2)
     
     // Edge/separator colors
     property color edgeLineColor: isDark ? Qt.rgba(1, 1, 1, 0.1) : Qt.rgba(0, 0, 0, 0.1)
