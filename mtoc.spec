@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.2
+Version:        2.2.1
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,19 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Tue Aug 19 2025 Asa DeGroff <asa@3fz.org> 2.2.1-1
+- version bump and changelog (asa@3fz.org)
+- fix: bind currentTab property to SettingsManager for state persistence
+  (asa@3fz.org)
+- use system accent color for selections (asa@3fz.org)
+- cleanup excessive debug logging of replaygain values during library scan
+  (asa@3fz.org)
+- fix: adjust layout properties for scan progress display in
+  LibraryEditorWindow (asa@3fz.org)
+- fix: add AAC file handling special case that disables gapless playback to
+  prevent playback delays (asa@3fz.org)
+- fix release date in metainfo (asa@3fz.org)
+
 * Mon Aug 18 2025 Asa DeGroff <asa@3fz.org> 2.2-1
 - update metainfo with mini player screenshot (asa@3fz.org)
 - added mini player screenshot (asa@3fz.org)
