@@ -55,8 +55,8 @@ Item {
     property string pendingExpandCollapseArtist: ""  // Artist pending expansion/collapse
     property bool pendingExpandCollapseState: false  // State to apply after debounce
     
-    // Tab state
-    property int currentTab: 0  // 0 = Artists, 1 = Playlists
+    // Tab state - bind to SettingsManager to maintain state across layout changes
+    property int currentTab: SettingsManager.libraryActiveTab  // 0 = Artists, 1 = Playlists
     onCurrentTabChanged: {
         SettingsManager.libraryActiveTab = currentTab
     }
@@ -392,9 +392,6 @@ Item {
         trackInfoPanelY = 184  // Start off-screen
         // Don't auto-select any track - start with no selection
         // Qt.callLater(autoSelectCurrentTrack)
-        
-        // Restore library pane state
-        currentTab = SettingsManager.libraryActiveTab
         
         // Restore selected album or playlist after a delay to ensure everything is loaded
         if (SettingsManager.lastSelectedWasPlaylist && SettingsManager.lastSelectedPlaylistName) {
