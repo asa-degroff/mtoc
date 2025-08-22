@@ -792,6 +792,7 @@ ApplicationWindow {
                             Slider {
                                 id: preAmpSlider
                                 Layout.fillWidth: true
+                                Layout.preferredHeight: 32
                                 from: -15.0
                                 to: 15.0
                                 value: SettingsManager.replayGainPreAmp
@@ -819,13 +820,19 @@ ApplicationWindow {
                                     }
                                 }
                                 
-                                handle: Rectangle {
+                                handle: Item {
                                     x: preAmpSlider.leftPadding + preAmpSlider.visualPosition * (preAmpSlider.availableWidth - width)
                                     y: preAmpSlider.topPadding + preAmpSlider.availableHeight / 2 - height / 2
-                                    implicitWidth: 16
-                                    implicitHeight: 16
-                                    radius: 8
-                                    color: preAmpSlider.pressed ? Theme.selectedBackground : Theme.linkColor
+                                    implicitWidth: 32
+                                    implicitHeight: 32
+                                    
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: 20
+                                        height: 20
+                                        radius: 10
+                                        color: preAmpSlider.pressed ? Theme.selectedBackground : Theme.linkColor
+                                    }
                                 }
                             }
                             
@@ -1147,6 +1154,7 @@ ApplicationWindow {
                             Slider {
                                 id: fallbackGainSlider
                                 Layout.fillWidth: true
+                                Layout.preferredHeight: 32
                                 from: -15.0
                                 to: 15.0
                                 value: SettingsManager.replayGainFallbackGain
@@ -1174,13 +1182,19 @@ ApplicationWindow {
                                     }
                                 }
                                 
-                                handle: Rectangle {
+                                handle: Item {
                                     x: fallbackGainSlider.leftPadding + fallbackGainSlider.visualPosition * (fallbackGainSlider.availableWidth - width)
                                     y: fallbackGainSlider.topPadding + fallbackGainSlider.availableHeight / 2 - height / 2
-                                    implicitWidth: 16
-                                    implicitHeight: 16
-                                    radius: 8
-                                    color: fallbackGainSlider.pressed ? Theme.selectedBackground : Theme.linkColor
+                                    implicitWidth: 32
+                                    implicitHeight: 32
+                                    
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: 20
+                                        height: 20
+                                        radius: 10
+                                        color: fallbackGainSlider.pressed ? Theme.selectedBackground : Theme.linkColor
+                                    }
                                 }
                             }
                             
