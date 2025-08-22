@@ -318,35 +318,27 @@ bool LibraryManager::addMusicFolder(const QString &path)
                     qDebug() << "Resolved symlink to:" << displayPath;
                 }
             } else {
-                // Parse the portal path structure
-                QStringList parts = path.split('/');
-                if (parts.size() >= 5) {
-                    // Look for the actual folder name after the hash
-                    if ((parts[2] == "flatpak" && parts[3] == "doc" && parts.size() > 5) ||
-                        (parts[2] == "user" && parts[4] == "doc" && parts.size() > 6)) {
-                        // The last part should be the actual folder name
-                        QString folderName = parts.last();
-                        if (!folderName.isEmpty() && folderName.length() < 64) {
-                            // Construct a user-friendly path
-                            displayPath = QDir::homePath() + "/" + folderName;
-                        }
-                    }
-                }
+                // For portal paths that don't match the home Music folder,
+                // we should keep them as absolute portal paths internally
+                // but try to show a user-friendly display name
                 
-                // If we still have a portal path, use the canonical path
-                if (displayPath.startsWith("/run/")) {
-                    // Check if canonical path is more meaningful
-                    if (!canonicalPath.startsWith("/run/")) {
-                        displayPath = canonicalPath;
+                // Check if canonical path is more meaningful (not a portal path)
+                if (!canonicalPath.startsWith("/run/")) {
+                    // The canonical path resolved to a real path, use it
+                    displayPath = canonicalPath;
+                    qDebug() << "Using canonical path for display:" << displayPath;
+                } else {
+                    // Still a portal path after canonicalization
+                    // Use a descriptive name based on the last directory component
+                    QString lastDir = QDir(canonicalPath).dirName();
+                    if (!lastDir.isEmpty() && lastDir.length() < 64) {
+                        // Just use the folder name without prepending home directory
+                        // The portal path could be pointing anywhere
+                        displayPath = "Portal: " + lastDir;
                     } else {
-                        // Last resort: use a generic name with the last directory component
-                        QString lastDir = QDir(canonicalPath).dirName();
-                        if (!lastDir.isEmpty() && lastDir.length() < 64) {
-                            displayPath = "Music: " + lastDir;
-                        } else {
-                            displayPath = "Music Folder";
-                        }
+                        displayPath = "Portal: Music Folder";
                     }
+                    qDebug() << "Portal path display name:" << displayPath;
                 }
             }
         }

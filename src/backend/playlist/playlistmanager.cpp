@@ -956,32 +956,23 @@ QString PlaylistManager::createDisplayPath(const QString& path) const
             }
         }
         
-        // Parse the portal path structure
-        QStringList parts = path.split('/');
-        if (parts.size() >= 5) {
-            // Look for the actual folder name after the hash
-            if ((parts[2] == "flatpak" && parts[3] == "doc" && parts.size() > 5) ||
-                (parts[2] == "user" && parts[4] == "doc" && parts.size() > 6)) {
-                // The last part should be the actual folder name
-                QString folderName = parts.last();
-                if (!folderName.isEmpty() && folderName.length() < 64) {
-                    // Construct a user-friendly path
-                    return QDir::homePath() + "/" + folderName;
-                }
-            }
-        }
+        // For portal paths that don't match standard locations,
+        // show a descriptive name without incorrectly prepending paths
         
-        // If we still have a portal path, use the canonical path
+        // Check if canonical path resolved to a real path (not a portal path)
         if (!canonicalPath.startsWith("/run/")) {
             return canonicalPath;
         }
         
-        // Last resort: use a generic name with the last directory component
+        // Still a portal path after canonicalization
+        // Use a descriptive name based on the last directory component
         QString lastDir = QDir(canonicalPath).dirName();
         if (!lastDir.isEmpty() && lastDir.length() < 64) {
-            return "Playlists: " + lastDir;
+            // Just use the folder name without prepending home directory
+            // The portal path could be pointing anywhere
+            return "Portal: " + lastDir;
         }
-        return "Playlist Folder";
+        return "Portal: Playlist Folder";
     }
     
     // For non-portal paths, return as-is
