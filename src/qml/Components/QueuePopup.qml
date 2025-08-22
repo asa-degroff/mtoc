@@ -46,6 +46,10 @@ Item {
         MouseArea {
             anchors.fill: parent
             onClicked: root.closed()
+            onWheel: function(wheel) {
+                // Consume wheel events to prevent propagation to underlying content
+                wheel.accepted = true
+            }
         }
     }
     
