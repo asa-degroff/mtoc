@@ -317,54 +317,59 @@ QString PlaylistManager::makeRelativePath(const QString& filePath) const
 {
     if (!m_libraryManager) return filePath;
     
+    // Early return if filePath is empty
+    if (filePath.isEmpty()) {
+        qWarning() << "PlaylistManager::makeRelativePath called with empty path";
+        return filePath;
+    }
+    
+    // Portal paths are only used for directories outside the whitelisted ~/Music
+    // Since Flatpak has direct access to ~/Music, portal paths always represent external files
+    // Therefore, we should always keep portal paths as absolute paths
+    bool isPortalPath = filePath.startsWith("/run/flatpak/doc/") || filePath.startsWith("/run/user/");
+    if (isPortalPath) {
+        qDebug() << "PlaylistManager: Keeping portal path as absolute:" << filePath;
+        return filePath;
+    }
+    
+    // For non-portal paths, try to make them relative if they're within music folders
     QStringList musicFolders = m_libraryManager->musicFolders();
     QString playlistDir = QFileInfo(m_playlistsDirectory).canonicalFilePath();
     QString canonicalFilePath = QFileInfo(filePath).canonicalFilePath();
     
-    // For flatpak portal paths, try to convert to regular home paths for better portability
-    QString pathToWrite = filePath;
-    if (filePath.startsWith("/run/flatpak/doc/") || filePath.startsWith("/run/user/")) {
-        // Check if this corresponds to the user's Music folder
-        QString homeMusicPath = QStandardPaths::writableLocation(QStandardPaths::MusicLocation);
-        QString musicCanonical = QFileInfo(homeMusicPath).canonicalFilePath();
-        
-        // Find which music folder this file belongs to
-        for (const QString& musicFolder : musicFolders) {
-            QString musicFolderCanonical = QFileInfo(musicFolder).canonicalFilePath();
-            if (canonicalFilePath.startsWith(musicFolderCanonical)) {
-                // If this music folder is a portal path but corresponds to the user's Music folder
-                if ((musicFolder.startsWith("/run/flatpak/doc/") || musicFolder.startsWith("/run/user/")) &&
-                    QDir(musicFolderCanonical).exists()) {
-                    // Try to reconstruct the regular home path
-                    QString relativePart = QDir(musicFolderCanonical).relativeFilePath(canonicalFilePath);
-                    pathToWrite = QDir(homeMusicPath).absoluteFilePath(relativePart);
-                    canonicalFilePath = QFileInfo(pathToWrite).canonicalFilePath();
-                    qDebug() << "PlaylistManager: Converted portal path to home path for playlist:" << pathToWrite;
-                }
-                break;
-            }
-        }
+    // If canonical path is empty (file doesn't exist or path is invalid), use original path
+    if (canonicalFilePath.isEmpty()) {
+        qDebug() << "PlaylistManager: Could not get canonical path for:" << filePath << "- using original path";
+        return filePath;
     }
     
-    // Check if file is within any music folder
+    // Check if file is within any configured music folder
     for (const QString& musicFolder : musicFolders) {
-        QString canonicalMusicFolder = QFileInfo(musicFolder).canonicalFilePath();
+        QString musicFolderCanonical = QFileInfo(musicFolder).canonicalFilePath();
         
-        if (canonicalFilePath.startsWith(canonicalMusicFolder)) {
-            // Calculate relative path from playlist directory
-            QDir playlistDirObj(playlistDir);
-            QString relativePath = playlistDirObj.relativeFilePath(canonicalFilePath);
-            
-            // Only use relative path if it doesn't go up too many levels
-            int upLevels = relativePath.count("../");
-            if (upLevels <= 2) {
-                return relativePath;
+        // Skip if we couldn't get canonical path for music folder
+        if (musicFolderCanonical.isEmpty()) continue;
+        
+        if (canonicalFilePath.startsWith(musicFolderCanonical)) {
+            // File is within a music folder, try to make it relative
+            if (!playlistDir.isEmpty()) {
+                QDir playlistDirObj(playlistDir);
+                QString relativePath = playlistDirObj.relativeFilePath(canonicalFilePath);
+                
+                // Only use relative path if it doesn't go up too many levels
+                int upLevels = relativePath.count("../");
+                if (upLevels <= 2) {
+                    return relativePath;
+                }
             }
+            // If relative path goes up too many levels, use absolute
+            return filePath;
         }
     }
     
-    // Use the processed path (either converted from portal or original)
-    return pathToWrite;
+    // File is outside music folders, use absolute path
+    qDebug() << "PlaylistManager: File outside music folders, using absolute path:" << filePath;
+    return filePath;
 }
 
 QVariantList PlaylistManager::loadPlaylist(const QString& name)
