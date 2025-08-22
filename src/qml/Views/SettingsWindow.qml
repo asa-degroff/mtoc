@@ -1041,6 +1041,53 @@ ApplicationWindow {
                                     ctx.fill()
                                 }
                             }
+                            
+                            popup: Popup {
+                                y: parent.height + 2
+                                width: parent.width
+                                implicitHeight: contentItem.implicitHeight + 2
+                                padding: 1
+                                
+                                contentItem: ListView {
+                                    clip: true
+                                    implicitHeight: contentHeight
+                                    model: replayGainModeCombo.popup.visible ? replayGainModeCombo.model : null
+                                    currentIndex: replayGainModeCombo.highlightedIndex
+                                    
+                                    delegate: ItemDelegate {
+                                        width: replayGainModeCombo.width
+                                        height: 36
+                                        
+                                        contentItem: Text {
+                                            text: modelData
+                                            color: parent.hovered ? Theme.primaryText : Theme.secondaryText
+                                            font.pixelSize: 14
+                                            verticalAlignment: Text.AlignVCenter
+                                            leftPadding: 8
+                                        }
+                                        
+                                        background: Rectangle {
+                                            color: parent.hovered ? Theme.selectedBackground : "transparent"
+                                            radius: 2
+                                        }
+                                        
+                                        onClicked: {
+                                            replayGainModeCombo.currentIndex = index
+                                            replayGainModeCombo.activated(index)
+                                            replayGainModeCombo.popup.close()
+                                        }
+                                    }
+                                    
+                                    ScrollIndicator.vertical: ScrollIndicator { }
+                                }
+                                
+                                background: Rectangle {
+                                    color: Theme.backgroundColor
+                                    border.color: Theme.borderColor
+                                    border.width: 1
+                                    radius: 4
+                                }
+                            }
                         }
                         
                         Image {
