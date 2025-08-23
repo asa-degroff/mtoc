@@ -33,6 +33,7 @@ class SettingsManager : public QObject
     Q_PROPERTY(MiniPlayerLayout miniPlayerLayout READ miniPlayerLayout WRITE setMiniPlayerLayout NOTIFY miniPlayerLayoutChanged)
     Q_PROPERTY(int miniPlayerX READ miniPlayerX WRITE setMiniPlayerX NOTIFY miniPlayerXChanged)
     Q_PROPERTY(int miniPlayerY READ miniPlayerY WRITE setMiniPlayerY NOTIFY miniPlayerYChanged)
+    Q_PROPERTY(bool miniPlayerHidesMainWindow READ miniPlayerHidesMainWindow WRITE setMiniPlayerHidesMainWindow NOTIFY miniPlayerHidesMainWindowChanged)
 
 public:
     enum QueueAction {
@@ -99,6 +100,7 @@ public:
     MiniPlayerLayout miniPlayerLayout() const { return m_miniPlayerLayout; }
     int miniPlayerX() const { return m_miniPlayerX; }
     int miniPlayerY() const { return m_miniPlayerY; }
+    bool miniPlayerHidesMainWindow() const { return m_miniPlayerHidesMainWindow; }
     
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -123,6 +125,7 @@ public:
     void setMiniPlayerLayout(MiniPlayerLayout layout);
     void setMiniPlayerX(int x);
     void setMiniPlayerY(int y);
+    void setMiniPlayerHidesMainWindow(bool hides);
 
 protected:
     bool event(QEvent *event) override;
@@ -152,6 +155,7 @@ signals:
     void miniPlayerLayoutChanged(MiniPlayerLayout layout);
     void miniPlayerXChanged(int x);
     void miniPlayerYChanged(int y);
+    void miniPlayerHidesMainWindowChanged(bool hides);
 
 private slots:
 
@@ -188,6 +192,7 @@ private:
     MiniPlayerLayout m_miniPlayerLayout;
     int m_miniPlayerX;
     int m_miniPlayerY;
+    bool m_miniPlayerHidesMainWindow;
 };
 
 #endif // SETTINGSMANAGER_H

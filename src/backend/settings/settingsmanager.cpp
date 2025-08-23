@@ -17,6 +17,7 @@ SettingsManager::SettingsManager(QObject *parent)
     , m_miniPlayerLayout(Vertical)
     , m_miniPlayerX(-1)
     , m_miniPlayerY(-1)
+    , m_miniPlayerHidesMainWindow(true)
 {
     loadSettings();
     setupSystemThemeDetection();
@@ -240,6 +241,15 @@ void SettingsManager::setMiniPlayerY(int y)
     }
 }
 
+void SettingsManager::setMiniPlayerHidesMainWindow(bool hides)
+{
+    if (m_miniPlayerHidesMainWindow != hides) {
+        m_miniPlayerHidesMainWindow = hides;
+        emit miniPlayerHidesMainWindowChanged(hides);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -283,6 +293,7 @@ void SettingsManager::loadSettings()
     m_miniPlayerLayout = static_cast<MiniPlayerLayout>(m_settings.value("layout", Vertical).toInt());
     m_miniPlayerX = m_settings.value("x", -1).toInt();  // -1 means use default positioning
     m_miniPlayerY = m_settings.value("y", -1).toInt();
+    m_miniPlayerHidesMainWindow = m_settings.value("hidesMainWindow", true).toBool();
     m_settings.endGroup();
     
     qDebug() << "SettingsManager: Loaded settings - Queue action:" << m_queueActionDefault 
@@ -335,6 +346,7 @@ void SettingsManager::saveSettings()
     m_settings.setValue("layout", static_cast<int>(m_miniPlayerLayout));
     m_settings.setValue("x", m_miniPlayerX);
     m_settings.setValue("y", m_miniPlayerY);
+    m_settings.setValue("hidesMainWindow", m_miniPlayerHidesMainWindow);
     m_settings.endGroup();
     
     m_settings.sync();

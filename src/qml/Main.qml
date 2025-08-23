@@ -62,7 +62,9 @@ ApplicationWindow {
         
         if (miniPlayerWindow) {
             console.log("Showing mini player window")
-            window.hide()
+            if (SettingsManager.miniPlayerHidesMainWindow) {
+                window.hide()
+            }
             miniPlayerWindow.show()
             miniPlayerWindow.raise()
             miniPlayerWindow.requestActivate()
@@ -74,9 +76,13 @@ ApplicationWindow {
         if (miniPlayerWindow) {
             miniPlayerWindow.hide()
         }
-        window.show()
-        window.raise()
-        window.requestActivate()
+        // Only show the main window if it was hidden (when miniPlayerHidesMainWindow is true)
+        // or always show it if the setting is false
+        if (!window.visible || !SettingsManager.miniPlayerHidesMainWindow) {
+            window.show()
+            window.raise()
+            window.requestActivate()
+        }
     }
     
     // Responsive layout properties

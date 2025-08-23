@@ -1,3 +1,11 @@
+# 2.2.2
+### Improved portal path handling, main window visibility option, region-aware search
+- Library search is now region-aware, returns accent-insensitive results
+- Added the option to keep the main window visible along with the mini player
+- Fixed a bug where playlists containing tracks outside of the ~/Music directory didn't work in the Flatpak build of mtoc
+- Fixed a bug were slider handles in the settings window were not recieving mouse input, and increased the size of the handles
+- Miscellaneous layout and UI bug fixes
+
 # 2.2.1
 ### Fix for AAC playback bug, system accent color integration
 - Fixed a bug that caused a few seconds of silence between tracks when playing AAC audio

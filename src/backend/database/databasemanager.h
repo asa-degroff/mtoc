@@ -80,6 +80,9 @@ public:
     static QSqlDatabase createThreadConnection(const QString& connectionName);
     static void removeThreadConnection(const QString& connectionName);
     
+    // Helper for accent-insensitive search
+    static QString normalizeForSearch(const QString& text);
+    
     // Album art operations
     bool insertAlbumArt(int albumId, const QString& fullPath, const QString& hash, 
                        const QByteArray& thumbnail, int width, int height, 

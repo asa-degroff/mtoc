@@ -635,6 +635,54 @@ ApplicationWindow {
                     }
                     
                     CheckBox {
+                        id: miniPlayerHidesMainWindowCheck
+                        text: "Mini player hides main window"
+                        checked: SettingsManager.miniPlayerHidesMainWindow
+                        
+                        onToggled: {
+                            SettingsManager.miniPlayerHidesMainWindow = checked
+                        }
+                        
+                        contentItem: Text {
+                            text: parent.text
+                            font.pixelSize: 14
+                            color: Theme.secondaryText
+                            verticalAlignment: Text.AlignVCenter
+                            leftPadding: parent.indicator.width + parent.spacing
+                        }
+                        
+                        indicator: Rectangle {
+                            implicitWidth: 20
+                            implicitHeight: 20
+                            x: parent.leftPadding
+                            y: parent.height / 2 - height / 2
+                            radius: 3
+                            color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                            border.color: parent.checked ? Theme.linkColor : Theme.borderColor
+                            
+                            Canvas {
+                                anchors.fill: parent
+                                anchors.margins: 4
+                                visible: parent.parent.checked
+                                
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.reset()
+                                    ctx.strokeStyle = "white"
+                                    ctx.lineWidth = 2
+                                    ctx.lineCap = "round"
+                                    ctx.lineJoin = "round"
+                                    ctx.beginPath()
+                                    ctx.moveTo(width * 0.2, height * 0.5)
+                                    ctx.lineTo(width * 0.45, height * 0.75)
+                                    ctx.lineTo(width * 0.8, height * 0.25)
+                                    ctx.stroke()
+                                }
+                            }
+                        }
+                    }
+                    
+                    CheckBox {
                         id: showTrackInfoCheck
                         text: "Show track info panel by default"
                         checked: SettingsManager.showTrackInfoByDefault
@@ -792,6 +840,7 @@ ApplicationWindow {
                             Slider {
                                 id: preAmpSlider
                                 Layout.fillWidth: true
+                                Layout.preferredHeight: 32
                                 from: -15.0
                                 to: 15.0
                                 value: SettingsManager.replayGainPreAmp
@@ -819,13 +868,19 @@ ApplicationWindow {
                                     }
                                 }
                                 
-                                handle: Rectangle {
+                                handle: Item {
                                     x: preAmpSlider.leftPadding + preAmpSlider.visualPosition * (preAmpSlider.availableWidth - width)
                                     y: preAmpSlider.topPadding + preAmpSlider.availableHeight / 2 - height / 2
-                                    implicitWidth: 16
-                                    implicitHeight: 16
-                                    radius: 8
-                                    color: preAmpSlider.pressed ? Theme.selectedBackground : Theme.linkColor
+                                    implicitWidth: 32
+                                    implicitHeight: 32
+                                    
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: 20
+                                        height: 20
+                                        radius: 10
+                                        color: preAmpSlider.pressed ? Theme.selectedBackground : Theme.linkColor
+                                    }
                                 }
                             }
                             
@@ -1041,6 +1096,53 @@ ApplicationWindow {
                                     ctx.fill()
                                 }
                             }
+                            
+                            popup: Popup {
+                                y: parent.height + 2
+                                width: parent.width
+                                implicitHeight: contentItem.implicitHeight + 2
+                                padding: 1
+                                
+                                contentItem: ListView {
+                                    clip: true
+                                    implicitHeight: contentHeight
+                                    model: replayGainModeCombo.popup.visible ? replayGainModeCombo.model : null
+                                    currentIndex: replayGainModeCombo.highlightedIndex
+                                    
+                                    delegate: ItemDelegate {
+                                        width: replayGainModeCombo.width
+                                        height: 36
+                                        
+                                        contentItem: Text {
+                                            text: modelData
+                                            color: parent.hovered ? Theme.primaryText : Theme.secondaryText
+                                            font.pixelSize: 14
+                                            verticalAlignment: Text.AlignVCenter
+                                            leftPadding: 8
+                                        }
+                                        
+                                        background: Rectangle {
+                                            color: parent.hovered ? Theme.selectedBackground : "transparent"
+                                            radius: 2
+                                        }
+                                        
+                                        onClicked: {
+                                            replayGainModeCombo.currentIndex = index
+                                            replayGainModeCombo.activated(index)
+                                            replayGainModeCombo.popup.close()
+                                        }
+                                    }
+                                    
+                                    ScrollIndicator.vertical: ScrollIndicator { }
+                                }
+                                
+                                background: Rectangle {
+                                    color: Theme.backgroundColor
+                                    border.color: Theme.borderColor
+                                    border.width: 1
+                                    radius: 4
+                                }
+                            }
                         }
                         
                         Image {
@@ -1100,6 +1202,7 @@ ApplicationWindow {
                             Slider {
                                 id: fallbackGainSlider
                                 Layout.fillWidth: true
+                                Layout.preferredHeight: 32
                                 from: -15.0
                                 to: 15.0
                                 value: SettingsManager.replayGainFallbackGain
@@ -1127,13 +1230,19 @@ ApplicationWindow {
                                     }
                                 }
                                 
-                                handle: Rectangle {
+                                handle: Item {
                                     x: fallbackGainSlider.leftPadding + fallbackGainSlider.visualPosition * (fallbackGainSlider.availableWidth - width)
                                     y: fallbackGainSlider.topPadding + fallbackGainSlider.availableHeight / 2 - height / 2
-                                    implicitWidth: 16
-                                    implicitHeight: 16
-                                    radius: 8
-                                    color: fallbackGainSlider.pressed ? Theme.selectedBackground : Theme.linkColor
+                                    implicitWidth: 32
+                                    implicitHeight: 32
+                                    
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: 20
+                                        height: 20
+                                        radius: 10
+                                        color: fallbackGainSlider.pressed ? Theme.selectedBackground : Theme.linkColor
+                                    }
                                 }
                             }
                             
@@ -1209,7 +1318,7 @@ ApplicationWindow {
                     }
                     
                     Label {
-                        text: "Version 2.2.1"
+                        text: "Version 2.2.2"
                         font.pixelSize: 12
                         color: Theme.tertiaryText
                     }
