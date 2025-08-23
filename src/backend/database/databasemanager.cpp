@@ -8,6 +8,8 @@
 #include <QMutexLocker>
 #include <QThread>
 #include <algorithm>
+#include <QString>
+#include <QMap>
 
 namespace Mtoc {
 
@@ -943,32 +945,79 @@ QVariantList DatabaseManager::searchTracks(const QString& searchTerm)
     QVariantList results;
     if (!m_db.isOpen() || searchTerm.isEmpty()) return results;
     
+    // Normalize the search term for accent-insensitive search
+    QString normalizedSearchTerm = normalizeForSearch(searchTerm);
+    
     QSqlQuery query(m_db);
+    // Get all tracks and filter in memory for accent-insensitive search
     query.prepare(
         "SELECT t.*, a.name as artist_name, al.title as album_title "
         "FROM tracks t "
         "LEFT JOIN artists a ON t.artist_id = a.id "
         "LEFT JOIN albums al ON t.album_id = al.id "
-        "WHERE t.title LIKE :search "
-        "OR a.name LIKE :search "
-        "OR al.title LIKE :search "
-        "OR t.genre LIKE :search "
-        "ORDER BY t.title COLLATE NOCASE"
+        "ORDER BY t.title"
     );
-    
-    QString wildcardSearch = "%" + searchTerm + "%";
-    query.bindValue(":search", wildcardSearch);
     
     if (query.exec()) {
         while (query.next()) {
-            QVariantMap track;
-            track["id"] = query.value("id");
-            track["title"] = query.value("title");
-            track["artist"] = query.value("artist_name");
-            track["album"] = query.value("album_title");
-            track["duration"] = query.value("duration");
-            track["filePath"] = query.value("file_path");
-            results.append(track);
+            QString trackTitle = query.value("title").toString();
+            QString artistName = query.value("artist_name").toString();
+            QString albumTitle = query.value("album_title").toString();
+            QString genre = query.value("genre").toString();
+            
+            QString normalizedTrackTitle = normalizeForSearch(trackTitle);
+            QString normalizedArtistName = normalizeForSearch(artistName);
+            QString normalizedAlbumTitle = normalizeForSearch(albumTitle);
+            QString normalizedGenre = normalizeForSearch(genre);
+            
+            // Check if any normalized field contains the normalized search term
+            if (normalizedTrackTitle.contains(normalizedSearchTerm) ||
+                normalizedArtistName.contains(normalizedSearchTerm) ||
+                normalizedAlbumTitle.contains(normalizedSearchTerm) ||
+                normalizedGenre.contains(normalizedSearchTerm)) {
+                
+                QVariantMap track;
+                track["id"] = query.value("id");
+                track["title"] = trackTitle;
+                track["artist"] = artistName;
+                track["album"] = albumTitle;
+                track["duration"] = query.value("duration");
+                track["filePath"] = query.value("file_path");
+                
+                // Determine priority for sorting (track title matches are highest priority)
+                int priority = 4;
+                if (normalizedTrackTitle.contains(normalizedSearchTerm)) {
+                    if (normalizedTrackTitle == normalizedSearchTerm) {
+                        priority = 1; // Exact track title match
+                    } else if (normalizedTrackTitle.startsWith(normalizedSearchTerm)) {
+                        priority = 2; // Track title prefix match
+                    } else {
+                        priority = 3; // Track title contains match
+                    }
+                }
+                track["searchPriority"] = priority;
+                
+                results.append(track);
+            }
+        }
+        
+        // Sort results by priority and then by title
+        std::sort(results.begin(), results.end(), [](const QVariant& a, const QVariant& b) {
+            QVariantMap mapA = a.toMap();
+            QVariantMap mapB = b.toMap();
+            int priorityA = mapA["searchPriority"].toInt();
+            int priorityB = mapB["searchPriority"].toInt();
+            if (priorityA != priorityB) {
+                return priorityA < priorityB;
+            }
+            return mapA["title"].toString().toLower() < mapB["title"].toString().toLower();
+        });
+        
+        // Remove the searchPriority field from results
+        for (auto& result : results) {
+            QVariantMap map = result.toMap();
+            map.remove("searchPriority");
+            result = map;
         }
     } else {
         logError("Search tracks", query);
@@ -982,41 +1031,72 @@ QVariantList DatabaseManager::searchAlbums(const QString& searchTerm)
     QVariantList results;
     if (!m_db.isOpen() || searchTerm.isEmpty()) return results;
     
+    // Normalize the search term for accent-insensitive search
+    QString normalizedSearchTerm = normalizeForSearch(searchTerm);
+    
     QSqlQuery query(m_db);
+    // Get all albums and filter in memory for accent-insensitive search
     query.prepare(
         "SELECT al.*, aa.name as album_artist_name, "
         "       (SELECT COUNT(*) FROM tracks t WHERE t.album_id = al.id) as track_count, "
         "       (SELECT COUNT(*) FROM album_art art WHERE art.album_id = al.id) > 0 as has_art "
         "FROM albums al "
         "LEFT JOIN album_artists aa ON al.album_artist_id = aa.id "
-        "WHERE al.title LIKE :search "
-        "OR aa.name LIKE :search "
-        "ORDER BY CASE "
-        "    WHEN al.title LIKE :exactSearch THEN 1 "
-        "    WHEN al.title LIKE :prefixSearch THEN 2 "
-        "    WHEN aa.name LIKE :exactSearch THEN 3 "
-        "    WHEN aa.name LIKE :prefixSearch THEN 4 "
-        "    ELSE 5 "
-        "END, al.title"
+        "ORDER BY al.title"
     );
-    
-    QString wildcardSearch = "%" + searchTerm + "%";
-    QString exactSearch = searchTerm;
-    QString prefixSearch = searchTerm + "%";
-    query.bindValue(":search", wildcardSearch);
-    query.bindValue(":exactSearch", exactSearch);
-    query.bindValue(":prefixSearch", prefixSearch);
     
     if (query.exec()) {
         while (query.next()) {
-            QVariantMap album;
-            album["id"] = query.value("id");
-            album["title"] = query.value("title");
-            album["albumArtist"] = query.value("album_artist_name");
-            album["year"] = query.value("year");
-            album["trackCount"] = query.value("track_count");
-            album["hasArt"] = query.value("has_art").toBool();
-            results.append(album);
+            QString albumTitle = query.value("title").toString();
+            QString albumArtist = query.value("album_artist_name").toString();
+            QString normalizedAlbumTitle = normalizeForSearch(albumTitle);
+            QString normalizedAlbumArtist = normalizeForSearch(albumArtist);
+            
+            // Check if the normalized album title or artist contains the normalized search term
+            if (normalizedAlbumTitle.contains(normalizedSearchTerm) || 
+                normalizedAlbumArtist.contains(normalizedSearchTerm)) {
+                QVariantMap album;
+                album["id"] = query.value("id");
+                album["title"] = albumTitle;
+                album["albumArtist"] = albumArtist;
+                album["year"] = query.value("year");
+                album["trackCount"] = query.value("track_count");
+                album["hasArt"] = query.value("has_art").toBool();
+                
+                // Determine priority for sorting
+                int priority = 5;
+                if (normalizedAlbumTitle == normalizedSearchTerm) {
+                    priority = 1; // Exact album title match
+                } else if (normalizedAlbumTitle.startsWith(normalizedSearchTerm)) {
+                    priority = 2; // Album title prefix match
+                } else if (normalizedAlbumArtist == normalizedSearchTerm) {
+                    priority = 3; // Exact artist match
+                } else if (normalizedAlbumArtist.startsWith(normalizedSearchTerm)) {
+                    priority = 4; // Artist prefix match
+                }
+                album["searchPriority"] = priority;
+                
+                results.append(album);
+            }
+        }
+        
+        // Sort results by priority and then by title
+        std::sort(results.begin(), results.end(), [](const QVariant& a, const QVariant& b) {
+            QVariantMap mapA = a.toMap();
+            QVariantMap mapB = b.toMap();
+            int priorityA = mapA["searchPriority"].toInt();
+            int priorityB = mapB["searchPriority"].toInt();
+            if (priorityA != priorityB) {
+                return priorityA < priorityB;
+            }
+            return mapA["title"].toString().toLower() < mapB["title"].toString().toLower();
+        });
+        
+        // Remove the searchPriority field from results
+        for (auto& result : results) {
+            QVariantMap map = result.toMap();
+            map.remove("searchPriority");
+            result = map;
         }
     } else {
         logError("Search albums", query);
@@ -1030,34 +1110,61 @@ QVariantList DatabaseManager::searchArtists(const QString& searchTerm)
     QVariantList results;
     if (!m_db.isOpen() || searchTerm.isEmpty()) return results;
     
+    // Normalize the search term for accent-insensitive search
+    QString normalizedSearchTerm = normalizeForSearch(searchTerm);
+    
     QSqlQuery query(m_db);
+    // Get all artists and filter in memory for accent-insensitive search
     query.prepare(
         "SELECT a.*, "
         "       (SELECT COUNT(*) FROM albums al WHERE al.album_artist_id = aa.id) as album_count "
         "FROM artists a "
         "LEFT JOIN album_artists aa ON a.name = aa.name "
-        "WHERE a.name LIKE :search "
-        "ORDER BY CASE "
-        "    WHEN a.name LIKE :exactSearch THEN 1 "
-        "    WHEN a.name LIKE :prefixSearch THEN 2 "
-        "    ELSE 3 "
-        "END, a.name"
+        "ORDER BY a.name"
     );
-    
-    QString wildcardSearch = "%" + searchTerm + "%";
-    QString exactSearch = searchTerm;
-    QString prefixSearch = searchTerm + "%";
-    query.bindValue(":search", wildcardSearch);
-    query.bindValue(":exactSearch", exactSearch);
-    query.bindValue(":prefixSearch", prefixSearch);
     
     if (query.exec()) {
         while (query.next()) {
-            QVariantMap artist;
-            artist["id"] = query.value("id");
-            artist["name"] = query.value("name");
-            artist["albumCount"] = query.value("album_count");
-            results.append(artist);
+            QString artistName = query.value("name").toString();
+            QString normalizedArtistName = normalizeForSearch(artistName);
+            
+            // Check if the normalized artist name contains the normalized search term
+            if (normalizedArtistName.contains(normalizedSearchTerm)) {
+                QVariantMap artist;
+                artist["id"] = query.value("id");
+                artist["name"] = artistName;
+                artist["albumCount"] = query.value("album_count");
+                
+                // Determine priority for sorting
+                int priority = 3;
+                if (normalizedArtistName == normalizedSearchTerm) {
+                    priority = 1; // Exact match
+                } else if (normalizedArtistName.startsWith(normalizedSearchTerm)) {
+                    priority = 2; // Prefix match
+                }
+                artist["searchPriority"] = priority;
+                
+                results.append(artist);
+            }
+        }
+        
+        // Sort results by priority and then by name
+        std::sort(results.begin(), results.end(), [](const QVariant& a, const QVariant& b) {
+            QVariantMap mapA = a.toMap();
+            QVariantMap mapB = b.toMap();
+            int priorityA = mapA["searchPriority"].toInt();
+            int priorityB = mapB["searchPriority"].toInt();
+            if (priorityA != priorityB) {
+                return priorityA < priorityB;
+            }
+            return mapA["name"].toString().toLower() < mapB["name"].toString().toLower();
+        });
+        
+        // Remove the searchPriority field from results
+        for (auto& result : results) {
+            QVariantMap map = result.toMap();
+            map.remove("searchPriority");
+            result = map;
         }
     } else {
         logError("Search artists", query);
@@ -1476,6 +1583,53 @@ void DatabaseManager::removeThreadConnection(const QString& connectionName)
     }
     // Remove the connection from Qt's registry
     QSqlDatabase::removeDatabase(connectionName);
+}
+
+QString DatabaseManager::normalizeForSearch(const QString& text)
+{
+    // Convert to lowercase and remove accents/diacritics for accent-insensitive search
+    QString normalized = text.toLower();
+    
+    // Map of accented characters to their base forms
+    static const QMap<QChar, QChar> accentMap = {
+        // A variants
+        {QChar(L'à'), QChar('a')}, {QChar(L'á'), QChar('a')}, {QChar(L'â'), QChar('a')}, 
+        {QChar(L'ã'), QChar('a')}, {QChar(L'ä'), QChar('a')}, {QChar(L'å'), QChar('a')},
+        {QChar(L'À'), QChar('a')}, {QChar(L'Á'), QChar('a')}, {QChar(L'Â'), QChar('a')}, 
+        {QChar(L'Ã'), QChar('a')}, {QChar(L'Ä'), QChar('a')}, {QChar(L'Å'), QChar('a')},
+        // E variants
+        {QChar(L'è'), QChar('e')}, {QChar(L'é'), QChar('e')}, {QChar(L'ê'), QChar('e')}, {QChar(L'ë'), QChar('e')},
+        {QChar(L'È'), QChar('e')}, {QChar(L'É'), QChar('e')}, {QChar(L'Ê'), QChar('e')}, {QChar(L'Ë'), QChar('e')},
+        // I variants
+        {QChar(L'ì'), QChar('i')}, {QChar(L'í'), QChar('i')}, {QChar(L'î'), QChar('i')}, {QChar(L'ï'), QChar('i')},
+        {QChar(L'Ì'), QChar('i')}, {QChar(L'Í'), QChar('i')}, {QChar(L'Î'), QChar('i')}, {QChar(L'Ï'), QChar('i')},
+        // O variants
+        {QChar(L'ò'), QChar('o')}, {QChar(L'ó'), QChar('o')}, {QChar(L'ô'), QChar('o')}, 
+        {QChar(L'õ'), QChar('o')}, {QChar(L'ö'), QChar('o')}, {QChar(L'ø'), QChar('o')},
+        {QChar(L'Ò'), QChar('o')}, {QChar(L'Ó'), QChar('o')}, {QChar(L'Ô'), QChar('o')}, 
+        {QChar(L'Õ'), QChar('o')}, {QChar(L'Ö'), QChar('o')}, {QChar(L'Ø'), QChar('o')},
+        // U variants
+        {QChar(L'ù'), QChar('u')}, {QChar(L'ú'), QChar('u')}, {QChar(L'û'), QChar('u')}, {QChar(L'ü'), QChar('u')},
+        {QChar(L'Ù'), QChar('u')}, {QChar(L'Ú'), QChar('u')}, {QChar(L'Û'), QChar('u')}, {QChar(L'Ü'), QChar('u')},
+        // Y variants
+        {QChar(L'ý'), QChar('y')}, {QChar(L'ÿ'), QChar('y')}, {QChar(L'Ý'), QChar('y')}, {QChar(L'Ÿ'), QChar('y')},
+        // N variants
+        {QChar(L'ñ'), QChar('n')}, {QChar(L'Ñ'), QChar('n')},
+        // C variants
+        {QChar(L'ç'), QChar('c')}, {QChar(L'Ç'), QChar('c')},
+        // AE/OE ligatures
+        {QChar(L'æ'), QChar('a')}, {QChar(L'Æ'), QChar('a')}, {QChar(L'œ'), QChar('o')}, {QChar(L'Œ'), QChar('o')}
+    };
+    
+    // Replace accented characters with their base forms
+    for (int i = 0; i < normalized.length(); ++i) {
+        QChar ch = normalized[i];
+        if (accentMap.contains(ch)) {
+            normalized[i] = accentMap[ch];
+        }
+    }
+    
+    return normalized;
 }
 
 bool DatabaseManager::insertAlbumArt(int albumId, const QString& fullPath, const QString& hash, 
