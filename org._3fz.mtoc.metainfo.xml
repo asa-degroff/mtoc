@@ -84,6 +84,19 @@
       </description>
     </release>
 
+    <release version="2.2.2" date="2025-08-22">
+      <description>
+        <p>Improved portal path handling, main window visibility option, region-aware search</p>
+        <ul>
+          <li>Library search is now region-aware, returns accent-insensitive results</li>
+          <li>Added the option to keep the main window visible along with the mini player</li>
+          <li>Fixed a bug where playlists containing tracks outside of the ~/Music directory didn't work in the Flatpak build of mtoc</li>
+          <li>Fixed a bug were slider handles in the settings window were not recieving mouse input, and increased the size of the handles</li>
+          <li>Miscellaneous layout and UI bug fixes</li>
+        </ul>
+      </description>
+    </release>
+
     <release version="2.2.1" date="2025-08-19">
       <description>
         <p>Fix for AAC playback bug, system accent color integration</p>
