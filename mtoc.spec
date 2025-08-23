@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.2.1
+Version:        2.2.2
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,23 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Fri Aug 22 2025 Asa DeGroff <asa@3fz.org> 2.2.2-1
+- version bump and changelog (asa@3fz.org)
+- feat: implement accent-insensitive search functionality in DatabaseManager
+  (asa@3fz.org)
+- feat: add option to control main window visibility on show mini player
+  (asa@3fz.org)
+- feat: enhance slider handle design and increase preferred height in
+  SettingsWindow (asa@3fz.org)
+- fix: consume wheel events in QueuePopup to prevent propagation (asa@3fz.org)
+- feat: add combo box styling for replay gain mode selection in SettingsWindow
+  (asa@3fz.org)
+- fix: improve handling of portal paths in display name generation
+  (asa@3fz.org)
+- fix: enhance makeRelativePath to handle empty and portal paths correctly
+  (asa@3fz.org)
+- fixed typo in metainfo (asa@3fz.org)
+
 * Tue Aug 19 2025 Asa DeGroff <asa@3fz.org> 2.2.1-1
 - version bump and changelog (asa@3fz.org)
 - fix: bind currentTab property to SettingsManager for state persistence
