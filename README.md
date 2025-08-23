@@ -41,11 +41,15 @@ A responsive search function finds artists, albums, and tracks, jumping to and s
 
 ### Library Management
 The library editor lets you select one or multiple directories to scan for music, and optionally specify additional directories for .m3u playlist files. 
-#### Note: The Flatpak build only supports access to ~/Music and its subdirectories. 
 - Supported formats: MP3, MP4/M4A (including iTunes-encoded AAC and ALAC), FLAC, OGG Vorbis, Opus
 - Metadata extraction using TagLib 2.0
 - Embedded album artwork extraction
 - SQLite database for fast library access
+
+### Mini Player
+The mini player places essential playback controls in a separate small window. It can be configured to either hide the main window upon showing the mini player, or to keep both visible.
+There are three mini player layouts: vertical, horizontal, and compact. All feature the same functionality, offered in different sizes and shapes to suit your display dimensions and preference. 
+Note that the mini player will attempt to keep itself above other windows. This works when the application is running in an X11 environment or using XWayland. Wayland does not currently support applications keeping their own window on top. To make it work this way on Wayland, you will have to use the window management features that come with your desktop environment. 
 
 ### Queueing features
 Tracks, albums, and playlists can be enqueued from the library, either added up next, or appended to the end of the queue, through the right-click context menu. Multi-selection of tracks for queueing is supported. The queue supports modification: delete, multi-select and delete, reorder through drag-and-drop. 
@@ -61,7 +65,8 @@ mtoc features shuffle and repeat modes. Shuffle uses a modified Fisher-Yates alg
 ### Playback Features
 - GStreamer-based audio engine
 - Gapless audio support for seamless album listening
-- Standard controls: play/pause, previous/next, seek
+- ReplayGain support for volume normalization on tracks with the ReplayGain tag set, supporting either per-album or per-track modes
+- Fallback gain allows you to set a default gain for tracks that don't feature the ReplayGain tag, keeping your hearing safe when listening to a library with mixed ReplayGain tags
 
 ### State Persistence
 mtoc saves your position in the interface as well playback state including your queue, current track, and position, so that you can pick up where you left off after restarting the app. 
@@ -78,13 +83,12 @@ Performance is a core design principle. mtoc aims for visual appeal and and cont
 #### Implementation Guidelines
 Frequent reads and minimal writes makes this an application that benefits from extensive caching at the controller and view layers. 
 - Cache data generously to reduce disk access frequency
-- Use constant time cache lookups instead of sequential data access whenever possible
 
 ### System Requirements
 - Linux with X11/Wayland
 - OpenGL/GPU acceleration recommended
 - Solid state storage recommended
-- 4GB system RAM recommended. Typical usage for mtoc remains under ~350MB, but may go as high as 1GB if you push it by loading all tracks in a large library and skipping through them quickly. 
+- 4GB system RAM recommended. Typical usage for mtoc remains under ~350MB, but may be higher when scanning the library or skipping through large amounts of tracks. 
 
 #### Dependencies
 - Qt6 >= 6.9 (Core, Quick, Qml, Multimedia, DBus, Concurrent, Widgets, Sql)
@@ -166,11 +170,11 @@ On first launch, mtoc will feature an empty library. Click "Edit Library" (or th
   See [ARCHITECTURE.md](/ARCHITECTURE.md) for details. 
 
 ## Roadmap
-The following features are in development or planned for a future release: 
+The following features are in development or planned for a future release (subject to change): 
 
 - Additional grid view option in the library
-- Mini player with a thumbnail-sized album art and minimal playback control interface
-- Gamepad input support for steam deck and similar devices
+- Per-album shuffle mode
+- Suggestion and discovery features 
 
 ## License
 
