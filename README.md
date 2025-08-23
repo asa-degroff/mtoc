@@ -48,7 +48,9 @@ The library editor lets you select one or multiple directories to scan for music
 
 ### Mini Player
 The mini player places essential playback controls in a separate small window. It can be configured to either hide the main window upon showing the mini player, or to keep both visible.
+
 There are three mini player layouts: vertical, horizontal, and compact. All feature the same functionality, offered in different sizes and shapes to suit your display dimensions and preference. 
+
 Note that the mini player will attempt to keep itself above other windows. This works when the application is running in an X11 environment or using XWayland. Wayland does not currently support applications keeping their own window on top. To make it work this way on Wayland, you will have to use the window management features that come with your desktop environment. 
 
 ### Queueing features
