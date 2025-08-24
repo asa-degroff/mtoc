@@ -62,8 +62,15 @@ void AlbumArtImageResponse::loadImage()
         return;
     }
     
+    // Strip any query parameters (used for cache busting)
+    QString cleanId = m_id;
+    int queryIndex = cleanId.indexOf('?');
+    if (queryIndex >= 0) {
+        cleanId = cleanId.left(queryIndex);
+    }
+    
     // The id format is "albumId/type/size" or "artist/album/type/size" where type is "thumbnail" or "full" and size is optional
-    QStringList parts = m_id.split('/');
+    QStringList parts = cleanId.split('/');
     if (parts.isEmpty()) {
         qWarning() << "AlbumArtImageProvider: Invalid image id:" << m_id;
         m_image = QImage(1, 1, QImage::Format_ARGB32);

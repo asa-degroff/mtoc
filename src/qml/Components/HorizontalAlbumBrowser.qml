@@ -18,6 +18,7 @@ Item {
     property bool isSnapping: false
     property bool isUserScrolling: false
     property int targetJumpIndex: -1  // Index we're jumping to with jumpToAlbum
+    property int thumbnailGeneration: 0  // Incremented when thumbnails are rebuilt to force refresh
 
     signal albumClicked(var album)
     signal centerAlbumChanged(var album)
@@ -133,6 +134,24 @@ Item {
             if (!root || root.isDestroying) return
             isInitializing = false
         })
+    }
+    
+    Connections {
+        target: LibraryManager
+        function onThumbnailsRebuilt() {
+            // Increment generation counter to force image refresh
+            thumbnailGeneration++
+            console.log("HorizontalAlbumBrowser: Thumbnails rebuilt, forcing refresh")
+        }
+    }
+    
+    Connections {
+        target: SettingsManager
+        function onThumbnailScaleChanged() {
+            // Also force refresh when thumbnail scale changes
+            thumbnailGeneration++
+            console.log("HorizontalAlbumBrowser: Thumbnail scale changed, forcing refresh")
+        }
     }
     
     Component.onDestruction: {
@@ -1119,7 +1138,8 @@ Item {
                                 if (forceImageLoad || isVisible) {
                                     // Get configured thumbnail size (100% = 200px, 150% = 300px, 200% = 400px)
                                     var thumbnailSize = SettingsManager.thumbnailScale * 2
-                                    return "image://albumart/" + albumData.id + "/thumbnail/" + thumbnailSize
+                                    // Add generation counter to force refresh after rebuilds
+                                    return "image://albumart/" + albumData.id + "/thumbnail/" + thumbnailSize + "?gen=" + root.thumbnailGeneration
                                 }
                                 return ""
                             }
