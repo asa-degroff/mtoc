@@ -1115,9 +1115,11 @@ Item {
                                 if (typeof albumData.hasArt === "undefined" || !albumData.hasArt) return ""
                                 if (typeof albumData.id === "undefined" || !albumData.id) return ""
                                 // Force loading for target delegates or nearby visible items
-                                // Request 400px size for up to 2x resolution scaling
+                                // Request thumbnail at the configured size from settings
                                 if (forceImageLoad || isVisible) {
-                                    return "image://albumart/" + albumData.id + "/thumbnail/400"
+                                    // Get configured thumbnail size (100% = 200px, 150% = 300px, 200% = 400px)
+                                    var thumbnailSize = SettingsManager.thumbnailScale * 2
+                                    return "image://albumart/" + albumData.id + "/thumbnail/" + thumbnailSize
                                 }
                                 return ""
                             }

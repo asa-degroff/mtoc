@@ -18,6 +18,7 @@ SettingsManager::SettingsManager(QObject *parent)
     , m_miniPlayerX(-1)
     , m_miniPlayerY(-1)
     , m_miniPlayerHidesMainWindow(true)
+    , m_thumbnailScale(200)  // Default to 200% (400px) for backward compatibility
 {
     loadSettings();
     setupSystemThemeDetection();
@@ -250,6 +251,21 @@ void SettingsManager::setMiniPlayerHidesMainWindow(bool hides)
     }
 }
 
+void SettingsManager::setThumbnailScale(int scale)
+{
+    // Validate scale value (must be 100, 150, or 200)
+    if (scale != 100 && scale != 150 && scale != 200) {
+        qWarning() << "Invalid thumbnail scale:" << scale << "- must be 100, 150, or 200";
+        return;
+    }
+    
+    if (m_thumbnailScale != scale) {
+        m_thumbnailScale = scale;
+        emit thumbnailScaleChanged(scale);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -260,6 +276,11 @@ void SettingsManager::loadSettings()
     m_showTrackInfoByDefault = m_settings.value("showTrackInfoByDefault", false).toBool();
     m_theme = static_cast<Theme>(m_settings.value("theme", Dark).toInt());
     m_layoutMode = static_cast<LayoutMode>(m_settings.value("layoutMode", Wide).toInt());
+    m_thumbnailScale = m_settings.value("thumbnailScale", 200).toInt();  // Default to 200% (400px)
+    // Ensure thumbnailScale is valid (100, 150, or 200)
+    if (m_thumbnailScale != 100 && m_thumbnailScale != 150 && m_thumbnailScale != 200) {
+        m_thumbnailScale = 200;
+    }
     m_settings.endGroup();
     
     m_settings.beginGroup("Playback");
@@ -313,6 +334,7 @@ void SettingsManager::saveSettings()
     m_settings.setValue("showTrackInfoByDefault", m_showTrackInfoByDefault);
     m_settings.setValue("theme", static_cast<int>(m_theme));
     m_settings.setValue("layoutMode", static_cast<int>(m_layoutMode));
+    m_settings.setValue("thumbnailScale", m_thumbnailScale);
     m_settings.endGroup();
     
     m_settings.beginGroup("Playback");

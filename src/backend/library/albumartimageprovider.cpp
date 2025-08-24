@@ -1,5 +1,6 @@
 #include "albumartimageprovider.h"
 #include "librarymanager.h"
+#include "../settings/settingsmanager.h"
 #include <QDebug>
 #include <QPixmap>
 #include <QImage>
@@ -114,15 +115,16 @@ void AlbumArtImageResponse::loadImage()
     // Determine the actual size to use
     int actualSize = targetSize > 0 ? targetSize : (m_requestedSize.isValid() ? qMax(m_requestedSize.width(), m_requestedSize.height()) : 0);
 
-    // Two-tier cache system: only cache thumbnail (256) and full size
+    // Two-tier cache system: only cache thumbnail and full size
     // For other sizes, we'll scale from the nearest cached version
     bool needsScaling = false;
     QString baseCacheKey;
     
     if (type == "thumbnail") {
-        // Always use standard thumbnail size for caching
-        baseCacheKey = QString("album_%1_thumbnail").arg(albumId);
-        needsScaling = actualSize > 0 && actualSize != 256;
+        // Use configured thumbnail size from settings
+        int configuredSize = SettingsManager::instance()->thumbnailScale() * 2; // Convert to pixels
+        baseCacheKey = QString("album_%1_thumbnail_%2").arg(albumId).arg(configuredSize);
+        needsScaling = actualSize > 0 && actualSize != configuredSize;
     } else {
         // Full size
         baseCacheKey = QString("album_%1_full").arg(albumId);
@@ -217,6 +219,14 @@ AlbumArtImageProvider::AlbumArtImageProvider(LibraryManager* libraryManager)
     int threadCount = qBound(4, idealThreadCount, 8);  // Increased from 2-4 to 4-8
     m_threadPool->setMaxThreadCount(threadCount);
     m_threadPool->setExpiryTimeout(30000); // 30 seconds
+    
+    // Connect to thumbnail scale changes to clear cache
+    connect(SettingsManager::instance(), &SettingsManager::thumbnailScaleChanged,
+            this, []() {
+                // Clear pixmap cache when thumbnail size changes
+                QPixmapCache::clear();
+                qDebug() << "Cleared pixmap cache due to thumbnail scale change";
+            });
     
     // Set higher priority for image loading threads
     m_threadPool->setThreadPriority(QThread::HighPriority);

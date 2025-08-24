@@ -39,6 +39,10 @@ LibraryManager::LibraryManager(QObject *parent)
     , m_artistModelCacheValid(false)
     , m_originalPixmapCacheLimit(QPixmapCache::cacheLimit())
     , m_processingAlbumArt(false)
+    , m_rebuildingThumbnails(false)
+    , m_rebuildProgress(0)
+    , m_totalAlbumsToRebuild(0)
+    , m_albumsRebuilt(0)
 {
     qDebug() << "LibraryManager: Constructor started";
     
@@ -267,6 +271,31 @@ int LibraryManager::artistCount() const
 bool LibraryManager::isProcessingAlbumArt() const
 {
     return m_processingAlbumArt;
+}
+
+bool LibraryManager::isRebuildingThumbnails() const
+{
+    return m_rebuildingThumbnails;
+}
+
+int LibraryManager::rebuildProgress() const
+{
+    return m_rebuildProgress;
+}
+
+QString LibraryManager::rebuildProgressText() const
+{
+    if (!m_rebuildingThumbnails) {
+        return QString();
+    }
+    
+    if (m_totalAlbumsToRebuild > 0) {
+        return QString("Rebuilding thumbnails... %1 of %2")
+            .arg(m_albumsRebuilt)
+            .arg(m_totalAlbumsToRebuild);
+    }
+    
+    return "Preparing to rebuild thumbnails...";
 }
 
 // Property setters
@@ -931,6 +960,53 @@ void LibraryManager::clearLibrary()
     emit albumCountChanged();
     emit albumArtistCountChanged();
     emit artistCountChanged();
+}
+
+void LibraryManager::rebuildAllThumbnails()
+{
+    if (m_rebuildingThumbnails) {
+        qWarning() << "Thumbnail rebuild already in progress";
+        return;
+    }
+    
+    qDebug() << "Starting thumbnail rebuild process";
+    
+    // Set rebuilding state
+    m_rebuildingThumbnails = true;
+    m_rebuildProgress = 0;
+    m_albumsRebuilt = 0;
+    emit rebuildingThumbnailsChanged();
+    emit rebuildProgressChanged();
+    emit rebuildProgressTextChanged();
+    
+    // Clear pixmap cache to force refresh
+    QPixmapCache::clear();
+    
+    // Connect watcher for rebuild completion
+    connect(&m_rebuildWatcher, &QFutureWatcher<void>::finished,
+            this, [this]() {
+                m_rebuildingThumbnails = false;
+                m_rebuildProgress = 100;
+                emit rebuildingThumbnailsChanged();
+                emit rebuildProgressChanged();
+                emit rebuildProgressTextChanged();
+                emit thumbnailsRebuilt();
+                
+                // Clear cache again to ensure new thumbnails are loaded
+                QPixmapCache::clear();
+                
+                // Trigger library refresh to update UI
+                emit libraryChanged();
+                
+                qDebug() << "Thumbnail rebuild completed";
+            });
+    
+    // Start rebuild in background
+    m_rebuildFuture = QtConcurrent::run([this]() {
+        rebuildThumbnailsInBackground();
+    });
+    
+    m_rebuildWatcher.setFuture(m_rebuildFuture);
 }
 
 // Utility methods
@@ -2163,6 +2239,124 @@ QString LibraryManager::getCanonicalPathFromDisplay(const QString& displayPath) 
     
     // Not found in display mappings
     return QString();
+}
+
+void LibraryManager::rebuildThumbnailsInBackground()
+{
+    qDebug() << "LibraryManager::rebuildThumbnailsInBackground() starting";
+    
+    // Get list of all albums with art
+    QList<int> albumIds = m_databaseManager->getAllAlbumIdsWithArt();
+    
+    // Update total count
+    QMetaObject::invokeMethod(this, [this, albumIds]() {
+        m_totalAlbumsToRebuild = albumIds.size();
+        m_albumsRebuilt = 0;
+        emit rebuildProgressTextChanged();
+    }, Qt::QueuedConnection);
+    
+    if (albumIds.isEmpty()) {
+        qDebug() << "No albums with art found to rebuild";
+        return;
+    }
+    
+    qDebug() << "Found" << albumIds.size() << "albums to rebuild thumbnails for";
+    
+    // Create a thread-local database connection
+    QString connectionName = QString("ThumbnailRebuildThread_%1").arg(quintptr(QThread::currentThreadId()));
+    
+    // Scope the database connection to ensure proper cleanup
+    {
+        QSqlDatabase db = DatabaseManager::createThreadConnection(connectionName);
+        
+        if (!db.isOpen()) {
+            qCritical() << "Failed to create thread database connection for thumbnail rebuild";
+            DatabaseManager::removeThreadConnection(connectionName);
+            return;
+        }
+        
+        try {
+            for (int albumId : albumIds) {
+                // Check if cancellation was requested
+                if (m_cancelRequested) {
+                    qDebug() << "Thumbnail rebuild cancelled";
+                    break;
+                }
+                
+                // Get album art path from database
+                QSqlQuery query(db);
+                query.prepare("SELECT full_path FROM album_art WHERE album_id = :album_id");
+                query.bindValue(":album_id", albumId);
+                
+                if (!query.exec() || !query.next()) {
+                    qWarning() << "Failed to get album art path for album:" << albumId;
+                    continue;
+                }
+                
+                QString imagePath = query.value(0).toString();
+                if (imagePath.isEmpty() || !QFile::exists(imagePath)) {
+                    qWarning() << "Album art file not found for album:" << albumId << "path:" << imagePath;
+                    continue;
+                }
+                
+                // Load the full image
+                QImage fullImage;
+                if (!fullImage.load(imagePath)) {
+                    qWarning() << "Failed to load album art from:" << imagePath;
+                    continue;
+                }
+                
+                // Create new thumbnail at the current configured size
+                int thumbnailSize = m_albumArtManager->getThumbnailSize();
+                QImage thumbnail = fullImage.scaled(thumbnailSize, thumbnailSize,
+                                                   Qt::KeepAspectRatio,
+                                                   Qt::SmoothTransformation);
+                
+                // Convert to byte array
+                QBuffer buffer;
+                buffer.open(QIODevice::WriteOnly);
+                
+                // Determine format from file extension
+                QString format = "jpeg";
+                if (imagePath.endsWith(".png", Qt::CaseInsensitive)) {
+                    format = "png";
+                }
+                
+                if (!thumbnail.save(&buffer, format.toUtf8().constData(), 85)) {
+                    qWarning() << "Failed to create thumbnail for album:" << albumId;
+                    continue;
+                }
+                
+                QByteArray thumbnailData = buffer.buffer();
+                
+                // Update database with new thumbnail
+                if (!m_databaseManager->updateAlbumThumbnail(albumId, thumbnailData)) {
+                    qWarning() << "Failed to update thumbnail in database for album:" << albumId;
+                    continue;
+                }
+                
+                // Update progress
+                QMetaObject::invokeMethod(this, [this]() {
+                    m_albumsRebuilt++;
+                    m_rebuildProgress = (m_albumsRebuilt * 100) / m_totalAlbumsToRebuild;
+                    emit rebuildProgressChanged();
+                    emit rebuildProgressTextChanged();
+                }, Qt::QueuedConnection);
+                
+                // Small delay to avoid overwhelming the system
+                QThread::msleep(10);
+            }
+        } catch (const std::exception& e) {
+            qCritical() << "Exception during thumbnail rebuild:" << e.what();
+        } catch (...) {
+            qCritical() << "Unknown exception during thumbnail rebuild";
+        }
+    }
+    
+    // Clean up thread connection
+    DatabaseManager::removeThreadConnection(connectionName);
+    
+    qDebug() << "LibraryManager::rebuildThumbnailsInBackground() completed";
 }
 
 } // namespace Mtoc

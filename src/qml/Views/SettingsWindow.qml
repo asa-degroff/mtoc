@@ -682,10 +682,225 @@ ApplicationWindow {
                         }
                     }
                     
+                    // Thumbnail Size Selection
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 10
+                        spacing: 12
+                        
+                        Label {
+                            text: "Thumbnail Size:"
+                            font.pixelSize: 14
+                            color: Theme.secondaryText
+                            Layout.preferredWidth: 130
+                        }
+                        
+                        ComboBox {
+                            id: thumbnailSizeComboBox
+                            Layout.preferredWidth: 150
+                            Layout.preferredHeight: 36
+                            model: ["100%", "150%", "200%"]
+                            currentIndex: {
+                                switch(SettingsManager.thumbnailScale) {
+                                    case 100: return 0
+                                    case 150: return 1
+                                    case 200: return 2
+                                    default: return 2
+                                }
+                            }
+                            
+                            onActivated: function(index) {
+                                var scale = 200;
+                                switch(index) {
+                                    case 0: scale = 100; break
+                                    case 1: scale = 150; break
+                                    case 2: scale = 200; break
+                                }
+                                SettingsManager.thumbnailScale = scale;
+                            }
+                            
+                            background: Rectangle {
+                                color: parent.hovered ? Theme.inputBackgroundHover : Theme.inputBackground
+                                radius: 4
+                                border.width: 1
+                                border.color: Theme.borderColor
+                            }
+                            
+                            contentItem: Text {
+                                text: parent.displayText
+                                color: Theme.primaryText
+                                font.pixelSize: 14
+                                verticalAlignment: Text.AlignVCenter
+                                leftPadding: 8
+                                rightPadding: 30  // Leave space for indicator
+                            }
+                            
+                            indicator: Canvas {
+                                id: thumbnailIndicatorCanvas
+                                x: parent.width - width - 8
+                                y: parent.height / 2 - height / 2
+                                width: 12
+                                height: 8
+                                contextType: "2d"
+                                
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.reset()
+                                    ctx.moveTo(0, 0)
+                                    ctx.lineTo(width, 0)
+                                    ctx.lineTo(width / 2, height)
+                                    ctx.closePath()
+                                    ctx.fillStyle = "#cccccc"
+                                    ctx.fill()
+                                }
+                                
+                                Connections {
+                                    target: Theme
+                                    function onIsDarkChanged() {
+                                        thumbnailIndicatorCanvas.requestPaint()
+                                    }
+                                }
+                            }
+                            
+                            popup: Popup {
+                                y: parent.height + 2
+                                width: parent.width
+                                implicitHeight: contentItem.implicitHeight + 2
+                                padding: 1
+                                
+                                contentItem: ListView {
+                                    clip: true
+                                    implicitHeight: contentHeight
+                                    model: thumbnailSizeComboBox.popup.visible ? thumbnailSizeComboBox.model : null
+                                    currentIndex: thumbnailSizeComboBox.highlightedIndex
+                                    
+                                    delegate: ItemDelegate {
+                                        width: thumbnailSizeComboBox.width
+                                        height: 36
+                                        
+                                        contentItem: Text {
+                                            text: modelData
+                                            color: parent.hovered ? Theme.primaryText : Theme.secondaryText
+                                            font.pixelSize: 14
+                                            verticalAlignment: Text.AlignVCenter
+                                            leftPadding: 8
+                                        }
+                                        
+                                        background: Rectangle {
+                                            color: parent.hovered ? Theme.selectedBackground : "transparent"
+                                            radius: 2
+                                        }
+                                        
+                                        onClicked: {
+                                            thumbnailSizeComboBox.currentIndex = index
+                                            thumbnailSizeComboBox.activated(index)
+                                            thumbnailSizeComboBox.popup.close()
+                                        }
+                                    }
+                                    
+                                    ScrollIndicator.vertical: ScrollIndicator { }
+                                }
+                                
+                                background: Rectangle {
+                                    color: Theme.backgroundColor
+                                    border.color: Theme.borderColor
+                                    border.width: 1
+                                    radius: 4
+                                }
+                            }
+                        }
+                        
+                        Image {
+                            source: Theme.isDark ? "qrc:/resources/icons/info.svg" : "qrc:/resources/icons/info-dark.svg"
+                            Layout.preferredWidth: 16
+                            Layout.preferredHeight: 16
+                            Layout.leftMargin: 4
+                            sourceSize.width: 16
+                            sourceSize.height: 16
+                            
+                            MouseArea {
+                                anchors.centerIn: parent
+                                width: 24
+                                height: 24
+                                hoverEnabled: true
+                                
+                                ToolTip {
+                                    id: thumbnailSizeTooltip
+                                    visible: parent.containsMouse
+                                    text: "Larger thumbnails look sharper on high-DPI displays\nbut use more memory. Smaller thumbnails reduce\nmemory usage at the cost of sharpness."
+                                    delay: 200
+                                    timeout: 8000
+                                    background: Rectangle {
+                                        color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                                        border.color: Theme.borderColor
+                                        radius: 4
+                                    }
+                                    contentItem: Text {
+                                        text: thumbnailSizeTooltip.text
+                                        font.pixelSize: 12
+                                        color: Theme.primaryText
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Item { Layout.fillWidth: true }
+                    }
+                    
+                    // Rebuild Thumbnails Button
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 8
+                        spacing: 12
+                        
+                        Item { Layout.preferredWidth: 130 } // Align with label column
+                        
+                        Button {
+                            id: rebuildThumbnailsButton
+                            text: LibraryManager.rebuildingThumbnails ? "Rebuilding..." : "Rebuild Thumbnails"
+                            Layout.preferredWidth: 150
+                            Layout.preferredHeight: 36
+                            enabled: !LibraryManager.rebuildingThumbnails && !LibraryManager.scanning
+                            
+                            onClicked: {
+                                LibraryManager.rebuildAllThumbnails()
+                            }
+                            
+                            background: Rectangle {
+                                color: parent.enabled ? (parent.hovered ? Theme.selectedBackground : Theme.inputBackground) : Theme.disabledBackground
+                                radius: 4
+                                border.width: 1
+                                border.color: parent.enabled ? Theme.borderColor : Theme.disabledBorderColor
+                            }
+                            
+                            contentItem: Text {
+                                text: parent.text
+                                color: parent.enabled ? Theme.primaryText : Theme.disabledText
+                                font.pixelSize: 14
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                        
+                        Label {
+                            text: LibraryManager.rebuildProgressText
+                            font.pixelSize: 12
+                            color: Theme.secondaryText
+                            visible: LibraryManager.rebuildingThumbnails
+                            Layout.fillWidth: true
+                        }
+                        
+                        Item { 
+                            Layout.fillWidth: true
+                            visible: !LibraryManager.rebuildingThumbnails
+                        }
+                    }
+                    
                     CheckBox {
                         id: showTrackInfoCheck
                         text: "Show track info panel by default"
                         checked: SettingsManager.showTrackInfoByDefault
+                        Layout.topMargin: 10
                         
                         onToggled: {
                             SettingsManager.showTrackInfoByDefault = checked

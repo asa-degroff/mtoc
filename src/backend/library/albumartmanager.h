@@ -39,7 +39,7 @@ public:
                                     const QString& hash) const;
     
     // Thumbnail configuration
-    static constexpr int THUMBNAIL_SIZE = 256;
+    int getThumbnailSize() const;
     static constexpr int MAX_FULL_SIZE = 1800;
     
 signals:
@@ -50,6 +50,7 @@ private:
     // Helper methods
     QString calculateHash(const QByteArray& data) const;
     QImage createThumbnail(const QImage& source) const;
+    QImage createThumbnail(const QImage& source, int size) const;
     bool saveFullImage(const QImage& image, const QString& path, const QString& format) const;
     QString sanitizeFilename(const QString& name) const;
     QString detectImageFormat(const QByteArray& data) const;

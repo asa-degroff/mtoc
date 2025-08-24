@@ -91,6 +91,8 @@ public:
     bool albumArtExists(int albumId);
     QString getAlbumArtPath(int albumId);
     QByteArray getAlbumArtThumbnail(int albumId);
+    bool updateAlbumThumbnail(int albumId, const QByteArray& thumbnailData);
+    QList<int> getAllAlbumIdsWithArt();
 
 signals:
     void databaseError(const QString& error);
