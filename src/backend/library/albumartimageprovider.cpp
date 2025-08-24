@@ -8,6 +8,11 @@
 #include <QMutex>
 #include <QMutexLocker>
 #include <QThread>
+#include <QCoreApplication>
+
+#ifdef Q_OS_LINUX
+#include <malloc.h>
+#endif
 
 namespace Mtoc {
 
@@ -232,7 +237,20 @@ AlbumArtImageProvider::AlbumArtImageProvider(LibraryManager* libraryManager)
             this, []() {
                 // Clear pixmap cache when thumbnail size changes
                 QPixmapCache::clear();
+                
+                // Force garbage collection in QML
+                QMetaObject::invokeMethod(qApp, []() {
+                    // This will trigger QML garbage collection
+                    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+                    QCoreApplication::processEvents();
+                });
+                
                 qDebug() << "Cleared pixmap cache due to thumbnail scale change";
+                
+                // On Linux, try to release memory back to OS
+                #ifdef Q_OS_LINUX
+                malloc_trim(0);
+                #endif
             });
     
     // Set higher priority for image loading threads

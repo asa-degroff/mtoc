@@ -19,6 +19,7 @@ Item {
     property bool isUserScrolling: false
     property int targetJumpIndex: -1  // Index we're jumping to with jumpToAlbum
     property int thumbnailGeneration: 0  // Incremented when thumbnails are rebuilt to force refresh
+    property bool clearingImages: false  // Flag to clear images during size change
 
     signal albumClicked(var album)
     signal centerAlbumChanged(var album)
@@ -148,9 +149,27 @@ Item {
     Connections {
         target: SettingsManager
         function onThumbnailScaleChanged() {
-            // Also force refresh when thumbnail scale changes
-            thumbnailGeneration++
-            console.log("HorizontalAlbumBrowser: Thumbnail scale changed, forcing refresh")
+            console.log("HorizontalAlbumBrowser: Thumbnail scale changed, clearing images")
+            
+            // Set flag to clear images
+            clearingImages = true
+            
+            // Force ListView to recreate all delegates by resetting the model
+            var currentIndex = listView.currentIndex
+            var tempModel = listView.model
+            listView.model = null
+            
+            // Force garbage collection
+            gc()
+            
+            // Restore model and position after a delay
+            Qt.callLater(function() {
+                listView.model = tempModel
+                listView.currentIndex = currentIndex
+                clearingImages = false
+                thumbnailGeneration++
+                console.log("HorizontalAlbumBrowser: Reloaded with new thumbnail size")
+            })
         }
     }
     
@@ -1110,6 +1129,7 @@ Item {
                 
                 Item {
                     id: visualContainer
+                    objectName: "visualContainer"
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.top: parent.top
                     anchors.topMargin: 10  // Small margin to shift the album view up
@@ -1118,6 +1138,7 @@ Item {
                     
                     Item {
                         id: albumContainer
+                        objectName: "albumContainer"
                         anchors.top: parent.top
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: 200
@@ -1125,8 +1146,11 @@ Item {
                             
                         Image {
                             id: albumImage
+                            objectName: "albumImage"
                             anchors.fill: parent
                             source: {
+                                // Clear source when we're resetting for size change
+                                if (root.clearingImages) return ""
                                 // Robust source binding with null checks
                                 if (!delegateItem || root.isDestroying) return ""
                                 if (!albumData || typeof albumData === "undefined") return ""

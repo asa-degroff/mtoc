@@ -995,6 +995,15 @@ void LibraryManager::rebuildAllThumbnails()
                 // Clear cache again to ensure new thumbnails are loaded
                 QPixmapCache::clear();
                 
+                // Force garbage collection
+                QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+                QCoreApplication::processEvents();
+                
+                // On Linux, release memory back to OS
+                #ifdef Q_OS_LINUX
+                malloc_trim(0);
+                #endif
+                
                 // Trigger library refresh to update UI
                 emit libraryChanged();
                 
