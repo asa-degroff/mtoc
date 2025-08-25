@@ -1661,7 +1661,7 @@ Item {
                                 cellHeight: 140 + 10 // Thumbnail + title + padding
                                 interactive: false // Parent ListView handles scrolling primarily
                                 reuseItems: false  // Disabled to prevent issues with expand/collapse
-                                cacheBuffer: 600  // Increased cache for album grid
+                                cacheBuffer: 3600  // Increased cache for album grid
 
                                 model: albumsContainer.cachedAlbums
 
@@ -1680,8 +1680,8 @@ Item {
                                         if (pos) {
                                             globalY = pos.y
                                             // Check if in viewport with buffer zone
-                                            var viewportTop = artistsListView.contentY - 200  // 200px buffer above
-                                            var viewportBottom = artistsListView.contentY + artistsListView.height + 200  // 200px buffer below
+                                            var viewportTop = artistsListView.contentY - 600  // 600px buffer above
+                                            var viewportBottom = artistsListView.contentY + artistsListView.height + 600  // 600px buffer below
                                             isInViewport = globalY + height > viewportTop && globalY < viewportBottom
                                         }
                                     }
@@ -1763,7 +1763,7 @@ Item {
                                                 fillMode: Image.PreserveAspectFit
                                                 clip: false
                                                 asynchronous: true
-                                                cache: false  // Don't cache in virtualized lists to save memory
+                                                cache: true  // Enable caching to prevent flickering during scrolling
                                                 sourceSize.width: 220  // Limit to 2x the display size for retina
                                                 sourceSize.height: 220
                                                 
@@ -2540,7 +2540,7 @@ Item {
                         visible: (root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist) || rightPane.currentAlbumTracks.length > 0
                         spacing: 1
                         reuseItems: false
-                        cacheBuffer: 800  // Increased cache without recycling
+                        cacheBuffer: 1200  // Increased cache without recycling
                         currentIndex: -1  // Start with no selection
                         
                         // Drag and drop state
@@ -5209,7 +5209,7 @@ Item {
                 // If currently jumping, we need to wait
                 if (isJumping) {
                     // Use a timer with a single retry to avoid infinite loops
-                    delayTimer.interval = 100
+                    delayTimer.interval = 1
                     delayTimer.triggered.connect(function() {
                         delayTimer.triggered.disconnect(arguments.callee)
                         // Only retry once - if still jumping, just proceed anyway
