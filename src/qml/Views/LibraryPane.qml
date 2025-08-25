@@ -36,6 +36,12 @@ Item {
     
     property var selectedAlbum: null
     property var expandedArtists: ({})  // Object to store expansion state by artist name
+    onExpandedArtistsChanged: {
+        // Save expanded state with debouncing
+        if (!isSearching) {
+            expandedSaveTimer.restart()
+        }
+    }
     property string highlightedArtist: ""  // Track which artist to highlight
     property bool isJumping: false  // Flag to prevent concurrent jump operations
     property bool isProgrammaticScrolling: false  // Flag to disable animations during programmatic scrolling
@@ -79,6 +85,31 @@ Item {
         }
     }
     
+    // Timer to debounce scroll position saves
+    Timer {
+        id: scrollSaveTimer
+        interval: 500  // Wait 500ms after scrolling stops
+        running: false
+        repeat: false
+        onTriggered: {
+            // Save scroll position if not searching
+            if (!root.isSearching && artistsListView) {
+                SettingsManager.artistsScrollPosition = artistsListView.contentY
+            }
+        }
+    }
+    
+    // Timer to debounce expanded artists saves
+    Timer {
+        id: expandedSaveTimer
+        interval: 300  // Wait 300ms after expansion change
+        running: false
+        repeat: false
+        onTriggered: {
+            saveExpandedArtistsState()
+        }
+    }
+    
     // Multi-selection state
     property var selectedTrackIndices: []
     property int lastSelectedIndex: -1
@@ -88,6 +119,7 @@ Item {
     property var searchResults: ({})
     property bool isSearching: false
     property string previousExpandedState: ""  // Store expanded state before search
+    property double previousScrollPosition: 0  // Store scroll position before search
     property var searchResultsCache: ({})  // Cache for search results
     property int cacheExpiryTime: 60000  // Cache expires after 1 minute
     
@@ -393,6 +425,9 @@ Item {
         // Don't auto-select any track - start with no selection
         // Qt.callLater(autoSelectCurrentTrack)
         
+        // Restore expanded artists state
+        restoreExpandedArtistsState()
+        
         // Restore selected album or playlist after a delay to ensure everything is loaded
         if (SettingsManager.lastSelectedWasPlaylist && SettingsManager.lastSelectedPlaylistName) {
             Qt.callLater(function() {
@@ -402,6 +437,11 @@ Item {
             Qt.callLater(function() {
                 restoreSelectedAlbum(SettingsManager.lastSelectedAlbumId)
             })
+        }
+        
+        // Restore scroll position after a delay to ensure the view is ready
+        if (LibraryManager.artistModel && LibraryManager.artistModel.length > 0) {
+            Qt.callLater(restoreScrollPosition)
         }
         
         // Initialize keyboard navigation after a small delay to ensure everything is ready
@@ -433,6 +473,15 @@ Item {
             artistAlbumIndexCache = {}
             currentTrackIndexMap = {}
             currentTrackFilePathMap = {}
+            
+            // Restore scroll position if this is the initial library load
+            // Check if we haven't restored yet and have artists
+            if (LibraryManager.artistModel && LibraryManager.artistModel.length > 0) {
+                var savedPosition = SettingsManager.artistsScrollPosition
+                if (savedPosition > 0 && artistsListView && artistsListView.contentY === 0) {
+                    Qt.callLater(restoreScrollPosition)
+                }
+            }
         }
     }
     
@@ -1315,6 +1364,13 @@ Item {
                             interactive: !root.isScrollBarDragging  // Disable ListView interaction during scroll bar drag
                             reuseItems: false  // Disabled to maintain consistent scroll positions
                             cacheBuffer: 1200  // Increase cache for smoother scrolling without recycling
+                            
+                            // Save scroll position when scrolling
+                            onContentYChanged: {
+                                if (!root.isSearching && !root.isProgrammaticScrolling) {
+                                    scrollSaveTimer.restart()
+                                }
+                            }
                     
                     // Adaptive scroll speed - reduced when using scroll bar
                     flickDeceleration: root.isScrollBarDragging ? 1500 : 8000
@@ -4113,10 +4169,53 @@ Item {
         }
     }
     
+    // State persistence functions
+    function saveExpandedArtistsState() {
+        // Convert expandedArtists object to a list of artist names
+        var expandedList = []
+        for (var artistName in expandedArtists) {
+            if (expandedArtists[artistName] === true) {
+                expandedList.push(artistName)
+            }
+        }
+        SettingsManager.expandedArtistsList = expandedList
+    }
+    
+    function restoreExpandedArtistsState() {
+        // Convert list back to object
+        var expandedObj = {}
+        var expandedList = SettingsManager.expandedArtistsList
+        for (var i = 0; i < expandedList.length; i++) {
+            expandedObj[expandedList[i]] = true
+        }
+        expandedArtists = expandedObj
+    }
+    
+    function restoreScrollPosition() {
+        // Restore scroll position after a small delay to ensure ListView is ready
+        Qt.callLater(function() {
+            if (artistsListView && !root.isSearching) {
+                var savedPosition = SettingsManager.artistsScrollPosition
+                if (savedPosition > 0) {
+                    artistsListView.contentY = savedPosition
+                }
+            }
+        })
+    }
+    
     function performSearch(searchTerm) {
         if (searchTerm.trim().length === 0) {
             clearSearch()
             return
+        }
+        
+        // Save pre-search state if this is the start of a new search
+        if (!isSearching) {
+            // Save current scroll position and expanded state
+            if (artistsListView) {
+                previousScrollPosition = artistsListView.contentY
+            }
+            previousExpandedState = JSON.stringify(expandedArtists)
         }
         
         // Switch to Artists tab when searching (search is not supported for playlists)
@@ -4166,6 +4265,14 @@ Item {
                 expandedArtists = {}
             }
             previousExpandedState = ""
+        }
+        
+        // Restore previous scroll position
+        if (previousScrollPosition > 0 && artistsListView) {
+            Qt.callLater(function() {
+                artistsListView.contentY = previousScrollPosition
+                previousScrollPosition = 0
+            })
         }
     }
     
