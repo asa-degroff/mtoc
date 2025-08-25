@@ -1006,6 +1006,11 @@ Item {
                     
                     // Highlight the album's artist
                     root.highlightedArtist = album.albumArtist
+                    
+                    // Jump to this album in the artists list (skip browser jump since we're already there)
+                    if (album && album.albumArtist && album.title) {
+                        root.jumpToAlbum(album.albumArtist, album.title, true)
+                    }
                 }
                 
                 onCenterAlbumChanged: function(album) {
@@ -5189,7 +5194,7 @@ Item {
         artistAlbumIndexCache[artistName] = indexMap
     }
     
-    function jumpToAlbum(artistName, albumTitle) {
+    function jumpToAlbum(artistName, albumTitle, skipBrowserJump) {
         try {
             if (!artistName || !albumTitle || typeof artistName !== "string" || typeof albumTitle !== "string") return
             
@@ -5205,8 +5210,8 @@ Item {
             var albumMap = artistAlbumCache[artistName]
             if (albumMap && albumMap[albumTitle]) {
                 selectedAlbum = albumMap[albumTitle]
-                // Also jump to it in the album browser
-                if (albumBrowser && typeof albumBrowser.jumpToAlbum === "function") {
+                // Also jump to it in the album browser (unless we're being called from the browser)
+                if (!skipBrowserJump && albumBrowser && typeof albumBrowser.jumpToAlbum === "function") {
                     albumBrowser.jumpToAlbum(albumMap[albumTitle])
                 }
             } else {
