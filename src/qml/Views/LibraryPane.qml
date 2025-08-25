@@ -60,6 +60,7 @@ Item {
     property var expandCollapseDebounceTimer: null  // Debounce timer for expansion/collapse
     property string pendingExpandCollapseArtist: ""  // Artist pending expansion/collapse
     property bool pendingExpandCollapseState: false  // State to apply after debounce
+    property var albumContainerHeightCache: ({})  // Cache for pre-calculated album container heights
     
     // Tab state - bind to SettingsManager to maintain state across layout changes
     property int currentTab: SettingsManager.libraryActiveTab  // 0 = Artists, 1 = Playlists
@@ -1485,9 +1486,9 @@ Item {
                             }
                         }
                         
-                        // Smooth height animation (disabled only during scroll bar dragging and list movement)
+                        // Smooth height animation (disabled during scrolling for better performance)
                         Behavior on height {
-                            enabled: !root.isScrollBarDragging && !artistsListView.moving
+                            enabled: !root.isScrollBarDragging && !artistsListView.isScrolling
                             NumberAnimation {
                                 duration: 300  // Match scroll animation duration
                                 easing.type: Easing.InOutQuad
@@ -1613,7 +1614,7 @@ Item {
                             clip: false  // Allow glow effect to overflow
                             
                             Behavior on opacity {
-                                enabled: !root.isScrollBarDragging && !artistsListView.moving
+                                enabled: !root.isScrollBarDragging && !artistsListView.isScrolling
                                 NumberAnimation {
                                     duration: 200
                                     easing.type: Easing.InOutQuad
@@ -1628,9 +1629,15 @@ Item {
                             property var cachedAlbums: []
                             property string cachedArtistName: ""
                             
-                            // Calculate fixed height for album container
+                            // Calculate fixed height for album container with caching
                             function calculateAlbumContainerHeight() {
                                 if (!cachedAlbums || cachedAlbums.length === 0) return 0
+                                
+                                // Check cache first
+                                var cacheKey = cachedArtistName + "_" + cachedAlbums.length + "_" + width
+                                if (root.albumContainerHeightCache[cacheKey] !== undefined) {
+                                    return root.albumContainerHeightCache[cacheKey]
+                                }
                                 
                                 var minCellWidth = 130  // Minimum width (120 thumbnail + 10 spacing)
                                 var cellHeight = 150  // 140 + 10 spacing
@@ -1639,7 +1646,12 @@ Item {
                                 if (columns < 1) columns = 1
                                 var rows = Math.ceil(cachedAlbums.length / columns)
                                 
-                                return (rows * cellHeight) + 16  // Grid height + padding
+                                var height = (rows * cellHeight) + 16  // Grid height + padding
+                                
+                                // Cache the result
+                                root.albumContainerHeightCache[cacheKey] = height
+                                
+                                return height
                             }
                             
                             // Function to refresh album data
@@ -1670,22 +1682,28 @@ Item {
                                 refreshAlbumData()
                             }
 
-                            GridView {
-                                id: albumsGrid
+                            // Lazy load the GridView using Loader for better performance
+                            Loader {
+                                id: albumsGridLoader
                                 anchors.fill: parent
                                 anchors.margins: 8
+                                active: albumsVisible  // Only create GridView when visible
+                                asynchronous: true  // Load asynchronously for smoother performance
+                                
+                                sourceComponent: GridView {
+                                    id: albumsGrid
                                 clip: false  // Allow glow effect to overflow
                                 cellWidth: {
                                     var minCellWidth = 130  // Minimum width (120 thumbnail + 10 spacing)
-                                    var availableWidth = parent.width - 16  // Account for margins
+                                        var availableWidth = parent.width  // Parent is now the Loader
                                     var columns = Math.floor(availableWidth / minCellWidth)
                                     if (columns < 1) columns = 1
                                     return Math.floor(availableWidth / columns)
                                 }
                                 cellHeight: 140 + 10 // Thumbnail + title + padding
                                 interactive: false // Parent ListView handles scrolling primarily
-                                reuseItems: false  // Disabled to prevent issues with expand/collapse
-                                cacheBuffer: 3600  // Increased cache for album grid
+                                    reuseItems: true  
+                                    cacheBuffer: 3600  // Optimized cache buffer for album grid
 
                                 model: albumsContainer.cachedAlbums
 
@@ -1968,7 +1986,8 @@ Item {
                                     }
                                 }
                                 ScrollIndicator.vertical: ScrollIndicator { }
-                            }
+                                }  // End of GridView component
+                            }  // End of Loader
                         }
                     }  // End of artistDelegate Item
                     
