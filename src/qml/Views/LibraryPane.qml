@@ -237,6 +237,14 @@ Item {
     }
     
     
+    // General purpose tiny delay timer for deferred operations
+    Timer {
+        id: delayTimer
+        interval: 1
+        running: false
+        repeat: false
+    }
+    
     // Layout stabilization timer for dynamic scrolling
     Timer {
         id: layoutStabilizationTimer
@@ -1453,11 +1461,11 @@ Item {
                             }
                         }
                         
-                        // Smooth height animation (disabled during scroll bar dragging and programmatic scrolling)
+                        // Smooth height animation (disabled only during scroll bar dragging and list movement)
                         Behavior on height {
-                            enabled: !root.isScrollBarDragging && !artistsListView.moving && !root.isProgrammaticScrolling
+                            enabled: !root.isScrollBarDragging && !artistsListView.moving
                             NumberAnimation {
-                                duration: 200
+                                duration: 300  // Match scroll animation duration
                                 easing.type: Easing.InOutQuad
                             }
                         }
@@ -4480,7 +4488,6 @@ Item {
         artistsListView.forceLayout()
         
         if (smooth) {
-            // Store the target index for position verification
             var targetIndex = index
             
             // Force layout update to ensure everything is current
@@ -5107,9 +5114,6 @@ Item {
             }
             isJumping = true
             
-            // Set programmatic scrolling flag immediately to disable all animations
-            isProgrammaticScrolling = true
-            
             // Clear search state and highlight the artist
             clearSearch()
             highlightedArtist = artistName
@@ -5120,7 +5124,6 @@ Item {
             if (artistIndex === undefined) {
                 console.log("jumpToArtist: Artist not found in index mapping")
                 isJumping = false
-                isProgrammaticScrolling = false
                 return
             }
             
@@ -5134,40 +5137,40 @@ Item {
             console.log("jumpToArtist: Artist was expanded:", wasExpanded)
             
             if (wasExpanded) {
-                // Already expanded, safe to scroll immediately
+                // Already expanded, safe to scroll immediately with animation
                 console.log("jumpToArtist: Artist already expanded, scrolling immediately")
-                scrollToArtistIndex(artistIndex, true)
+                scrollToArtistIndex(artistIndex, true, false)  // Don't account for expansion
                 // Reset flags after animation completes
                 Qt.callLater(function() { 
                     isJumping = false
-                    isProgrammaticScrolling = false
                 })
             } else {
-                // Expand the artist synchronously
+                // Expand the artist first
                 console.log("jumpToArtist: Expanding artist")
                 var updatedExpanded = Object.assign({}, expandedArtists)
                 updatedExpanded[artistName] = true
                 expandedArtists = updatedExpanded
                 
-                // Force immediate layout update
-                artistsListView.forceLayout()
-                
-                // Use dynamic layout stabilization instead of fixed delays
-                layoutStabilizationTimer.targetIndex = artistIndex
-                layoutStabilizationTimer.start()
-                
-                // Connect to stop signal to reset flags
-                function onTimerStopped() {
-                    if (!layoutStabilizationTimer.running) {
-                        layoutStabilizationTimer.runningChanged.disconnect(onTimerStopped)
-                        // Reset flags after scroll completes
+                // Wait a brief moment for the expansion to start, then scroll
+                // This allows the ListView to begin updating its layout
+                Qt.callLater(function() {
+                    // Force layout update
+                    artistsListView.forceLayout()
+                    
+                    // Now scroll to the artist with animation
+                    // Use a slight delay to ensure expansion animation has started
+                    delayTimer.interval = 1  // tiny delay to let expansion begin
+                    delayTimer.triggered.connect(function() {
+                        delayTimer.triggered.disconnect(arguments.callee)
+                        scrollToArtistIndex(artistIndex, true, false)
+                        
+                        // Reset jump flag after animation
                         Qt.callLater(function() {
                             isJumping = false
-                            isProgrammaticScrolling = false
                         })
-                    }
-                }
-                layoutStabilizationTimer.runningChanged.connect(onTimerStopped)
+                    })
+                    delayTimer.start()
+                })
             }
         } catch (error) {
             console.warn("Error in jumpToArtist:", error)
@@ -5198,27 +5201,61 @@ Item {
         try {
             if (!artistName || !albumTitle || typeof artistName !== "string" || typeof albumTitle !== "string") return
             
-            // First jump to the artist
-            jumpToArtist(artistName)
+            // Check if we're already at this artist
+            var alreadyAtArtist = (selectedArtistName === artistName)
             
-            // Check if we have cached albums for this artist
-            if (!artistAlbumCache[artistName]) {
-                updateAlbumCacheForArtist(artistName)
+            // Jump to the artist if needed
+            if (!alreadyAtArtist) {
+                // If currently jumping, we need to wait
+                if (isJumping) {
+                    // Use a timer with a single retry to avoid infinite loops
+                    delayTimer.interval = 100
+                    delayTimer.triggered.connect(function() {
+                        delayTimer.triggered.disconnect(arguments.callee)
+                        // Only retry once - if still jumping, just proceed anyway
+                        if (!isJumping) {
+                            jumpToArtist(artistName)
+                        }
+                        // Continue with album selection regardless
+                        selectAlbumForArtist(artistName, albumTitle, skipBrowserJump)
+                    })
+                    delayTimer.start()
+                    return
+                }
+                
+                jumpToArtist(artistName)
             }
             
-            // Use O(1) lookup from cache
-            var albumMap = artistAlbumCache[artistName]
-            if (albumMap && albumMap[albumTitle]) {
-                selectedAlbum = albumMap[albumTitle]
-                // Also jump to it in the album browser (unless we're being called from the browser)
-                if (!skipBrowserJump && albumBrowser && typeof albumBrowser.jumpToAlbum === "function") {
-                    albumBrowser.jumpToAlbum(albumMap[albumTitle])
-                }
+            // Select the album (with a slight delay if we jumped to a new artist)
+            if (alreadyAtArtist) {
+                selectAlbumForArtist(artistName, albumTitle, skipBrowserJump)
             } else {
-                console.warn("Album not found in cache:", artistName, "-", albumTitle)
+                Qt.callLater(function() {
+                    selectAlbumForArtist(artistName, albumTitle, skipBrowserJump)
+                })
             }
         } catch (error) {
             console.warn("Error in jumpToAlbum:", error)
+        }
+    }
+    
+    // Helper function to select an album for the current artist
+    function selectAlbumForArtist(artistName, albumTitle, skipBrowserJump) {
+        // Check if we have cached albums for this artist
+        if (!artistAlbumCache[artistName]) {
+            updateAlbumCacheForArtist(artistName)
+        }
+        
+        // Use O(1) lookup from cache
+        var albumMap = artistAlbumCache[artistName]
+        if (albumMap && albumMap[albumTitle]) {
+            selectedAlbum = albumMap[albumTitle]
+            // Also jump to it in the album browser (unless we're being called from the browser)
+            if (!skipBrowserJump && albumBrowser && typeof albumBrowser.jumpToAlbum === "function") {
+                albumBrowser.jumpToAlbum(albumMap[albumTitle])
+            }
+        } else {
+            console.warn("Album not found in cache:", artistName, "-", albumTitle)
         }
     }
     
