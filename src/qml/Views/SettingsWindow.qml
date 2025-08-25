@@ -882,12 +882,51 @@ ApplicationWindow {
                             }
                         }
                         
-                        Label {
-                            text: LibraryManager.rebuildProgressText
-                            font.pixelSize: 12
-                            color: Theme.secondaryText
-                            visible: LibraryManager.rebuildingThumbnails
+                        // Progress section for rebuilding thumbnails
+                        ColumnLayout {
                             Layout.fillWidth: true
+                            Layout.maximumWidth: 250
+                            spacing: 4
+                            visible: LibraryManager.rebuildingThumbnails
+                            
+                            ProgressBar {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 6
+                                value: LibraryManager.rebuildProgress / 100.0
+                                from: 0
+                                to: 1
+                                
+                                background: Rectangle {
+                                    color: Theme.inputBackground
+                                    radius: 3
+                                    border.color: Theme.borderColor
+                                    border.width: 1
+                                }
+                                
+                                contentItem: Item {
+                                    Rectangle {
+                                        width: parent.width * parent.parent.value
+                                        height: parent.height
+                                        radius: 3
+                                        color: Theme.linkColor
+                                        
+                                        Behavior on width {
+                                            NumberAnimation {
+                                                duration: 200
+                                                easing.type: Easing.OutCubic
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            Label {
+                                Layout.fillWidth: true
+                                text: LibraryManager.rebuildProgressText
+                                font.pixelSize: 11
+                                color: Theme.secondaryText
+                                horizontalAlignment: Text.AlignHCenter
+                            }
                         }
                         
                         Item { 
