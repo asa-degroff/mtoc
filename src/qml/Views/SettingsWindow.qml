@@ -827,7 +827,7 @@ ApplicationWindow {
                                 ToolTip {
                                     id: thumbnailSizeTooltip
                                     visible: parent.containsMouse
-                                    text: "Larger thumbnails look sharper on high-DPI displays\nbut use more memory. Smaller thumbnails reduce\nmemory usage at the cost of sharpness."
+                                    text: "Larger thumbnails appear sharper but use more memory.\nSmaller thumbnails may improve performance.\nRebuild thumbnails for changes to take effect."
                                     delay: 200
                                     timeout: 8000
                                     background: Rectangle {
@@ -1566,7 +1566,7 @@ ApplicationWindow {
                     }
                     
                     Label {
-                        text: "mtoc - Music Library and Player"
+                        text: "mtoc - Music Table of Contents"
                         font.pixelSize: 14
                         color: Theme.secondaryText
                     }
