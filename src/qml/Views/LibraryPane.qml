@@ -245,6 +245,30 @@ Item {
         repeat: false
     }
     
+    // Timer for deferred viewport calculations
+    Timer {
+        id: viewportUpdateTimer
+        interval: 100  // Update viewport status 100ms after scrolling stops
+        running: false
+        repeat: false
+        property var pendingUpdates: []
+        
+        onTriggered: {
+            // Process all pending viewport updates
+            for (var i = 0; i < pendingUpdates.length; i++) {
+                if (pendingUpdates[i] && typeof pendingUpdates[i] === 'function') {
+                    pendingUpdates[i]()
+                }
+            }
+            pendingUpdates = []
+        }
+        
+        function scheduleUpdate(updateFunc) {
+            pendingUpdates.push(updateFunc)
+            restart()
+        }
+    }
+    
     // Layout stabilization timer for dynamic scrolling
     Timer {
         id: layoutStabilizationTimer
@@ -1686,11 +1710,12 @@ Item {
                                         }
                                     }
                                     
-                                    // Update visibility when scroll position changes
+                                    // Update visibility when scroll position changes (deferred)
                                     Connections {
                                         target: artistsListView
                                         function onContentYChanged() {
-                                            updateGlobalPosition()
+                                            // Schedule deferred update instead of immediate
+                                            viewportUpdateTimer.scheduleUpdate(updateGlobalPosition)
                                         }
                                     }
                                     
