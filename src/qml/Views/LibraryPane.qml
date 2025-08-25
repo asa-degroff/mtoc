@@ -1694,16 +1694,6 @@ Item {
                                     id: albumsGrid
                                     property var artistsList: artistsListView  // Reference to the parent ListView
                                     
-                                    Component.onCompleted: {
-                                        // Trigger viewport updates for all visible items when GridView is loaded
-                                        for (var i = 0; i < count; i++) {
-                                            var item = itemAtIndex(i)
-                                            if (item && item.updateGlobalPosition) {
-                                                item.updateGlobalPosition()
-                                            }
-                                        }
-                                    }
-                                    
                                 clip: false  // Allow glow effect to overflow
                                 cellWidth: {
                                     var minCellWidth = 130  // Minimum width (120 thumbnail + 10 spacing)
@@ -1720,6 +1710,7 @@ Item {
                                 model: albumsContainer.cachedAlbums
 
                                 delegate: Item { 
+                                    id: albumDelegate
                                     width: albumsGrid.cellWidth - 10
                                     height: albumsGrid.cellHeight - 10
                                     
@@ -1730,49 +1721,6 @@ Item {
                                     property bool isInViewport: false
                                     property real globalY: 0
                                     
-                                    // Calculate global position relative to the main ListView
-                                    function updateGlobalPosition() {
-                                        // Check if albumsGrid and artistsList are available
-                                        if (!albumsGrid || !albumsGrid.artistsList || !albumsGrid.artistsList.contentItem) {
-                                            // If not available yet, use simple heuristic for first few items
-                                            // Only show first 12 items (roughly 3 rows) initially
-                                            isInViewport = itemIndex < 12
-                                            return
-                                        }
-                                        
-                                        // Get position relative to artist container
-                                        var pos = mapToItem(albumsGrid.artistsList.contentItem, 0, 0)
-                                        if (pos) {
-                                            globalY = pos.y
-                                            // Check if in viewport with buffer zone
-                                            var viewportTop = albumsGrid.artistsList.contentY - 600  // 600px buffer above
-                                            var viewportBottom = albumsGrid.artistsList.contentY + albumsGrid.artistsList.height + 600  // 600px buffer below
-                                            isInViewport = globalY + height > viewportTop && globalY < viewportBottom
-                                        }
-                                    }
-                                    
-                                    // Update visibility when scroll position changes (deferred)
-                                    Connections {
-                                        target: albumsGrid && albumsGrid.artistsList ? albumsGrid.artistsList : null
-                                        function onContentYChanged() {
-                                            // Schedule deferred update instead of immediate
-                                            viewportUpdateTimer.scheduleUpdate(updateGlobalPosition)
-                                        }
-                                    }
-                                    
-                                    // Update when album becomes visible
-                                    Connections {
-                                        target: albumsContainer
-                                        function onOpacityChanged() {
-                                            if (albumsContainer.opacity > 0) {
-                                                updateGlobalPosition()
-                                            }
-                                        }
-                                    }
-                                    
-                                    Component.onCompleted: {
-                                        updateGlobalPosition()
-                                    }
 
                                     Item { 
                                         anchors.fill: parent
@@ -1824,8 +1772,8 @@ Item {
                                             Image {
                                                 id: albumImage
                                                 anchors.fill: parent
-                                                // Only load image when in viewport for better memory usage
-                                                source: (modelData.hasArt && isInViewport) ? "image://albumart/" + modelData.id + "/thumbnail/220" : ""
+                                                // Load image when the model has art, memory usage for out of viewport is minimal due to caching
+                                                source: modelData.hasArt ? "image://albumart/" + modelData.id + "/thumbnail/220" : ""
                                                 fillMode: Image.PreserveAspectFit
                                                 clip: false
                                                 asynchronous: true
