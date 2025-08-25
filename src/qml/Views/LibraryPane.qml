@@ -1692,6 +1692,18 @@ Item {
                                 
                                 sourceComponent: GridView {
                                     id: albumsGrid
+                                    property var artistsList: artistsListView  // Reference to the parent ListView
+                                    
+                                    Component.onCompleted: {
+                                        // Trigger viewport updates for all visible items when GridView is loaded
+                                        for (var i = 0; i < count; i++) {
+                                            var item = itemAtIndex(i)
+                                            if (item && item.updateGlobalPosition) {
+                                                item.updateGlobalPosition()
+                                            }
+                                        }
+                                    }
+                                    
                                 clip: false  // Allow glow effect to overflow
                                 cellWidth: {
                                     var minCellWidth = 130  // Minimum width (120 thumbnail + 10 spacing)
@@ -1711,26 +1723,37 @@ Item {
                                     width: albumsGrid.cellWidth - 10
                                     height: albumsGrid.cellHeight - 10
                                     
+                                    // Store the model index
+                                    property int itemIndex: index
+                                    
                                     // Viewport visibility detection for lazy loading
                                     property bool isInViewport: false
                                     property real globalY: 0
                                     
                                     // Calculate global position relative to the main ListView
                                     function updateGlobalPosition() {
+                                        // Check if albumsGrid and artistsList are available
+                                        if (!albumsGrid || !albumsGrid.artistsList || !albumsGrid.artistsList.contentItem) {
+                                            // If not available yet, use simple heuristic for first few items
+                                            // Only show first 12 items (roughly 3 rows) initially
+                                            isInViewport = itemIndex < 12
+                                            return
+                                        }
+                                        
                                         // Get position relative to artist container
-                                        var pos = mapToItem(artistsListView.contentItem, 0, 0)
+                                        var pos = mapToItem(albumsGrid.artistsList.contentItem, 0, 0)
                                         if (pos) {
                                             globalY = pos.y
                                             // Check if in viewport with buffer zone
-                                            var viewportTop = artistsListView.contentY - 600  // 600px buffer above
-                                            var viewportBottom = artistsListView.contentY + artistsListView.height + 600  // 600px buffer below
+                                            var viewportTop = albumsGrid.artistsList.contentY - 600  // 600px buffer above
+                                            var viewportBottom = albumsGrid.artistsList.contentY + albumsGrid.artistsList.height + 600  // 600px buffer below
                                             isInViewport = globalY + height > viewportTop && globalY < viewportBottom
                                         }
                                     }
                                     
                                     // Update visibility when scroll position changes (deferred)
                                     Connections {
-                                        target: artistsListView
+                                        target: albumsGrid && albumsGrid.artistsList ? albumsGrid.artistsList : null
                                         function onContentYChanged() {
                                             // Schedule deferred update instead of immediate
                                             viewportUpdateTimer.scheduleUpdate(updateGlobalPosition)
