@@ -20,6 +20,7 @@ Item {
     property int targetJumpIndex: -1  // Index we're jumping to with jumpToAlbum
     property int thumbnailGeneration: 0  // Incremented when thumbnails are rebuilt to force refresh
     property bool clearingImages: false  // Flag to clear images during size change
+    property real stableContentX: -1  // Store the stable position after animations complete
 
     signal albumClicked(var album)
     signal centerAlbumChanged(var album)
@@ -376,6 +377,15 @@ Item {
                         if (albumIndex < sourceAlbums.length) {
                         var currentAlbum = sourceAlbums[albumIndex]
                         if (currentAlbum && currentAlbum.id === album.id) {
+                            // Check if we're already at this index to avoid unnecessary repositioning
+                            if (listView.currentIndex === sortedIndex) {
+                                // Already at the correct position, just update selectedAlbum if needed
+                                if (selectedAlbum !== currentAlbum) {
+                                    selectedAlbum = currentAlbum
+                                }
+                                return
+                            }
+                            
                             // Store the target index for preloading
                             root.targetJumpIndex = sortedIndex
                             
@@ -454,8 +464,9 @@ Item {
             model: sortedAlbumIndices.length  // Use length for delegate count
             orientation: ListView.Horizontal
             spacing: -165
-            preferredHighlightBegin: width / 2 - 110
-            preferredHighlightEnd: width / 2 + 110
+            // Calculate highlight range with pixel snapping to match contentXForIndex
+            preferredHighlightBegin: snapToPixel(width / 2 - 110)
+            preferredHighlightEnd: snapToPixel(width / 2 + 110)
             highlightRangeMode: ListView.StrictlyEnforceRange
             highlightMoveDuration: 200  // Smooth animation duration
             currentIndex: root.currentIndex
@@ -521,6 +532,9 @@ Item {
                     // Final cleanup after scrolling stops
                     gcTimer.triggered()
                 }
+                
+                // Store stable position when movement ends
+                root.stableContentX = listView.contentX
                 
                 // Emit signal when user scrolling stops and we have an album
                 if (root.isUserScrolling && root.selectedAlbum) {
@@ -599,6 +613,8 @@ Item {
                     if (root.isDestroying) return
                     
                     root.isSnapping = false
+                    // Store the stable position after snapping completes
+                    root.stableContentX = listView.contentX
 
                     // Emit signal when snap animation completes and we have an album
                     if (root.isUserScrolling && root.selectedAlbum) {
@@ -621,7 +637,10 @@ Item {
                     }
                     
                     if (targetIndex >= 0 && listView) {
-                        listView.currentIndex = targetIndex
+                        // Only update if different to avoid unnecessary repositioning
+                        if (listView.currentIndex !== targetIndex) {
+                            listView.currentIndex = targetIndex
+                        }
                     }
                 }
             }
@@ -687,6 +706,9 @@ Item {
                         root.selectedAlbum = LibraryManager.albumModel[albumIndex]
                     }
                     
+                    // Clear stable position as we're moving to a new index
+                    root.stableContentX = -1
+                    
                     // Save position after a delay
                     if (!isDestroying) {
                         savePositionTimer.restart()
@@ -705,8 +727,10 @@ Item {
                 anchors.fill: parent
                 propagateComposedEvents: true
                 onClicked: {
-                    // Take focus when clicked
-                    listView.forceActiveFocus()
+                    // Take focus when clicked, but only if not already focused
+                    if (!listView.activeFocus) {
+                        listView.forceActiveFocus()
+                    }
                     mouse.accepted = false  // Let the click propagate to album items
                 }
                 onWheel: function(wheel) {
@@ -776,8 +800,10 @@ Item {
                     wheel.accepted = true
                 }
                 onPressed: function(mouse) {
-                    // Ensure ListView has focus when clicked
-                    listView.forceActiveFocus()
+                    // Ensure ListView has focus when clicked, but only if not already focused
+                    if (!listView.activeFocus) {
+                        listView.forceActiveFocus()
+                    }
                     mouse.accepted = false  // Let click events through to delegates
                 }
             }
@@ -1207,7 +1233,14 @@ Item {
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
                             onClicked: function(mouse) {
                                 if (mouse.button === Qt.LeftButton) {
-                                    listView.currentIndex = index
+                                    // Only change currentIndex if it's different to avoid 1px shift
+                                    if (listView.currentIndex !== index) {
+                                        listView.currentIndex = index
+                                    } else if (root.stableContentX !== -1 && Math.abs(listView.contentX - root.stableContentX) <= 1) {
+                                        // If we're at the same index and very close to the stable position,
+                                        // restore the exact stable position to prevent micro-shifts
+                                        listView.contentX = root.stableContentX
+                                    }
                                     root.albumClicked(albumData)
                                 } else if (mouse.button === Qt.RightButton) {
                                     // Show shared context menu
