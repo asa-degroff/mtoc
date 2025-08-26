@@ -1123,10 +1123,10 @@ ApplicationWindow {
                                 }
                                 
                                 handle: Item {
-                                    x: preAmpSlider.leftPadding + preAmpSlider.visualPosition * (preAmpSlider.availableWidth - width)
+                                    x: preAmpSlider.leftPadding + preAmpSlider.visualPosition * preAmpSlider.availableWidth - width / 2
                                     y: preAmpSlider.topPadding + preAmpSlider.availableHeight / 2 - height / 2
-                                    implicitWidth: 32
-                                    implicitHeight: 32
+                                    implicitWidth: 28
+                                    implicitHeight: 28
                                     
                                     Rectangle {
                                         anchors.centerIn: parent
@@ -1485,10 +1485,10 @@ ApplicationWindow {
                                 }
                                 
                                 handle: Item {
-                                    x: fallbackGainSlider.leftPadding + fallbackGainSlider.visualPosition * (fallbackGainSlider.availableWidth - width)
+                                    x: fallbackGainSlider.leftPadding + fallbackGainSlider.visualPosition * fallbackGainSlider.availableWidth - width / 2
                                     y: fallbackGainSlider.topPadding + fallbackGainSlider.availableHeight / 2 - height / 2
-                                    implicitWidth: 32
-                                    implicitHeight: 32
+                                    implicitWidth: 28
+                                    implicitHeight: 28
                                     
                                     Rectangle {
                                         anchors.centerIn: parent
