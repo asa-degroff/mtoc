@@ -365,6 +365,37 @@ Item {
         }
     }
     
+    // Function to expand all artists
+    function expandAllArtists() {
+        if (currentTab !== 0 || !LibraryManager.artistModel) return
+        
+        var updatedExpanded = {}
+        for (var i = 0; i < LibraryManager.artistModel.length; i++) {
+            var artist = LibraryManager.artistModel[i]
+            if (artist && artist.name) {
+                updatedExpanded[artist.name] = true
+                // Cancel any pending cleanup for this artist
+                cancelArtistCleanup(artist.name)
+            }
+        }
+        expandedArtists = updatedExpanded
+    }
+    
+    // Function to collapse all artists
+    function collapseAllArtists() {
+        if (currentTab !== 0) return
+        
+        // Schedule cleanup for all currently expanded artists
+        for (var artistName in expandedArtists) {
+            if (expandedArtists[artistName]) {
+                scheduleArtistCleanup(artistName)
+            }
+        }
+        
+        // Clear the expanded state
+        expandedArtists = {}
+    }
+    
     // Function to clean up unused memory
     function cleanupUnusedMemory() {
         // Clean up artist album cache for artists that are no longer expanded
@@ -1309,15 +1340,39 @@ Item {
                                         }
                                         
                                         MouseArea {
+                                            id: artistsTabMouseArea
                                             anchors.fill: parent
                                             cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                root.currentTab = 0
-                                                resetNavigation()
-                                                // Start artist navigation when switching to Artists tab
-                                                root.forceActiveFocus()
-                                                if (LibraryManager.artistModel.length > 0) {
-                                                    startArtistNavigation()
+                                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                            onClicked: function(mouse) {
+                                                if (mouse.button === Qt.LeftButton) {
+                                                    root.currentTab = 0
+                                                    resetNavigation()
+                                                    // Start artist navigation when switching to Artists tab
+                                                    root.forceActiveFocus()
+                                                    if (LibraryManager.artistModel.length > 0) {
+                                                        startArtistNavigation()
+                                                    }
+                                                } else if (mouse.button === Qt.RightButton) {
+                                                    artistsTabContextMenu.popup()
+                                                }
+                                            }
+                                        }
+                                        
+                                        StyledMenu {
+                                            id: artistsTabContextMenu
+                                            
+                                            StyledMenuItem {
+                                                text: "Expand All"
+                                                onTriggered: {
+                                                    root.expandAllArtists()
+                                                }
+                                            }
+                                            
+                                            StyledMenuItem {
+                                                text: "Collapse All"
+                                                onTriggered: {
+                                                    root.collapseAllArtists()
                                                 }
                                             }
                                         }
