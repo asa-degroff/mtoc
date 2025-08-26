@@ -827,7 +827,7 @@ ApplicationWindow {
                                 ToolTip {
                                     id: thumbnailSizeTooltip
                                     visible: parent.containsMouse
-                                    text: "Larger thumbnails appear sharper but use more memory.\nSmaller thumbnails may improve performance.\nRebuild thumbnails for changes to take effect."
+                                    text: "Larger thumbnails appear sharper but use more memory\nSmaller thumbnails may improve performance\nRebuild thumbnails for changes to take effect"
                                     delay: 200
                                     timeout: 8000
                                     background: Rectangle {
@@ -1162,7 +1162,7 @@ ApplicationWindow {
                                     ToolTip {
                                         id: preAmpTooltip
                                         visible: parent.containsMouse
-                                        text: "Positive values may cause clipping"
+                                        text: "Positive values cause clipping"
                                         delay: 200
                                         timeout: 5000
                                         background: Rectangle {
@@ -1524,7 +1524,7 @@ ApplicationWindow {
                                     ToolTip {
                                         id: fallbackGainTooltip
                                         visible: parent.containsMouse
-                                        text: "Applied to tracks without replay gain metadata"
+                                        text: "Applied to tracks without replay gain metadata\nPositive values cause clipping"
                                         delay: 200
                                         timeout: 5000
                                         background: Rectangle {
