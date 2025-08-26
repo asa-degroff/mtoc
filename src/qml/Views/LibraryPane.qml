@@ -1742,12 +1742,13 @@ Item {
                                 id: albumsGridLoader
                                 anchors.fill: parent
                                 anchors.margins: 8
-                                active: albumsVisible  // Only create GridView when visible
-                                asynchronous: true  // Load asynchronously for smoother performance
+                                active: albumsVisible && albumsContainer.cachedAlbums.length > 0  // Only create GridView when visible and has data
+                                asynchronous: true  // Asynchronous loading for performance (fast list expansion followed by thumbnail loading)
                                 
                                 sourceComponent: GridView {
                                     id: albumsGrid
                                     property var artistsList: artistsListView  // Reference to the parent ListView
+                                    property string currentArtistName: artistData ? artistData.name : ""  // Pass artist name safely
                                     
                                 clip: false  // Allow glow effect to overflow
                                 cellWidth: {
@@ -1762,12 +1763,12 @@ Item {
                                     reuseItems: true  
                                     cacheBuffer: 3600  // Optimized cache buffer for album grid
 
-                                model: albumsContainer.cachedAlbums
+                                model: albumsContainer && albumsContainer.cachedAlbums ? albumsContainer.cachedAlbums : []
 
                                 delegate: Item { 
                                     id: albumDelegate
-                                    width: albumsGrid.cellWidth - 10
-                                    height: albumsGrid.cellHeight - 10
+                                    width: albumsGrid ? albumsGrid.cellWidth - 10 : 120
+                                    height: albumsGrid ? albumsGrid.cellHeight - 10 : 140
                                     
                                     // Store the model index
                                     property int itemIndex: index
@@ -1791,7 +1792,7 @@ Item {
                                             color: Qt.rgba(1.0, 1.0, 1.0, 0.8)
                                             // Cache the visibility check
                                             property bool shouldShow: root.navigationMode === "album" && 
-                                                    root.selectedArtistName === artistData.name && 
+                                                    root.selectedArtistName === albumsGrid.currentArtistName && 
                                                     root.selectedAlbumIndex === index
                                             visible: false // Hidden, used as source for effect
                                             
@@ -1937,7 +1938,7 @@ Item {
                                             color: Theme.primaryText
                                             font.pixelSize: 11
                                             font.underline: root.navigationMode === "album" && 
-                                                    root.selectedArtistName === artistData.name && 
+                                                    root.selectedArtistName === albumsGrid.currentArtistName && 
                                                     root.selectedAlbumIndex === index
                                             elide: Text.ElideRight
                                             horizontalAlignment: Text.AlignHCenter
