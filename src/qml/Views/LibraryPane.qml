@@ -49,7 +49,6 @@ Item {
     property int stableFrameCount: 0  // Count consecutive frames with stable height
     property url thumbnailUrl: ""
     property url pendingThumbnailUrl: ""  // Buffer for thumbnail URL changes
-    property int imageCacheVersion: 0  // Cache version for forcing image reloads after library scan
     property var artistNameToIndex: ({})  // Cache for artist name to index mapping
     property var artistAlbumCache: ({})  // Cache for artist's albums: { "artistName": { "albumTitle": albumObject } }
     property var artistAlbumIndexCache: ({})  // Cache for album indices: { "artistName": { "albumTitle": index } }
@@ -547,26 +546,6 @@ Item {
                     Qt.callLater(restoreScrollPosition)
                 }
             }
-        }
-        
-        function onScanCompleted() {
-            // Increment cache version to force image reloads
-            imageCacheVersion++
-            console.log("Library scan completed, incrementing image cache version to:", imageCacheVersion)
-        }
-        
-        function onProcessingAlbumArtChanged() {
-            // When album art processing finishes, increment cache version again
-            if (!LibraryManager.processingAlbumArt) {
-                imageCacheVersion++
-                console.log("Album art processing completed, incrementing image cache version to:", imageCacheVersion)
-            }
-        }
-        
-        function onThumbnailsRebuilt() {
-            // Force reload images after thumbnails are rebuilt
-            imageCacheVersion++
-            console.log("Thumbnails rebuilt, incrementing image cache version to:", imageCacheVersion)
         }
     }
     
@@ -1746,17 +1725,6 @@ Item {
                                 }
                             }
                             
-                            // Force refresh cached albums when cache version changes
-                            Connections {
-                                target: root
-                                function onImageCacheVersionChanged() {
-                                    if (cachedArtistName && opacity > 0) {
-                                        // Force reload the albums to get updated hasArt status
-                                        cachedAlbums = LibraryManager.getAlbumsForArtist(cachedArtistName)
-                                    }
-                                }
-                            }
-                            
                             onOpacityChanged: {
                                 if (opacity > 0) {
                                     refreshAlbumData()
@@ -1861,7 +1829,7 @@ Item {
                                                 id: albumImage
                                                 anchors.fill: parent
                                                 // Load image when the model has art, memory usage for out of viewport is minimal due to caching
-                                                source: modelData.hasArt ? "image://albumart/" + modelData.id + "/thumbnail/220?v=" + root.imageCacheVersion : ""
+                                                source: modelData.hasArt ? "image://albumart/" + modelData.id + "/thumbnail/220" : ""
                                                 fillMode: Image.PreserveAspectFit
                                                 clip: false
                                                 asynchronous: true
