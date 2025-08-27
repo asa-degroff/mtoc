@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.2.2
+Version:        2.2.3
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,64 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Wed Aug 27 2025 Asa DeGroff <asa@3fz.org> 2.2.3-1
+- version bump in settings window (asa@3fz.org)
+- changelog and version bump (asa@3fz.org)
+- Add library split ratio management: implement getter, setter, and UI
+  integration for adjustable split ratio in LibraryPane. (asa@3fz.org)
+- Center align album-related labels in LibraryEditorWindow for improved visual
+  consistency. (asa@3fz.org)
+- Revert "Enhance image caching mechanism: increment cache version on library
+  scan completion, album art processing, and thumbnail rebuilds to ensure
+  updated album images are displayed." (asa@3fz.org)
+- Enhance image caching mechanism: increment cache version on library scan
+  completion, album art processing, and thumbnail rebuilds to ensure updated
+  album images are displayed. (asa@3fz.org)
+- Enhance selection indicator dimensions: adjust outline size and add padding
+  to ensure proper coverage of album images, improving visual consistency.
+  (asa@3fz.org)
+- Enhance visibility checks for album grid loading: ensure GridView is created
+  only when the container is visible and has data, improving performance and
+  user experience. (asa@3fz.org)
+- Improve album grid loading logic: ensure GridView is created only when
+  visible and has data, and safely pass current artist name to enhance
+  performance and memory safety (asa@3fz.org)
+- Enhance HorizontalAlbumBrowser position calculations and click handling:
+  optimize position updates with index checks and stabilize content position
+  after scrolling to resolve 1px click shift bug (asa@3fz.org)
+- Add expand/collapse all functionality for artists in LibraryPane
+  (asa@3fz.org)
+- fixed slider handle alignment in settings (asa@3fz.org)
+- enabled positive gain and clarified settings tooltips (asa@3fz.org)
+- settings window text (asa@3fz.org)
+- simplify grid view loading to remove ineffective visibility calculations
+  (asa@3fz.org)
+- Enhance GridView to trigger viewport updates on load and improve visibility
+  detection for lazy loading (asa@3fz.org)
+- Add album container height caching and optimize GridView loading for
+  performance (asa@3fz.org)
+- Add deferred viewport update timer to optimize scrolling performance
+  (asa@3fz.org)
+- Increase cache buffers for album grid and viewport checks, enable image
+  caching during scrolling (asa@3fz.org)
+- Add delay timer for deferred operations and enhance jumpToArtist
+  functionality (asa@3fz.org)
+- Add jumpToAlbum functionality to skip browser navigation when selecting an
+  album (asa@3fz.org)
+- Add scroll position and expanded artists state management to SettingsManager
+  and LibraryPane (asa@3fz.org)
+- Add progress bar for thumbnail rebuilding (asa@3fz.org)
+- Implement dynamic thumbnail cache resizing and image clearing on scale change
+  (asa@3fz.org)
+- Enhance thumbnail caching mechanism by stripping query parameters and adding
+  generation counter for refresh (asa@3fz.org)
+- Add thumbnail size selection features and settings integration (asa@3fz.org)
+- typo (asa@3fz.org)
+- typo (asa@3fz.org)
+- update readme (asa@3fz.org)
+- Revert "content" (asa@3fz.org)
+- content (asa@3fz.org)
+
 * Fri Aug 22 2025 Asa DeGroff <asa@3fz.org> 2.2.2-1
 - version bump and changelog (asa@3fz.org)
 - feat: implement accent-insensitive search functionality in DatabaseManager
