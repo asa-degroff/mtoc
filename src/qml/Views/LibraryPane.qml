@@ -1878,7 +1878,7 @@ Item {
                                                 }
                                             }
                                             
-                                            // Selection indicator - white outline that matches image dimensions
+                                            // Selection indicator - white outline slightly larger than image
                                             Rectangle {
                                                 id: selectionIndicator
                                                 color: "transparent"
@@ -1888,7 +1888,7 @@ Item {
                                                 visible: root.selectedAlbum && root.selectedAlbum.id === modelData.id
                                                 opacity: 0.8
                                                 
-                                                // Match the image dimensions based on its aspect ratio
+                                                // Match the image dimensions based on its aspect ratio with padding
                                                 Component.onCompleted: updateSelectionBounds()
                                                 
                                                 // Watch album image status directly
@@ -1900,29 +1900,35 @@ Item {
                                                 }
                                                 
                                                 function updateSelectionBounds() {
+                                                    var padding = 2; // Padding to ensure indicator covers edges
                                                     if (albumImage.status === Image.Ready && albumImage.sourceSize.width > 0 && albumImage.sourceSize.height > 0) {
                                                         var aspectRatio = albumImage.sourceSize.width / albumImage.sourceSize.height;
                                                         if (aspectRatio > 1.0) {
-                                                            // Wider than square - match image positioning
+                                                            // Wider than square - match image positioning with padding
                                                             anchors.fill = undefined;
                                                             anchors.bottom = parent.bottom;
+                                                            anchors.bottomMargin = -padding;
                                                             anchors.left = parent.left;
+                                                            anchors.leftMargin = -padding;
                                                             anchors.right = parent.right;
-                                                            height = parent.width / aspectRatio;
+                                                            anchors.rightMargin = -padding;
+                                                            height = (parent.width / aspectRatio) + (padding * 2);
                                                         } else if (aspectRatio < 1.0) {
-                                                            // Taller than square - match image positioning
+                                                            // Taller than square - match image positioning with padding
                                                             anchors.fill = undefined;
                                                             anchors.verticalCenter = parent.verticalCenter;
                                                             anchors.horizontalCenter = parent.horizontalCenter;
-                                                            width = parent.height * aspectRatio;
-                                                            height = parent.height;
+                                                            width = (parent.height * aspectRatio) + (padding * 2);
+                                                            height = parent.height + (padding * 2);
                                                         } else {
-                                                            // Square - fill parent
+                                                            // Square - fill parent with padding
                                                             anchors.fill = parent;
+                                                            anchors.margins = -padding;
                                                         }
                                                     } else {
-                                                        // Fallback to fill parent when no image or not ready
+                                                        // Fallback to fill parent with padding when no image or not ready
                                                         anchors.fill = parent;
+                                                        anchors.margins = -padding;
                                                     }
                                                 }
                                             }
