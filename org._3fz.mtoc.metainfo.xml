@@ -20,7 +20,8 @@
       <li>Advanced queue management with library context menus and drag-and-drop reordering</li>
       <li>Save playlists from your queue, manage M3U files, and use the intuitive playlist editor</li>
       <li>Light and dark modes with tinted blurred backgrounds</li>
-      <li>Desktop integration with full MPRIS 2 support</li>
+      <li>Mini player and desktop integration with full MPRIS 2 support</li>
+      <li>Gapless playback and ReplayGain support</li>
     </ul>
   </description>
 
