@@ -376,9 +376,9 @@ Item {
                 updatedExpanded[artist.name] = true
                 // Cancel any pending cleanup for this artist
                 cancelArtistCleanup(artist.name)
+                }
             }
-        }
-        expandedArtists = updatedExpanded
+            expandedArtists = updatedExpanded
     }
     
     // Function to collapse all artists
@@ -1742,7 +1742,7 @@ Item {
                                 id: albumsGridLoader
                                 anchors.fill: parent
                                 anchors.margins: 8
-                                active: albumsVisible && albumsContainer.cachedAlbums.length > 0  // Only create GridView when visible and has data
+                                active: albumsVisible && albumsContainer.cachedAlbums.length > 0 && albumsContainer.opacity > 0  // Only create GridView when visible, has data, and container is visible
                                 asynchronous: true  // Asynchronous loading for performance (fast list expansion followed by thumbnail loading)
                                 
                                 sourceComponent: GridView {
@@ -1763,7 +1763,7 @@ Item {
                                     reuseItems: true  
                                     cacheBuffer: 3600  // Optimized cache buffer for album grid
 
-                                model: albumsContainer && albumsContainer.cachedAlbums ? albumsContainer.cachedAlbums : []
+                                model: (albumsContainer && albumsContainer.opacity > 0 && albumsContainer.cachedAlbums) ? albumsContainer.cachedAlbums : []
 
                                 delegate: Item { 
                                     id: albumDelegate
