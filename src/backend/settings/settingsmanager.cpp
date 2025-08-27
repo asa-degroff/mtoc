@@ -21,6 +21,7 @@ SettingsManager::SettingsManager(QObject *parent)
     , m_thumbnailScale(200)  // Default to 200% (400px) for backward compatibility
     , m_artistsScrollPosition(0.0)
     , m_expandedArtistsList()
+    , m_librarySplitRatio(0.51)  // Default to 51%
 {
     loadSettings();
     setupSystemThemeDetection();
@@ -286,6 +287,18 @@ void SettingsManager::setExpandedArtistsList(const QStringList& artists)
     }
 }
 
+void SettingsManager::setLibrarySplitRatio(double ratio)
+{
+    // Clamp ratio between 0.2 and 0.8 to prevent extreme splits
+    ratio = qBound(0.2, ratio, 0.8);
+    
+    if (!qFuzzyCompare(m_librarySplitRatio, ratio)) {
+        m_librarySplitRatio = ratio;
+        emit librarySplitRatioChanged(ratio);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -323,6 +336,7 @@ void SettingsManager::loadSettings()
     m_lastSelectedWasPlaylist = m_settings.value("lastSelectedWasPlaylist", false).toBool();
     m_artistsScrollPosition = m_settings.value("artistsScrollPosition", 0.0).toDouble();
     m_expandedArtistsList = m_settings.value("expandedArtistsList", QStringList()).toStringList();
+    m_librarySplitRatio = m_settings.value("splitRatio", 0.51).toDouble();
     m_settings.endGroup();
     
     m_settings.beginGroup("Window");
@@ -379,6 +393,7 @@ void SettingsManager::saveSettings()
     m_settings.setValue("lastSelectedWasPlaylist", m_lastSelectedWasPlaylist);
     m_settings.setValue("artistsScrollPosition", m_artistsScrollPosition);
     m_settings.setValue("expandedArtistsList", m_expandedArtistsList);
+    m_settings.setValue("splitRatio", m_librarySplitRatio);
     m_settings.endGroup();
     
     m_settings.beginGroup("Window");

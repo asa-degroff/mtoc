@@ -37,6 +37,7 @@ class SettingsManager : public QObject
     Q_PROPERTY(int thumbnailScale READ thumbnailScale WRITE setThumbnailScale NOTIFY thumbnailScaleChanged)
     Q_PROPERTY(double artistsScrollPosition READ artistsScrollPosition WRITE setArtistsScrollPosition NOTIFY artistsScrollPositionChanged)
     Q_PROPERTY(QStringList expandedArtistsList READ expandedArtistsList WRITE setExpandedArtistsList NOTIFY expandedArtistsListChanged)
+    Q_PROPERTY(double librarySplitRatio READ librarySplitRatio WRITE setLibrarySplitRatio NOTIFY librarySplitRatioChanged)
 
 public:
     enum QueueAction {
@@ -107,6 +108,7 @@ public:
     int thumbnailScale() const { return m_thumbnailScale; }
     double artistsScrollPosition() const { return m_artistsScrollPosition; }
     QStringList expandedArtistsList() const { return m_expandedArtistsList; }
+    double librarySplitRatio() const { return m_librarySplitRatio; }
     
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -135,6 +137,7 @@ public:
     void setThumbnailScale(int scale);
     void setArtistsScrollPosition(double position);
     void setExpandedArtistsList(const QStringList& artists);
+    void setLibrarySplitRatio(double ratio);
 
 protected:
     bool event(QEvent *event) override;
@@ -168,6 +171,7 @@ signals:
     void thumbnailScaleChanged(int scale);
     void artistsScrollPositionChanged(double position);
     void expandedArtistsListChanged(const QStringList& artists);
+    void librarySplitRatioChanged(double ratio);
 
 private slots:
 
@@ -208,6 +212,7 @@ private:
     int m_thumbnailScale;
     double m_artistsScrollPosition;
     QStringList m_expandedArtistsList;
+    double m_librarySplitRatio;
 };
 
 #endif // SETTINGSMANAGER_H

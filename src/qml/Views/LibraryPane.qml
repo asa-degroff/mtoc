@@ -43,6 +43,12 @@ Item {
         }
     }
     property string highlightedArtist: ""  // Track which artist to highlight
+    
+    // Properties for split ratio management
+    property real storedSplitRatio: SettingsManager.librarySplitRatio
+    property bool isDragging: false
+    property real snapThreshold: 0.03  // Snap when within 3% of center (48%-54%)
+    property real actualSplitRatio: splitView && splitView.width > 0 ? leftPaneContainer.width / splitView.width : storedSplitRatio
     property bool isJumping: false  // Flag to prevent concurrent jump operations
     property bool isProgrammaticScrolling: false  // Flag to disable animations during programmatic scrolling
     property real previousContentHeight: 0  // Track contentHeight for layout stabilization
@@ -108,6 +114,28 @@ Item {
         repeat: false
         onTriggered: {
             saveExpandedArtistsState()
+        }
+    }
+    
+    // Timer to monitor and maintain split ratio during window resizing
+    Timer {
+        id: splitRatioMonitor
+        interval: 100
+        running: !isDragging && splitView && splitView.width > 0
+        repeat: true
+        onTriggered: {
+            // During window resize, adjust the left pane width to maintain the ratio
+            if (!isDragging && splitView.width > 0) {
+                var targetWidth = splitView.width * storedSplitRatio
+                var currentWidth = leftPaneContainer.width
+                
+                // Only adjust if the difference is significant (more than 5 pixels)
+                if (Math.abs(targetWidth - currentWidth) > 5) {
+                    // Check if within min/max bounds
+                    targetWidth = Math.max(297, Math.min(600, targetWidth))
+                    leftPaneContainer.SplitView.preferredWidth = targetWidth
+                }
+            }
         }
     }
     
@@ -1177,6 +1205,17 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true // This will take the remaining space
             orientation: Qt.Horizontal
+            
+            // Monitor for changes in split position
+            onResizingChanged: {
+                if (resizing) {
+                    isDragging = true
+                } else {
+                    // User finished dragging, save the new ratio
+                    isDragging = false
+                    saveSplitRatio()
+                }
+            }
             handle: Item {
                 implicitWidth: 8
                 implicitHeight: 8
@@ -1208,7 +1247,7 @@ Item {
             // Left Pane: Artist List
             Rectangle {
                 id: leftPaneContainer
-                SplitView.preferredWidth: parent.width * 0.51  // 51% of parent width
+                SplitView.preferredWidth: parent.width * storedSplitRatio
                 SplitView.minimumWidth: 297  // Minimum for 2 album covers
                 SplitView.maximumWidth: 600  // Maximum width to prevent it from getting too wide
                 Layout.fillHeight: true
@@ -5170,6 +5209,24 @@ Item {
     function restoreAlbumPosition() {
         if (albumBrowser) {
             albumBrowser.restoreCarouselPosition()
+        }
+    }
+    
+    // Function to save the current split ratio
+    function saveSplitRatio() {
+        if (splitView.width > 0) {
+            var currentRatio = leftPaneContainer.width / splitView.width
+            
+            // Apply snap-to-center behavior
+            if (Math.abs(currentRatio - 0.51) <= snapThreshold) {
+                currentRatio = 0.51
+                // Optionally update the UI to reflect the snap
+                storedSplitRatio = currentRatio
+            }
+            
+            // Save to settings
+            SettingsManager.librarySplitRatio = currentRatio
+            storedSplitRatio = currentRatio
         }
     }
     
