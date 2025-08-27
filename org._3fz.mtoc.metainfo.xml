@@ -71,6 +71,26 @@
 
   <releases>
 
+    <release version="2.2.3" date="2025-08-27">
+      <description>
+        <p>Thumbnail size options, improved thumbnail loading performance, audio engine settings bug fixes, UI polish</p>
+        <ul>
+          <li>Added thumbnail size selector with options for 100%, 150%, and 200%, offering a choice between reduced memory usage or higher visual quality</li>
+          <li>Added the option to rebuild thumbnails from the settings window</li>
+          <li>Clicking an album  in the carousel now scrolls to and selects that album in the artists list for improved bidirectional continuity between the two album browsing interfaces</li>
+          <li>Thumbnail cache optimizations for performance</li>
+          <li>Improved programmatic scrolling in the artists list is now smoother and more predictable</li>
+          <li>Asynchronous loading of grid views in the artists list loads thumbnails without blocking list height and position calculations for faster performance and smoother scrolling</li>
+          <li>Option to expand or collapse all album grids in the artists list, accessible by right-clicking the artists list selector</li>
+          <li>Fixed a bug where the carousel position could shift by 1px after clicking on an album</li>
+          <li>Fixed a bug where positive gain values in preamplification and fallback gain settings were not being applied (positive gain now increases loudness and causes clipping distortion as expected)</li>
+          <li>Fixed a bug where the slider handles in the settings appeared slightly misaligned from the slider position</li>
+          <li>Album grid selection indicators are now 2px larger</li>
+          <li>Relative width setting of the columns in the library pane now persists when resizing the window, changing layouts, and restarting the app</li>
+        </ul>
+      </description>
+    </release>
+
     <release version="2.2.2" date="2025-08-22">
       <description>
         <p>Improved portal path handling, main window visibility option, region-aware search</p>

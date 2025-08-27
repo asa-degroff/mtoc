@@ -1,3 +1,18 @@
+# 2.2.3
+### Thumbnail size options, improved thumbnail loading performance, audio engine settings bug fixes, UI polish
+- Added thumbnail size selector with options for 100%, 150%, and 200%, offering a choice between reduced memory usage or higher visual quality
+- Added the option to rebuild thumbnails from the settings window
+- Clicking an album  in the carousel now scrolls to and selects that album in the artists list for improved bidirectional continuity between the two album browsing interfaces
+- Thumbnail cache optimizations for performance
+- Improved programmatic scrolling in the artists list is now smoother and more predictable
+- Asynchronous loading of grid views in the artists list loads thumbnails without blocking list height and position calculations for faster performance and smoother scrolling
+- Option to expand or collapse all album grids in the artists list, accessible by right-clicking the artists list selector
+- Fixed a bug where the carousel position could shift by 1px after clicking on an album
+- Fixed a bug where positive gain values in preamplification and fallback gain settings were not being applied (positive gain now increases loudness and causes clipping distortion as expected)
+- Fixed a bug where the slider handles in the settings appeared slightly misaligned from the slider position
+- Album grid selection indicators are now 2px larger
+- Relative width setting of the columns in the library pane now persists when resizing the window, changing layouts, and restarting the app
+
 # 2.2.2
 ### Improved portal path handling, main window visibility option, region-aware search
 - Library search is now region-aware, returns accent-insensitive results
