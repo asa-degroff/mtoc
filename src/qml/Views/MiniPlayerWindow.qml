@@ -492,8 +492,8 @@ ApplicationWindow {
             
             // Album art - clickable for maximize
             Item {
-                Layout.preferredWidth: 158
-                Layout.preferredHeight: 158
+                Layout.preferredWidth: 157
+                Layout.preferredHeight: 157
                 Layout.alignment: Qt.AlignVCenter
                 
                 Image {

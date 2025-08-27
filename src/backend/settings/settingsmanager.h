@@ -34,6 +34,10 @@ class SettingsManager : public QObject
     Q_PROPERTY(int miniPlayerX READ miniPlayerX WRITE setMiniPlayerX NOTIFY miniPlayerXChanged)
     Q_PROPERTY(int miniPlayerY READ miniPlayerY WRITE setMiniPlayerY NOTIFY miniPlayerYChanged)
     Q_PROPERTY(bool miniPlayerHidesMainWindow READ miniPlayerHidesMainWindow WRITE setMiniPlayerHidesMainWindow NOTIFY miniPlayerHidesMainWindowChanged)
+    Q_PROPERTY(int thumbnailScale READ thumbnailScale WRITE setThumbnailScale NOTIFY thumbnailScaleChanged)
+    Q_PROPERTY(double artistsScrollPosition READ artistsScrollPosition WRITE setArtistsScrollPosition NOTIFY artistsScrollPositionChanged)
+    Q_PROPERTY(QStringList expandedArtistsList READ expandedArtistsList WRITE setExpandedArtistsList NOTIFY expandedArtistsListChanged)
+    Q_PROPERTY(double librarySplitRatio READ librarySplitRatio WRITE setLibrarySplitRatio NOTIFY librarySplitRatioChanged)
 
 public:
     enum QueueAction {
@@ -101,6 +105,10 @@ public:
     int miniPlayerX() const { return m_miniPlayerX; }
     int miniPlayerY() const { return m_miniPlayerY; }
     bool miniPlayerHidesMainWindow() const { return m_miniPlayerHidesMainWindow; }
+    int thumbnailScale() const { return m_thumbnailScale; }
+    double artistsScrollPosition() const { return m_artistsScrollPosition; }
+    QStringList expandedArtistsList() const { return m_expandedArtistsList; }
+    double librarySplitRatio() const { return m_librarySplitRatio; }
     
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -126,6 +134,10 @@ public:
     void setMiniPlayerX(int x);
     void setMiniPlayerY(int y);
     void setMiniPlayerHidesMainWindow(bool hides);
+    void setThumbnailScale(int scale);
+    void setArtistsScrollPosition(double position);
+    void setExpandedArtistsList(const QStringList& artists);
+    void setLibrarySplitRatio(double ratio);
 
 protected:
     bool event(QEvent *event) override;
@@ -156,6 +168,10 @@ signals:
     void miniPlayerXChanged(int x);
     void miniPlayerYChanged(int y);
     void miniPlayerHidesMainWindowChanged(bool hides);
+    void thumbnailScaleChanged(int scale);
+    void artistsScrollPositionChanged(double position);
+    void expandedArtistsListChanged(const QStringList& artists);
+    void librarySplitRatioChanged(double ratio);
 
 private slots:
 
@@ -193,6 +209,10 @@ private:
     int m_miniPlayerX;
     int m_miniPlayerY;
     bool m_miniPlayerHidesMainWindow;
+    int m_thumbnailScale;
+    double m_artistsScrollPosition;
+    QStringList m_expandedArtistsList;
+    double m_librarySplitRatio;
 };
 
 #endif // SETTINGSMANAGER_H

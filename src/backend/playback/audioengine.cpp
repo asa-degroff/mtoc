@@ -146,6 +146,7 @@ void AudioEngine::initializePipeline()
                     "album-mode", FALSE,        // Start with track mode
                     "pre-amp", 0.0,            // No pre-amplification by default
                     "fallback-gain", 0.0,       // 0 dB fallback gain
+                    "headroom", 15.0,          // Allow 15 dB headroom for positive gains
                     nullptr);
                 
                 // Add a reference to keep the bin alive

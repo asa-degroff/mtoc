@@ -42,6 +42,9 @@ class LibraryManager : public QObject
     Q_PROPERTY(QVariantList artistModel READ artistModel NOTIFY libraryChanged)
     Q_PROPERTY(QVariantList albumModel READ albumModel NOTIFY libraryChanged)
     Q_PROPERTY(bool processingAlbumArt READ isProcessingAlbumArt NOTIFY processingAlbumArtChanged)
+    Q_PROPERTY(bool rebuildingThumbnails READ isRebuildingThumbnails NOTIFY rebuildingThumbnailsChanged)
+    Q_PROPERTY(int rebuildProgress READ rebuildProgress NOTIFY rebuildProgressChanged)
+    Q_PROPERTY(QString rebuildProgressText READ rebuildProgressText NOTIFY rebuildProgressTextChanged)
 
 public:
     explicit LibraryManager(QObject *parent = nullptr);
@@ -60,6 +63,9 @@ public:
     QVariantList artistModel() const;
     QVariantList albumModel() const;
     bool isProcessingAlbumArt() const;
+    bool isRebuildingThumbnails() const;
+    int rebuildProgress() const;
+    QString rebuildProgressText() const;
     
     // Property setters
     void setMusicFolders(const QStringList &folders);
@@ -70,6 +76,7 @@ public:
     Q_INVOKABLE void startScan();
     Q_INVOKABLE void cancelScan();
     Q_INVOKABLE void clearLibrary();
+    Q_INVOKABLE void rebuildAllThumbnails();
     
     // Data access methods
     Q_INVOKABLE TrackModel* allTracksModel() const;
@@ -129,6 +136,10 @@ signals:
     void artistCountChanged();
     void libraryChanged();
     void processingAlbumArtChanged();
+    void rebuildingThumbnailsChanged();
+    void rebuildProgressChanged();
+    void rebuildProgressTextChanged();
+    void thumbnailsRebuilt();
 
 private slots:
     void onScanFinished();
@@ -145,6 +156,7 @@ private:
     void insertBatchTracksInThread(QSqlDatabase& db, const QList<QVariantMap>& batchMetadata);
     void processAlbumArtInBackground();
     QString getCanonicalPathFromDisplay(const QString& displayPath) const;
+    void rebuildThumbnailsInBackground();
     
     // Private data
     DatabaseManager *m_databaseManager;
@@ -185,6 +197,14 @@ private:
     bool m_cancelRequested;
     int m_originalPixmapCacheLimit;  // Store original cache limit to restore after scan
     bool m_processingAlbumArt;  // Track album art processing status
+    
+    // Thumbnail rebuild state
+    bool m_rebuildingThumbnails;
+    int m_rebuildProgress;
+    int m_totalAlbumsToRebuild;
+    int m_albumsRebuilt;
+    QFuture<void> m_rebuildFuture;
+    QFutureWatcher<void> m_rebuildWatcher;
 };
 
 } // namespace Mtoc

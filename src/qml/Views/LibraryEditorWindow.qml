@@ -128,6 +128,7 @@ ApplicationWindow {
                         }
 
                         Label {
+                            anchors.horizontalCenter: parent.horizontalCenter
                             text: "Album Artists"
                             font.pixelSize: 14
                             color: Theme.secondaryText
@@ -148,6 +149,7 @@ ApplicationWindow {
                         }
                         
                         Label {
+                            anchors.horizontalCenter: parent.horizontalCenter
                             text: "Artists"
                             font.pixelSize: 14
                             color: Theme.secondaryText
@@ -168,6 +170,7 @@ ApplicationWindow {
                         }
                         
                         Label {
+                            anchors.horizontalCenter: parent.horizontalCenter
                             text: "Albums"
                             font.pixelSize: 14
                             color: Theme.secondaryText
@@ -188,6 +191,7 @@ ApplicationWindow {
                         }
                         
                         Label {
+                            anchors.horizontalCenter: parent.horizontalCenter
                             text: "Tracks"
                             font.pixelSize: 14
                             color: Theme.secondaryText

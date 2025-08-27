@@ -36,7 +36,19 @@ Item {
     
     property var selectedAlbum: null
     property var expandedArtists: ({})  // Object to store expansion state by artist name
+    onExpandedArtistsChanged: {
+        // Save expanded state with debouncing
+        if (!isSearching) {
+            expandedSaveTimer.restart()
+        }
+    }
     property string highlightedArtist: ""  // Track which artist to highlight
+    
+    // Properties for split ratio management
+    property real storedSplitRatio: SettingsManager.librarySplitRatio
+    property bool isDragging: false
+    property real snapThreshold: 0.03  // Snap when within 3% of center (48%-54%)
+    property real actualSplitRatio: splitView && splitView.width > 0 ? leftPaneContainer.width / splitView.width : storedSplitRatio
     property bool isJumping: false  // Flag to prevent concurrent jump operations
     property bool isProgrammaticScrolling: false  // Flag to disable animations during programmatic scrolling
     property real previousContentHeight: 0  // Track contentHeight for layout stabilization
@@ -54,6 +66,7 @@ Item {
     property var expandCollapseDebounceTimer: null  // Debounce timer for expansion/collapse
     property string pendingExpandCollapseArtist: ""  // Artist pending expansion/collapse
     property bool pendingExpandCollapseState: false  // State to apply after debounce
+    property var albumContainerHeightCache: ({})  // Cache for pre-calculated album container heights
     
     // Tab state - bind to SettingsManager to maintain state across layout changes
     property int currentTab: SettingsManager.libraryActiveTab  // 0 = Artists, 1 = Playlists
@@ -79,6 +92,53 @@ Item {
         }
     }
     
+    // Timer to debounce scroll position saves
+    Timer {
+        id: scrollSaveTimer
+        interval: 500  // Wait 500ms after scrolling stops
+        running: false
+        repeat: false
+        onTriggered: {
+            // Save scroll position if not searching
+            if (!root.isSearching && artistsListView) {
+                SettingsManager.artistsScrollPosition = artistsListView.contentY
+            }
+        }
+    }
+    
+    // Timer to debounce expanded artists saves
+    Timer {
+        id: expandedSaveTimer
+        interval: 300  // Wait 300ms after expansion change
+        running: false
+        repeat: false
+        onTriggered: {
+            saveExpandedArtistsState()
+        }
+    }
+    
+    // Timer to monitor and maintain split ratio during window resizing
+    Timer {
+        id: splitRatioMonitor
+        interval: 100
+        running: !isDragging && splitView && splitView.width > 0
+        repeat: true
+        onTriggered: {
+            // During window resize, adjust the left pane width to maintain the ratio
+            if (!isDragging && splitView.width > 0) {
+                var targetWidth = splitView.width * storedSplitRatio
+                var currentWidth = leftPaneContainer.width
+                
+                // Only adjust if the difference is significant (more than 5 pixels)
+                if (Math.abs(targetWidth - currentWidth) > 5) {
+                    // Check if within min/max bounds
+                    targetWidth = Math.max(297, Math.min(600, targetWidth))
+                    leftPaneContainer.SplitView.preferredWidth = targetWidth
+                }
+            }
+        }
+    }
+    
     // Multi-selection state
     property var selectedTrackIndices: []
     property int lastSelectedIndex: -1
@@ -88,6 +148,7 @@ Item {
     property var searchResults: ({})
     property bool isSearching: false
     property string previousExpandedState: ""  // Store expanded state before search
+    property double previousScrollPosition: 0  // Store scroll position before search
     property var searchResultsCache: ({})  // Cache for search results
     property int cacheExpiryTime: 60000  // Cache expires after 1 minute
     
@@ -205,6 +266,38 @@ Item {
     }
     
     
+    // General purpose tiny delay timer for deferred operations
+    Timer {
+        id: delayTimer
+        interval: 1
+        running: false
+        repeat: false
+    }
+    
+    // Timer for deferred viewport calculations
+    Timer {
+        id: viewportUpdateTimer
+        interval: 100  // Update viewport status 100ms after scrolling stops
+        running: false
+        repeat: false
+        property var pendingUpdates: []
+        
+        onTriggered: {
+            // Process all pending viewport updates
+            for (var i = 0; i < pendingUpdates.length; i++) {
+                if (pendingUpdates[i] && typeof pendingUpdates[i] === 'function') {
+                    pendingUpdates[i]()
+                }
+            }
+            pendingUpdates = []
+        }
+        
+        function scheduleUpdate(updateFunc) {
+            pendingUpdates.push(updateFunc)
+            restart()
+        }
+    }
+    
     // Layout stabilization timer for dynamic scrolling
     Timer {
         id: layoutStabilizationTimer
@@ -300,6 +393,37 @@ Item {
         }
     }
     
+    // Function to expand all artists
+    function expandAllArtists() {
+        if (currentTab !== 0 || !LibraryManager.artistModel) return
+        
+        var updatedExpanded = {}
+        for (var i = 0; i < LibraryManager.artistModel.length; i++) {
+            var artist = LibraryManager.artistModel[i]
+            if (artist && artist.name) {
+                updatedExpanded[artist.name] = true
+                // Cancel any pending cleanup for this artist
+                cancelArtistCleanup(artist.name)
+                }
+            }
+            expandedArtists = updatedExpanded
+    }
+    
+    // Function to collapse all artists
+    function collapseAllArtists() {
+        if (currentTab !== 0) return
+        
+        // Schedule cleanup for all currently expanded artists
+        for (var artistName in expandedArtists) {
+            if (expandedArtists[artistName]) {
+                scheduleArtistCleanup(artistName)
+            }
+        }
+        
+        // Clear the expanded state
+        expandedArtists = {}
+    }
+    
     // Function to clean up unused memory
     function cleanupUnusedMemory() {
         // Clean up artist album cache for artists that are no longer expanded
@@ -393,6 +517,9 @@ Item {
         // Don't auto-select any track - start with no selection
         // Qt.callLater(autoSelectCurrentTrack)
         
+        // Restore expanded artists state
+        restoreExpandedArtistsState()
+        
         // Restore selected album or playlist after a delay to ensure everything is loaded
         if (SettingsManager.lastSelectedWasPlaylist && SettingsManager.lastSelectedPlaylistName) {
             Qt.callLater(function() {
@@ -402,6 +529,11 @@ Item {
             Qt.callLater(function() {
                 restoreSelectedAlbum(SettingsManager.lastSelectedAlbumId)
             })
+        }
+        
+        // Restore scroll position after a delay to ensure the view is ready
+        if (LibraryManager.artistModel && LibraryManager.artistModel.length > 0) {
+            Qt.callLater(restoreScrollPosition)
         }
         
         // Initialize keyboard navigation after a small delay to ensure everything is ready
@@ -433,6 +565,15 @@ Item {
             artistAlbumIndexCache = {}
             currentTrackIndexMap = {}
             currentTrackFilePathMap = {}
+            
+            // Restore scroll position if this is the initial library load
+            // Check if we haven't restored yet and have artists
+            if (LibraryManager.artistModel && LibraryManager.artistModel.length > 0) {
+                var savedPosition = SettingsManager.artistsScrollPosition
+                if (savedPosition > 0 && artistsListView && artistsListView.contentY === 0) {
+                    Qt.callLater(restoreScrollPosition)
+                }
+            }
         }
     }
     
@@ -957,6 +1098,11 @@ Item {
                     
                     // Highlight the album's artist
                     root.highlightedArtist = album.albumArtist
+                    
+                    // Jump to this album in the artists list (skip browser jump since we're already there)
+                    if (album && album.albumArtist && album.title) {
+                        root.jumpToAlbum(album.albumArtist, album.title, true)
+                    }
                 }
                 
                 onCenterAlbumChanged: function(album) {
@@ -1059,6 +1205,17 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true // This will take the remaining space
             orientation: Qt.Horizontal
+            
+            // Monitor for changes in split position
+            onResizingChanged: {
+                if (resizing) {
+                    isDragging = true
+                } else {
+                    // User finished dragging, save the new ratio
+                    isDragging = false
+                    saveSplitRatio()
+                }
+            }
             handle: Item {
                 implicitWidth: 8
                 implicitHeight: 8
@@ -1090,7 +1247,7 @@ Item {
             // Left Pane: Artist List
             Rectangle {
                 id: leftPaneContainer
-                SplitView.preferredWidth: parent.width * 0.51  // 51% of parent width
+                SplitView.preferredWidth: parent.width * storedSplitRatio
                 SplitView.minimumWidth: 297  // Minimum for 2 album covers
                 SplitView.maximumWidth: 600  // Maximum width to prevent it from getting too wide
                 Layout.fillHeight: true
@@ -1222,15 +1379,39 @@ Item {
                                         }
                                         
                                         MouseArea {
+                                            id: artistsTabMouseArea
                                             anchors.fill: parent
                                             cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                root.currentTab = 0
-                                                resetNavigation()
-                                                // Start artist navigation when switching to Artists tab
-                                                root.forceActiveFocus()
-                                                if (LibraryManager.artistModel.length > 0) {
-                                                    startArtistNavigation()
+                                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                            onClicked: function(mouse) {
+                                                if (mouse.button === Qt.LeftButton) {
+                                                    root.currentTab = 0
+                                                    resetNavigation()
+                                                    // Start artist navigation when switching to Artists tab
+                                                    root.forceActiveFocus()
+                                                    if (LibraryManager.artistModel.length > 0) {
+                                                        startArtistNavigation()
+                                                    }
+                                                } else if (mouse.button === Qt.RightButton) {
+                                                    artistsTabContextMenu.popup()
+                                                }
+                                            }
+                                        }
+                                        
+                                        StyledMenu {
+                                            id: artistsTabContextMenu
+                                            
+                                            StyledMenuItem {
+                                                text: "Expand All"
+                                                onTriggered: {
+                                                    root.expandAllArtists()
+                                                }
+                                            }
+                                            
+                                            StyledMenuItem {
+                                                text: "Collapse All"
+                                                onTriggered: {
+                                                    root.collapseAllArtists()
                                                 }
                                             }
                                         }
@@ -1315,6 +1496,13 @@ Item {
                             interactive: !root.isScrollBarDragging  // Disable ListView interaction during scroll bar drag
                             reuseItems: false  // Disabled to maintain consistent scroll positions
                             cacheBuffer: 1200  // Increase cache for smoother scrolling without recycling
+                            
+                            // Save scroll position when scrolling
+                            onContentYChanged: {
+                                if (!root.isSearching && !root.isProgrammaticScrolling) {
+                                    scrollSaveTimer.restart()
+                                }
+                            }
                     
                     // Adaptive scroll speed - reduced when using scroll bar
                     flickDeceleration: root.isScrollBarDragging ? 1500 : 8000
@@ -1392,11 +1580,11 @@ Item {
                             }
                         }
                         
-                        // Smooth height animation (disabled during scroll bar dragging and programmatic scrolling)
+                        // Smooth height animation (disabled during scrolling for better performance)
                         Behavior on height {
-                            enabled: !root.isScrollBarDragging && !artistsListView.moving && !root.isProgrammaticScrolling
+                            enabled: !root.isScrollBarDragging && !artistsListView.isScrolling
                             NumberAnimation {
-                                duration: 200
+                                duration: 300  // Match scroll animation duration
                                 easing.type: Easing.InOutQuad
                             }
                         }
@@ -1520,7 +1708,7 @@ Item {
                             clip: false  // Allow glow effect to overflow
                             
                             Behavior on opacity {
-                                enabled: !root.isScrollBarDragging && !artistsListView.moving
+                                enabled: !root.isScrollBarDragging && !artistsListView.isScrolling
                                 NumberAnimation {
                                     duration: 200
                                     easing.type: Easing.InOutQuad
@@ -1535,9 +1723,15 @@ Item {
                             property var cachedAlbums: []
                             property string cachedArtistName: ""
                             
-                            // Calculate fixed height for album container
+                            // Calculate fixed height for album container with caching
                             function calculateAlbumContainerHeight() {
                                 if (!cachedAlbums || cachedAlbums.length === 0) return 0
+                                
+                                // Check cache first
+                                var cacheKey = cachedArtistName + "_" + cachedAlbums.length + "_" + width
+                                if (root.albumContainerHeightCache[cacheKey] !== undefined) {
+                                    return root.albumContainerHeightCache[cacheKey]
+                                }
                                 
                                 var minCellWidth = 130  // Minimum width (120 thumbnail + 10 spacing)
                                 var cellHeight = 150  // 140 + 10 spacing
@@ -1546,7 +1740,12 @@ Item {
                                 if (columns < 1) columns = 1
                                 var rows = Math.ceil(cachedAlbums.length / columns)
                                 
-                                return (rows * cellHeight) + 16  // Grid height + padding
+                                var height = (rows * cellHeight) + 16  // Grid height + padding
+                                
+                                // Cache the result
+                                root.albumContainerHeightCache[cacheKey] = height
+                                
+                                return height
                             }
                             
                             // Function to refresh album data
@@ -1577,67 +1776,46 @@ Item {
                                 refreshAlbumData()
                             }
 
-                            GridView {
-                                id: albumsGrid
+                            // Lazy load the GridView using Loader for better performance
+                            Loader {
+                                id: albumsGridLoader
                                 anchors.fill: parent
                                 anchors.margins: 8
+                                active: albumsVisible && albumsContainer.cachedAlbums.length > 0 && albumsContainer.opacity > 0  // Only create GridView when visible, has data, and container is visible
+                                asynchronous: true  // Asynchronous loading for performance (fast list expansion followed by thumbnail loading)
+                                
+                                sourceComponent: GridView {
+                                    id: albumsGrid
+                                    property var artistsList: artistsListView  // Reference to the parent ListView
+                                    property string currentArtistName: artistData ? artistData.name : ""  // Pass artist name safely
+                                    
                                 clip: false  // Allow glow effect to overflow
                                 cellWidth: {
                                     var minCellWidth = 130  // Minimum width (120 thumbnail + 10 spacing)
-                                    var availableWidth = parent.width - 16  // Account for margins
+                                        var availableWidth = parent.width  // Parent is now the Loader
                                     var columns = Math.floor(availableWidth / minCellWidth)
                                     if (columns < 1) columns = 1
                                     return Math.floor(availableWidth / columns)
                                 }
                                 cellHeight: 140 + 10 // Thumbnail + title + padding
                                 interactive: false // Parent ListView handles scrolling primarily
-                                reuseItems: false  // Disabled to prevent issues with expand/collapse
-                                cacheBuffer: 600  // Increased cache for album grid
+                                    reuseItems: true  
+                                    cacheBuffer: 3600  // Optimized cache buffer for album grid
 
-                                model: albumsContainer.cachedAlbums
+                                model: (albumsContainer && albumsContainer.opacity > 0 && albumsContainer.cachedAlbums) ? albumsContainer.cachedAlbums : []
 
                                 delegate: Item { 
-                                    width: albumsGrid.cellWidth - 10
-                                    height: albumsGrid.cellHeight - 10
+                                    id: albumDelegate
+                                    width: albumsGrid ? albumsGrid.cellWidth - 10 : 120
+                                    height: albumsGrid ? albumsGrid.cellHeight - 10 : 140
+                                    
+                                    // Store the model index
+                                    property int itemIndex: index
                                     
                                     // Viewport visibility detection for lazy loading
                                     property bool isInViewport: false
                                     property real globalY: 0
                                     
-                                    // Calculate global position relative to the main ListView
-                                    function updateGlobalPosition() {
-                                        // Get position relative to artist container
-                                        var pos = mapToItem(artistsListView.contentItem, 0, 0)
-                                        if (pos) {
-                                            globalY = pos.y
-                                            // Check if in viewport with buffer zone
-                                            var viewportTop = artistsListView.contentY - 200  // 200px buffer above
-                                            var viewportBottom = artistsListView.contentY + artistsListView.height + 200  // 200px buffer below
-                                            isInViewport = globalY + height > viewportTop && globalY < viewportBottom
-                                        }
-                                    }
-                                    
-                                    // Update visibility when scroll position changes
-                                    Connections {
-                                        target: artistsListView
-                                        function onContentYChanged() {
-                                            updateGlobalPosition()
-                                        }
-                                    }
-                                    
-                                    // Update when album becomes visible
-                                    Connections {
-                                        target: albumsContainer
-                                        function onOpacityChanged() {
-                                            if (albumsContainer.opacity > 0) {
-                                                updateGlobalPosition()
-                                            }
-                                        }
-                                    }
-                                    
-                                    Component.onCompleted: {
-                                        updateGlobalPosition()
-                                    }
 
                                     Item { 
                                         anchors.fill: parent
@@ -1653,7 +1831,7 @@ Item {
                                             color: Qt.rgba(1.0, 1.0, 1.0, 0.8)
                                             // Cache the visibility check
                                             property bool shouldShow: root.navigationMode === "album" && 
-                                                    root.selectedArtistName === artistData.name && 
+                                                    root.selectedArtistName === albumsGrid.currentArtistName && 
                                                     root.selectedAlbumIndex === index
                                             visible: false // Hidden, used as source for effect
                                             
@@ -1689,12 +1867,12 @@ Item {
                                             Image {
                                                 id: albumImage
                                                 anchors.fill: parent
-                                                // Only load image when in viewport for better memory usage
-                                                source: (modelData.hasArt && isInViewport) ? "image://albumart/" + modelData.id + "/thumbnail/220" : ""
+                                                // Load image when the model has art, memory usage for out of viewport is minimal due to caching
+                                                source: modelData.hasArt ? "image://albumart/" + modelData.id + "/thumbnail/220" : ""
                                                 fillMode: Image.PreserveAspectFit
                                                 clip: false
                                                 asynchronous: true
-                                                cache: false  // Don't cache in virtualized lists to save memory
+                                                cache: true  // Enable caching to prevent flickering during scrolling
                                                 sourceSize.width: 220  // Limit to 2x the display size for retina
                                                 sourceSize.height: 220
                                                 
@@ -1739,7 +1917,7 @@ Item {
                                                 }
                                             }
                                             
-                                            // Selection indicator - white outline that matches image dimensions
+                                            // Selection indicator - white outline slightly larger than image
                                             Rectangle {
                                                 id: selectionIndicator
                                                 color: "transparent"
@@ -1749,7 +1927,7 @@ Item {
                                                 visible: root.selectedAlbum && root.selectedAlbum.id === modelData.id
                                                 opacity: 0.8
                                                 
-                                                // Match the image dimensions based on its aspect ratio
+                                                // Match the image dimensions based on its aspect ratio with padding
                                                 Component.onCompleted: updateSelectionBounds()
                                                 
                                                 // Watch album image status directly
@@ -1761,29 +1939,35 @@ Item {
                                                 }
                                                 
                                                 function updateSelectionBounds() {
+                                                    var padding = 2; // Padding to ensure indicator covers edges
                                                     if (albumImage.status === Image.Ready && albumImage.sourceSize.width > 0 && albumImage.sourceSize.height > 0) {
                                                         var aspectRatio = albumImage.sourceSize.width / albumImage.sourceSize.height;
                                                         if (aspectRatio > 1.0) {
-                                                            // Wider than square - match image positioning
+                                                            // Wider than square - match image positioning with padding
                                                             anchors.fill = undefined;
                                                             anchors.bottom = parent.bottom;
+                                                            anchors.bottomMargin = -padding;
                                                             anchors.left = parent.left;
+                                                            anchors.leftMargin = -padding;
                                                             anchors.right = parent.right;
-                                                            height = parent.width / aspectRatio;
+                                                            anchors.rightMargin = -padding;
+                                                            height = (parent.width / aspectRatio) + (padding * 2);
                                                         } else if (aspectRatio < 1.0) {
-                                                            // Taller than square - match image positioning
+                                                            // Taller than square - match image positioning with padding
                                                             anchors.fill = undefined;
                                                             anchors.verticalCenter = parent.verticalCenter;
                                                             anchors.horizontalCenter = parent.horizontalCenter;
-                                                            width = parent.height * aspectRatio;
-                                                            height = parent.height;
+                                                            width = (parent.height * aspectRatio) + (padding * 2);
+                                                            height = parent.height + (padding * 2);
                                                         } else {
-                                                            // Square - fill parent
+                                                            // Square - fill parent with padding
                                                             anchors.fill = parent;
+                                                            anchors.margins = -padding;
                                                         }
                                                     } else {
-                                                        // Fallback to fill parent when no image or not ready
+                                                        // Fallback to fill parent with padding when no image or not ready
                                                         anchors.fill = parent;
+                                                        anchors.margins = -padding;
                                                     }
                                                 }
                                             }
@@ -1799,7 +1983,7 @@ Item {
                                             color: Theme.primaryText
                                             font.pixelSize: 11
                                             font.underline: root.navigationMode === "album" && 
-                                                    root.selectedArtistName === artistData.name && 
+                                                    root.selectedArtistName === albumsGrid.currentArtistName && 
                                                     root.selectedAlbumIndex === index
                                             elide: Text.ElideRight
                                             horizontalAlignment: Text.AlignHCenter
@@ -1874,7 +2058,8 @@ Item {
                                     }
                                 }
                                 ScrollIndicator.vertical: ScrollIndicator { }
-                            }
+                                }  // End of GridView component
+                            }  // End of Loader
                         }
                     }  // End of artistDelegate Item
                     
@@ -2471,7 +2656,7 @@ Item {
                         visible: (root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist) || rightPane.currentAlbumTracks.length > 0
                         spacing: 1
                         reuseItems: false
-                        cacheBuffer: 800  // Increased cache without recycling
+                        cacheBuffer: 1200  // Increased cache without recycling
                         currentIndex: -1  // Start with no selection
                         
                         // Drag and drop state
@@ -4113,10 +4298,53 @@ Item {
         }
     }
     
+    // State persistence functions
+    function saveExpandedArtistsState() {
+        // Convert expandedArtists object to a list of artist names
+        var expandedList = []
+        for (var artistName in expandedArtists) {
+            if (expandedArtists[artistName] === true) {
+                expandedList.push(artistName)
+            }
+        }
+        SettingsManager.expandedArtistsList = expandedList
+    }
+    
+    function restoreExpandedArtistsState() {
+        // Convert list back to object
+        var expandedObj = {}
+        var expandedList = SettingsManager.expandedArtistsList
+        for (var i = 0; i < expandedList.length; i++) {
+            expandedObj[expandedList[i]] = true
+        }
+        expandedArtists = expandedObj
+    }
+    
+    function restoreScrollPosition() {
+        // Restore scroll position after a small delay to ensure ListView is ready
+        Qt.callLater(function() {
+            if (artistsListView && !root.isSearching) {
+                var savedPosition = SettingsManager.artistsScrollPosition
+                if (savedPosition > 0) {
+                    artistsListView.contentY = savedPosition
+                }
+            }
+        })
+    }
+    
     function performSearch(searchTerm) {
         if (searchTerm.trim().length === 0) {
             clearSearch()
             return
+        }
+        
+        // Save pre-search state if this is the start of a new search
+        if (!isSearching) {
+            // Save current scroll position and expanded state
+            if (artistsListView) {
+                previousScrollPosition = artistsListView.contentY
+            }
+            previousExpandedState = JSON.stringify(expandedArtists)
         }
         
         // Switch to Artists tab when searching (search is not supported for playlists)
@@ -4166,6 +4394,14 @@ Item {
                 expandedArtists = {}
             }
             previousExpandedState = ""
+        }
+        
+        // Restore previous scroll position
+        if (previousScrollPosition > 0 && artistsListView) {
+            Qt.callLater(function() {
+                artistsListView.contentY = previousScrollPosition
+                previousScrollPosition = 0
+            })
         }
     }
     
@@ -4368,7 +4604,6 @@ Item {
         artistsListView.forceLayout()
         
         if (smooth) {
-            // Store the target index for position verification
             var targetIndex = index
             
             // Force layout update to ensure everything is current
@@ -4977,6 +5212,24 @@ Item {
         }
     }
     
+    // Function to save the current split ratio
+    function saveSplitRatio() {
+        if (splitView.width > 0) {
+            var currentRatio = leftPaneContainer.width / splitView.width
+            
+            // Apply snap-to-center behavior
+            if (Math.abs(currentRatio - 0.51) <= snapThreshold) {
+                currentRatio = 0.51
+                // Optionally update the UI to reflect the snap
+                storedSplitRatio = currentRatio
+            }
+            
+            // Save to settings
+            SettingsManager.librarySplitRatio = currentRatio
+            storedSplitRatio = currentRatio
+        }
+    }
+    
     // Functions for Now Playing Panel integration
     function jumpToArtist(artistName) {
         try {
@@ -4995,9 +5248,6 @@ Item {
             }
             isJumping = true
             
-            // Set programmatic scrolling flag immediately to disable all animations
-            isProgrammaticScrolling = true
-            
             // Clear search state and highlight the artist
             clearSearch()
             highlightedArtist = artistName
@@ -5008,7 +5258,6 @@ Item {
             if (artistIndex === undefined) {
                 console.log("jumpToArtist: Artist not found in index mapping")
                 isJumping = false
-                isProgrammaticScrolling = false
                 return
             }
             
@@ -5022,40 +5271,40 @@ Item {
             console.log("jumpToArtist: Artist was expanded:", wasExpanded)
             
             if (wasExpanded) {
-                // Already expanded, safe to scroll immediately
+                // Already expanded, safe to scroll immediately with animation
                 console.log("jumpToArtist: Artist already expanded, scrolling immediately")
-                scrollToArtistIndex(artistIndex, true)
+                scrollToArtistIndex(artistIndex, true, false)  // Don't account for expansion
                 // Reset flags after animation completes
                 Qt.callLater(function() { 
                     isJumping = false
-                    isProgrammaticScrolling = false
                 })
             } else {
-                // Expand the artist synchronously
+                // Expand the artist first
                 console.log("jumpToArtist: Expanding artist")
                 var updatedExpanded = Object.assign({}, expandedArtists)
                 updatedExpanded[artistName] = true
                 expandedArtists = updatedExpanded
                 
-                // Force immediate layout update
-                artistsListView.forceLayout()
-                
-                // Use dynamic layout stabilization instead of fixed delays
-                layoutStabilizationTimer.targetIndex = artistIndex
-                layoutStabilizationTimer.start()
-                
-                // Connect to stop signal to reset flags
-                function onTimerStopped() {
-                    if (!layoutStabilizationTimer.running) {
-                        layoutStabilizationTimer.runningChanged.disconnect(onTimerStopped)
-                        // Reset flags after scroll completes
+                // Wait a brief moment for the expansion to start, then scroll
+                // This allows the ListView to begin updating its layout
+                Qt.callLater(function() {
+                    // Force layout update
+                    artistsListView.forceLayout()
+                    
+                    // Now scroll to the artist with animation
+                    // Use a slight delay to ensure expansion animation has started
+                    delayTimer.interval = 1  // tiny delay to let expansion begin
+                    delayTimer.triggered.connect(function() {
+                        delayTimer.triggered.disconnect(arguments.callee)
+                        scrollToArtistIndex(artistIndex, true, false)
+                        
+                        // Reset jump flag after animation
                         Qt.callLater(function() {
                             isJumping = false
-                            isProgrammaticScrolling = false
                         })
-                    }
-                }
-                layoutStabilizationTimer.runningChanged.connect(onTimerStopped)
+                    })
+                    delayTimer.start()
+                })
             }
         } catch (error) {
             console.warn("Error in jumpToArtist:", error)
@@ -5082,31 +5331,65 @@ Item {
         artistAlbumIndexCache[artistName] = indexMap
     }
     
-    function jumpToAlbum(artistName, albumTitle) {
+    function jumpToAlbum(artistName, albumTitle, skipBrowserJump) {
         try {
             if (!artistName || !albumTitle || typeof artistName !== "string" || typeof albumTitle !== "string") return
             
-            // First jump to the artist
-            jumpToArtist(artistName)
+            // Check if we're already at this artist
+            var alreadyAtArtist = (selectedArtistName === artistName)
             
-            // Check if we have cached albums for this artist
-            if (!artistAlbumCache[artistName]) {
-                updateAlbumCacheForArtist(artistName)
+            // Jump to the artist if needed
+            if (!alreadyAtArtist) {
+                // If currently jumping, we need to wait
+                if (isJumping) {
+                    // Use a timer with a single retry to avoid infinite loops
+                    delayTimer.interval = 1
+                    delayTimer.triggered.connect(function() {
+                        delayTimer.triggered.disconnect(arguments.callee)
+                        // Only retry once - if still jumping, just proceed anyway
+                        if (!isJumping) {
+                            jumpToArtist(artistName)
+                        }
+                        // Continue with album selection regardless
+                        selectAlbumForArtist(artistName, albumTitle, skipBrowserJump)
+                    })
+                    delayTimer.start()
+                    return
+                }
+                
+                jumpToArtist(artistName)
             }
             
-            // Use O(1) lookup from cache
-            var albumMap = artistAlbumCache[artistName]
-            if (albumMap && albumMap[albumTitle]) {
-                selectedAlbum = albumMap[albumTitle]
-                // Also jump to it in the album browser
-                if (albumBrowser && typeof albumBrowser.jumpToAlbum === "function") {
-                    albumBrowser.jumpToAlbum(albumMap[albumTitle])
-                }
+            // Select the album (with a slight delay if we jumped to a new artist)
+            if (alreadyAtArtist) {
+                selectAlbumForArtist(artistName, albumTitle, skipBrowserJump)
             } else {
-                console.warn("Album not found in cache:", artistName, "-", albumTitle)
+                Qt.callLater(function() {
+                    selectAlbumForArtist(artistName, albumTitle, skipBrowserJump)
+                })
             }
         } catch (error) {
             console.warn("Error in jumpToAlbum:", error)
+        }
+    }
+    
+    // Helper function to select an album for the current artist
+    function selectAlbumForArtist(artistName, albumTitle, skipBrowserJump) {
+        // Check if we have cached albums for this artist
+        if (!artistAlbumCache[artistName]) {
+            updateAlbumCacheForArtist(artistName)
+        }
+        
+        // Use O(1) lookup from cache
+        var albumMap = artistAlbumCache[artistName]
+        if (albumMap && albumMap[albumTitle]) {
+            selectedAlbum = albumMap[albumTitle]
+            // Also jump to it in the album browser (unless we're being called from the browser)
+            if (!skipBrowserJump && albumBrowser && typeof albumBrowser.jumpToAlbum === "function") {
+                albumBrowser.jumpToAlbum(albumMap[albumTitle])
+            }
+        } else {
+            console.warn("Album not found in cache:", artistName, "-", albumTitle)
         }
     }
     

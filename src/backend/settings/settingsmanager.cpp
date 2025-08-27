@@ -18,6 +18,10 @@ SettingsManager::SettingsManager(QObject *parent)
     , m_miniPlayerX(-1)
     , m_miniPlayerY(-1)
     , m_miniPlayerHidesMainWindow(true)
+    , m_thumbnailScale(200)  // Default to 200% (400px) for backward compatibility
+    , m_artistsScrollPosition(0.0)
+    , m_expandedArtistsList()
+    , m_librarySplitRatio(0.51)  // Default to 51%
 {
     loadSettings();
     setupSystemThemeDetection();
@@ -250,6 +254,51 @@ void SettingsManager::setMiniPlayerHidesMainWindow(bool hides)
     }
 }
 
+void SettingsManager::setThumbnailScale(int scale)
+{
+    // Validate scale value (must be 100, 150, or 200)
+    if (scale != 100 && scale != 150 && scale != 200) {
+        qWarning() << "Invalid thumbnail scale:" << scale << "- must be 100, 150, or 200";
+        return;
+    }
+    
+    if (m_thumbnailScale != scale) {
+        m_thumbnailScale = scale;
+        emit thumbnailScaleChanged(scale);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setArtistsScrollPosition(double position)
+{
+    if (m_artistsScrollPosition != position) {
+        m_artistsScrollPosition = position;
+        emit artistsScrollPositionChanged(position);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setExpandedArtistsList(const QStringList& artists)
+{
+    if (m_expandedArtistsList != artists) {
+        m_expandedArtistsList = artists;
+        emit expandedArtistsListChanged(artists);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setLibrarySplitRatio(double ratio)
+{
+    // Clamp ratio between 0.2 and 0.8 to prevent extreme splits
+    ratio = qBound(0.2, ratio, 0.8);
+    
+    if (!qFuzzyCompare(m_librarySplitRatio, ratio)) {
+        m_librarySplitRatio = ratio;
+        emit librarySplitRatioChanged(ratio);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -260,6 +309,11 @@ void SettingsManager::loadSettings()
     m_showTrackInfoByDefault = m_settings.value("showTrackInfoByDefault", false).toBool();
     m_theme = static_cast<Theme>(m_settings.value("theme", Dark).toInt());
     m_layoutMode = static_cast<LayoutMode>(m_settings.value("layoutMode", Wide).toInt());
+    m_thumbnailScale = m_settings.value("thumbnailScale", 200).toInt();  // Default to 200% (400px)
+    // Ensure thumbnailScale is valid (100, 150, or 200)
+    if (m_thumbnailScale != 100 && m_thumbnailScale != 150 && m_thumbnailScale != 200) {
+        m_thumbnailScale = 200;
+    }
     m_settings.endGroup();
     
     m_settings.beginGroup("Playback");
@@ -280,6 +334,9 @@ void SettingsManager::loadSettings()
     m_lastSelectedAlbumId = m_settings.value("lastSelectedAlbumId", "").toString();
     m_lastSelectedPlaylistName = m_settings.value("lastSelectedPlaylistName", "").toString();
     m_lastSelectedWasPlaylist = m_settings.value("lastSelectedWasPlaylist", false).toBool();
+    m_artistsScrollPosition = m_settings.value("artistsScrollPosition", 0.0).toDouble();
+    m_expandedArtistsList = m_settings.value("expandedArtistsList", QStringList()).toStringList();
+    m_librarySplitRatio = m_settings.value("splitRatio", 0.51).toDouble();
     m_settings.endGroup();
     
     m_settings.beginGroup("Window");
@@ -313,6 +370,7 @@ void SettingsManager::saveSettings()
     m_settings.setValue("showTrackInfoByDefault", m_showTrackInfoByDefault);
     m_settings.setValue("theme", static_cast<int>(m_theme));
     m_settings.setValue("layoutMode", static_cast<int>(m_layoutMode));
+    m_settings.setValue("thumbnailScale", m_thumbnailScale);
     m_settings.endGroup();
     
     m_settings.beginGroup("Playback");
@@ -333,6 +391,9 @@ void SettingsManager::saveSettings()
     m_settings.setValue("lastSelectedAlbumId", m_lastSelectedAlbumId);
     m_settings.setValue("lastSelectedPlaylistName", m_lastSelectedPlaylistName);
     m_settings.setValue("lastSelectedWasPlaylist", m_lastSelectedWasPlaylist);
+    m_settings.setValue("artistsScrollPosition", m_artistsScrollPosition);
+    m_settings.setValue("expandedArtistsList", m_expandedArtistsList);
+    m_settings.setValue("splitRatio", m_librarySplitRatio);
     m_settings.endGroup();
     
     m_settings.beginGroup("Window");

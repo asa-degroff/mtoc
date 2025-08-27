@@ -1,4 +1,5 @@
 #include "albumartmanager.h"
+#include "../settings/settingsmanager.h"
 #include <QCryptographicHash>
 #include <QDir>
 #include <QStandardPaths>
@@ -124,9 +125,22 @@ QString AlbumArtManager::calculateHash(const QByteArray& data) const
     return hash.result().toHex();
 }
 
+int AlbumArtManager::getThumbnailSize() const
+{
+    // Get the thumbnail scale from settings (100, 150, or 200)
+    int scale = SettingsManager::instance()->thumbnailScale();
+    // Convert percentage to pixel size
+    return scale * 2;  // 100% = 200px, 150% = 300px, 200% = 400px
+}
+
 QImage AlbumArtManager::createThumbnail(const QImage& source) const
 {
-    return source.scaled(THUMBNAIL_SIZE, THUMBNAIL_SIZE, 
+    return createThumbnail(source, getThumbnailSize());
+}
+
+QImage AlbumArtManager::createThumbnail(const QImage& source, int size) const
+{
+    return source.scaled(size, size, 
                         Qt::KeepAspectRatio, 
                         Qt::SmoothTransformation);
 }

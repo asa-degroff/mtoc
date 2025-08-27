@@ -1737,6 +1737,46 @@ QByteArray DatabaseManager::getAlbumArtThumbnail(int albumId)
     return QByteArray();
 }
 
+bool DatabaseManager::updateAlbumThumbnail(int albumId, const QByteArray& thumbnailData)
+{
+    QMutexLocker locker(&m_databaseMutex);
+    if (!m_db.isOpen()) return false;
+    
+    QSqlQuery query(m_db);
+    query.prepare("UPDATE album_art SET thumbnail = :thumbnail, thumbnail_size = :size WHERE album_id = :album_id");
+    query.bindValue(":thumbnail", thumbnailData);
+    query.bindValue(":size", thumbnailData.size());
+    query.bindValue(":album_id", albumId);
+    
+    if (!query.exec()) {
+        logError("updateAlbumThumbnail", query);
+        return false;
+    }
+    
+    return query.numRowsAffected() > 0;
+}
+
+QList<int> DatabaseManager::getAllAlbumIdsWithArt()
+{
+    QMutexLocker locker(&m_databaseMutex);
+    QList<int> albumIds;
+    
+    if (!m_db.isOpen()) return albumIds;
+    
+    QSqlQuery query(m_db);
+    query.prepare("SELECT album_id FROM album_art WHERE thumbnail IS NOT NULL");
+    
+    if (query.exec()) {
+        while (query.next()) {
+            albumIds.append(query.value(0).toInt());
+        }
+    } else {
+        logError("getAllAlbumIdsWithArt", query);
+    }
+    
+    return albumIds;
+}
+
 void DatabaseManager::logError(const QString& operation, const QSqlQuery& query)
 {
     QString error = QString("Database error in %1: %2").arg(operation, query.lastError().text());

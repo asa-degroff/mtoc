@@ -1,5 +1,6 @@
 #include "albumartimageprovider.h"
 #include "librarymanager.h"
+#include "../settings/settingsmanager.h"
 #include <QDebug>
 #include <QPixmap>
 #include <QImage>
@@ -7,6 +8,11 @@
 #include <QMutex>
 #include <QMutexLocker>
 #include <QThread>
+#include <QCoreApplication>
+
+#ifdef Q_OS_LINUX
+#include <malloc.h>
+#endif
 
 namespace Mtoc {
 
@@ -61,8 +67,15 @@ void AlbumArtImageResponse::loadImage()
         return;
     }
     
+    // Strip any query parameters (used for cache busting)
+    QString cleanId = m_id;
+    int queryIndex = cleanId.indexOf('?');
+    if (queryIndex >= 0) {
+        cleanId = cleanId.left(queryIndex);
+    }
+    
     // The id format is "albumId/type/size" or "artist/album/type/size" where type is "thumbnail" or "full" and size is optional
-    QStringList parts = m_id.split('/');
+    QStringList parts = cleanId.split('/');
     if (parts.isEmpty()) {
         qWarning() << "AlbumArtImageProvider: Invalid image id:" << m_id;
         m_image = QImage(1, 1, QImage::Format_ARGB32);
@@ -114,15 +127,16 @@ void AlbumArtImageResponse::loadImage()
     // Determine the actual size to use
     int actualSize = targetSize > 0 ? targetSize : (m_requestedSize.isValid() ? qMax(m_requestedSize.width(), m_requestedSize.height()) : 0);
 
-    // Two-tier cache system: only cache thumbnail (256) and full size
+    // Two-tier cache system: only cache thumbnail and full size
     // For other sizes, we'll scale from the nearest cached version
     bool needsScaling = false;
     QString baseCacheKey;
     
     if (type == "thumbnail") {
-        // Always use standard thumbnail size for caching
-        baseCacheKey = QString("album_%1_thumbnail").arg(albumId);
-        needsScaling = actualSize > 0 && actualSize != 256;
+        // Use configured thumbnail size from settings
+        int configuredSize = SettingsManager::instance()->thumbnailScale() * 2; // Convert to pixels
+        baseCacheKey = QString("album_%1_thumbnail_%2").arg(albumId).arg(configuredSize);
+        needsScaling = actualSize > 0 && actualSize != configuredSize;
     } else {
         // Full size
         baseCacheKey = QString("album_%1_full").arg(albumId);
@@ -217,6 +231,27 @@ AlbumArtImageProvider::AlbumArtImageProvider(LibraryManager* libraryManager)
     int threadCount = qBound(4, idealThreadCount, 8);  // Increased from 2-4 to 4-8
     m_threadPool->setMaxThreadCount(threadCount);
     m_threadPool->setExpiryTimeout(30000); // 30 seconds
+    
+    // Connect to thumbnail scale changes to clear cache
+    connect(SettingsManager::instance(), &SettingsManager::thumbnailScaleChanged,
+            this, []() {
+                // Clear pixmap cache when thumbnail size changes
+                QPixmapCache::clear();
+                
+                // Force garbage collection in QML
+                QMetaObject::invokeMethod(qApp, []() {
+                    // This will trigger QML garbage collection
+                    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+                    QCoreApplication::processEvents();
+                });
+                
+                qDebug() << "Cleared pixmap cache due to thumbnail scale change";
+                
+                // On Linux, try to release memory back to OS
+                #ifdef Q_OS_LINUX
+                malloc_trim(0);
+                #endif
+            });
     
     // Set higher priority for image loading threads
     m_threadPool->setThreadPriority(QThread::HighPriority);

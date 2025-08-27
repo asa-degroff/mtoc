@@ -158,11 +158,35 @@ int main(int argc, char *argv[])
         dynamicCacheSize = qBound(minCacheSize, static_cast<int>(suggestedSize), maxCacheSize);
     }
     
-    QPixmapCache::setCacheLimit(dynamicCacheSize);
+    // Create SettingsManager early to get thumbnail scale
+    SettingsManager *settingsManager = SettingsManager::instance();
+    
+    // Scale cache size based on thumbnail scale setting
+    // 100% = 1.0x multiplier, 150% = 1.5x multiplier, 200% = 2.0x multiplier
+    float cacheMultiplier = settingsManager->thumbnailScale() / 100.0f;
+    int scaledCacheSize = static_cast<int>(dynamicCacheSize * cacheMultiplier);
+    
+    // Apply the same max limit after scaling
+    scaledCacheSize = qMin(scaledCacheSize, maxCacheSize);
+    
+    QPixmapCache::setCacheLimit(scaledCacheSize);
     
     // Log cache configuration
     qDebug() << "System memory:" << totalMemory / 1024 / 1024 << "MB";
-    qDebug() << "QPixmapCache configured with dynamic limit:" << dynamicCacheSize / 1024 << "MB";
+    qDebug() << "Thumbnail scale:" << settingsManager->thumbnailScale() << "%";
+    qDebug() << "Cache multiplier:" << cacheMultiplier << "x";
+    qDebug() << "QPixmapCache configured with dynamic limit:" << scaledCacheSize / 1024 << "MB";
+    
+    // Connect to thumbnail scale changes to dynamically adjust cache size
+    QObject::connect(settingsManager, &SettingsManager::thumbnailScaleChanged,
+                     [dynamicCacheSize, maxCacheSize](int newScale) {
+        float newMultiplier = newScale / 100.0f;
+        int newCacheSize = static_cast<int>(dynamicCacheSize * newMultiplier);
+        newCacheSize = qMin(newCacheSize, maxCacheSize);
+        QPixmapCache::setCacheLimit(newCacheSize);
+        qDebug() << "QPixmapCache resized for thumbnail scale" << newScale << "%:" 
+                 << newCacheSize / 1024 << "MB";
+    });
 
     QQmlApplicationEngine engine;
 
@@ -197,9 +221,8 @@ int main(int argc, char *argv[])
     Mtoc::MetadataExtractor *metadataExtractor = new Mtoc::MetadataExtractor(&engine);
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MetadataExtractor", metadataExtractor);
     
-    // Register SettingsManager singleton
+    // Register SettingsManager singleton (already created earlier for cache configuration)
     qDebug() << "Main: Registering SettingsManager...";
-    SettingsManager *settingsManager = SettingsManager::instance();
     settingsManager->setParent(&engine);  // Parent to engine for cleanup
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "SettingsManager", settingsManager);
     qDebug() << "Main: SettingsManager registered";
