@@ -1877,9 +1877,9 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
     QSqlQuery trackInsert(db);
     trackInsert.prepare(
         "INSERT INTO tracks (file_path, title, artist_id, album_id, genre, year, "
-        "track_number, disc_number, duration, file_size, file_modified) "
+        "track_number, disc_number, duration, file_size, file_modified, lyrics) "
         "VALUES (:file_path, :title, :artist_id, :album_id, :genre, :year, "
-        ":track_number, :disc_number, :duration, :file_size, :file_modified)"
+        ":track_number, :disc_number, :duration, :file_size, :file_modified, :lyrics)"
     );
     
     // Process each track in the batch
@@ -1901,6 +1901,7 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         int duration = metadata.value("duration").toInt();
         qint64 fileSize = metadata.value("fileSize", 0).toLongLong();
         QDateTime fileModified = metadata.value("fileModified").toDateTime();
+        QString lyrics = metadata.value("lyrics").toString();
         
         // Get or create artist (using cache)
         int artistId = getCachedArtist(artist);
@@ -1931,6 +1932,7 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         trackInsert.bindValue(":duration", duration > 0 ? duration : QVariant());
         trackInsert.bindValue(":file_size", fileSize > 0 ? fileSize : QVariant());
         trackInsert.bindValue(":file_modified", fileModified.isValid() ? fileModified : QVariant());
+        trackInsert.bindValue(":lyrics", lyrics.isEmpty() ? QVariant() : lyrics);
         
         if (!trackInsert.exec()) {
             qWarning() << "Failed to insert track:" << filePath << "-" << trackInsert.lastError().text();

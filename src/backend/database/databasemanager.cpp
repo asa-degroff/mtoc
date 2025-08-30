@@ -290,6 +290,24 @@ bool DatabaseManager::applyMigrations(int currentVersion)
             return false;
         }
     }
+
+    // Migration 2: Add lyrics column
+    if (currentVersion < 2) {
+        qDebug() << "Applying migration 2: Adding lyrics column";
+        if (!query.exec("ALTER TABLE tracks ADD COLUMN lyrics TEXT")) {
+            logError("Add lyrics column", query);
+            // This might fail if the column already exists, which is not a critical error
+            // But for a clean migration, we assume it doesn't.
+        }
+
+        // Record migration
+        query.prepare("INSERT INTO schema_version (version) VALUES (:version)");
+        query.bindValue(":version", 2);
+        if (!query.exec()) {
+            logError("Record migration 2", query);
+            return false;
+        }
+    }
     
     return true;
 }
@@ -337,6 +355,7 @@ bool DatabaseManager::insertTrack(const QVariantMap& trackData)
     double replayGainTrackPeak = trackData.value("replayGainTrackPeak", QVariant()).toDouble();
     double replayGainAlbumGain = trackData.value("replayGainAlbumGain", QVariant()).toDouble();
     double replayGainAlbumPeak = trackData.value("replayGainAlbumPeak", QVariant()).toDouble();
+    QString lyrics = trackData.value("lyrics").toString();
     
     // Get or create artist
     int artistId = 0;
@@ -364,10 +383,10 @@ bool DatabaseManager::insertTrack(const QVariantMap& trackData)
     query.prepare(
         "INSERT INTO tracks (file_path, title, artist_id, album_id, genre, year, "
         "track_number, disc_number, duration, file_size, file_modified, "
-        "replaygain_track_gain, replaygain_track_peak, replaygain_album_gain, replaygain_album_peak) "
+        "replaygain_track_gain, replaygain_track_peak, replaygain_album_gain, replaygain_album_peak, lyrics) "
         "VALUES (:file_path, :title, :artist_id, :album_id, :genre, :year, "
         ":track_number, :disc_number, :duration, :file_size, :file_modified, "
-        ":replaygain_track_gain, :replaygain_track_peak, :replaygain_album_gain, :replaygain_album_peak)"
+        ":replaygain_track_gain, :replaygain_track_peak, :replaygain_album_gain, :replaygain_album_peak, :lyrics)"
     );
     
     query.bindValue(":file_path", filePath);
@@ -387,6 +406,7 @@ bool DatabaseManager::insertTrack(const QVariantMap& trackData)
     query.bindValue(":replaygain_track_peak", trackData.contains("replayGainTrackPeak") ? replayGainTrackPeak : QVariant());
     query.bindValue(":replaygain_album_gain", trackData.contains("replayGainAlbumGain") ? replayGainAlbumGain : QVariant());
     query.bindValue(":replaygain_album_peak", trackData.contains("replayGainAlbumPeak") ? replayGainAlbumPeak : QVariant());
+    query.bindValue(":lyrics", lyrics.isEmpty() ? QVariant() : lyrics);
     
     if (!query.exec()) {
         logError("Insert track", query);
@@ -481,6 +501,11 @@ bool DatabaseManager::updateTrack(int trackId, const QVariantMap& trackData)
     if (trackData.contains("replayGainAlbumPeak")) {
         setClauses << "replaygain_album_peak = :replaygain_album_peak";
         bindValues[":replaygain_album_peak"] = trackData.value("replayGainAlbumPeak");
+    }
+
+    if (trackData.contains("lyrics")) {
+        setClauses << "lyrics = :lyrics";
+        bindValues[":lyrics"] = trackData.value("lyrics");
     }
     
     if (setClauses.isEmpty()) {
@@ -630,6 +655,7 @@ QVariantMap DatabaseManager::getTrack(int trackId)
         track["playCount"] = query.value("play_count");
         track["rating"] = query.value("rating");
         track["lastPlayed"] = query.value("last_played");
+        track["lyrics"] = query.value("lyrics");
     }
     
     return track;
@@ -676,6 +702,7 @@ QVariantList DatabaseManager::getTracksByAlbumAndArtist(const QString& albumTitl
             track["discNumber"] = query.value("disc_number");
             track["duration"] = query.value("duration");
             track["fileSize"] = query.value("file_size");
+            track["lyrics"] = query.value("lyrics");
             tracks.append(track);
         }
     } else {
@@ -764,6 +791,7 @@ QVariantList DatabaseManager::getAllTracks(int limit, int offset)
             track["lastPlayed"] = query.value("last_played");
             track["playCount"] = query.value("play_count");
             track["rating"] = query.value("rating");
+            track["lyrics"] = query.value("lyrics");
             tracks.append(track);
         }
     } else {
