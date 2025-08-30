@@ -16,6 +16,7 @@ Item {
     property var uniqueAlbumCovers: []
     property bool showPlaylistSavedMessage: false
     property string savedPlaylistName: ""
+    property bool lyricsVisible: false
     
     // Keyboard shortcut for undo
     Keys.onPressed: function(event) {
@@ -176,238 +177,247 @@ Item {
         visible: LibraryManager.trackCount > 0
         
         // Album art and queue container
-        Item {
+        StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            
-            // Use manual positioning instead of RowLayout to avoid layout jumps
+            currentIndex: root.lyricsVisible ? 1 : 0
+
             Item {
-                anchors.fill: parent
-                
-                // Album art container
+                id: albumArtAndQueueContainer
+
+                // Use manual positioning instead of RowLayout to avoid layout jumps
                 Item {
-                    id: albumArtContainer
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    width: queueVisible ? parent.width * 0.24 : parent.width * 0.9
+                    anchors.fill: parent
                     
-                    // Calculate target width for proper x position calculation
-                    property real targetWidth: queueVisible ? parent.width * 0.24 : parent.width * 0.9
-                    
-                    // Position based on queue visibility - centered when hidden, left-aligned when visible
-                    // Use targetWidth instead of current width to ensure smooth simultaneous animation
-                    x: queueVisible ? 0 : (parent.width - targetWidth) / 2
-                    
-                    Behavior on width {
-                        NumberAnimation { 
-                            duration: 300
-                            easing.type: Easing.InOutCubic
-                        }
-                    }
-                    
-                    Behavior on x {
-                        NumberAnimation { 
-                            duration: 300
-                            easing.type: Easing.InOutCubic
-                        }
-                    }
-                    
-                    // Column to show multiple album covers when queue is visible
-                    Column {
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: parent.width
-                        height: parent.height
-                        spacing: queueVisible ? 10 : 0
-                        opacity: (queueVisible && uniqueAlbumCovers.length > 0) ? 1.0 : 0.0
-                        visible: opacity > 0
+                    // Album art container
+                    Item {
+                        id: albumArtContainer
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: queueVisible ? parent.width * 0.24 : parent.width * 0.9
                         
-                        Behavior on spacing {
-                            NumberAnimation {
+                        // Calculate target width for proper x position calculation
+                        property real targetWidth: queueVisible ? parent.width * 0.24 : parent.width * 0.9
+                        
+                        // Position based on queue visibility - centered when hidden, left-aligned when visible
+                        // Use targetWidth instead of current width to ensure smooth simultaneous animation
+                        x: queueVisible ? 0 : (parent.width - targetWidth) / 2
+                        
+                        Behavior on width {
+                            NumberAnimation { 
                                 duration: 300
                                 easing.type: Easing.InOutCubic
                             }
                         }
                         
-                        Behavior on opacity {
-                            NumberAnimation {
+                        Behavior on x {
+                            NumberAnimation { 
                                 duration: 300
                                 easing.type: Easing.InOutCubic
                             }
                         }
                         
-                        Repeater {
-                            model: uniqueAlbumCovers
+                        // Column to show multiple album covers when queue is visible
+                        Column {
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: parent.width
+                            height: parent.height
+                            spacing: queueVisible ? 10 : 0
+                            opacity: (queueVisible && uniqueAlbumCovers.length > 0) ? 1.0 : 0.0
+                            visible: opacity > 0
                             
-                            Image {
-                                width: parent.width
-                                height: (parent.height - (parent.spacing * (uniqueAlbumCovers.length - 1))) / uniqueAlbumCovers.length
-                                source: {
-                                    if (modelData.albumArtist && modelData.album) {
-                                        var encodedArtist = encodeURIComponent(modelData.albumArtist)
-                                        var encodedAlbum = encodeURIComponent(modelData.album)
-                                        return "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/full"
+                            Behavior on spacing {
+                                NumberAnimation {
+                                    duration: 300
+                                    easing.type: Easing.InOutCubic
+                                }
+                            }
+                            
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: 300
+                                    easing.type: Easing.InOutCubic
+                                }
+                            }
+                            
+                            Repeater {
+                                model: uniqueAlbumCovers
+                                
+                                Image {
+                                    width: parent.width
+                                    height: (parent.height - (parent.spacing * (uniqueAlbumCovers.length - 1))) / uniqueAlbumCovers.length
+                                    source: {
+                                        if (modelData.albumArtist && modelData.album) {
+                                            var encodedArtist = encodeURIComponent(modelData.albumArtist)
+                                            var encodedAlbum = encodeURIComponent(modelData.album)
+                                            return "image://albumart/" + encodedArtist + "/" + encodedAlbum + "/full"
+                                        }
+                                        return ""
                                     }
-                                    return ""
-                                }
-                                fillMode: Image.PreserveAspectFit
-                                cache: true
-                                
-                                // Drop shadow effect using MultiEffect
-                                layer.enabled: true
-                                layer.effect: MultiEffect {
-                                    shadowEnabled: true
-                                    shadowHorizontalOffset: 0
-                                    shadowVerticalOffset: 4
-                                    shadowBlur: 0.5
-                                    shadowColor: "#80000000"
-                                }
-                                
-                                // Placeholder when no album art
-                                Rectangle {
-                                    anchors.fill: parent
-                                    color: Theme.panelBackground
-                                    visible: parent.status !== Image.Ready || parent.source == ""
+                                    fillMode: Image.PreserveAspectFit
+                                    cache: true
                                     
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "♪"
-                                        font.pixelSize: parent.width * 0.3
-                                        color: Theme.inputBackgroundHover
+                                    // Drop shadow effect using MultiEffect
+                                    layer.enabled: true
+                                    layer.effect: MultiEffect {
+                                        shadowEnabled: true
+                                        shadowHorizontalOffset: 0
+                                        shadowVerticalOffset: 4
+                                        shadowBlur: 0.5
+                                        shadowColor: "#80000000"
+                                    }
+                                    
+                                    // Placeholder when no album art
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        color: Theme.panelBackground
+                                        visible: parent.status !== Image.Ready || parent.source == ""
+                                        
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "♪"
+                                            font.pixelSize: parent.width * 0.3
+                                            color: Theme.inputBackgroundHover
+                                        }
+                                    }
+                                    
+                                    // MouseArea to toggle queue on click
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            root.queueVisible = false
+                                        }
                                     }
                                 }
+                            }
+                        }
+                        
+                        // Single album art when queue is hidden
+                        Image {
+                            id: albumArt
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: parent.width
+                            height: parent.height
+                            source: albumArtUrl
+                            fillMode: Image.PreserveAspectFit
+                            cache: true
+                            opacity: (!queueVisible || uniqueAlbumCovers.length === 0) ? 1.0 : 0.0
+                            visible: opacity > 0
+                            
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: 300
+                                    easing.type: Easing.InOutCubic
+                                }
+                            }
+                            
+                            // Drop shadow effect using MultiEffect
+                            layer.enabled: true
+                            layer.effect: MultiEffect {
+                                shadowEnabled: true
+                                shadowHorizontalOffset: 0
+                                shadowVerticalOffset: 4
+                                shadowBlur: 0.5
+                                shadowColor: "#80000000"
+                            }
+                            
+                            // Placeholder when no album art
+                            Rectangle {
+                                anchors.fill: parent
+                                color: Theme.panelBackground
+                                visible: albumArt.status !== Image.Ready || !albumArtUrl
                                 
-                                // MouseArea to toggle queue on click
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        root.queueVisible = false
-                                    }
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "♪"
+                                    font.pixelSize: parent.width * 0.3
+                                    color: Theme.inputBackgroundHover
                                 }
                             }
                         }
                     }
                     
-                    // Single album art when queue is hidden
-                    Image {
-                        id: albumArt
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: parent.width
-                        height: parent.height
-                        source: albumArtUrl
-                        fillMode: Image.PreserveAspectFit
-                        cache: true
-                        opacity: (!queueVisible || uniqueAlbumCovers.length === 0) ? 1.0 : 0.0
-                        visible: opacity > 0
+                    // Queue list view
+                    Item {
+                        id: queueContainer
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: queueVisible ? parent.width * 0.7 - 16 : 0
+                        opacity: queueVisible ? 1.0 : 0.0
+                        visible: opacity > 0 || width > 1  // Stay visible during animations
+                        clip: true
                         
-                        Behavior on opacity {
-                            NumberAnimation {
+                        Behavior on width {
+                            NumberAnimation { 
                                 duration: 300
                                 easing.type: Easing.InOutCubic
                             }
                         }
                         
-                        // Drop shadow effect using MultiEffect
-                        layer.enabled: true
-                        layer.effect: MultiEffect {
-                            shadowEnabled: true
-                            shadowHorizontalOffset: 0
-                            shadowVerticalOffset: 4
-                            shadowBlur: 0.5
-                            shadowColor: "#80000000"
+                        Behavior on opacity {
+                            NumberAnimation { 
+                                duration: 300
+                                easing.type: Easing.InOutCubic
+                            }
                         }
                         
-                        // Placeholder when no album art
                         Rectangle {
                             anchors.fill: parent
-                            color: Theme.panelBackground
-                            visible: albumArt.status !== Image.Ready || !albumArtUrl
+                            color: Qt.rgba(0, 0, 0, 0.3)
+                            radius: 8
+                            border.width: 1
+                            border.color: Qt.rgba(1, 1, 1, 0.1)
                             
-                            Text {
-                                anchors.centerIn: parent
-                                text: "♪"
-                                font.pixelSize: parent.width * 0.3
-                                color: Theme.inputBackgroundHover
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: 12
+                                spacing: 8
+                            
+                            // Queue header
+                            QueueHeader {
+                                Layout.fillWidth: true
+                                showPlaylistSavedMessage: root.showPlaylistSavedMessage
+                                forceLightText: true // Always use light text on dark background
+                                
+                                onClearQueueRequested: {
+                                    queueListView.clearAllTracks();
+                                }
                             }
+                            
+                            // Queue list
+                            QueueListView {
+                                id: queueListView
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                queueModel: MediaPlayer.queue
+                                currentPlayingIndex: MediaPlayer.currentQueueIndex
+                                focus: root.queueVisible
+                                forceLightText: true // Always use light text on dark background
+                                
+                                onTrackDoubleClicked: function(index) {
+                                    MediaPlayer.playTrackAt(index);
+                                }
+                                
+                                onRemoveTrackRequested: function(index) {
+                                    MediaPlayer.removeTrackAt(index);
+                                }
+                                
+                                onRemoveTracksRequested: function(indices) {
+                                    MediaPlayer.removeTracks(indices);
+                                }
+                            }
+                        }
                         }
                     }
                 }
-                
-                // Queue list view
-                Item {
-                    id: queueContainer
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    width: queueVisible ? parent.width * 0.7 - 16 : 0
-                    opacity: queueVisible ? 1.0 : 0.0
-                    visible: opacity > 0 || width > 1  // Stay visible during animations
-                    clip: true
-                    
-                    Behavior on width {
-                        NumberAnimation { 
-                            duration: 300
-                            easing.type: Easing.InOutCubic
-                        }
-                    }
-                    
-                    Behavior on opacity {
-                        NumberAnimation { 
-                            duration: 300
-                            easing.type: Easing.InOutCubic
-                        }
-                    }
-                    
-                    Rectangle {
-                        anchors.fill: parent
-                        color: Qt.rgba(0, 0, 0, 0.3)
-                        radius: 8
-                        border.width: 1
-                        border.color: Qt.rgba(1, 1, 1, 0.1)
-                        
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 8
-                        
-                        // Queue header
-                        QueueHeader {
-                            Layout.fillWidth: true
-                            showPlaylistSavedMessage: root.showPlaylistSavedMessage
-                            forceLightText: true // Always use light text on dark background
-                            
-                            onClearQueueRequested: {
-                                queueListView.clearAllTracks();
-                            }
-                        }
-                        
-                        // Queue list
-                        QueueListView {
-                            id: queueListView
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            queueModel: MediaPlayer.queue
-                            currentPlayingIndex: MediaPlayer.currentQueueIndex
-                            focus: root.queueVisible
-                            forceLightText: true // Always use light text on dark background
-                            
-                            onTrackDoubleClicked: function(index) {
-                                MediaPlayer.playTrackAt(index);
-                            }
-                            
-                            onRemoveTrackRequested: function(index) {
-                                MediaPlayer.removeTrackAt(index);
-                            }
-                            
-                            onRemoveTracksRequested: function(indices) {
-                                MediaPlayer.removeTracks(indices);
-                            }
-                        }
-                    }
-                    }
-                }
+            }
+
+            LyricsView {
+                lyricsText: MediaPlayer.currentTrackLyrics
             }
         }
         
@@ -536,6 +546,7 @@ Item {
             Layout.preferredHeight: 80
             
             queueVisible: root.queueVisible
+            lyricsVisible: root.lyricsVisible
             
             onPlayPauseClicked: MediaPlayer.togglePlayPause()
             onPreviousClicked: MediaPlayer.previous()
@@ -544,6 +555,7 @@ Item {
                 MediaPlayer.seek(position)
             }
             onQueueToggled: root.queueVisible = !root.queueVisible
+            onLyricsToggled: root.lyricsVisible = !root.lyricsVisible
             onRepeatToggled: {
                 MediaPlayer.repeatEnabled = !MediaPlayer.repeatEnabled
             }

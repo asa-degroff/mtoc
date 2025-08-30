@@ -28,6 +28,7 @@ public:
         int trackNumber = 0;
         int discNumber = 0;
         int duration = 0; // in seconds
+        QString lyrics;
         // Album art data
         QByteArray albumArtData;
         QString albumArtMimeType;
