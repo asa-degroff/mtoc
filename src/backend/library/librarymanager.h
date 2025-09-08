@@ -158,6 +158,10 @@ private:
     QString getCanonicalPathFromDisplay(const QString& displayPath) const;
     void rebuildThumbnailsInBackground();
     
+    // Memory-aware cache management helpers
+    int getOptimalArtistCacheLimit() const;
+    int getOptimalTrackCacheLimit() const;
+    
     // Private data
     DatabaseManager *m_databaseManager;
     AlbumArtManager *m_albumArtManager;
