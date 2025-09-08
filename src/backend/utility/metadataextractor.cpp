@@ -18,6 +18,7 @@
 #include <taglib/xiphcomment.h>
 #include <taglib/opusfile.h>
 #include <taglib/textidentificationframe.h>
+
 #include <taglib/id3v2frame.h>
 
 namespace Mtoc {
@@ -166,6 +167,14 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                             }
                         }
                     }
+                }
+
+                // Extract lyrics from USLT frame
+                TagLib::ID3v2::FrameList usltFrames = id3v2Tag->frameList("USLT");
+                if (!usltFrames.isEmpty() && usltFrames.front()) {
+                    // Use toString() for robustness, similar to other frame handling.
+                    meta.lyrics = QString::fromStdString(usltFrames.front()->toString().to8Bit(true));
+                    // qDebug() << "MetadataExtractor: Found lyrics (USLT)";
                 }
             }
             
@@ -374,6 +383,8 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 // Fallback to artist if no album artist
                 meta.albumArtist = meta.artist;
             }
+
+            
             
             // Audio properties from the MP4 file
             if (mp4File.audioProperties()) {
@@ -508,6 +519,18 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                     qDebug() << "MetadataExtractor: Exception accessing replay gain properties:" << e.what();
                 } catch (...) {
                     qDebug() << "MetadataExtractor: Failed to access replay gain properties";
+                }
+
+                // Lyrics
+                try {
+                    TagLib::StringList lyricsList = properties.value("LYRICS");
+                    if (!lyricsList.isEmpty() && lyricsList.size() > 0) {
+                        meta.lyrics = QString::fromStdString(lyricsList.front().to8Bit(true));
+                    }
+                } catch (const std::exception& e) {
+                    qDebug() << "MetadataExtractor: Exception accessing LYRICS property:" << e.what();
+                } catch (...) {
+                    qDebug() << "MetadataExtractor: Failed to access LYRICS property";
                 }
                 
                 // Extract album art from Xiph comment
@@ -715,6 +738,18 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 } catch (...) {
                     qDebug() << "MetadataExtractor: Failed to access replay gain properties";
                 }
+
+                // Lyrics
+                try {
+                    TagLib::StringList lyricsList = properties.value("LYRICS");
+                    if (!lyricsList.isEmpty() && lyricsList.size() > 0) {
+                        meta.lyrics = QString::fromStdString(lyricsList.front().to8Bit(true));
+                    }
+                } catch (const std::exception& e) {
+                    qDebug() << "MetadataExtractor: Exception accessing LYRICS property:" << e.what();
+                } catch (...) {
+                    qDebug() << "MetadataExtractor: Failed to access LYRICS property";
+                }
                 
                 // Extract album art from Xiph comment
                 if (extractAlbumArt) {
@@ -877,6 +912,18 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 } catch (...) {
                     qDebug() << "MetadataExtractor: Failed to access DISCNUMBER property";
                 }
+
+                // Lyrics
+                try {
+                    TagLib::StringList lyricsList = properties.value("LYRICS");
+                    if (!lyricsList.isEmpty() && lyricsList.size() > 0) {
+                        meta.lyrics = QString::fromStdString(lyricsList.front().to8Bit(true));
+                    }
+                } catch (const std::exception& e) {
+                    qDebug() << "MetadataExtractor: Exception accessing LYRICS property:" << e.what();
+                } catch (...) {
+                    qDebug() << "MetadataExtractor: Failed to access LYRICS property";
+                }
                 
                 // Extract album art from picture blocks
                 if (extractAlbumArt) {
@@ -976,6 +1023,20 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
         } catch (...) {
             qDebug() << "MetadataExtractor: Failed to access album artist properties";
         }
+
+        // Lyrics
+        if (meta.lyrics.isEmpty()) {
+            try {
+                TagLib::StringList lyricsList = properties.value("LYRICS");
+                if (!lyricsList.isEmpty() && lyricsList.size() > 0) {
+                    meta.lyrics = QString::fromStdString(lyricsList.front().to8Bit(true));
+                }
+            } catch (const std::exception& e) {
+                qDebug() << "MetadataExtractor: Exception accessing LYRICS property:" << e.what();
+            } catch (...) {
+                qDebug() << "MetadataExtractor: Failed to access LYRICS property";
+            }
+        }
         
         // qDebug() << "MetadataExtractor: Final meta.albumArtist before return:" << meta.albumArtist;
 
@@ -1016,6 +1077,7 @@ QVariantMap MetadataExtractor::extractAsVariantMap(const QString &filePath, bool
     map.insert("hasAlbumArt", !details.albumArtData.isEmpty());
     map.insert("albumArtData", details.albumArtData);
     map.insert("albumArtMimeType", details.albumArtMimeType);
+    map.insert("lyrics", details.lyrics);
     // Include replay gain data if present
     if (details.hasReplayGainTrackGain) {
         map.insert("replayGainTrackGain", details.replayGainTrackGain);

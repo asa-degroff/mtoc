@@ -71,6 +71,11 @@ QString Track::filePath() const
     return m_fileUrl.isLocalFile() ? m_fileUrl.toLocalFile() : m_fileUrl.toString();
 }
 
+QString Track::lyrics() const
+{
+    return m_lyrics;
+}
+
 // Property setters
 void Track::setTitle(const QString &title)
 {
@@ -153,6 +158,14 @@ void Track::setFileUrl(const QUrl &url)
     }
 }
 
+void Track::setLyrics(const QString &lyrics)
+{
+    if (m_lyrics != lyrics) {
+        m_lyrics = lyrics;
+        emit lyricsChanged();
+    }
+}
+
 // Additional methods
 QString Track::formattedDuration() const
 {
@@ -207,6 +220,9 @@ Track* Track::fromMetadata(const QVariantMap &metadata, QObject *parent)
         
     if (metadata.contains("duration"))
         track->setDuration(metadata.value("duration").toInt());
+
+    if (metadata.contains("lyrics"))
+        track->setLyrics(metadata.value("lyrics").toString());
     
     return track;
 }

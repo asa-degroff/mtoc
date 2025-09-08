@@ -19,10 +19,12 @@ Item {
     signal nextClicked()
     signal seekRequested(real position)
     signal queueToggled()
+    signal lyricsToggled()
     signal repeatToggled()
     signal shuffleToggled()
     
     property bool queueVisible: false
+    property bool lyricsVisible: false
     property bool repeatEnabled: MediaPlayer.repeatEnabled
     property bool shuffleEnabled: MediaPlayer.shuffleEnabled
     
@@ -227,25 +229,44 @@ Item {
             
             Item { Layout.fillWidth: true }
             
-            // Queue button container (matching repeat/shuffle width)
+            // Queue and Lyrics button container
             Item {
                 Layout.preferredWidth: 75
                 Layout.preferredHeight: 31
                 Layout.alignment: Qt.AlignVCenter
-                
-                // Queue button
-                IconButton {
-                    id: queueButton
-                    anchors.centerIn: parent
-                    width: 30
-                    height: 30
-                    iconSource: "qrc:/resources/icons/queue.svg"
-                    opacity: root.queueVisible ? 1.0 : 0.6
-                    addShadow: true
-                    onClicked: root.queueToggled()
-                    
-                    Behavior on opacity {
-                        NumberAnimation { duration: 200 }
+
+                RowLayout {
+                    anchors.fill: parent
+                    spacing: 10
+
+                    // Queue button
+                    IconButton {
+                        id: queueButton
+                        width: 30
+                        height: 30
+                        iconSource: "qrc:/resources/icons/queue.svg"
+                        opacity: root.queueVisible ? 1.0 : 0.6
+                        addShadow: true
+                        onClicked: root.queueToggled()
+                        
+                        Behavior on opacity {
+                            NumberAnimation { duration: 200 }
+                        }
+                    }
+
+                    // Lyrics button
+                    IconButton {
+                        id: lyricsButton
+                        width: 30
+                        height: 30
+                        iconSource: "qrc:/resources/icons/info.svg" // Replace with a proper lyrics icon if available
+                        opacity: root.lyricsVisible ? 1.0 : 0.6
+                        addShadow: true
+                        onClicked: root.lyricsToggled()
+
+                        Behavior on opacity {
+                            NumberAnimation { duration: 200 }
+                        }
                     }
                 }
             }
