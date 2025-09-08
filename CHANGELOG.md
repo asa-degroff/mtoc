@@ -1,3 +1,9 @@
+# 2.2.4
+### Bug fixed for album carousel with large libraries, album sorting consistency, and carousel reflection consistency
+- Fixed a bug where the album carousel would not display albums when the library contained more than 1000 albums
+- Improved sorting consistency for non-alphabetical characters in artist names
+- Fixed a bug where the reflections for albums in the carousel using placeholder art were showing other albums' reflections
+
 # 2.2.3
 ### Thumbnail size options, improved thumbnail loading performance, audio engine settings bug fixes, UI polish
 - Added thumbnail size selector with options for 100%, 150%, and 200%, offering a choice between reduced memory usage or higher visual quality
