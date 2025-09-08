@@ -77,6 +77,7 @@
           <li>Fixed a bug where the reflections for albums in the carousel using placeholder art were showing other albums' reflections</li>
         </ul>
       </description>
+      </release>
 
     <release version="2.2.3" date="2025-08-27">
       <description>
