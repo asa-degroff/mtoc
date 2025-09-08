@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.2.3
+Version:        2.2.4
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,25 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Mon Sep 08 2025 Asa DeGroff <asa@3fz.org> 2.2.4-1
+- fixed closing tag (asa@3fz.org)
+- bump version to 2.2.4 and update changelog (asa@3fz.org)
+- enhance album reflection logic with placeholder support for albums without
+  art (asa@3fz.org)
+- refactor album sorting by prioritizing letters over non-letters in artist
+  names (asa@3fz.org)
+- refactor cache management with more effective fixed sizes for artist and
+  track caches (asa@3fz.org)
+- implement memory-aware cache management for artist and track caches
+  (asa@3fz.org)
+- remove 1000 album limit for model cache, optimize album model caching and
+  memory management for large libraries (asa@3fz.org)
+- update description in metainfo (asa@3fz.org)
+- update screenshot references in metainfo (asa@3fz.org)
+- typo in filename (asa@3fz.org)
+- typo in filename (asa@3fz.org)
+- updated screenshots (asa@3fz.org)
+
 * Wed Aug 27 2025 Asa DeGroff <asa@3fz.org> 2.2.3-1
 - version bump in settings window (asa@3fz.org)
 - changelog and version bump (asa@3fz.org)
