@@ -992,20 +992,32 @@ Item {
                             var shouldHaveReflection = absDistance < (listView.width / 2)
                             var hasReflection = reflection.sourceItem !== null
                             
-                            if (shouldHaveReflection !== hasReflection) {
-                                // State changed - update reflection
-                                reflection.sourceItem = shouldHaveReflection ? albumContainer : null
-                                
-                                // If enabling reflection and image is ready, update it
-                                if (shouldHaveReflection && reflection.sourceItem) {
+                            // Update reflection visibility and source based on distance and art availability  
+                            if (shouldHaveReflection) {
+                                if (shouldHaveValidReflection) {
+                                    // Show real reflection for albums with art
+                                    reflection.sourceItem = albumContainer
+                                    reflection.visible = true
+                                    placeholderReflection.visible = false
+                                    
                                     if (albumImage && albumImage.status === Image.Ready) {
                                         reflection.scheduleUpdate()
                                     }
-                                    // Also ensure it's not in live mode
+                                    // Ensure it's not in live mode
                                     if (reflection.live) {
                                         reflection.live = false
                                     }
+                                } else {
+                                    // Show placeholder reflection for albums without art
+                                    reflection.sourceItem = null
+                                    reflection.visible = false
+                                    placeholderReflection.visible = true
                                 }
+                            } else {
+                                // No reflection needed (too far away)
+                                reflection.sourceItem = null
+                                reflection.visible = false
+                                placeholderReflection.visible = false
                             }
                         }
                     }
@@ -1026,6 +1038,13 @@ Item {
                 
                 // Force image loading for target delegates during animation
                 property bool forceImageLoad: isTargetDelegate || isNearJumpTarget || (isVisible && absDistance < 400)
+                
+                // Check if this album should have a valid reflection (has art and image is ready)
+                property bool shouldHaveValidReflection: {
+                    return albumData && albumData.hasArt && 
+                           albumImage && albumImage.status === Image.Ready &&
+                           !placeholderRect.visible
+                }
                 
                 property real horizontalOffset: {
                     if (!isVisible) return 0
@@ -1213,18 +1232,31 @@ Item {
                                     console.warn("Failed to load album art for:", albumData ? albumData.id : "unknown")
                                 }
                             }
-                        
-                                Rectangle {
-                                    anchors.fill: parent
-                                    color: "#444444"
-                                    visible: parent.status !== Image.Ready
-                                    
-                                    Label {
-                                        anchors.centerIn: parent
-                                        text: "♪"
-                                        font.pixelSize: 48
-                                        color: "#666666"
+                            
+                            // Force clear cached image data when switching to no-art albums
+                            onSourceChanged: {
+                                if (source === "") {
+                                    // Clear any cached image data to prevent stale reflections
+                                    cache = false
+                                    Qt.callLater(function() {
+                                        if (albumImage) cache = true
+                                    })
                                 }
+                            }
+                        }
+                        
+                        // Placeholder for albums without art - always show when no art available
+                        Rectangle {
+                            id: placeholderRect
+                            anchors.fill: parent
+                            color: "#444444"
+                            visible: !albumData || !albumData.hasArt || albumImage.status === Image.Error
+                            
+                            Label {
+                                anchors.centerIn: parent
+                                text: "♪"
+                                font.pixelSize: 48
+                                color: "#666666"
                             }
                         }
                         
@@ -1336,6 +1368,46 @@ Item {
                             // Clear sourceItem when component is destroyed
                             Component.onDestruction: {
                                 sourceItem = null
+                            }
+                        }
+                        
+                        // Placeholder reflection for albums without art
+                        Item {
+                            id: placeholderReflection
+                            anchors.fill: parent
+                            visible: false  // Managed by reflection logic
+                            
+                            // Create a simple reflection of the placeholder
+                            Rectangle {
+                                anchors.bottom: parent.bottom
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: albumContainer.width
+                                height: parent.height
+                                color: "#444444"
+                                
+                                // Flipped placeholder symbol
+                                Label {
+                                    anchors.centerIn: parent
+                                    text: "♪"
+                                    font.pixelSize: 48
+                                    color: "#666666"
+                                    opacity: 0.7  // Slightly dimmed for reflection effect
+                                    transform: Scale {
+                                        yScale: -1
+                                        origin.y: parent.height / 2
+                                    }
+                                }
+                                
+                                // Gradient fade effect to mimic glass reflection
+                                Rectangle {
+                                    anchors.fill: parent
+                                    gradient: Gradient {
+                                        GradientStop { position: 0.0; color: Qt.rgba(0, 0, 0, 0.2) }
+                                        GradientStop { position: 0.3; color: Qt.rgba(0, 0, 0, 0.4) }
+                                        GradientStop { position: 0.7; color: Qt.rgba(0, 0, 0, 0.7) }
+                                        GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.9) }
+                                    }
+                                }
                             }
                         }
                         
