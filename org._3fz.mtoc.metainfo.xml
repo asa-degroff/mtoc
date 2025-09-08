@@ -68,6 +68,16 @@
 
   <releases>
 
+    <release version="2.2.4" date="2025-09-08">
+      <description>
+        <p>Bug fixed for album carousel with large libraries, album sorting consistency, and carousel reflection consistency</p>
+        <ul>
+          <li>Fixed a bug where the album carousel would not display albums when the library contained more than 1000 albums</li>
+          <li>Improved sorting consistency for non-alphabetical characters in artist names</li>
+          <li>Fixed a bug where the reflections for albums in the carousel using placeholder art were showing other albums' reflections</li>
+        </ul>
+      </description>
+
     <release version="2.2.3" date="2025-08-27">
       <description>
         <p>Thumbnail size options, improved thumbnail loading performance, audio engine settings bug fixes, UI polish</p>
