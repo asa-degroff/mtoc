@@ -158,10 +158,6 @@ private:
     QString getCanonicalPathFromDisplay(const QString& displayPath) const;
     void rebuildThumbnailsInBackground();
     
-    // Memory-aware cache management helpers
-    int getOptimalArtistCacheLimit() const;
-    int getOptimalTrackCacheLimit() const;
-    
     // Private data
     DatabaseManager *m_databaseManager;
     AlbumArtManager *m_albumArtManager;
@@ -181,7 +177,7 @@ private:
     // Track cache for efficiency
     mutable QHash<QString, Track*> m_trackCache;  // FilePath -> Track
     mutable QMutex m_trackCacheMutex;
-    static const int MAX_TRACK_CACHE_SIZE = 1000;  // Limit cache size
+    static const int MAX_TRACK_CACHE_SIZE = 10000;  // Limit cache size
     
     // Virtual playlist support
     VirtualPlaylist* m_allSongsPlaylist = nullptr;

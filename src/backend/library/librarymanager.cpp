@@ -778,11 +778,11 @@ void LibraryManager::scanInBackground()
             
             // Periodically clear caches to prevent memory accumulation
             if (i % 500 == 0 && i > 0) {
-                // Clear the artist cache if it's getting too large (memory-aware)
-                if (m_albumsByArtistCache.size() > getOptimalArtistCacheLimit()) {
+                // Clear the artist cache if it's getting too large
+                if (m_albumsByArtistCache.size() > 200) {
                     QMetaObject::invokeMethod(this, [this]() {
                         m_albumsByArtistCache.clear();
-                        qDebug() << "Cleared albumsByArtistCache during scan to free memory (size was" << m_albumsByArtistCache.size() << ")";
+                        qDebug() << "Cleared albumsByArtistCache during scan to free memory";
                     }, Qt::QueuedConnection);
                 }
                 
@@ -1213,11 +1213,10 @@ QVariantList LibraryManager::getAlbumsForArtist(const QString &artistName) const
     // Fetch from database and cache
     QVariantList albums = m_databaseManager->getAlbumsByAlbumArtistName(artistName);
     
-    // Only cache if the result is reasonably small and cache isn't too large (memory-aware)
-    int maxCacheSize = getOptimalArtistCacheLimit();
-    if (albums.size() < 100 && m_albumsByArtistCache.size() < maxCacheSize) {
+    // Only cache if the result is reasonably small and cache isn't too large
+    if (albums.size() < 100 && m_albumsByArtistCache.size() < 1000) {
         // If cache is getting full, remove oldest entries (simple FIFO)
-        while (m_albumsByArtistCache.size() >= maxCacheSize) {
+        while (m_albumsByArtistCache.size() >= 1000) {
             m_albumsByArtistCache.erase(m_albumsByArtistCache.begin());
         }
         m_albumsByArtistCache[artistName] = albums;
@@ -2229,11 +2228,10 @@ Track* LibraryManager::trackByPath(const QString &path) const
     {
         QMutexLocker locker(&m_trackCacheMutex);
         
-        // If cache is full, remove oldest entries (simple FIFO) - use memory-aware limits
-        int maxTrackCacheSize = getOptimalTrackCacheLimit();
-        if (m_trackCache.size() >= maxTrackCacheSize) {
+        // If cache is full, remove oldest entries (simple FIFO)
+        if (m_trackCache.size() >= MAX_TRACK_CACHE_SIZE) {
             // Remove about 10% of cache
-            int toRemove = maxTrackCacheSize / 10;
+            int toRemove = MAX_TRACK_CACHE_SIZE / 10;
             auto it = m_trackCache.begin();
             while (toRemove > 0 && it != m_trackCache.end()) {
                 delete it.value();
@@ -2379,45 +2377,5 @@ void LibraryManager::rebuildThumbnailsInBackground()
     qDebug() << "LibraryManager::rebuildThumbnailsInBackground() completed";
 }
 
-int LibraryManager::getOptimalArtistCacheLimit() const
-{
-    // Calculate cache limit based on total library size and available memory
-    int totalAlbums = albumCount();
-    
-    if (totalAlbums <= 1000) {
-        // Small libraries can afford larger caches
-        return 200;
-    } else if (totalAlbums <= 5000) {
-        // Medium libraries: moderate cache 
-        return 150;
-    } else if (totalAlbums <= 10000) {
-        // Large libraries: smaller cache to prevent memory issues
-        return 100;
-    } else {
-        // Very large libraries: minimal cache
-        return 50;
-    }
-}
-
-int LibraryManager::getOptimalTrackCacheLimit() const
-{
-    // Calculate track cache limit based on total library size
-    // Track objects are heavier than album metadata, so scale more conservatively
-    int totalAlbums = albumCount();
-    
-    if (totalAlbums <= 1000) {
-        // Small libraries: original limit
-        return 1000;
-    } else if (totalAlbums <= 5000) {
-        // Medium libraries: reduced cache
-        return 750;
-    } else if (totalAlbums <= 10000) {
-        // Large libraries: smaller cache
-        return 500;
-    } else {
-        // Very large libraries: minimal cache to prevent memory issues
-        return 250;
-    }
-}
 
 } // namespace Mtoc
