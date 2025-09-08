@@ -288,6 +288,14 @@ Item {
                 artistB = artistB.substring(4)
             }
             
+            // First, separate letters from non-letters (numbers/symbols go last, like artist list)
+            var aStartsWithLetter = artistA.length > 0 && /^[a-z]/i.test(artistA[0])
+            var bStartsWithLetter = artistB.length > 0 && /^[a-z]/i.test(artistB[0])
+            
+            if (aStartsWithLetter !== bStartsWithLetter) {
+                return aStartsWithLetter ? -1 : 1  // Letters come before non-letters
+            }
+            
             // First compare by album artist (case-insensitive, without "The " prefix)
             var artistCompare = artistA.localeCompare(artistB)
             if (artistCompare !== 0) {
