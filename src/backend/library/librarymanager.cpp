@@ -1162,32 +1162,41 @@ QVariantList LibraryManager::albumModel() const
         return QVariantList();
     }
     
-    // Check if we should use full cache or not based on album count
-    int totalAlbums = albumCount();
-    
-    // For small libraries (< 1000 albums), use the existing full cache approach
-    if (totalAlbums < 1000) {
-        // Use cached data if valid
-        if (m_albumModelCacheValid) {
-            return m_cachedAlbumModel;
-        }
-        
-        // Clear previous cache to free memory before allocating new data
-        m_cachedAlbumModel.clear();
-        
-        QVariantList newAlbumModel = m_databaseManager->getAllAlbums();
-        
-        m_cachedAlbumModel = std::move(newAlbumModel);
-        m_albumModelCacheValid = true;
+    // Use cached data if valid
+    if (m_albumModelCacheValid) {
         return m_cachedAlbumModel;
     }
     
-    // For large libraries, return a lightweight version with just essential data
-    // The UI should use pagination or lazy loading
-    qWarning() << "Large library detected (" << totalAlbums << " albums). Consider using getAlbumsPaginated() for better performance.";
+    // Get total album count for monitoring
+    int totalAlbums = albumCount();
     
-    // Return empty list and let UI handle pagination
-    return QVariantList();
+    // Clear previous cache to free memory before allocating new data
+    m_cachedAlbumModel.clear();
+    
+    // Load albums from database
+    QVariantList newAlbumModel = m_databaseManager->getAllAlbums();
+    
+    // Monitor memory usage for large libraries and provide informational warnings
+    if (totalAlbums >= 5000) {
+        // Calculate approximate memory usage (rough estimate: ~1KB per album for metadata)
+        int estimatedMemoryMB = (totalAlbums * 1024) / (1024 * 1024);
+        qInfo() << "Large library loaded:" << totalAlbums << "albums (estimated" << estimatedMemoryMB << "MB for album metadata)";
+        
+        // Force garbage collection to clean up any unused memory
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+        
+        #ifdef Q_OS_LINUX
+        // On Linux, we can try to give memory back to the OS
+        malloc_trim(0);
+        #endif
+    } else if (totalAlbums >= 1000) {
+        qDebug() << "Medium-sized library loaded:" << totalAlbums << "albums";
+    }
+    
+    m_cachedAlbumModel = std::move(newAlbumModel);
+    m_albumModelCacheValid = true;
+    return m_cachedAlbumModel;
 }
 
 QVariantList LibraryManager::getAlbumsForArtist(const QString &artistName) const
