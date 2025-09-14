@@ -76,6 +76,14 @@ MediaPlayer::~MediaPlayer()
     qDebug() << "[MediaPlayer::~MediaPlayer] Cleanup complete";
 }
 
+QString MediaPlayer::currentTrackLyrics() const
+{
+    if (m_currentTrack) {
+        return m_currentTrack->lyrics();
+    }
+    return QString();
+}
+
 void MediaPlayer::setLibraryManager(Mtoc::LibraryManager* manager)
 {
     m_libraryManager = manager;
@@ -1314,14 +1322,7 @@ void MediaPlayer::playAlbumByName(const QString& artist, const QString& title, i
             }
             
             // Create a new Track object from the data
-            Mtoc::Track* track = new Mtoc::Track(this);
-            track->setTitle(title);
-            track->setArtist(trackMap.value("artist").toString());
-            track->setAlbum(trackMap.value("album").toString());
-            track->setAlbumArtist(trackMap.value("albumArtist").toString());
-            track->setTrackNumber(trackMap.value("trackNumber").toInt());
-            track->setDuration(trackMap.value("duration").toInt());
-            track->setFileUrl(QUrl::fromLocalFile(filePath));
+            Mtoc::Track* track = Mtoc::Track::fromMetadata(trackMap, this);
             
             m_playbackQueue.append(track);
         }
@@ -1393,14 +1394,7 @@ void MediaPlayer::playPlaylist(const QString& playlistName, int startIndex)
         }
         
         // Create a new Track object from the data
-        Mtoc::Track* track = new Mtoc::Track(this);
-        track->setTitle(trackTitle);
-        track->setArtist(trackMap.value("artist").toString());
-        track->setAlbum(trackMap.value("album").toString());
-        track->setAlbumArtist(trackMap.value("albumArtist").toString());
-        track->setTrackNumber(trackMap.value("trackNumber").toInt());
-        track->setDuration(trackMap.value("duration").toInt());
-        track->setFileUrl(QUrl::fromLocalFile(filePath));
+        Mtoc::Track* track = Mtoc::Track::fromMetadata(trackMap, this);
         
         m_playbackQueue.append(track);
     }
@@ -1454,20 +1448,13 @@ void MediaPlayer::playTrackFromData(const QVariant& trackData)
     clearQueue();
     
     // Create a new Track object from the data
-    Mtoc::Track* track = new Mtoc::Track(this);
-    track->setTitle(title);
-    track->setArtist(trackMap.value("artist").toString());
-    track->setAlbum(trackMap.value("album").toString());
-    track->setAlbumArtist(trackMap.value("albumArtist").toString());
-    track->setTrackNumber(trackMap.value("trackNumber").toInt());
     // Duration from playlist is already in seconds (from library) or milliseconds (from queue)
     // We need to handle both cases - tracks store duration in seconds
     int duration = trackMap.value("duration").toInt();
     if (duration > 10000) { // Likely in milliseconds if > 10000
-        duration = duration / 1000;
+        trackMap["duration"] = duration / 1000;
     }
-    track->setDuration(duration);
-    track->setFileUrl(QUrl::fromLocalFile(filePath));
+    Mtoc::Track* track = Mtoc::Track::fromMetadata(trackMap, this);
     
     // Add to queue so it gets cleaned up properly
     m_playbackQueue.append(track);
@@ -1629,14 +1616,7 @@ void MediaPlayer::playAlbumNext(const QString& artist, const QString& title)
             continue;
         }
         
-        Mtoc::Track* track = new Mtoc::Track(this);
-        track->setTitle(trackTitle);
-        track->setArtist(trackMap.value("artist").toString());
-        track->setAlbum(trackMap.value("album").toString());
-        track->setAlbumArtist(trackMap.value("albumArtist").toString());
-        track->setTrackNumber(trackMap.value("trackNumber").toInt());
-        track->setDuration(trackMap.value("duration").toInt());
-        track->setFileUrl(QUrl::fromLocalFile(filePath));
+        Mtoc::Track* track = Mtoc::Track::fromMetadata(trackMap, this);
         
         m_playbackQueue.insert(insertIndex++, track);
     }
@@ -1689,14 +1669,7 @@ void MediaPlayer::playAlbumLast(const QString& artist, const QString& title)
             continue;
         }
         
-        Mtoc::Track* track = new Mtoc::Track(this);
-        track->setTitle(trackTitle);
-        track->setArtist(trackMap.value("artist").toString());
-        track->setAlbum(trackMap.value("album").toString());
-        track->setAlbumArtist(trackMap.value("albumArtist").toString());
-        track->setTrackNumber(trackMap.value("trackNumber").toInt());
-        track->setDuration(trackMap.value("duration").toInt());
-        track->setFileUrl(QUrl::fromLocalFile(filePath));
+        Mtoc::Track* track = Mtoc::Track::fromMetadata(trackMap, this);
         
         m_playbackQueue.append(track);
     }
@@ -1750,14 +1723,7 @@ void MediaPlayer::playPlaylistNext(const QString& playlistName)
             continue;
         }
         
-        Mtoc::Track* track = new Mtoc::Track(this);
-        track->setTitle(trackTitle);
-        track->setArtist(trackMap.value("artist").toString());
-        track->setAlbum(trackMap.value("album").toString());
-        track->setAlbumArtist(trackMap.value("albumArtist").toString());
-        track->setTrackNumber(trackMap.value("trackNumber").toInt());
-        track->setDuration(trackMap.value("duration").toInt());
-        track->setFileUrl(QUrl::fromLocalFile(filePath));
+        Mtoc::Track* track = Mtoc::Track::fromMetadata(trackMap, this);
         
         m_playbackQueue.insert(insertIndex++, track);
     }
@@ -1808,14 +1774,7 @@ void MediaPlayer::playPlaylistLast(const QString& playlistName)
             continue;
         }
         
-        Mtoc::Track* track = new Mtoc::Track(this);
-        track->setTitle(trackTitle);
-        track->setArtist(trackMap.value("artist").toString());
-        track->setAlbum(trackMap.value("album").toString());
-        track->setAlbumArtist(trackMap.value("albumArtist").toString());
-        track->setTrackNumber(trackMap.value("trackNumber").toInt());
-        track->setDuration(trackMap.value("duration").toInt());
-        track->setFileUrl(QUrl::fromLocalFile(filePath));
+        Mtoc::Track* track = Mtoc::Track::fromMetadata(trackMap, this);
         
         m_playbackQueue.append(track);
     }
@@ -1845,6 +1804,7 @@ void MediaPlayer::updateCurrentTrack(Mtoc::Track* track)
         if (m_currentTrack) {
             m_currentTrack = nullptr;
             emit currentTrackChanged(nullptr);
+            emit currentTrackLyricsChanged();
         }
         if (m_currentAlbum) {
             m_currentAlbum = nullptr;
@@ -1856,6 +1816,7 @@ void MediaPlayer::updateCurrentTrack(Mtoc::Track* track)
     if (m_currentTrack != track) {
         m_currentTrack = track;
         emit currentTrackChanged(track);
+        emit currentTrackLyricsChanged();
         
         // If we're not playing from an album queue, clear the current album
         if (m_playbackQueue.isEmpty() || !m_playbackQueue.contains(track)) {
@@ -2394,14 +2355,7 @@ void MediaPlayer::restoreState()
                 }
                 
                 // Create a new Track object from the data
-                Mtoc::Track* track = new Mtoc::Track(this);
-                track->setTitle(title);
-                track->setArtist(trackMap.value("artist").toString());
-                track->setAlbum(trackMap.value("album").toString());
-                track->setAlbumArtist(trackMap.value("albumArtist").toString());
-                track->setTrackNumber(trackMap.value("trackNumber").toInt());
-                track->setDuration(trackMap.value("duration").toInt());
-                track->setFileUrl(QUrl::fromLocalFile(trackFilePath));
+                Mtoc::Track* track = Mtoc::Track::fromMetadata(trackMap, this);
                 
                 m_playbackQueue.append(track);
             }
@@ -2487,14 +2441,7 @@ void MediaPlayer::restoreState()
                 }
                 
                 // Create a new Track object from the data
-                Mtoc::Track* track = new Mtoc::Track(this);
-                track->setTitle(trackTitle);
-                track->setArtist(trackMap.value("artist").toString());
-                track->setAlbum(trackMap.value("album").toString());
-                track->setAlbumArtist(trackMap.value("albumArtist").toString());
-                track->setTrackNumber(trackMap.value("trackNumber").toInt());
-                track->setDuration(trackMap.value("duration").toInt());
-                track->setFileUrl(QUrl::fromLocalFile(trackFilePath));
+                Mtoc::Track* track = Mtoc::Track::fromMetadata(trackMap, this);
                 
                 m_playbackQueue.append(track);
             }
@@ -2606,15 +2553,8 @@ void MediaPlayer::restoreAlbumByName(const QString& artist, const QString& title
             }
             
             // Create a new Track object from the data
-            Mtoc::Track* track = new Mtoc::Track(this);
-            track->setTitle(title);
-            track->setArtist(trackMap.value("artist").toString());
-            track->setAlbum(trackMap.value("album").toString());
-            track->setAlbumArtist(trackMap.value("albumArtist").toString());
-            track->setTrackNumber(trackMap.value("trackNumber").toInt());
-            track->setDuration(trackMap.value("duration").toInt());
-            track->setFileUrl(QUrl::fromLocalFile(filePath));
-            
+            Mtoc::Track* track = Mtoc::Track::fromMetadata(trackMap, this);
+
             m_playbackQueue.append(track);
         }
         
@@ -2676,15 +2616,11 @@ void MediaPlayer::restoreTrackFromData(const QString& filePath, qint64 position,
     clearQueue();
     
     // Create a new Track object from the data
-    Mtoc::Track* track = new Mtoc::Track(this);
-    track->setTitle(QFileInfo(filePath).baseName()); // Fallback title
-    track->setFileUrl(QUrl::fromLocalFile(filePath));
-    
-    // Set the duration from saved state (convert ms to seconds)
-    if (duration > 0) {
-        qDebug() << "Restoring track with duration:" << duration << "ms";
-        track->setDuration(duration / 1000);
-    }
+    QVariantMap trackMap;
+    trackMap["filePath"] = filePath;
+    trackMap["title"] = QFileInfo(filePath).baseName(); // Fallback title
+    trackMap["duration"] = duration / 1000; // Convert ms to seconds
+    Mtoc::Track* track = Mtoc::Track::fromMetadata(trackMap, this);
     
     // Add to queue so it gets cleaned up properly
     m_playbackQueue.append(track);
@@ -3128,14 +3064,7 @@ void MediaPlayer::loadVirtualPlaylistNext(Mtoc::VirtualPlaylistModel* model)
             QString filePath = trackData.value("filePath").toString();
             
             if (!filePath.isEmpty()) {
-                Mtoc::Track* track = new Mtoc::Track(this);
-                track->setTitle(title);
-                track->setArtist(trackData.value("artist").toString());
-                track->setAlbum(trackData.value("album").toString());
-                track->setAlbumArtist(trackData.value("albumArtist").toString());
-                track->setTrackNumber(trackData.value("trackNumber").toInt());
-                track->setDuration(trackData.value("duration").toInt());
-                track->setFileUrl(QUrl::fromLocalFile(filePath));
+                Mtoc::Track* track = Mtoc::Track::fromMetadata(trackData, this);
                 
                 m_playbackQueue.insert(insertIndex++, track);
             }
@@ -3197,14 +3126,7 @@ void MediaPlayer::loadVirtualPlaylistLast(Mtoc::VirtualPlaylistModel* model)
             QString filePath = trackData.value("filePath").toString();
             
             if (!filePath.isEmpty()) {
-                Mtoc::Track* track = new Mtoc::Track(this);
-                track->setTitle(title);
-                track->setArtist(trackData.value("artist").toString());
-                track->setAlbum(trackData.value("album").toString());
-                track->setAlbumArtist(trackData.value("albumArtist").toString());
-                track->setTrackNumber(trackData.value("trackNumber").toInt());
-                track->setDuration(trackData.value("duration").toInt());
-                track->setFileUrl(QUrl::fromLocalFile(filePath));
+                Mtoc::Track* track = Mtoc::Track::fromMetadata(trackData, this);
                 
                 m_playbackQueue.append(track);
             }
