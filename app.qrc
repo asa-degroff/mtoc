@@ -78,5 +78,7 @@
         <file>resources/icons/minimize-dark.svg</file>
         <file>resources/icons/maximize.svg</file>
         <file>resources/icons/maximize-dark.svg</file>
+        <file>resources/icons/lyrics-icon.svg</file>
+        <file>resources/icons/lyrics-icon-dark.svg</file>
     </qresource>
 </RCC>

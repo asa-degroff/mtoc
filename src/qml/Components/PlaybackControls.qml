@@ -239,31 +239,31 @@ Item {
                     anchors.fill: parent
                     spacing: 10
 
-                    // Queue button
-                    IconButton {
-                        id: queueButton
-                        width: 30
-                        height: 30
-                        iconSource: "qrc:/resources/icons/queue.svg"
-                        opacity: root.queueVisible ? 1.0 : 0.6
-                        addShadow: true
-                        onClicked: root.queueToggled()
-                        
-                        Behavior on opacity {
-                            NumberAnimation { duration: 200 }
-                        }
-                    }
-
                     // Lyrics button
                     IconButton {
                         id: lyricsButton
                         width: 30
                         height: 30
-                        iconSource: "qrc:/resources/icons/info.svg" // Replace with a proper lyrics icon if available
+                        iconSource: Theme.isDark ? "qrc:/resources/icons/lyrics-icon.svg" : "qrc:/resources/icons/lyrics-icon-dark.svg"
                         opacity: root.lyricsVisible ? 1.0 : 0.6
                         addShadow: true
                         onClicked: root.lyricsToggled()
 
+                        Behavior on opacity {
+                            NumberAnimation { duration: 200 }
+                        }
+                    }
+
+                    // Queue button
+                    IconButton {
+                        id: queueButton
+                        width: 30
+                        height: 30
+                        iconSource: Theme.isDark ? "qrc:/resources/icons/queue.svg" : "qrc:/resources/icons/queue-dark.svg"
+                        opacity: root.queueVisible ? 1.0 : 0.6
+                        addShadow: true
+                        onClicked: root.queueToggled()
+                        
                         Behavior on opacity {
                             NumberAnimation { duration: 200 }
                         }
