@@ -250,9 +250,11 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             
             // Use a helper function to safely extract string values
             auto getStringValue = [&](const char* key) -> QString {
-                if (key && items.contains(key)) {
+                // Create a UTF-8 TagLib::String from the c-style string key for comparison.
+                TagLib::String searchKey(key, TagLib::String::UTF8);
+                if (key && items.contains(searchKey)) {
                     try {
-                        const TagLib::MP4::Item& item = items[key];
+                        const TagLib::MP4::Item& item = items[searchKey];
                         if (item.isValid()) {
                             TagLib::StringList values = item.toStringList();
                             if (!values.isEmpty() && values.size() > 0) {
