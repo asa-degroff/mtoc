@@ -74,6 +74,8 @@
         <file>resources/icons/list-drag-handle-dark.svg</file>
         <file>resources/icons/info.svg</file>
         <file>resources/icons/info-dark.svg</file>
+        <file>resources/icons/lyrics-icon.svg</file>
+        <file>resources/icons/lyrics-icon-dark.svg</file>
         <file>resources/icons/minimize.svg</file>
         <file>resources/icons/minimize-dark.svg</file>
         <file>resources/icons/maximize.svg</file>
