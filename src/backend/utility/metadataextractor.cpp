@@ -384,8 +384,21 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 meta.albumArtist = meta.artist;
             }
 
-            
-            
+            // Lyrics
+            meta.lyrics = getStringValue("©lyr");
+            if (meta.lyrics.isEmpty()) {
+                try {
+                    TagLib::StringList lyricsList = properties.value("LYRICS");
+                    if (!lyricsList.isEmpty() && lyricsList.size() > 0) {
+                        meta.lyrics = QString::fromStdString(lyricsList.front().to8Bit(true));
+                    }
+                } catch (const std::exception& e) {
+                    qDebug() << "MetadataExtractor: Exception accessing LYRICS property:" << e.what();
+                } catch (...) {
+                    qDebug() << "MetadataExtractor: Failed to access LYRICS property";
+                }
+            }
+
             // Audio properties from the MP4 file
             if (mp4File.audioProperties()) {
                 meta.duration = mp4File.audioProperties()->lengthInSeconds();

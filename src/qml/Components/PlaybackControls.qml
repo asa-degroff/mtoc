@@ -259,7 +259,7 @@ Item {
                         id: lyricsButton
                         width: 30
                         height: 30
-                        iconSource: "qrc:/resources/icons/info.svg" // Replace with a proper lyrics icon if available
+                        iconSource: Theme.isDark ? "qrc:/resources/icons/lyrics-icon.svg" : "qrc:/resources/icons/lyrics-icon-dark.svg"
                         opacity: root.lyricsVisible ? 1.0 : 0.6
                         addShadow: true
                         onClicked: root.lyricsToggled()
