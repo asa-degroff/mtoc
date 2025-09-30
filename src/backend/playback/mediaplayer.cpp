@@ -84,6 +84,14 @@ QString MediaPlayer::currentTrackLyrics() const
     return QString();
 }
 
+bool MediaPlayer::hasCurrentTrackLyrics() const
+{
+    if (m_currentTrack) {
+        return !m_currentTrack->lyrics().isEmpty();
+    }
+    return false;
+}
+
 void MediaPlayer::setLibraryManager(Mtoc::LibraryManager* manager)
 {
     m_libraryManager = manager;

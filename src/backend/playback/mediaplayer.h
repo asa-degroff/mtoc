@@ -44,6 +44,7 @@ class MediaPlayer : public QObject
     Q_PROPERTY(QString queueSourceAlbumName READ queueSourceAlbumName NOTIFY queueSourceAlbumNameChanged)
     Q_PROPERTY(QString queueSourceAlbumArtist READ queueSourceAlbumArtist NOTIFY queueSourceAlbumArtistChanged)
     Q_PROPERTY(QString currentTrackLyrics READ currentTrackLyrics NOTIFY currentTrackLyricsChanged)
+    Q_PROPERTY(bool hasCurrentTrackLyrics READ hasCurrentTrackLyrics NOTIFY currentTrackLyricsChanged)
 
 public:
     enum State {
@@ -84,6 +85,7 @@ public:
     QString queueSourceAlbumName() const { return m_queueSourceAlbumName; }
     QString queueSourceAlbumArtist() const { return m_queueSourceAlbumArtist; }
     QString currentTrackLyrics() const;
+    bool hasCurrentTrackLyrics() const;
 
 public slots:
     void play();

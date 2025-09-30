@@ -235,38 +235,39 @@ Item {
                 Layout.preferredHeight: 31
                 Layout.alignment: Qt.AlignVCenter
 
-                RowLayout {
-                    anchors.fill: parent
-                    spacing: 10
+                // Queue button
+                IconButton {
+                    id: queueButton
+                    width: 30
+                    height: 30
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.horizontalCenter: MediaPlayer.hasCurrentTrackLyrics ? undefined : parent.horizontalCenter
+                    anchors.left: MediaPlayer.hasCurrentTrackLyrics ? parent.left : undefined
+                    iconSource: "qrc:/resources/icons/queue.svg"
+                    opacity: root.queueVisible ? 1.0 : 0.6
+                    addShadow: true
+                    onClicked: root.queueToggled()
 
-                    // Queue button
-                    IconButton {
-                        id: queueButton
-                        width: 30
-                        height: 30
-                        iconSource: "qrc:/resources/icons/queue.svg"
-                        opacity: root.queueVisible ? 1.0 : 0.6
-                        addShadow: true
-                        onClicked: root.queueToggled()
-                        
-                        Behavior on opacity {
-                            NumberAnimation { duration: 200 }
-                        }
+                    Behavior on opacity {
+                        NumberAnimation { duration: 200 }
                     }
+                }
 
-                    // Lyrics button
-                    IconButton {
-                        id: lyricsButton
-                        width: 30
-                        height: 30
-                        iconSource: Theme.isDark ? "qrc:/resources/icons/lyrics-icon.svg" : "qrc:/resources/icons/lyrics-icon-dark.svg"
-                        opacity: root.lyricsVisible ? 1.0 : 0.6
-                        addShadow: true
-                        onClicked: root.lyricsToggled()
+                // Lyrics button
+                IconButton {
+                    id: lyricsButton
+                    width: 30
+                    height: 30
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.right: parent.right
+                    visible: MediaPlayer.hasCurrentTrackLyrics
+                    iconSource: Theme.isDark ? "qrc:/resources/icons/lyrics-icon.svg" : "qrc:/resources/icons/lyrics-icon-dark.svg"
+                    opacity: root.lyricsVisible ? 1.0 : 0.6
+                    addShadow: true
+                    onClicked: root.lyricsToggled()
 
-                        Behavior on opacity {
-                            NumberAnimation { duration: 200 }
-                        }
+                    Behavior on opacity {
+                        NumberAnimation { duration: 200 }
                     }
                 }
             }
