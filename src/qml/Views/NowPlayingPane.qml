@@ -179,7 +179,13 @@ Item {
         // Album art and queue container
         StackLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.preferredHeight: {
+                // Calculate fixed height: total height minus fixed components and margins/spacing
+                var margins = Math.max(16, parent.height * 0.04) * 2  // top and bottom margins
+                var spacing = Math.max(8, parent.height * 0.02) * 3   // 3 gaps between 4 components
+                var fixedComponents = 60 + 80 + 24  // track info + controls + bottom spacer
+                return Math.max(200, parent.height - margins - spacing - fixedComponents)
+            }
             currentIndex: root.lyricsVisible ? 1 : 0
 
             Item {
