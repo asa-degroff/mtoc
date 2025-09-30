@@ -241,12 +241,15 @@ Item {
                     width: 30
                     height: 30
                     anchors.verticalCenter: parent.verticalCenter
-                    anchors.horizontalCenter: MediaPlayer.hasCurrentTrackLyrics ? undefined : parent.horizontalCenter
-                    anchors.left: MediaPlayer.hasCurrentTrackLyrics ? parent.left : undefined
+                    x: MediaPlayer.hasCurrentTrackLyrics ? 0 : (parent.width - width) / 2
                     iconSource: "qrc:/resources/icons/queue.svg"
                     opacity: root.queueVisible ? 1.0 : 0.6
                     addShadow: true
                     onClicked: root.queueToggled()
+
+                    Behavior on x {
+                        NumberAnimation { duration: 200; easing.type: Easing.InOutCubic }
+                    }
 
                     Behavior on opacity {
                         NumberAnimation { duration: 200 }
@@ -261,8 +264,8 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.right: parent.right
                     visible: MediaPlayer.hasCurrentTrackLyrics
+                    opacity: (root.lyricsVisible ? 1.0 : 0.6) * (visible ? 1.0 : 0.0)
                     iconSource: Theme.isDark ? "qrc:/resources/icons/lyrics-icon.svg" : "qrc:/resources/icons/lyrics-icon-dark.svg"
-                    opacity: root.lyricsVisible ? 1.0 : 0.6
                     addShadow: true
                     onClicked: root.lyricsToggled()
 
