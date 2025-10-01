@@ -128,7 +128,7 @@ Item {
     // Update album art when track changes (based on album of the track)
     Connections {
         target: MediaPlayer
-        
+
         function onCurrentTrackChanged(track) {
             if (track && track.album && track.albumArtist) {
                 var newAlbumId = track.albumArtist + "_" + track.album
@@ -147,8 +147,13 @@ Item {
             }
             // Use debounced update for performance
             albumCoverUpdateTimer.restart()
+
+            // Auto-hide lyrics display if current track has no lyrics
+            if (!MediaPlayer.hasCurrentTrackLyrics && root.lyricsVisible) {
+                root.lyricsVisible = false
+            }
         }
-        
+
         function onPlaybackQueueChanged() {
             // Use debounced update for performance
             albumCoverUpdateTimer.restart()
