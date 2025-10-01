@@ -591,6 +591,8 @@ ListView {
             onClicked: function(mouse) {
                 root.forceActiveFocus()  // Ensure list has focus for keyboard shortcuts
                 if (mouse.button === Qt.LeftButton) {
+                    var hasModifiers = (mouse.modifiers & Qt.ControlModifier) || (mouse.modifiers & Qt.ShiftModifier);
+
                     if (mouse.modifiers & Qt.ControlModifier) {
                         // Ctrl+Click: Toggle selection
                         var idx = root.selectedTrackIndices.indexOf(index)
@@ -619,12 +621,19 @@ ListView {
                         root.lastSelectedIndex = index
                         root.keyboardSelectedIndex = index
                     }
+
+                    // If single-click-to-play is enabled and no modifiers, play the track
+                    if (SettingsManager.singleClickToPlay && !hasModifiers) {
+                        root.trackDoubleClicked(index)
+                    }
                 }
             }
-            
+
             onDoubleClicked: function(mouse) {
-                if (mouse.button === Qt.LeftButton && 
-                    !(mouse.modifiers & Qt.ControlModifier) && 
+                // Only handle double-click if single-click-to-play is disabled
+                if (!SettingsManager.singleClickToPlay &&
+                    mouse.button === Qt.LeftButton &&
+                    !(mouse.modifiers & Qt.ControlModifier) &&
                     !(mouse.modifiers & Qt.ShiftModifier)) {
                     root.trackDoubleClicked(index)
                 }

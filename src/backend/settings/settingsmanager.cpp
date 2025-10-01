@@ -22,6 +22,7 @@ SettingsManager::SettingsManager(QObject *parent)
     , m_artistsScrollPosition(0.0)
     , m_expandedArtistsList()
     , m_librarySplitRatio(0.51)  // Default to 51%
+    , m_singleClickToPlay(false)  // Default to double-click behavior
 {
     loadSettings();
     setupSystemThemeDetection();
@@ -291,10 +292,19 @@ void SettingsManager::setLibrarySplitRatio(double ratio)
 {
     // Clamp ratio between 0.2 and 0.8 to prevent extreme splits
     ratio = qBound(0.2, ratio, 0.8);
-    
+
     if (!qFuzzyCompare(m_librarySplitRatio, ratio)) {
         m_librarySplitRatio = ratio;
         emit librarySplitRatioChanged(ratio);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setSingleClickToPlay(bool enabled)
+{
+    if (m_singleClickToPlay != enabled) {
+        m_singleClickToPlay = enabled;
+        emit singleClickToPlayChanged(enabled);
         saveSettings();
     }
 }
@@ -337,6 +347,7 @@ void SettingsManager::loadSettings()
     m_artistsScrollPosition = m_settings.value("artistsScrollPosition", 0.0).toDouble();
     m_expandedArtistsList = m_settings.value("expandedArtistsList", QStringList()).toStringList();
     m_librarySplitRatio = m_settings.value("splitRatio", 0.51).toDouble();
+    m_singleClickToPlay = m_settings.value("singleClickToPlay", false).toBool();
     m_settings.endGroup();
     
     m_settings.beginGroup("Window");
@@ -394,6 +405,7 @@ void SettingsManager::saveSettings()
     m_settings.setValue("artistsScrollPosition", m_artistsScrollPosition);
     m_settings.setValue("expandedArtistsList", m_expandedArtistsList);
     m_settings.setValue("splitRatio", m_librarySplitRatio);
+    m_settings.setValue("singleClickToPlay", m_singleClickToPlay);
     m_settings.endGroup();
     
     m_settings.beginGroup("Window");

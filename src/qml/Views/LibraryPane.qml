@@ -3064,8 +3064,10 @@ Item {
                                     onClicked: function(mouse) {
                                         // Ensure the library pane has focus for keyboard navigation
                                         root.forceActiveFocus();
-                                        
+
                                         if (mouse.button === Qt.LeftButton) {
+                                            var hasModifiers = (mouse.modifiers & Qt.ControlModifier) || (mouse.modifiers & Qt.ShiftModifier);
+
                                             if (mouse.modifiers & Qt.ControlModifier) {
                                                 // Ctrl+Click: Toggle selection
                                                 var idx = root.selectedTrackIndices.indexOf(index);
@@ -3092,7 +3094,7 @@ Item {
                                                 root.selectedTrackIndices = [index];
                                                 root.lastSelectedIndex = index;
                                             }
-                                            
+
                                             trackListView.currentIndex = index;
                                             // Sync keyboard navigation state
                                             root.navigationMode = "track";
@@ -3100,6 +3102,30 @@ Item {
                                             // Update track info panel if visible
                                             if (root.showTrackInfoPanel && root.selectedTrackIndices.length === 1) {
                                                 root.selectedTrackForInfo = trackData;
+                                            }
+
+                                            // If single-click-to-play is enabled and no modifiers, play the track
+                                            if (SettingsManager.singleClickToPlay && !hasModifiers) {
+                                                // Check if this is a virtual playlist
+                                                if (root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist) {
+                                                    // For virtual playlists, use the virtual playlist model
+                                                    MediaPlayer.clearQueue()
+                                                    MediaPlayer.loadVirtualPlaylist(root.selectedAlbum.virtualModel)
+                                                    MediaPlayer.playTrackAt(index)
+                                                } else if (root.selectedAlbum && root.selectedAlbum.isPlaylist) {
+                                                    // For regular playlists, use the same approach as albums
+                                                    var globalPos = trackDelegate.mapToGlobal(mouse.x, mouse.y);
+                                                    root.playPlaylistWithQueueCheck(root.selectedAlbum.title, false, index,
+                                                                                  globalPos.x, globalPos.y);
+                                                } else if (root.selectedAlbum) {
+                                                    // Regular album - use the existing method
+                                                    var globalPos = trackDelegate.mapToGlobal(mouse.x, mouse.y);
+                                                    root.playAlbumWithQueueCheck(root.selectedAlbum.albumArtist, root.selectedAlbum.title, index,
+                                                                                globalPos.x, globalPos.y);
+                                                } else {
+                                                    // Single track
+                                                    MediaPlayer.playTrackFromData(trackData);
+                                                }
                                             }
                                         } else if (mouse.button === Qt.RightButton) {
                                             // If right-clicking on an unselected track, select it first
@@ -3113,25 +3139,28 @@ Item {
                                         }
                                     }
                                     onDoubleClicked: function(mouse) {
-                                        // Check if this is a virtual playlist
-                                        if (root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist) {
-                                            // For virtual playlists, use the virtual playlist model
-                                            MediaPlayer.clearQueue()
-                                            MediaPlayer.loadVirtualPlaylist(root.selectedAlbum.virtualModel)
-                                            MediaPlayer.playTrackAt(index)
-                                        } else if (root.selectedAlbum && root.selectedAlbum.isPlaylist) {
-                                            // For regular playlists, use the same approach as albums
-                                            var globalPos = trackDelegate.mapToGlobal(mouse.x, mouse.y);
-                                            root.playPlaylistWithQueueCheck(root.selectedAlbum.title, false, index, 
-                                                                          globalPos.x, globalPos.y);
-                                        } else if (root.selectedAlbum) {
-                                            // Regular album - use the existing method
-                                            var globalPos = trackDelegate.mapToGlobal(mouse.x, mouse.y);
-                                            root.playAlbumWithQueueCheck(root.selectedAlbum.albumArtist, root.selectedAlbum.title, index, 
-                                                                        globalPos.x, globalPos.y);
-                                        } else {
-                                            // Single track
-                                            MediaPlayer.playTrackFromData(trackData);
+                                        // Only handle double-click if single-click-to-play is disabled
+                                        if (!SettingsManager.singleClickToPlay) {
+                                            // Check if this is a virtual playlist
+                                            if (root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist) {
+                                                // For virtual playlists, use the virtual playlist model
+                                                MediaPlayer.clearQueue()
+                                                MediaPlayer.loadVirtualPlaylist(root.selectedAlbum.virtualModel)
+                                                MediaPlayer.playTrackAt(index)
+                                            } else if (root.selectedAlbum && root.selectedAlbum.isPlaylist) {
+                                                // For regular playlists, use the same approach as albums
+                                                var globalPos = trackDelegate.mapToGlobal(mouse.x, mouse.y);
+                                                root.playPlaylistWithQueueCheck(root.selectedAlbum.title, false, index,
+                                                                              globalPos.x, globalPos.y);
+                                            } else if (root.selectedAlbum) {
+                                                // Regular album - use the existing method
+                                                var globalPos = trackDelegate.mapToGlobal(mouse.x, mouse.y);
+                                                root.playAlbumWithQueueCheck(root.selectedAlbum.albumArtist, root.selectedAlbum.title, index,
+                                                                            globalPos.x, globalPos.y);
+                                            } else {
+                                                // Single track
+                                                MediaPlayer.playTrackFromData(trackData);
+                                            }
                                         }
                                     }
                                     
