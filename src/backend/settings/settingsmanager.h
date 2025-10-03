@@ -39,6 +39,7 @@ class SettingsManager : public QObject
     Q_PROPERTY(QStringList expandedArtistsList READ expandedArtistsList WRITE setExpandedArtistsList NOTIFY expandedArtistsListChanged)
     Q_PROPERTY(double librarySplitRatio READ librarySplitRatio WRITE setLibrarySplitRatio NOTIFY librarySplitRatioChanged)
     Q_PROPERTY(bool singleClickToPlay READ singleClickToPlay WRITE setSingleClickToPlay NOTIFY singleClickToPlayChanged)
+    Q_PROPERTY(bool favoritesEnabled READ favoritesEnabled WRITE setFavoritesEnabled NOTIFY favoritesEnabledChanged)
 
 public:
     enum QueueAction {
@@ -111,7 +112,8 @@ public:
     QStringList expandedArtistsList() const { return m_expandedArtistsList; }
     double librarySplitRatio() const { return m_librarySplitRatio; }
     bool singleClickToPlay() const { return m_singleClickToPlay; }
-    
+    bool favoritesEnabled() const { return m_favoritesEnabled; }
+
     // Setters
     void setQueueActionDefault(QueueAction action);
     void setShowTrackInfoByDefault(bool show);
@@ -141,6 +143,7 @@ public:
     void setExpandedArtistsList(const QStringList& artists);
     void setLibrarySplitRatio(double ratio);
     void setSingleClickToPlay(bool enabled);
+    void setFavoritesEnabled(bool enabled);
 
 protected:
     bool event(QEvent *event) override;
@@ -176,6 +179,7 @@ signals:
     void expandedArtistsListChanged(const QStringList& artists);
     void librarySplitRatioChanged(double ratio);
     void singleClickToPlayChanged(bool enabled);
+    void favoritesEnabledChanged(bool enabled);
 
 private slots:
 
@@ -218,6 +222,7 @@ private:
     QStringList m_expandedArtistsList;
     double m_librarySplitRatio;
     bool m_singleClickToPlay;
+    bool m_favoritesEnabled;
 };
 
 #endif // SETTINGSMANAGER_H

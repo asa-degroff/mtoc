@@ -7,9 +7,23 @@ import "../Components"
 Item {
     id: root
     focus: true
-    
+
     // Keyboard navigation state
     property int keyboardSelectedIndex: -1
+
+    // Filtered playlists list
+    property var filteredPlaylists: {
+        var playlists = []
+        for (var i = 0; i < PlaylistManager.playlists.length; i++) {
+            var playlistName = PlaylistManager.playlists[i]
+            // Filter out Favorites if disabled in settings
+            if (playlistName === "Favorites" && !SettingsManager.favoritesEnabled) {
+                continue
+            }
+            playlists.push(playlistName)
+        }
+        return playlists
+    }
     
     signal playlistSelected(string playlistName)
     signal playlistDoubleClicked(string playlistName, var event)
@@ -41,7 +55,7 @@ Item {
         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             // Select/activate playlist
             if (keyboardSelectedIndex >= 0 && keyboardSelectedIndex < playlistListView.count) {
-                var playlistName = PlaylistManager.playlists[keyboardSelectedIndex]
+                var playlistName = filteredPlaylists[keyboardSelectedIndex]
                 root.playlistSelected(playlistName)
                 // Navigate to track list after selecting
                 root.navigateToTracks()
@@ -108,7 +122,7 @@ Item {
     ListView {
         id: playlistListView
         anchors.fill: parent
-        model: PlaylistManager.playlists
+        model: filteredPlaylists
         spacing: 4
         clip: true
         

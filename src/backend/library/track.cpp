@@ -76,6 +76,11 @@ QString Track::lyrics() const
     return m_lyrics;
 }
 
+bool Track::isFavorite() const
+{
+    return m_isFavorite;
+}
+
 // Property setters
 void Track::setTitle(const QString &title)
 {
@@ -166,6 +171,14 @@ void Track::setLyrics(const QString &lyrics)
     }
 }
 
+void Track::setIsFavorite(bool isFavorite)
+{
+    if (m_isFavorite != isFavorite) {
+        m_isFavorite = isFavorite;
+        emit isFavoriteChanged();
+    }
+}
+
 // Additional methods
 QString Track::formattedDuration() const
 {
@@ -223,7 +236,10 @@ Track* Track::fromMetadata(const QVariantMap &metadata, QObject *parent)
 
     if (metadata.contains("lyrics"))
         track->setLyrics(metadata.value("lyrics").toString());
-    
+
+    if (metadata.contains("isFavorite"))
+        track->setIsFavorite(metadata.value("isFavorite").toBool());
+
     return track;
 }
 

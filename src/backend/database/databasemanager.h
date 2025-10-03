@@ -70,6 +70,12 @@ public:
     bool trackExists(const QString& filePath);
     int getTrackIdByPath(const QString& filePath);
     QStringList getAllTracksFilePaths();
+
+    // Favorites operations
+    bool setTrackFavorite(int trackId, bool isFavorite);
+    bool setTrackFavoriteByPath(const QString& filePath, bool isFavorite);
+    QVariantList getFavoriteTracks(int limit = -1, int offset = 0);
+    int getFavoriteTracksCount();
     
     // Batch operations
     bool beginTransaction();

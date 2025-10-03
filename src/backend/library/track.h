@@ -23,6 +23,7 @@ class Track : public QObject
     Q_PROPERTY(QUrl fileUrl READ fileUrl WRITE setFileUrl NOTIFY fileUrlChanged)
     Q_PROPERTY(QString filePath READ filePath NOTIFY filePathChanged)
     Q_PROPERTY(QString lyrics READ lyrics WRITE setLyrics NOTIFY lyricsChanged)
+    Q_PROPERTY(bool isFavorite READ isFavorite WRITE setIsFavorite NOTIFY isFavoriteChanged)
 
 public:
     explicit Track(QObject *parent = nullptr);
@@ -41,7 +42,8 @@ public:
     QUrl fileUrl() const;
     QString filePath() const;
     QString lyrics() const;
-    
+    bool isFavorite() const;
+
     // Property setters
     void setTitle(const QString &title);
     void setArtist(const QString &artist);
@@ -54,7 +56,8 @@ public:
     void setDuration(int duration);
     void setFileUrl(const QUrl &url);
     void setLyrics(const QString &lyrics);
-    
+    void setIsFavorite(bool isFavorite);
+
     // Additional methods
     Q_INVOKABLE QString formattedDuration() const; // Returns MM:SS format
     Q_INVOKABLE bool isValid() const;
@@ -75,7 +78,8 @@ signals:
     void fileUrlChanged();
     void filePathChanged();
     void lyricsChanged();
-    
+    void isFavoriteChanged();
+
 private:
     QString m_title;
     QString m_artist;
@@ -88,6 +92,7 @@ private:
     int m_duration = 0; // in seconds
     QUrl m_fileUrl;
     QString m_lyrics;
+    bool m_isFavorite = false;
 };
 
 } // namespace Mtoc

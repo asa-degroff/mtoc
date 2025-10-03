@@ -2180,6 +2180,76 @@ VirtualPlaylistModel* LibraryManager::getAllSongsPlaylist()
     return m_allSongsPlaylistModel;
 }
 
+VirtualPlaylistModel* LibraryManager::getFavoritesPlaylist()
+{
+    if (!m_favoritesPlaylistModel) {
+        // Create favorites virtual playlist on first access
+        m_favoritesPlaylist = new FavoritesVirtualPlaylist(m_databaseManager, this);
+        m_favoritesPlaylistModel = new VirtualPlaylistModel(this);
+        m_favoritesPlaylistModel->setVirtualPlaylist(m_favoritesPlaylist);
+
+        // Start loading favorite tracks asynchronously
+        m_favoritesPlaylist->loadAllTracks();
+    }
+
+    return m_favoritesPlaylistModel;
+}
+
+void LibraryManager::toggleTrackFavorite(const QString &filePath)
+{
+    if (filePath.isEmpty()) {
+        return;
+    }
+
+    // Get current favorite status
+    bool currentlyFavorite = isTrackFavorite(filePath);
+
+    // Toggle it
+    bool newFavoriteStatus = !currentlyFavorite;
+
+    // Update in database
+    if (m_databaseManager->setTrackFavoriteByPath(filePath, newFavoriteStatus)) {
+        // Emit signal so UI can update
+        emit trackFavoriteChanged(filePath, newFavoriteStatus);
+
+        // Refresh favorites playlist if it exists
+        if (m_favoritesPlaylist) {
+            m_favoritesPlaylist->refresh();
+        }
+
+        // Update track cache if track is cached
+        {
+            QMutexLocker locker(&m_trackCacheMutex);
+            if (m_trackCache.contains(filePath)) {
+                m_trackCache[filePath]->setIsFavorite(newFavoriteStatus);
+            }
+        }
+    }
+}
+
+bool LibraryManager::isTrackFavorite(const QString &filePath) const
+{
+    if (filePath.isEmpty()) {
+        return false;
+    }
+
+    // Check cache first
+    {
+        QMutexLocker locker(&m_trackCacheMutex);
+        if (m_trackCache.contains(filePath)) {
+            return m_trackCache[filePath]->isFavorite();
+        }
+    }
+
+    // Query database - get track info which includes is_favorite
+    QVariantMap trackData = m_databaseManager->getTrack(m_databaseManager->getTrackIdByPath(filePath));
+    if (!trackData.isEmpty()) {
+        return trackData.value("isFavorite", false).toBool();
+    }
+
+    return false;
+}
+
 bool LibraryManager::isTrackInLibrary(const QString &filePath) const
 {
     if (filePath.isEmpty()) {

@@ -65,6 +65,8 @@ set(PROJECT_SOURCES
         src/backend/playlist/VirtualPlaylist.cpp
         src/backend/playlist/VirtualPlaylistModel.h
         src/backend/playlist/VirtualPlaylistModel.cpp
+        src/backend/playlist/FavoritesVirtualPlaylist.h
+        src/backend/playlist/FavoritesVirtualPlaylist.cpp
         src/backend/settings/settingsmanager.h
         src/backend/settings/settingsmanager.cpp
         src/backend/system/mprismanager.h

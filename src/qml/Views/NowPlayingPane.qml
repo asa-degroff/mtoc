@@ -17,6 +17,7 @@ Item {
     property bool showPlaylistSavedMessage: false
     property string savedPlaylistName: ""
     property bool lyricsVisible: false
+    property bool currentTrackIsFavorite: false
     
     // Keyboard shortcut for undo
     Keys.onPressed: function(event) {
@@ -30,7 +31,33 @@ Item {
     
     // Enable focus to receive keyboard events
     focus: true
-    
+
+    // Update favorite status when track changes
+    function updateFavoriteStatus() {
+        if (MediaPlayer.currentTrack) {
+            currentTrackIsFavorite = LibraryManager.isTrackFavorite(MediaPlayer.currentTrack.filePath)
+        } else {
+            currentTrackIsFavorite = false
+        }
+    }
+
+    // Connections to update favorite status
+    Connections {
+        target: MediaPlayer
+        function onCurrentTrackChanged() {
+            root.updateFavoriteStatus()
+        }
+    }
+
+    Connections {
+        target: LibraryManager
+        function onTrackFavoriteChanged(filePath, isFavorite) {
+            if (MediaPlayer.currentTrack && MediaPlayer.currentTrack.filePath === filePath) {
+                root.currentTrackIsFavorite = isFavorite
+            }
+        }
+    }
+
     // Debounce timer for album cover updates
     Timer {
         id: albumCoverUpdateTimer
@@ -51,7 +78,8 @@ Item {
     
     Component.onCompleted: {
         updateUniqueAlbumCovers()
-        
+        updateFavoriteStatus()
+
         // Connect to playlist saved signal
         PlaylistManager.playlistSaved.connect(function(name) {
             savedPlaylistName = name
@@ -589,10 +617,11 @@ Item {
         PlaybackControls {
             Layout.fillWidth: true
             Layout.preferredHeight: 80
-            
+
             queueVisible: root.queueVisible
             lyricsVisible: root.lyricsVisible
-            
+            currentTrackFavorite: root.currentTrackIsFavorite
+
             onPlayPauseClicked: MediaPlayer.togglePlayPause()
             onPreviousClicked: MediaPlayer.previous()
             onNextClicked: MediaPlayer.next()
@@ -618,6 +647,11 @@ Item {
             }
             onShuffleToggled: {
                 MediaPlayer.shuffleEnabled = !MediaPlayer.shuffleEnabled
+            }
+            onFavoritesToggled: {
+                if (MediaPlayer.currentTrack) {
+                    LibraryManager.toggleTrackFavorite(MediaPlayer.currentTrack.filePath)
+                }
             }
         }
         

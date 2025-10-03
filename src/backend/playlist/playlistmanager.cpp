@@ -27,7 +27,8 @@ PlaylistManager::PlaylistManager(QObject *parent)
     : QObject(parent)
 {
     // Initialize special playlists
-    m_specialPlaylists << "All Songs";
+    // Note: "Favorites" is added but will be filtered in QML based on settings
+    m_specialPlaylists << "All Songs" << "Favorites";
 }
 
 PlaylistManager::~PlaylistManager()

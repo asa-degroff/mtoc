@@ -22,11 +22,14 @@ Item {
     signal lyricsToggled()
     signal repeatToggled()
     signal shuffleToggled()
-    
+    signal favoritesToggled()
+
     property bool queueVisible: false
     property bool lyricsVisible: false
     property bool repeatEnabled: MediaPlayer.repeatEnabled
     property bool shuffleEnabled: MediaPlayer.shuffleEnabled
+    property bool showFavorites: SettingsManager.favoritesEnabled
+    property bool currentTrackFavorite: false
     
     function formatTime(milliseconds) {
         if (isNaN(milliseconds) || milliseconds < 0) {
@@ -228,12 +231,45 @@ Item {
             }
             
             Item { Layout.fillWidth: true }
-            
-            // Queue and Lyrics button container
+
+            // Favorites, Queue and Lyrics button container
             Item {
-                Layout.preferredWidth: 75
+                Layout.preferredWidth: {
+                    var count = 0
+                    if (root.showFavorites) count++
+                    count++ // queue always shown
+                    if (MediaPlayer.hasCurrentTrackLyrics) count++
+                    return count > 1 ? (count * 30 + (count - 1) * 7.5) : 30
+                }
                 Layout.preferredHeight: 31
                 Layout.alignment: Qt.AlignVCenter
+
+                // Favorites button
+                IconButton {
+                    id: favoritesButton
+                    width: 30
+                    height: 30
+                    anchors.verticalCenter: parent.verticalCenter
+                    x: {
+                        if (!root.showFavorites) return -100 // hide offscreen
+                        return 0 // leftmost position
+                    }
+                    visible: root.showFavorites
+                    opacity: visible ? 1.0 : 0.0
+                    iconSource: root.currentTrackFavorite ?
+                        "qrc:/resources/icons/heart-filled.svg" :
+                        "qrc:/resources/icons/heart.svg"
+                    addShadow: true
+                    onClicked: root.favoritesToggled()
+
+                    Behavior on x {
+                        NumberAnimation { duration: 200; easing.type: Easing.InOutCubic }
+                    }
+
+                    Behavior on opacity {
+                        NumberAnimation { duration: 200 }
+                    }
+                }
 
                 // Queue button
                 IconButton {
@@ -241,7 +277,17 @@ Item {
                     width: 30
                     height: 30
                     anchors.verticalCenter: parent.verticalCenter
-                    x: MediaPlayer.hasCurrentTrackLyrics ? 0 : (parent.width - width) / 2
+                    x: {
+                        var count = 0
+                        if (root.showFavorites) count++
+                        var position = count * 30 + count * 7.5
+
+                        // Center if it's the only button
+                        if (!root.showFavorites && !MediaPlayer.hasCurrentTrackLyrics) {
+                            return (parent.width - width) / 2
+                        }
+                        return position
+                    }
                     iconSource: "qrc:/resources/icons/queue.svg"
                     opacity: root.queueVisible ? 1.0 : 0.6
                     addShadow: true
@@ -262,12 +308,22 @@ Item {
                     width: 30
                     height: 30
                     anchors.verticalCenter: parent.verticalCenter
-                    anchors.right: parent.right
+                    x: {
+                        if (!MediaPlayer.hasCurrentTrackLyrics) return parent.width // hide offscreen to right
+                        var count = 0
+                        if (root.showFavorites) count++
+                        count++ // queue
+                        return count * 30 + count * 7.5
+                    }
                     visible: MediaPlayer.hasCurrentTrackLyrics
                     opacity: (root.lyricsVisible ? 1.0 : 0.6) * (visible ? 1.0 : 0.0)
                     iconSource: "qrc:/resources/icons/lyrics-icon.svg"
                     addShadow: true
                     onClicked: root.lyricsToggled()
+
+                    Behavior on x {
+                        NumberAnimation { duration: 200; easing.type: Easing.InOutCubic }
+                    }
 
                     Behavior on opacity {
                         NumberAnimation { duration: 200 }

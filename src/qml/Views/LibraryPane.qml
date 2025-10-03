@@ -2147,6 +2147,20 @@ Item {
                                     // For virtual playlists, we don't load all tracks immediately
                                     rightPane.currentAlbumTracks = []
                                     rightPane.albumTitleText = "All Songs - " + allSongsModel.count + " tracks"
+                                } else if (playlistName === "Favorites") {
+                                    // Handle special "Favorites" playlist
+                                    var favoritesModel = LibraryManager.getFavoritesPlaylist()
+                                    root.selectedAlbum = {
+                                        title: playlistName,
+                                        albumArtist: "Library",
+                                        hasArt: false,
+                                        isPlaylist: true,
+                                        isVirtualPlaylist: true,
+                                        virtualModel: favoritesModel
+                                    }
+                                    // For virtual playlists, we don't load all tracks immediately
+                                    rightPane.currentAlbumTracks = []
+                                    rightPane.albumTitleText = "Favorites - " + favoritesModel.count + " tracks"
                                 } else {
                                     // Load and display regular playlist tracks
                                     var tracks = PlaylistManager.loadPlaylist(playlistName)
@@ -2166,7 +2180,7 @@ Item {
                             }
                             
                             onPlaylistDoubleClicked: function(playlistName, event) {
-                                var isVirtual = playlistName === "All Songs"
+                                var isVirtual = (playlistName === "All Songs" || playlistName === "Favorites")
                                 var mouseX = event ? event.x : undefined
                                 var mouseY = event ? event.y : undefined
                                 
@@ -2181,10 +2195,15 @@ Item {
                                 var startIndex = 0
                                 if (MediaPlayer.shuffleEnabled) {
                                     var trackCount = 0
-                                    if (isVirtual && playlistName === "All Songs") {
-                                        // For All Songs, get count from the virtual playlist
-                                        var allSongsModel = LibraryManager.getAllSongsPlaylist()
-                                        trackCount = allSongsModel ? allSongsModel.rowCount() : 0
+                                    if (isVirtual) {
+                                        // For virtual playlists, get count from the appropriate model
+                                        if (playlistName === "All Songs") {
+                                            var allSongsModel = LibraryManager.getAllSongsPlaylist()
+                                            trackCount = allSongsModel ? allSongsModel.rowCount() : 0
+                                        } else if (playlistName === "Favorites") {
+                                            var favoritesModel = LibraryManager.getFavoritesPlaylist()
+                                            trackCount = favoritesModel ? favoritesModel.rowCount() : 0
+                                        }
                                     } else {
                                         // For regular playlists, get count from PlaylistManager
                                         trackCount = PlaylistManager.getPlaylistTrackCount(playlistName)
@@ -2199,16 +2218,21 @@ Item {
                             }
                             
                             onPlaylistPlayRequested: function(playlistName) {
-                                var isVirtual = playlistName === "All Songs"
+                                var isVirtual = (playlistName === "All Songs" || playlistName === "Favorites")
                                 
                                 // Calculate start index based on shuffle mode
                                 var startIndex = 0
                                 if (MediaPlayer.shuffleEnabled) {
                                     var trackCount = 0
-                                    if (isVirtual && playlistName === "All Songs") {
-                                        // For All Songs, get count from the virtual playlist
-                                        var allSongsModel = LibraryManager.getAllSongsPlaylist()
-                                        trackCount = allSongsModel ? allSongsModel.rowCount() : 0
+                                    if (isVirtual) {
+                                        // For virtual playlists, get count from the appropriate model
+                                        if (playlistName === "All Songs") {
+                                            var allSongsModel = LibraryManager.getAllSongsPlaylist()
+                                            trackCount = allSongsModel ? allSongsModel.rowCount() : 0
+                                        } else if (playlistName === "Favorites") {
+                                            var favoritesModel = LibraryManager.getFavoritesPlaylist()
+                                            trackCount = favoritesModel ? favoritesModel.rowCount() : 0
+                                        }
                                     } else {
                                         // For regular playlists, get count from PlaylistManager
                                         trackCount = PlaylistManager.getPlaylistTrackCount(playlistName)
@@ -2223,12 +2247,12 @@ Item {
                             }
                             
                             onPlaylistPlayNextRequested: function(playlistName) {
-                                var isVirtual = playlistName === "All Songs"
+                                var isVirtual = (playlistName === "All Songs" || playlistName === "Favorites")
                                 playPlaylistNext(playlistName, isVirtual)
                             }
                             
                             onPlaylistPlayLastRequested: function(playlistName) {
-                                var isVirtual = playlistName === "All Songs"
+                                var isVirtual = (playlistName === "All Songs" || playlistName === "Favorites")
                                 playPlaylistLast(playlistName, isVirtual)
                             }
                             
@@ -5478,15 +5502,15 @@ Item {
     }
     
     function playPlaylistWithQueueCheck(playlistName, isVirtualPlaylist, startIndex, mouseX, mouseY) {
-        // Special handling for "All Songs" playlist
-        var isAllSongs = isVirtualPlaylist && playlistName === "All Songs"
-        
+        // Special handling for virtual playlists ("All Songs" and "Favorites")
+        var isSpecialVirtual = isVirtualPlaylist && (playlistName === "All Songs" || playlistName === "Favorites")
+
         // Check if we should show the dialog
         var shouldShowDialog = false
-        
-        if (isAllSongs) {
-            // For All Songs, show dialog if queue is modified AND (Ask is selected OR Play Next/Last is selected)
-            shouldShowDialog = MediaPlayer.isQueueModified && 
+
+        if (isSpecialVirtual) {
+            // For special virtual playlists, show dialog if queue is modified AND (Ask is selected OR Play Next/Last is selected)
+            shouldShowDialog = MediaPlayer.isQueueModified &&
                               (SettingsManager.queueActionDefault === SettingsManager.Ask ||
                                SettingsManager.queueActionDefault === SettingsManager.Insert ||
                                SettingsManager.queueActionDefault === SettingsManager.Append)
@@ -5525,9 +5549,9 @@ Item {
         } else {
             // Apply the configured action
             var effectiveAction = SettingsManager.queueActionDefault
-            
-            // For All Songs, if Play Next/Last is selected, fall back to Replace
-            if (isAllSongs && (effectiveAction === SettingsManager.Insert || effectiveAction === SettingsManager.Append)) {
+
+            // For special virtual playlists, if Play Next/Last is selected, fall back to Replace
+            if (isSpecialVirtual && (effectiveAction === SettingsManager.Insert || effectiveAction === SettingsManager.Append)) {
                 effectiveAction = SettingsManager.Replace
             }
             
@@ -5550,12 +5574,18 @@ Item {
     }
     
     function playPlaylistReplace(playlistName, isVirtualPlaylist, startIndex) {
-        if (isVirtualPlaylist && playlistName === "All Songs") {
-            // Get the virtual playlist model
-            var allSongsModel = LibraryManager.getAllSongsPlaylist()
+        if (isVirtualPlaylist && (playlistName === "All Songs" || playlistName === "Favorites")) {
+            // Get the appropriate virtual playlist model
+            var virtualModel
+            if (playlistName === "All Songs") {
+                virtualModel = LibraryManager.getAllSongsPlaylist()
+            } else if (playlistName === "Favorites") {
+                virtualModel = LibraryManager.getFavoritesPlaylist()
+            }
+
             // Clear queue and load virtual playlist
             MediaPlayer.clearQueue()
-            MediaPlayer.loadVirtualPlaylist(allSongsModel)
+            MediaPlayer.loadVirtualPlaylist(virtualModel)
             // For virtual playlist, handle start index differently
             if (startIndex !== undefined && startIndex > 0) {
                 MediaPlayer.playTrackAt(startIndex)
@@ -5583,18 +5613,28 @@ Item {
     }
     
     function playPlaylistNext(playlistName, isVirtualPlaylist) {
-        if (isVirtualPlaylist && playlistName === "All Songs") {
-            var allSongsModel = LibraryManager.getAllSongsPlaylist()
-            MediaPlayer.loadVirtualPlaylistNext(allSongsModel)
+        if (isVirtualPlaylist && (playlistName === "All Songs" || playlistName === "Favorites")) {
+            var virtualModel
+            if (playlistName === "All Songs") {
+                virtualModel = LibraryManager.getAllSongsPlaylist()
+            } else if (playlistName === "Favorites") {
+                virtualModel = LibraryManager.getFavoritesPlaylist()
+            }
+            MediaPlayer.loadVirtualPlaylistNext(virtualModel)
         } else {
             MediaPlayer.playPlaylistNext(playlistName)
         }
     }
-    
+
     function playPlaylistLast(playlistName, isVirtualPlaylist) {
-        if (isVirtualPlaylist && playlistName === "All Songs") {
-            var allSongsModel = LibraryManager.getAllSongsPlaylist()
-            MediaPlayer.loadVirtualPlaylistLast(allSongsModel)
+        if (isVirtualPlaylist && (playlistName === "All Songs" || playlistName === "Favorites")) {
+            var virtualModel
+            if (playlistName === "All Songs") {
+                virtualModel = LibraryManager.getAllSongsPlaylist()
+            } else if (playlistName === "Favorites") {
+                virtualModel = LibraryManager.getFavoritesPlaylist()
+            }
+            MediaPlayer.loadVirtualPlaylistLast(virtualModel)
         } else {
             MediaPlayer.playPlaylistLast(playlistName)
         }

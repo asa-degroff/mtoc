@@ -26,7 +26,7 @@ public:
     int bufferSize() const { return m_bufferSize; }
     
     // Playlist operations
-    void loadAllTracks();
+    virtual void loadAllTracks();
     void clear();
     
     // Track access
@@ -60,35 +60,33 @@ signals:
     void trackLoaded(int index);
     void rangeLoaded(int startIndex, int endIndex);
     void error(const QString& message);
-    
-    
-private:
-    void loadRange(int startIndex, int count);
+
+
+protected:
+    virtual void loadRange(int startIndex, int count);
     void updateLoadedRanges(int startIndex, int endIndex);
     bool isInLoadedRange(int index) const;
-    
+
+    // Protected members that derived classes need access to
     DatabaseManager* m_dbManager;
-    
-    // Track storage
     mutable QMutex m_trackMutex;
-    QVector<VirtualTrackData*> m_tracks;  // Using raw pointers, managed manually
+    QVector<VirtualTrackData*> m_tracks;
     int m_totalTrackCount = 0;
     int m_totalDuration = 0;
-    
-    // Loading state
     std::atomic<bool> m_isLoading{false};
     QFuture<void> m_loadFuture;
-    
-    // Buffer configuration
-    int m_bufferSize = 50;  // Number of tracks to load at once
-    int m_preloadRadius = 10; // Number of tracks to preload around current
-    
+    int m_bufferSize = 50;
+
     // Loaded ranges tracking
     struct LoadedRange {
         int start;
         int end;
     };
     QVector<LoadedRange> m_loadedRanges;
+
+private:
+    // Buffer configuration
+    int m_preloadRadius = 10; // Number of tracks to preload around current
     
     // Shuffle support
     QVector<int> m_shuffleOrder;

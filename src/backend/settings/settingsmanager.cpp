@@ -23,6 +23,7 @@ SettingsManager::SettingsManager(QObject *parent)
     , m_expandedArtistsList()
     , m_librarySplitRatio(0.51)  // Default to 51%
     , m_singleClickToPlay(false)  // Default to double-click behavior
+    , m_favoritesEnabled(true)  // Default to enabled
 {
     loadSettings();
     setupSystemThemeDetection();
@@ -309,6 +310,15 @@ void SettingsManager::setSingleClickToPlay(bool enabled)
     }
 }
 
+void SettingsManager::setFavoritesEnabled(bool enabled)
+{
+    if (m_favoritesEnabled != enabled) {
+        m_favoritesEnabled = enabled;
+        emit favoritesEnabledChanged(enabled);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -348,6 +358,7 @@ void SettingsManager::loadSettings()
     m_expandedArtistsList = m_settings.value("expandedArtistsList", QStringList()).toStringList();
     m_librarySplitRatio = m_settings.value("splitRatio", 0.51).toDouble();
     m_singleClickToPlay = m_settings.value("singleClickToPlay", false).toBool();
+    m_favoritesEnabled = m_settings.value("favoritesEnabled", true).toBool();
     m_settings.endGroup();
     
     m_settings.beginGroup("Window");
@@ -406,6 +417,7 @@ void SettingsManager::saveSettings()
     m_settings.setValue("expandedArtistsList", m_expandedArtistsList);
     m_settings.setValue("splitRatio", m_librarySplitRatio);
     m_settings.setValue("singleClickToPlay", m_singleClickToPlay);
+    m_settings.setValue("favoritesEnabled", m_favoritesEnabled);
     m_settings.endGroup();
     
     m_settings.beginGroup("Window");

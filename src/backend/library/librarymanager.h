@@ -24,6 +24,7 @@
 #include "albumartmanager.h"
 #include "../playlist/VirtualPlaylist.h"
 #include "../playlist/VirtualPlaylistModel.h"
+#include "../playlist/FavoritesVirtualPlaylist.h"
 
 namespace Mtoc {
 
@@ -104,7 +105,12 @@ public:
     
     // Virtual playlist support
     Q_INVOKABLE VirtualPlaylistModel* getAllSongsPlaylist();
+    Q_INVOKABLE VirtualPlaylistModel* getFavoritesPlaylist();
     Q_INVOKABLE bool isTrackInLibrary(const QString &filePath) const;
+
+    // Favorites support
+    Q_INVOKABLE void toggleTrackFavorite(const QString &filePath);
+    Q_INVOKABLE bool isTrackFavorite(const QString &filePath) const;
     
     // Access to database manager (for image provider)
     DatabaseManager* databaseManager() const { return m_databaseManager; }
@@ -140,6 +146,7 @@ signals:
     void rebuildProgressChanged();
     void rebuildProgressTextChanged();
     void thumbnailsRebuilt();
+    void trackFavoriteChanged(const QString &filePath, bool isFavorite);
 
 private slots:
     void onScanFinished();
@@ -182,6 +189,8 @@ private:
     // Virtual playlist support
     VirtualPlaylist* m_allSongsPlaylist = nullptr;
     VirtualPlaylistModel* m_allSongsPlaylistModel = nullptr;
+    FavoritesVirtualPlaylist* m_favoritesPlaylist = nullptr;
+    VirtualPlaylistModel* m_favoritesPlaylistModel = nullptr;
     
     // Models for UI
     TrackModel *m_allTracksModel;

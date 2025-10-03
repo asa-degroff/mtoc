@@ -308,7 +308,24 @@ bool DatabaseManager::applyMigrations(int currentVersion)
             return false;
         }
     }
-    
+
+    // Migration 3: Add is_favorite column
+    if (currentVersion < 3) {
+        qDebug() << "Applying migration 3: Adding is_favorite column";
+        if (!query.exec("ALTER TABLE tracks ADD COLUMN is_favorite INTEGER DEFAULT 0")) {
+            logError("Add is_favorite column", query);
+            // This might fail if the column already exists
+        }
+
+        // Record migration
+        query.prepare("INSERT INTO schema_version (version) VALUES (:version)");
+        query.bindValue(":version", 3);
+        if (!query.exec()) {
+            logError("Record migration 3", query);
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -328,7 +345,10 @@ bool DatabaseManager::createIndexes()
     query.exec("CREATE INDEX IF NOT EXISTS idx_artists_name ON artists(name)");
     query.exec("CREATE INDEX IF NOT EXISTS idx_album_artists_name ON album_artists(name)");
     query.exec("CREATE INDEX IF NOT EXISTS idx_albums_title ON albums(title)");
-    
+
+    // Favorites index
+    query.exec("CREATE INDEX IF NOT EXISTS idx_tracks_is_favorite ON tracks(is_favorite)");
+
     return true;
 }
 
@@ -656,8 +676,9 @@ QVariantMap DatabaseManager::getTrack(int trackId)
         track["rating"] = query.value("rating");
         track["lastPlayed"] = query.value("last_played");
         track["lyrics"] = query.value("lyrics");
+        track["isFavorite"] = query.value("is_favorite").toBool();
     }
-    
+
     return track;
 }
 
@@ -792,6 +813,7 @@ QVariantList DatabaseManager::getAllTracks(int limit, int offset)
             track["playCount"] = query.value("play_count");
             track["rating"] = query.value("rating");
             track["lyrics"] = query.value("lyrics");
+            track["isFavorite"] = query.value("is_favorite").toBool();
             tracks.append(track);
         }
     } else {
@@ -1803,6 +1825,159 @@ QList<int> DatabaseManager::getAllAlbumIdsWithArt()
     }
     
     return albumIds;
+}
+
+bool DatabaseManager::setTrackFavorite(int trackId, bool isFavorite)
+{
+    QMutexLocker locker(&m_databaseMutex);
+
+    if (!m_db.isOpen()) return false;
+
+    QSqlQuery query(m_db);
+    query.prepare("UPDATE tracks SET is_favorite = :is_favorite WHERE id = :id");
+    query.bindValue(":is_favorite", isFavorite ? 1 : 0);
+    query.bindValue(":id", trackId);
+
+    if (!query.exec()) {
+        logError("setTrackFavorite", query);
+        return false;
+    }
+
+    return query.numRowsAffected() > 0;
+}
+
+bool DatabaseManager::setTrackFavoriteByPath(const QString& filePath, bool isFavorite)
+{
+    QMutexLocker locker(&m_databaseMutex);
+
+    if (!m_db.isOpen()) return false;
+
+    QSqlQuery query(m_db);
+    query.prepare("UPDATE tracks SET is_favorite = :is_favorite WHERE file_path = :file_path");
+    query.bindValue(":is_favorite", isFavorite ? 1 : 0);
+    query.bindValue(":file_path", filePath);
+
+    if (!query.exec()) {
+        logError("setTrackFavoriteByPath", query);
+        return false;
+    }
+
+    return query.numRowsAffected() > 0;
+}
+
+QVariantList DatabaseManager::getFavoriteTracks(int limit, int offset)
+{
+    QVariantList tracks;
+
+    // Check if we're in the main thread or a worker thread
+    bool isMainThread = (QThread::currentThread() == this->thread());
+    QSqlDatabase db;
+    QString connectionName;
+
+    if (isMainThread) {
+        // Use the main connection with mutex protection
+        QMutexLocker locker(&m_databaseMutex);
+        if (!m_db.isOpen()) {
+            qWarning() << "[DatabaseManager::getFavoriteTracks] Database is not open!";
+            return tracks;
+        }
+        db = m_db;
+    } else {
+        // Create a thread-specific connection for background threads
+        connectionName = QString("MtocThread_%1").arg(quintptr(QThread::currentThreadId()));
+        if (QSqlDatabase::contains(connectionName)) {
+            db = QSqlDatabase::database(connectionName);
+        } else {
+            db = createThreadConnection(connectionName);
+        }
+
+        if (!db.isOpen()) {
+            qWarning() << "[DatabaseManager::getFavoriteTracks] Failed to open thread database!";
+            return tracks;
+        }
+    }
+
+    QSqlQuery query(db);
+    QString queryStr =
+        "SELECT t.*, a.name as artist_name, al.title as album_title, "
+        "aa.name as album_artist_name "
+        "FROM tracks t "
+        "LEFT JOIN artists a ON t.artist_id = a.id "
+        "LEFT JOIN albums al ON t.album_id = al.id "
+        "LEFT JOIN album_artists aa ON al.album_artist_id = aa.id "
+        "WHERE t.is_favorite = 1 "
+        "AND t.title IS NOT NULL AND t.title != '' "
+        "AND (a.name IS NOT NULL AND a.name != '' OR t.artist_id IS NULL) "
+        "ORDER BY aa.name COLLATE NOCASE, al.title COLLATE NOCASE, "
+        "t.disc_number, t.track_number, t.title COLLATE NOCASE";
+
+    if (limit > 0) {
+        queryStr += " LIMIT :limit";
+        if (offset > 0) {
+            queryStr += " OFFSET :offset";
+        }
+    }
+
+    query.prepare(queryStr);
+
+    if (limit > 0) {
+        query.bindValue(":limit", limit);
+        if (offset > 0) {
+            query.bindValue(":offset", offset);
+        }
+    }
+
+    if (query.exec()) {
+        while (query.next()) {
+            QVariantMap track;
+            track["id"] = query.value("id");
+            track["filePath"] = query.value("file_path");
+            track["title"] = query.value("title");
+            track["artist"] = query.value("artist_name");
+            track["album"] = query.value("album_title");
+            track["albumArtist"] = query.value("album_artist_name");
+            track["genre"] = query.value("genre");
+            track["year"] = query.value("year");
+            track["trackNumber"] = query.value("track_number");
+            track["discNumber"] = query.value("disc_number");
+            track["duration"] = query.value("duration");
+            track["fileSize"] = query.value("file_size");
+            track["lastPlayed"] = query.value("last_played");
+            track["playCount"] = query.value("play_count");
+            track["rating"] = query.value("rating");
+            track["lyrics"] = query.value("lyrics");
+            track["isFavorite"] = true; // Always true for favorites
+            tracks.append(track);
+        }
+    } else {
+        qWarning() << "[DatabaseManager::getFavoriteTracks] Query execution failed!";
+        logError("Get favorite tracks", query);
+    }
+
+    return tracks;
+}
+
+int DatabaseManager::getFavoriteTracksCount()
+{
+    if (!m_db.isOpen()) {
+        qWarning() << "[DatabaseManager::getFavoriteTracksCount] Database is not open!";
+        return 0;
+    }
+
+    QMutexLocker locker(&m_databaseMutex);
+    QSqlQuery query(m_db);
+    query.prepare(
+        "SELECT COUNT(*) FROM tracks "
+        "WHERE is_favorite = 1 "
+        "AND title IS NOT NULL AND title != ''"
+    );
+
+    if (query.exec() && query.next()) {
+        return query.value(0).toInt();
+    }
+
+    logError("Get favorite tracks count", query);
+    return 0;
 }
 
 void DatabaseManager::logError(const QString& operation, const QSqlQuery& query)
