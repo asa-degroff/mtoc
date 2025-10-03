@@ -181,8 +181,8 @@ Item {
         spacing: Math.max(8, parent.height * 0.02)  // Dynamic spacing: 2% of height, min 8px
         visible: LibraryManager.trackCount > 0
         
-        // Album art and queue container
-        StackLayout {
+        // Album art and queue container with lyrics (custom animated transition)
+        Item {
             Layout.fillWidth: true
             Layout.preferredHeight: {
                 // Calculate fixed height: total height minus fixed components and margins/spacing
@@ -191,10 +191,20 @@ Item {
                 var fixedComponents = 60 + 80 + 24  // track info + controls + bottom spacer
                 return Math.max(200, parent.height - margins - spacing - fixedComponents)
             }
-            currentIndex: root.lyricsVisible ? 1 : 0
 
+            // Album art and queue view
             Item {
                 id: albumArtAndQueueContainer
+                anchors.fill: parent
+                opacity: root.lyricsVisible ? 0 : 1
+                visible: opacity > 0
+
+                Behavior on opacity {
+                    NumberAnimation {
+                        duration: 300
+                        easing.type: Easing.InOutCubic
+                    }
+                }
 
                 // Use manual positioning instead of RowLayout to avoid layout jumps
                 Item {
@@ -427,8 +437,32 @@ Item {
                 }
             }
 
+            // Lyrics view with slide-up animation
             LyricsView {
+                id: lyricsView
+                anchors.fill: parent
                 lyricsText: MediaPlayer.currentTrackLyrics
+                opacity: root.lyricsVisible ? 1 : 0
+                visible: opacity > 0
+
+                // Slide up from bottom animation
+                transform: Translate {
+                    y: root.lyricsVisible ? 0 : lyricsView.height * 0.3
+
+                    Behavior on y {
+                        NumberAnimation {
+                            duration: 300
+                            easing.type: Easing.InOutCubic
+                        }
+                    }
+                }
+
+                Behavior on opacity {
+                    NumberAnimation {
+                        duration: 300
+                        easing.type: Easing.InOutCubic
+                    }
+                }
             }
         }
         
