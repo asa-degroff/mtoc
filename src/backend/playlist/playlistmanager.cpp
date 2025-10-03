@@ -699,7 +699,12 @@ int PlaylistManager::getPlaylistTrackCount(const QString& name)
     if (name == "All Songs" && m_libraryManager) {
         return m_libraryManager->trackCount();
     }
-    
+
+    if (name == "Favorites" && m_libraryManager) {
+        auto favoritesPlaylist = m_libraryManager->getFavoritesPlaylist();
+        return favoritesPlaylist ? favoritesPlaylist->rowCount() : 0;
+    }
+
     QVariantList tracks = loadPlaylist(name);
     qDebug() << "PlaylistManager: Track count for playlist" << name << ":" << tracks.size();
     return tracks.size();
@@ -715,22 +720,30 @@ int PlaylistManager::getPlaylistDuration(const QString& name)
             return db->getTotalDuration();
         }
     }
-    
+
+    if (name == "Favorites" && m_libraryManager) {
+        auto favoritesPlaylist = m_libraryManager->getFavoritesPlaylist();
+        if (favoritesPlaylist) {
+            return favoritesPlaylist->totalDuration();
+        }
+        return 0;
+    }
+
     QVariantList tracks = loadPlaylist(name);
     int totalDuration = 0;
-    
+
     for (const QVariant& trackVar : tracks) {
         QVariantMap track = trackVar.toMap();
         totalDuration += track.value("duration").toInt();
     }
-    
+
     return totalDuration;
 }
 
 QString PlaylistManager::getPlaylistModifiedDate(const QString& name)
 {
     // Handle special playlists
-    if (name == "All Songs") {
+    if (name == "All Songs" || name == "Favorites") {
         // Return empty string or current date for special playlists
         return QString();
     }
