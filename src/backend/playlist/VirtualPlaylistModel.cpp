@@ -156,19 +156,23 @@ void VirtualPlaylistModel::setVirtualPlaylist(VirtualPlaylist* playlist)
     if (m_playlist == playlist) {
         return;
     }
-    
+
     beginResetModel();
-    
+
     disconnectPlaylistSignals();
     m_playlist = playlist;
     m_lastFetchIndex = 0;
-    
+    m_previousCount = 0;
+    m_previousDuration = 0;
+
     if (m_playlist) {
         connectPlaylistSignals();
+        m_previousCount = m_playlist->trackCount();
+        m_previousDuration = m_playlist->totalDuration();
     }
-    
+
     endResetModel();
-    
+
     emit countChanged();
     emit loadingChanged();
     emit loadedCountChanged();
@@ -251,7 +255,20 @@ void VirtualPlaylistModel::onLoadingFinished()
 {
     emit loadingChanged();
     emit loadedCountChanged();
-    emit totalDurationChanged();
+
+    // Check if count has changed and emit signal if so
+    int currentCount = m_playlist ? m_playlist->trackCount() : 0;
+    if (currentCount != m_previousCount) {
+        m_previousCount = currentCount;
+        emit countChanged();
+    }
+
+    // Check if duration has changed and emit signal if so
+    int currentDuration = m_playlist ? m_playlist->totalDuration() : 0;
+    if (currentDuration != m_previousDuration) {
+        m_previousDuration = currentDuration;
+        emit totalDurationChanged();
+    }
 }
 
 void VirtualPlaylistModel::onRangeLoaded(int startIndex, int endIndex)
@@ -260,9 +277,15 @@ void VirtualPlaylistModel::onRangeLoaded(int startIndex, int endIndex)
     QModelIndex topLeft = index(startIndex);
     QModelIndex bottomRight = index(endIndex);
     emit dataChanged(topLeft, bottomRight);
-    
+
     emit loadedCountChanged();
-    emit totalDurationChanged();
+
+    // Check if duration has changed and emit signal if so
+    int currentDuration = m_playlist ? m_playlist->totalDuration() : 0;
+    if (currentDuration != m_previousDuration) {
+        m_previousDuration = currentDuration;
+        emit totalDurationChanged();
+    }
 }
 
 void VirtualPlaylistModel::onLoadingProgress(int loaded, int total)

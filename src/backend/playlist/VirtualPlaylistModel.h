@@ -82,10 +82,12 @@ private slots:
 private:
     void connectPlaylistSignals();
     void disconnectPlaylistSignals();
-    
+
     VirtualPlaylist* m_playlist = nullptr;
     mutable int m_lastFetchIndex = 0;
     int m_fetchBatchSize = 50;
+    int m_previousCount = 0;
+    int m_previousDuration = 0;
 };
 
 } // namespace Mtoc
