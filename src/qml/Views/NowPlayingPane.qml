@@ -451,7 +451,7 @@ Item {
 
                     Behavior on y {
                         NumberAnimation {
-                            duration: 300
+                            duration: 200
                             easing.type: Easing.InOutCubic
                         }
                     }
