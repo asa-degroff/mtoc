@@ -265,7 +265,7 @@ Item {
                     anchors.right: parent.right
                     visible: MediaPlayer.hasCurrentTrackLyrics
                     opacity: (root.lyricsVisible ? 1.0 : 0.6) * (visible ? 1.0 : 0.0)
-                    iconSource: Theme.isDark ? "qrc:/resources/icons/lyrics-icon.svg" : "qrc:/resources/icons/lyrics-icon-dark.svg"
+                    iconSource: "qrc:/resources/icons/lyrics-icon.svg"
                     addShadow: true
                     onClicked: root.lyricsToggled()
 
