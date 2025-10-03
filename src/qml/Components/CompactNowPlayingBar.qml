@@ -15,6 +15,7 @@ Rectangle {
     property url thumbnailUrl: ""
     property bool queuePopupVisible: false
     property bool albumArtPopupVisible: false
+    property bool lyricsPopupVisible: false
     
     signal albumTitleClicked(string artistName, string albumTitle)
     signal artistClicked(string artistName)
@@ -169,9 +170,12 @@ Rectangle {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    // Close queue popup if open
+                    // Close other popups if open
                     if (root.queuePopupVisible) {
                         root.queuePopupVisible = false
+                    }
+                    if (root.lyricsPopupVisible) {
+                        root.lyricsPopupVisible = false
                     }
                     root.albumArtPopupVisible = !root.albumArtPopupVisible
                 }
@@ -572,13 +576,40 @@ Rectangle {
                 opacity: root.queuePopupVisible ? 1.0 : 0.6
                 addShadow: true
                 onClicked: {
-                    // Close album art popup if open
+                    // Close other popups if open
                     if (root.albumArtPopupVisible) {
                         root.albumArtPopupVisible = false
                     }
+                    if (root.lyricsPopupVisible) {
+                        root.lyricsPopupVisible = false
+                    }
                     root.queuePopupVisible = !root.queuePopupVisible
                 }
-                
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 200 }
+                }
+            }
+
+            // Lyrics button (toggle) - only visible when track has lyrics
+            IconButton {
+                Layout.preferredWidth: 24
+                Layout.preferredHeight: 24
+                visible: MediaPlayer.hasCurrentTrackLyrics
+                iconSource: Theme.isDark ? "qrc:/resources/icons/lyrics-icon.svg" : "qrc:/resources/icons/lyrics-icon-dark.svg"
+                opacity: root.lyricsPopupVisible ? 1.0 : 0.6
+                addShadow: true
+                onClicked: {
+                    // Close other popups if open
+                    if (root.albumArtPopupVisible) {
+                        root.albumArtPopupVisible = false
+                    }
+                    if (root.queuePopupVisible) {
+                        root.queuePopupVisible = false
+                    }
+                    root.lyricsPopupVisible = !root.lyricsPopupVisible
+                }
+
                 Behavior on opacity {
                     NumberAnimation { duration: 200 }
                 }

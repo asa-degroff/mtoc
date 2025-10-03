@@ -268,6 +268,15 @@ ApplicationWindow {
                         isOpen: compactNowPlayingBar.albumArtPopupVisible
                         onClosed: compactNowPlayingBar.albumArtPopupVisible = false
                     }
+
+                    // Lyrics popup for compact mode - parented to library pane container
+                    LyricsPopup {
+                        id: lyricsPopup
+                        parent: parent
+                        lyricsText: MediaPlayer.currentTrackLyrics
+                        isOpen: compactNowPlayingBar.lyricsPopupVisible
+                        onClosed: compactNowPlayingBar.lyricsPopupVisible = false
+                    }
                 }
                 
                 // Compact Now Playing Bar

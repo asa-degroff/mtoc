@@ -17,6 +17,7 @@
         <file>src/qml/Components/AlbumArtPopup.qml</file>
         <file>src/qml/Components/QueueHeader.qml</file>
         <file>src/qml/Components/LyricsView.qml</file>
+        <file>src/qml/Components/LyricsPopup.qml</file>
         <file>src/qml/Views/LibraryPane.qml</file>
         <file>src/qml/Views/LibraryEditorWindow.qml</file>
         <file>src/qml/Views/SettingsWindow.qml</file>
