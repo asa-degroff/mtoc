@@ -19,7 +19,7 @@ class VirtualPlaylist : public QObject
     
 public:
     explicit VirtualPlaylist(DatabaseManager* dbManager, QObject *parent = nullptr);
-    ~VirtualPlaylist();
+    virtual ~VirtualPlaylist();
     
     // Configuration
     void setBufferSize(int size) { m_bufferSize = size; }

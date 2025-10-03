@@ -15,6 +15,11 @@ FavoritesVirtualPlaylist::FavoritesVirtualPlaylist(DatabaseManager* dbManager, Q
 
 FavoritesVirtualPlaylist::~FavoritesVirtualPlaylist()
 {
+    // Ensure any background loading is finished before destruction
+    if (m_loadFuture.isRunning()) {
+        m_loadFuture.cancel();
+        m_loadFuture.waitForFinished();
+    }
 }
 
 void FavoritesVirtualPlaylist::loadAllTracks()
