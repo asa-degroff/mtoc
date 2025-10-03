@@ -599,8 +599,20 @@ Item {
             onSeekRequested: function(position) {
                 MediaPlayer.seek(position)
             }
-            onQueueToggled: root.queueVisible = !root.queueVisible
-            onLyricsToggled: root.lyricsVisible = !root.lyricsVisible
+            onQueueToggled: {
+                // Auto-hide lyrics when showing queue
+                if (!root.queueVisible && root.lyricsVisible) {
+                    root.lyricsVisible = false
+                }
+                root.queueVisible = !root.queueVisible
+            }
+            onLyricsToggled: {
+                // Auto-hide queue when showing lyrics
+                if (!root.lyricsVisible && root.queueVisible) {
+                    root.queueVisible = false
+                }
+                root.lyricsVisible = !root.lyricsVisible
+            }
             onRepeatToggled: {
                 MediaPlayer.repeatEnabled = !MediaPlayer.repeatEnabled
             }
