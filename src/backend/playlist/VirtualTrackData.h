@@ -24,7 +24,9 @@ struct VirtualTrackData {
     int playCount = 0;
     int rating = 0;
     QDateTime lastPlayed;
-    
+    QString lyrics;
+    bool isFavorite = false;
+
     // Create from QVariantMap (database query result)
     static VirtualTrackData fromVariantMap(const QVariantMap& map) {
         VirtualTrackData data;
@@ -43,6 +45,8 @@ struct VirtualTrackData {
         data.playCount = map.value("playCount").toInt();
         data.rating = map.value("rating").toInt();
         data.lastPlayed = map.value("lastPlayed").toDateTime();
+        data.lyrics = map.value("lyrics").toString();
+        data.isFavorite = map.value("isFavorite").toBool();
         return data;
     }
     
@@ -64,6 +68,8 @@ struct VirtualTrackData {
         map["playCount"] = playCount;
         map["rating"] = rating;
         map["lastPlayed"] = lastPlayed;
+        map["lyrics"] = lyrics;
+        map["isFavorite"] = isFavorite;
         return map;
     }
     
