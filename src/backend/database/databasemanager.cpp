@@ -312,9 +312,29 @@ bool DatabaseManager::applyMigrations(int currentVersion)
     // Migration 3: Add is_favorite column
     if (currentVersion < 3) {
         qDebug() << "Applying migration 3: Adding is_favorite column";
-        if (!query.exec("ALTER TABLE tracks ADD COLUMN is_favorite INTEGER DEFAULT 0")) {
-            logError("Add is_favorite column", query);
-            // This might fail if the column already exists
+
+        // Check if column already exists
+        query.exec("PRAGMA table_info(tracks)");
+        bool hasIsFavoriteColumn = false;
+        while (query.next()) {
+            QString columnName = query.value(1).toString();
+            if (columnName == "is_favorite") {
+                hasIsFavoriteColumn = true;
+                break;
+            }
+        }
+
+        if (!hasIsFavoriteColumn) {
+            if (!query.exec("ALTER TABLE tracks ADD COLUMN is_favorite INTEGER DEFAULT 0")) {
+                logError("Add is_favorite column", query);
+                return false;
+            }
+
+            // Create index for favorites
+            if (!query.exec("CREATE INDEX IF NOT EXISTS idx_tracks_is_favorite ON tracks(is_favorite)")) {
+                logError("Create is_favorite index", query);
+                // Index creation failure is not critical, continue
+            }
         }
 
         // Record migration
@@ -403,10 +423,10 @@ bool DatabaseManager::insertTrack(const QVariantMap& trackData)
     query.prepare(
         "INSERT INTO tracks (file_path, title, artist_id, album_id, genre, year, "
         "track_number, disc_number, duration, file_size, file_modified, "
-        "replaygain_track_gain, replaygain_track_peak, replaygain_album_gain, replaygain_album_peak, lyrics) "
+        "replaygain_track_gain, replaygain_track_peak, replaygain_album_gain, replaygain_album_peak, lyrics, is_favorite) "
         "VALUES (:file_path, :title, :artist_id, :album_id, :genre, :year, "
         ":track_number, :disc_number, :duration, :file_size, :file_modified, "
-        ":replaygain_track_gain, :replaygain_track_peak, :replaygain_album_gain, :replaygain_album_peak, :lyrics)"
+        ":replaygain_track_gain, :replaygain_track_peak, :replaygain_album_gain, :replaygain_album_peak, :lyrics, :is_favorite)"
     );
     
     query.bindValue(":file_path", filePath);
@@ -427,7 +447,8 @@ bool DatabaseManager::insertTrack(const QVariantMap& trackData)
     query.bindValue(":replaygain_album_gain", trackData.contains("replayGainAlbumGain") ? replayGainAlbumGain : QVariant());
     query.bindValue(":replaygain_album_peak", trackData.contains("replayGainAlbumPeak") ? replayGainAlbumPeak : QVariant());
     query.bindValue(":lyrics", lyrics.isEmpty() ? QVariant() : lyrics);
-    
+    query.bindValue(":is_favorite", 0);  // Default to not favorite for newly scanned tracks
+
     if (!query.exec()) {
         logError("Insert track", query);
         return false;
@@ -723,7 +744,11 @@ QVariantList DatabaseManager::getTracksByAlbumAndArtist(const QString& albumTitl
             track["discNumber"] = query.value("disc_number");
             track["duration"] = query.value("duration");
             track["fileSize"] = query.value("file_size");
+            track["playCount"] = query.value("play_count");
+            track["rating"] = query.value("rating");
+            track["lastPlayed"] = query.value("last_played");
             track["lyrics"] = query.value("lyrics");
+            track["isFavorite"] = query.value("is_favorite").toBool();
             tracks.append(track);
         }
     } else {
