@@ -181,6 +181,8 @@ bool DatabaseManager::createTables()
         "replaygain_track_peak REAL,"
         "replaygain_album_gain REAL,"
         "replaygain_album_peak REAL,"
+        "lyrics TEXT,"
+        "is_favorite INTEGER DEFAULT 0,"
         "FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE SET NULL,"
         "FOREIGN KEY (album_id) REFERENCES albums(id) ON DELETE SET NULL"
         ")")) {
