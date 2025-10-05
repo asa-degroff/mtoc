@@ -1394,7 +1394,7 @@ Item {
                                     opacity: 0.7  // Slightly dimmed for reflection effect
                                     transform: Scale {
                                         yScale: -1
-                                        origin.y: parent.height / 2
+                                        origin.y: parent ? parent.height / 2 : 0
                                     }
                                 }
                                 

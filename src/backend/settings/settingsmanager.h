@@ -38,6 +38,7 @@ class SettingsManager : public QObject
     Q_PROPERTY(double artistsScrollPosition READ artistsScrollPosition WRITE setArtistsScrollPosition NOTIFY artistsScrollPositionChanged)
     Q_PROPERTY(QStringList expandedArtistsList READ expandedArtistsList WRITE setExpandedArtistsList NOTIFY expandedArtistsListChanged)
     Q_PROPERTY(double librarySplitRatio READ librarySplitRatio WRITE setLibrarySplitRatio NOTIFY librarySplitRatioChanged)
+    Q_PROPERTY(bool singleClickToPlay READ singleClickToPlay WRITE setSingleClickToPlay NOTIFY singleClickToPlayChanged)
 
 public:
     enum QueueAction {
@@ -109,6 +110,7 @@ public:
     double artistsScrollPosition() const { return m_artistsScrollPosition; }
     QStringList expandedArtistsList() const { return m_expandedArtistsList; }
     double librarySplitRatio() const { return m_librarySplitRatio; }
+    bool singleClickToPlay() const { return m_singleClickToPlay; }
     
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -138,6 +140,7 @@ public:
     void setArtistsScrollPosition(double position);
     void setExpandedArtistsList(const QStringList& artists);
     void setLibrarySplitRatio(double ratio);
+    void setSingleClickToPlay(bool enabled);
 
 protected:
     bool event(QEvent *event) override;
@@ -172,6 +175,7 @@ signals:
     void artistsScrollPositionChanged(double position);
     void expandedArtistsListChanged(const QStringList& artists);
     void librarySplitRatioChanged(double ratio);
+    void singleClickToPlayChanged(bool enabled);
 
 private slots:
 
@@ -213,6 +217,7 @@ private:
     double m_artistsScrollPosition;
     QStringList m_expandedArtistsList;
     double m_librarySplitRatio;
+    bool m_singleClickToPlay;
 };
 
 #endif // SETTINGSMANAGER_H

@@ -13,6 +13,9 @@
 #include <QFuture>
 #include <QFutureWatcher>
 #include <QtConcurrent>
+#include <QFileSystemWatcher>
+#include <QTimer>
+#include <QSet>
 
 #include "track.h"
 #include "album.h"
@@ -45,6 +48,8 @@ class LibraryManager : public QObject
     Q_PROPERTY(bool rebuildingThumbnails READ isRebuildingThumbnails NOTIFY rebuildingThumbnailsChanged)
     Q_PROPERTY(int rebuildProgress READ rebuildProgress NOTIFY rebuildProgressChanged)
     Q_PROPERTY(QString rebuildProgressText READ rebuildProgressText NOTIFY rebuildProgressTextChanged)
+    Q_PROPERTY(bool autoRefreshOnStartup READ autoRefreshOnStartup WRITE setAutoRefreshOnStartup NOTIFY autoRefreshOnStartupChanged)
+    Q_PROPERTY(bool watchFileChanges READ watchFileChanges WRITE setWatchFileChanges NOTIFY watchFileChangesChanged)
 
 public:
     explicit LibraryManager(QObject *parent = nullptr);
@@ -66,16 +71,22 @@ public:
     bool isRebuildingThumbnails() const;
     int rebuildProgress() const;
     QString rebuildProgressText() const;
-    
+    bool autoRefreshOnStartup() const;
+    bool watchFileChanges() const;
+
     // Property setters
     void setMusicFolders(const QStringList &folders);
-    
+    void setAutoRefreshOnStartup(bool enabled);
+    void setWatchFileChanges(bool enabled);
+
     // Library management methods
     Q_INVOKABLE bool addMusicFolder(const QString &path);
     Q_INVOKABLE bool removeMusicFolder(const QString &path);
     Q_INVOKABLE void startScan();
+    Q_INVOKABLE void refreshLibrary();  // Smart incremental scan
     Q_INVOKABLE void cancelScan();
-    Q_INVOKABLE void clearLibrary();
+    Q_INVOKABLE void resetLibrary();    // Nuclear option - clears everything
+    Q_INVOKABLE void clearLibrary();    // Deprecated - kept for compatibility
     Q_INVOKABLE void rebuildAllThumbnails();
     
     // Data access methods
@@ -140,9 +151,14 @@ signals:
     void rebuildProgressChanged();
     void rebuildProgressTextChanged();
     void thumbnailsRebuilt();
+    void autoRefreshOnStartupChanged();
+    void watchFileChangesChanged();
 
 private slots:
     void onScanFinished();
+    void onDirectoryChanged(const QString &path);
+    void onFileChanged(const QString &path);
+    void onWatcherDebounceTimeout();
 
 private:
     // Utility methods
@@ -152,11 +168,15 @@ private:
     void initializeDatabase();
     void syncWithDatabase(const QString &filePath);
     void scanInBackground();
+    void scanSpecificPathsInBackground(const QStringList &paths);
     void insertTrackInThread(QSqlDatabase& db, const QVariantMap& metadata);
     void insertBatchTracksInThread(QSqlDatabase& db, const QList<QVariantMap>& batchMetadata);
     void processAlbumArtInBackground();
     QString getCanonicalPathFromDisplay(const QString& displayPath) const;
     void rebuildThumbnailsInBackground();
+    void setupFileWatcher();
+    void updateFileWatcher();
+    QStringList getAllSubdirectories(const QString &rootPath) const;
     
     // Private data
     DatabaseManager *m_databaseManager;
@@ -205,6 +225,15 @@ private:
     int m_albumsRebuilt;
     QFuture<void> m_rebuildFuture;
     QFutureWatcher<void> m_rebuildWatcher;
+
+    // File watcher for automatic library updates
+    QFileSystemWatcher* m_fileWatcher;
+    QTimer* m_watcherDebounceTimer;
+    QSet<QString> m_pendingChangedPaths;
+    bool m_autoRefreshOnStartup;
+    bool m_watchFileChanges;
+    static const int WATCHER_DEBOUNCE_MS = 2000;
+    static const int MAX_WATCHED_DIRS = 5000;  // Practical limit for inotify
 };
 
 } // namespace Mtoc

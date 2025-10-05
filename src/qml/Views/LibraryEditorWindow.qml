@@ -9,11 +9,11 @@ ApplicationWindow {
     title: "Edit Library - mtoc"
     width: 600
     height: 800
-    
+
     flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint
-    
+
     color: Theme.backgroundColor
-    
+
     // Folder dialog for adding music folders
     FolderDialog {
         id: folderDialog
@@ -87,11 +87,21 @@ ApplicationWindow {
             }
         }
     }
-    
-    ColumnLayout {
+
+    ScrollView {
         anchors.fill: parent
-        anchors.margins: 20
-        spacing: 16
+        contentWidth: availableWidth
+
+        ColumnLayout {
+            width: parent.availableWidth
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.leftMargin: 20
+            anchors.rightMargin: 20
+            anchors.topMargin: 20
+            anchors.bottomMargin: 20
+            spacing: 16
             
             // Title
             Label {
@@ -228,11 +238,12 @@ ApplicationWindow {
             // Music folders section
             Rectangle {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
+                Layout.preferredHeight: musicFoldersLayout.implicitHeight + 24
                 color: Theme.panelBackground
                 radius: 4
-                
+
                 ColumnLayout {
+                    id: musicFoldersLayout
                     anchors.fill: parent
                     anchors.margins: 12
                     spacing: 8
@@ -280,7 +291,7 @@ ApplicationWindow {
                     // Container with rounded corners for the ListView
                     Item {
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
+                        Layout.preferredHeight: 150
                         
                         Rectangle {
                             id: listBackground
@@ -369,11 +380,12 @@ ApplicationWindow {
             // Playlist folders section
             Rectangle {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
+                Layout.preferredHeight: playlistFoldersLayout.implicitHeight + 24
                 color: Theme.panelBackground
                 radius: 4
-                
+
                 ColumnLayout {
+                    id: playlistFoldersLayout
                     anchors.fill: parent
                     anchors.margins: 12
                     spacing: 8
@@ -421,7 +433,7 @@ ApplicationWindow {
                     // Container with rounded corners for the ListView
                     Item {
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
+                        Layout.preferredHeight: 150
                         
                         Rectangle {
                             id: playlistListBackground
@@ -547,60 +559,101 @@ ApplicationWindow {
             // Info text and action buttons
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 160
                 color: Theme.panelBackground
                 radius: 4
-                
+                Layout.preferredHeight: scanButtonsLayout.implicitHeight + 24
+
                 ColumnLayout {
+                    id: scanButtonsLayout
                     anchors.fill: parent
                     anchors.margins: 12
                     spacing: 8
                     
                     Label {
-                        text: "Scan your library to add audio files from the chosen folders to the library database. Clear and rescan to regenerate the database. \n\nAudio files are treated as read-only, changes made here only affect the database. \n\nRestart the application to apply changes if replacing the entire library."
+                        text: "Scan your library to add audio files from the chosen folders to the library database. Refresh Library intelligently updates changes. \n\nAudio files are treated as read-only, changes made here only affect the database. \n\nRestart the application to apply changes if replacing the entire library."
                         color: Theme.secondaryText
                         font.pixelSize: 12
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
                     }
-                    
+
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
-                        
+
                         Button {
-                            text: "Clear Library"
+                            text: "Reset Library"
                             implicitHeight: 32
-                            implicitWidth: 100
-                            
+                            implicitWidth: 110
+                            enabled: !LibraryManager.scanning
+
                             background: Rectangle {
-                                color: parent.down ? "#cc6600" : parent.hovered ? "#aa5500" : Theme.inputBackground
-                                border.color: parent.hovered ? "#cc6600" : Theme.borderColor
+                                color: parent.enabled ? (parent.down ? "#cc0000" : parent.hovered ? "#aa0000" : Theme.inputBackground) : Theme.inputBackground
+                                border.color: parent.enabled && parent.hovered ? "#cc0000" : Theme.borderColor
                                 border.width: 1
                                 radius: 4
-                                
+
                                 Behavior on color {
                                     ColorAnimation { duration: 150 }
                                 }
                             }
-                            
+
                             contentItem: Text {
                                 text: parent.text
-                                color: parent.hovered ? Theme.primaryText : Theme.secondaryText
+                                color: parent.enabled ? (parent.hovered ? "#ff6666" : Theme.secondaryText) : Theme.disabledText
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
                                 font.pixelSize: 13
                             }
-                            
+
+                            ToolTip.text: "Clear entire library database (WARNING: All data will be lost!)"
+                            ToolTip.visible: hovered
+                            ToolTip.delay: 500
+
                             onClicked: {
-                                LibraryManager.clearLibrary();
+                                // TODO: Add confirmation dialog
+                                LibraryManager.resetLibrary();
                             }
                         }
-                        
-                        Item { Layout.fillWidth: true }
-                        
+
                         Button {
-                            text: LibraryManager.scanning ? "Cancel Scan" : "Scan Library"
+                            text: "Refresh Library"
+                            implicitHeight: 32
+                            implicitWidth: 120
+                            enabled: !LibraryManager.scanning
+
+                            background: Rectangle {
+                                color: parent.enabled ? (parent.down ? "#0088cc" : parent.hovered ? "#0077aa" : Theme.inputBackground) : Theme.inputBackground
+                                border.color: parent.enabled && parent.hovered ? "#00aaee" : Theme.borderColor
+                                border.width: 1
+                                radius: 4
+
+                                Behavior on color {
+                                    ColorAnimation { duration: 150 }
+                                }
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                color: parent.enabled ? (parent.hovered ? "#00ccff" : Theme.primaryText) : Theme.disabledText
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                font.pixelSize: 13
+                            }
+
+                            ToolTip.text: "Check for new, modified, or deleted files"
+                            ToolTip.visible: hovered
+                            ToolTip.delay: 500
+
+                            onClicked: {
+                                LibraryManager.refreshLibrary();
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        Button {
+                            text: LibraryManager.scanning ? "Cancel Scan" : "Full Scan"
                             implicitHeight: 32
                             implicitWidth: 120
                             
@@ -633,10 +686,135 @@ ApplicationWindow {
                             }
                         }
                     }
+
+                    // Auto-refresh and file watching settings
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 16
+                        spacing: 8
+
+                        Label {
+                            text: "Automatic Library Updates"
+                            color: Theme.primaryText
+                            font.pixelSize: 14
+                            font.bold: true
+                        }
+
+                        CheckBox {
+                            id: autoRefreshCheckbox
+                            text: "Auto-refresh on startup"
+                            checked: LibraryManager.autoRefreshOnStartup
+
+                            onToggled: {
+                                LibraryManager.autoRefreshOnStartup = checked
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                font.pixelSize: 14
+                                color: Theme.secondaryText
+                                verticalAlignment: Text.AlignVCenter
+                                leftPadding: parent.indicator.width + parent.spacing
+                            }
+
+                            indicator: Rectangle {
+                                implicitWidth: 20
+                                implicitHeight: 20
+                                x: parent.leftPadding
+                                y: parent.height / 2 - height / 2
+                                radius: 3
+                                color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                                border.color: parent.checked ? Theme.linkColor : Theme.borderColor
+
+                                Canvas {
+                                    anchors.fill: parent
+                                    anchors.margins: 4
+                                    visible: parent.parent.checked
+
+                                    onPaint: {
+                                        var ctx = getContext("2d")
+                                        ctx.reset()
+                                        ctx.strokeStyle = "white"
+                                        ctx.lineWidth = 2
+                                        ctx.lineCap = "round"
+                                        ctx.lineJoin = "round"
+                                        ctx.beginPath()
+                                        ctx.moveTo(width * 0.2, height * 0.5)
+                                        ctx.lineTo(width * 0.4, height * 0.7)
+                                        ctx.lineTo(width * 0.8, height * 0.3)
+                                        ctx.stroke()
+                                    }
+                                }
+                            }
+                        }
+
+                        CheckBox {
+                            id: watchFileChangesCheckbox
+                            text: "Watch for file changes (requires restart)"
+                            checked: LibraryManager.watchFileChanges
+
+                            onToggled: {
+                                LibraryManager.watchFileChanges = checked
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                font.pixelSize: 14
+                                color: Theme.secondaryText
+                                verticalAlignment: Text.AlignVCenter
+                                leftPadding: parent.indicator.width + parent.spacing
+                            }
+
+                            indicator: Rectangle {
+                                implicitWidth: 20
+                                implicitHeight: 20
+                                x: parent.leftPadding
+                                y: parent.height / 2 - height / 2
+                                radius: 3
+                                color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                                border.color: parent.checked ? Theme.linkColor : Theme.borderColor
+
+                                Canvas {
+                                    anchors.fill: parent
+                                    anchors.margins: 4
+                                    visible: parent.parent.checked
+
+                                    onPaint: {
+                                        var ctx = getContext("2d")
+                                        ctx.reset()
+                                        ctx.strokeStyle = "white"
+                                        ctx.lineWidth = 2
+                                        ctx.lineCap = "round"
+                                        ctx.lineJoin = "round"
+                                        ctx.beginPath()
+                                        ctx.moveTo(width * 0.2, height * 0.5)
+                                        ctx.lineTo(width * 0.4, height * 0.7)
+                                        ctx.lineTo(width * 0.8, height * 0.3)
+                                        ctx.stroke()
+                                    }
+                                }
+                            }
+                        }
+
+                        Label {
+                            text: "Note: For very large libraries (>5000 directories), 'Auto-refresh on startup' is recommended over 'Watch for changes' for better performance."
+                            color: Theme.secondaryText
+                            font.pixelSize: 11
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                    }
                 }
             }
+
+            // Bottom spacer to ensure last item is visible
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 20
+            }
         }
-    
+    }
+
     // Window closing behavior
     onClosing: function(close) {
         // Allow the window to close normally

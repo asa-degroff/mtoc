@@ -108,6 +108,8 @@ qt_add_qml_module(mtoc
         src/qml/Components/BlurredBackground.qml
         src/qml/Components/CompactNowPlayingBar.qml
         src/qml/Components/HorizontalAlbumBrowser.qml
+        src/qml/Components/LyricsPopup.qml
+        src/qml/Components/LyricsView.qml
         src/qml/Components/PlaybackControls.qml
         src/qml/Components/QueueActionDialog.qml
         src/qml/Components/QueueListView.qml
