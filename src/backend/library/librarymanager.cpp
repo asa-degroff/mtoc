@@ -2216,7 +2216,119 @@ void LibraryManager::processAlbumArtInBackground()
         }
         
         qDebug() << "LibraryManager::processAlbumArtInBackground() completed -" << processedCount << "albums processed";
-        
+
+        // Now check for albums with existing art that might have been updated
+        qDebug() << "Checking for updated album art...";
+        QSqlQuery existingArtQuery(db);
+        existingArtQuery.prepare(
+            "SELECT a.id, a.title, aa.name as album_artist_name, art.full_hash "
+            "FROM albums a "
+            "LEFT JOIN album_artists aa ON a.album_artist_id = aa.id "
+            "INNER JOIN album_art art ON a.id = art.album_id "
+            "ORDER BY a.title"
+        );
+
+        if (existingArtQuery.exec()) {
+            QList<int> albumsWithUpdatedArt;
+
+            while (existingArtQuery.next() && !m_cancelRequested) {
+                int albumId = existingArtQuery.value(0).toInt();
+                QString albumTitle = existingArtQuery.value(1).toString();
+                QString albumArtist = existingArtQuery.value(2).toString();
+                QString existingHash = existingArtQuery.value(3).toString();
+
+                // Get a track from this album to check if art has changed
+                QSqlQuery trackQuery(db);
+                trackQuery.prepare("SELECT file_path FROM tracks WHERE album_id = :album_id LIMIT 1");
+                trackQuery.bindValue(":album_id", albumId);
+
+                if (trackQuery.exec() && trackQuery.next()) {
+                    QString filePath = trackQuery.value(0).toString();
+                    trackQuery.finish();
+
+                    try {
+                        // Extract current album art from file
+                        Mtoc::MetadataExtractor extractor;
+                        QByteArray albumArtData = extractor.extractAlbumArt(filePath);
+
+                        if (!albumArtData.isEmpty()) {
+                            // Calculate hash of current album art
+                            AlbumArtManager albumArtManager;
+                            QString currentHash = albumArtManager.processAlbumArt(albumArtData, "", "", "").hash;
+
+                            // Compare with stored hash
+                            if (!currentHash.isEmpty() && currentHash != existingHash) {
+                                qDebug() << "Album art changed for:" << albumTitle << "- updating";
+
+                                // Process and update album art
+                                AlbumArtManager::ProcessedAlbumArt processed =
+                                    albumArtManager.processAlbumArt(albumArtData, albumTitle, albumArtist, "");
+
+                                if (processed.success) {
+                                    // Update album art in database
+                                    QSqlQuery updateQuery(db);
+                                    updateQuery.prepare(
+                                        "UPDATE album_art SET "
+                                        "full_path = :full_path, full_hash = :full_hash, "
+                                        "thumbnail = :thumbnail, thumbnail_size = :thumbnail_size, "
+                                        "width = :width, height = :height, format = :format, "
+                                        "file_size = :file_size, extracted_date = CURRENT_TIMESTAMP "
+                                        "WHERE album_id = :album_id"
+                                    );
+
+                                    updateQuery.bindValue(":album_id", albumId);
+                                    updateQuery.bindValue(":full_path", processed.fullImagePath);
+                                    updateQuery.bindValue(":full_hash", processed.hash);
+                                    updateQuery.bindValue(":thumbnail", processed.thumbnailData);
+                                    updateQuery.bindValue(":thumbnail_size", processed.thumbnailData.size());
+                                    updateQuery.bindValue(":width", processed.originalSize.width());
+                                    updateQuery.bindValue(":height", processed.originalSize.height());
+                                    updateQuery.bindValue(":format", processed.format);
+                                    updateQuery.bindValue(":file_size", processed.fileSize);
+
+                                    if (updateQuery.exec()) {
+                                        albumsWithUpdatedArt.append(albumId);
+                                        processedCount++;
+                                        qDebug() << "Updated album art for:" << albumTitle;
+                                    } else {
+                                        qWarning() << "Failed to update album art:" << updateQuery.lastError().text();
+                                    }
+                                    updateQuery.finish();
+                                }
+                            }
+                        }
+
+                        albumArtData.clear();
+                        albumArtData.squeeze();
+                    } catch (const std::exception& e) {
+                        qWarning() << "Exception checking album art for" << albumTitle << ":" << e.what();
+                    } catch (...) {
+                        qWarning() << "Unknown exception checking album art for" << albumTitle;
+                    }
+                }
+            }
+            existingArtQuery.finish();
+
+            // Invalidate QPixmapCache for albums with updated art
+            if (!albumsWithUpdatedArt.isEmpty()) {
+                qDebug() << "Invalidating cache for" << albumsWithUpdatedArt.size() << "albums with updated art";
+
+                for (int albumId : albumsWithUpdatedArt) {
+                    // Remove all cached versions for this album
+                    QPixmapCache::remove(QString("album_%1_thumbnail_256").arg(albumId));
+                    QPixmapCache::remove(QString("album_%1_thumbnail_512").arg(albumId));
+                    QPixmapCache::remove(QString("album_%1_full").arg(albumId));
+                    // Also remove scaled versions (common sizes)
+                    for (int size : {128, 192, 256, 384, 512, 768, 1024}) {
+                        QPixmapCache::remove(QString("album_%1_thumbnail_%2_%3").arg(albumId).arg(256).arg(size));
+                        QPixmapCache::remove(QString("album_%1_thumbnail_%2_%3").arg(albumId).arg(512).arg(size));
+                    }
+                }
+            }
+        } else {
+            qWarning() << "Failed to query existing album art:" << existingArtQuery.lastError().text();
+        }
+
         // Emit final update if we processed any albums
         if (processedCount > 0) {
             QMetaObject::invokeMethod(this, [this]() {
@@ -2226,7 +2338,7 @@ void LibraryManager::processAlbumArtInBackground()
                 // qDebug() << "LibraryManager: Emitted final libraryChanged after album art processing";
             }, Qt::QueuedConnection);
         }
-        
+
     } catch (const std::exception& e) {
         qCritical() << "Exception in processAlbumArtInBackground():" << e.what();
     } catch (...) {
