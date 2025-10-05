@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QString>
 #include <QVariantMap>
+#include <QMap>
 
 // TagLib forward declarations (prefer includes in .cpp if possible to reduce compile times)
 // However, for Fileref, it's common to include directly.
@@ -53,6 +54,8 @@ public:
     Q_INVOKABLE QByteArray extractAlbumArt(const QString &filePath);
     Q_INVOKABLE bool hasAlbumArt(const QString &filePath);
 
+private:
+    std::pair<QString, QMap<qint64, QString>> parseLrcFile(const QString &lrcFilePath);
 };
 
 } // namespace Mtoc
