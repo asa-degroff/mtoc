@@ -8,12 +8,12 @@ ApplicationWindow {
     id: libraryEditorWindow
     title: "Edit Library - mtoc"
     width: 600
-    height: 900
-    
+    height: 800
+
     flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint
-    
+
     color: Theme.backgroundColor
-    
+
     // Folder dialog for adding music folders
     FolderDialog {
         id: folderDialog
@@ -87,11 +87,21 @@ ApplicationWindow {
             }
         }
     }
-    
-    ColumnLayout {
+
+    ScrollView {
         anchors.fill: parent
-        anchors.margins: 20
-        spacing: 16
+        contentWidth: availableWidth
+
+        ColumnLayout {
+            width: parent.availableWidth
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.leftMargin: 20
+            anchors.rightMargin: 20
+            anchors.topMargin: 20
+            anchors.bottomMargin: 20
+            spacing: 16
             
             // Title
             Label {
@@ -228,11 +238,12 @@ ApplicationWindow {
             // Music folders section
             Rectangle {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
+                Layout.preferredHeight: musicFoldersLayout.implicitHeight + 24
                 color: Theme.panelBackground
                 radius: 4
-                
+
                 ColumnLayout {
+                    id: musicFoldersLayout
                     anchors.fill: parent
                     anchors.margins: 12
                     spacing: 8
@@ -280,7 +291,7 @@ ApplicationWindow {
                     // Container with rounded corners for the ListView
                     Item {
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
+                        Layout.preferredHeight: 150
                         
                         Rectangle {
                             id: listBackground
@@ -369,11 +380,12 @@ ApplicationWindow {
             // Playlist folders section
             Rectangle {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
+                Layout.preferredHeight: playlistFoldersLayout.implicitHeight + 24
                 color: Theme.panelBackground
                 radius: 4
-                
+
                 ColumnLayout {
+                    id: playlistFoldersLayout
                     anchors.fill: parent
                     anchors.margins: 12
                     spacing: 8
@@ -421,7 +433,7 @@ ApplicationWindow {
                     // Container with rounded corners for the ListView
                     Item {
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
+                        Layout.preferredHeight: 150
                         
                         Rectangle {
                             id: playlistListBackground
@@ -547,11 +559,12 @@ ApplicationWindow {
             // Info text and action buttons
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 320
                 color: Theme.panelBackground
                 radius: 4
-                
+                Layout.preferredHeight: scanButtonsLayout.implicitHeight + 24
+
                 ColumnLayout {
+                    id: scanButtonsLayout
                     anchors.fill: parent
                     anchors.margins: 12
                     spacing: 8
@@ -691,18 +704,47 @@ ApplicationWindow {
                             id: autoRefreshCheckbox
                             text: "Auto-refresh on startup"
                             checked: LibraryManager.autoRefreshOnStartup
-                            onCheckedChanged: {
-                                if (LibraryManager.autoRefreshOnStartup !== checked) {
-                                    LibraryManager.autoRefreshOnStartup = checked;
-                                }
+
+                            onToggled: {
+                                LibraryManager.autoRefreshOnStartup = checked
                             }
 
                             contentItem: Text {
                                 text: parent.text
-                                color: Theme.primaryText
-                                leftPadding: parent.indicator.width + parent.spacing
+                                font.pixelSize: 14
+                                color: Theme.secondaryText
                                 verticalAlignment: Text.AlignVCenter
-                                font.pixelSize: 13
+                                leftPadding: parent.indicator.width + parent.spacing
+                            }
+
+                            indicator: Rectangle {
+                                implicitWidth: 20
+                                implicitHeight: 20
+                                x: parent.leftPadding
+                                y: parent.height / 2 - height / 2
+                                radius: 3
+                                color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                                border.color: parent.checked ? Theme.linkColor : Theme.borderColor
+
+                                Canvas {
+                                    anchors.fill: parent
+                                    anchors.margins: 4
+                                    visible: parent.parent.checked
+
+                                    onPaint: {
+                                        var ctx = getContext("2d")
+                                        ctx.reset()
+                                        ctx.strokeStyle = "white"
+                                        ctx.lineWidth = 2
+                                        ctx.lineCap = "round"
+                                        ctx.lineJoin = "round"
+                                        ctx.beginPath()
+                                        ctx.moveTo(width * 0.2, height * 0.5)
+                                        ctx.lineTo(width * 0.4, height * 0.7)
+                                        ctx.lineTo(width * 0.8, height * 0.3)
+                                        ctx.stroke()
+                                    }
+                                }
                             }
                         }
 
@@ -710,18 +752,47 @@ ApplicationWindow {
                             id: watchFileChangesCheckbox
                             text: "Watch for file changes (requires restart)"
                             checked: LibraryManager.watchFileChanges
-                            onCheckedChanged: {
-                                if (LibraryManager.watchFileChanges !== checked) {
-                                    LibraryManager.watchFileChanges = checked;
-                                }
+
+                            onToggled: {
+                                LibraryManager.watchFileChanges = checked
                             }
 
                             contentItem: Text {
                                 text: parent.text
-                                color: Theme.primaryText
-                                leftPadding: parent.indicator.width + parent.spacing
+                                font.pixelSize: 14
+                                color: Theme.secondaryText
                                 verticalAlignment: Text.AlignVCenter
-                                font.pixelSize: 13
+                                leftPadding: parent.indicator.width + parent.spacing
+                            }
+
+                            indicator: Rectangle {
+                                implicitWidth: 20
+                                implicitHeight: 20
+                                x: parent.leftPadding
+                                y: parent.height / 2 - height / 2
+                                radius: 3
+                                color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                                border.color: parent.checked ? Theme.linkColor : Theme.borderColor
+
+                                Canvas {
+                                    anchors.fill: parent
+                                    anchors.margins: 4
+                                    visible: parent.parent.checked
+
+                                    onPaint: {
+                                        var ctx = getContext("2d")
+                                        ctx.reset()
+                                        ctx.strokeStyle = "white"
+                                        ctx.lineWidth = 2
+                                        ctx.lineCap = "round"
+                                        ctx.lineJoin = "round"
+                                        ctx.beginPath()
+                                        ctx.moveTo(width * 0.2, height * 0.5)
+                                        ctx.lineTo(width * 0.4, height * 0.7)
+                                        ctx.lineTo(width * 0.8, height * 0.3)
+                                        ctx.stroke()
+                                    }
+                                }
                             }
                         }
 
@@ -735,7 +806,14 @@ ApplicationWindow {
                     }
                 }
             }
+
+            // Bottom spacer to ensure last item is visible
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 20
+            }
         }
+    }
 
     // Window closing behavior
     onClosing: function(close) {
