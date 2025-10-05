@@ -43,6 +43,10 @@ LibraryManager::LibraryManager(QObject *parent)
     , m_rebuildProgress(0)
     , m_totalAlbumsToRebuild(0)
     , m_albumsRebuilt(0)
+    , m_fileWatcher(nullptr)
+    , m_watcherDebounceTimer(nullptr)
+    , m_autoRefreshOnStartup(false)
+    , m_watchFileChanges(false)
 {
     qDebug() << "LibraryManager: Constructor started";
     
@@ -54,7 +58,7 @@ LibraryManager::LibraryManager(QObject *parent)
     // Load saved music folders from settings
     QSettings settings;
     m_musicFolders = settings.value("musicFolders", QStringList()).toStringList();
-    
+
     // Load display paths mapping
     settings.beginGroup("musicFolderDisplayPaths");
     QStringList keys = settings.allKeys();
@@ -62,6 +66,10 @@ LibraryManager::LibraryManager(QObject *parent)
         m_folderDisplayPaths[key] = settings.value(key).toString();
     }
     settings.endGroup();
+
+    // Load file watcher preferences
+    m_autoRefreshOnStartup = settings.value("autoRefreshOnStartup", false).toBool();
+    m_watchFileChanges = settings.value("watchFileChanges", false).toBool();
     
     // Default to the user's Music folder if no folders saved
     if (m_musicFolders.isEmpty()) {
@@ -102,14 +110,27 @@ LibraryManager::LibraryManager(QObject *parent)
     // Connect scan watcher
     connect(&m_scanWatcher, &QFutureWatcher<void>::finished,
             this, &LibraryManager::onScanFinished);
-            
+
+    // Setup file watcher
+    setupFileWatcher();
+
+    // Perform auto-refresh if enabled
+    if (m_autoRefreshOnStartup && !m_musicFolders.isEmpty()) {
+        qDebug() << "Auto-refresh on startup enabled, scheduling refresh";
+        QTimer::singleShot(1000, this, &LibraryManager::refreshLibrary);
+    }
+
     qDebug() << "LibraryManager: Constructor completed";
 }
 
 LibraryManager::~LibraryManager()
 {
     qDebug() << "LibraryManager: Destructor called";
-    
+
+    // Clean up file watcher
+    delete m_watcherDebounceTimer;
+    delete m_fileWatcher;
+
     // Cancel any ongoing scan
     cancelScan();
     
@@ -288,14 +309,24 @@ QString LibraryManager::rebuildProgressText() const
     if (!m_rebuildingThumbnails) {
         return QString();
     }
-    
+
     if (m_totalAlbumsToRebuild > 0) {
         return QString("Rebuilding thumbnails... %1 of %2")
             .arg(m_albumsRebuilt)
             .arg(m_totalAlbumsToRebuild);
     }
-    
+
     return "Preparing to rebuild thumbnails...";
+}
+
+bool LibraryManager::autoRefreshOnStartup() const
+{
+    return m_autoRefreshOnStartup;
+}
+
+bool LibraryManager::watchFileChanges() const
+{
+    return m_watchFileChanges;
 }
 
 // Property setters
@@ -304,6 +335,29 @@ void LibraryManager::setMusicFolders(const QStringList &folders)
     if (m_musicFolders != folders) {
         m_musicFolders = folders;
         emit musicFoldersChanged();
+    }
+}
+
+void LibraryManager::setAutoRefreshOnStartup(bool enabled)
+{
+    if (m_autoRefreshOnStartup != enabled) {
+        m_autoRefreshOnStartup = enabled;
+        QSettings settings;
+        settings.setValue("autoRefreshOnStartup", enabled);
+        emit autoRefreshOnStartupChanged();
+    }
+}
+
+void LibraryManager::setWatchFileChanges(bool enabled)
+{
+    if (m_watchFileChanges != enabled) {
+        m_watchFileChanges = enabled;
+        QSettings settings;
+        settings.setValue("watchFileChanges", enabled);
+        emit watchFileChangesChanged();
+
+        // Update file watcher based on new setting
+        updateFileWatcher();
     }
 }
 
@@ -393,9 +447,13 @@ bool LibraryManager::addMusicFolder(const QString &path)
         
         qDebug() << "LibraryManager::addMusicFolder() - folder added, emitting signal";
         emit musicFoldersChanged();
+
+        // Update file watcher to include new folder
+        updateFileWatcher();
+
         return true;
     }
-    
+
     qDebug() << "LibraryManager::addMusicFolder() - folder already exists";
     return false;
 }
@@ -458,11 +516,15 @@ bool LibraryManager::removeMusicFolder(const QString &path)
             //qDebug() << "LibraryManager::removeMusicFolder() - cache invalidated, emitting libraryChanged";
             emit libraryChanged();
         }
-        
+
         emit musicFoldersChanged();
+
+        // Update file watcher to remove watches on deleted folder
+        updateFileWatcher();
+
         return true;
     }
-    
+
     return false;
 }
 
@@ -938,15 +1000,31 @@ void LibraryManager::onScanFinished()
     qDebug() << "LibraryManager::onScanFinished() completed";
 }
 
-void LibraryManager::clearLibrary()
+void LibraryManager::refreshLibrary()
 {
+    qDebug() << "LibraryManager::refreshLibrary() - starting smart library refresh";
+
+    if (m_scanning) {
+        qDebug() << "Scan already in progress, ignoring refresh request";
+        return;
+    }
+
+    // Just call startScan - it already does intelligent incremental updates
+    // by checking for deleted files and only adding new ones
+    startScan();
+}
+
+void LibraryManager::resetLibrary()
+{
+    qDebug() << "LibraryManager::resetLibrary() - performing complete library reset";
+
     // Clear database
     m_databaseManager->clearDatabase();
-    
+
     // Clear models
     m_allTracksModel->clear();
     m_allAlbumsModel->clear();
-    
+
     // Invalidate cache
     m_albumModelCacheValid = false;
     m_albumCountCacheValid = false;
@@ -954,12 +1032,19 @@ void LibraryManager::clearLibrary()
     m_cachedAlbumModel.clear();
     m_cachedArtistModel.clear();
     m_albumsByArtistCache.clear();
-    
+
     emit libraryChanged();
     emit trackCountChanged();
     emit albumCountChanged();
     emit albumArtistCountChanged();
     emit artistCountChanged();
+}
+
+void LibraryManager::clearLibrary()
+{
+    // Deprecated - kept for compatibility
+    qWarning() << "clearLibrary() is deprecated, use resetLibrary() instead";
+    resetLibrary();
 }
 
 void LibraryManager::rebuildAllThumbnails()
@@ -2375,8 +2460,151 @@ void LibraryManager::rebuildThumbnailsInBackground()
     
     // Clean up thread connection
     DatabaseManager::removeThreadConnection(connectionName);
-    
+
     qDebug() << "LibraryManager::rebuildThumbnailsInBackground() completed";
+}
+
+// File watcher implementation
+void LibraryManager::setupFileWatcher()
+{
+    qDebug() << "LibraryManager::setupFileWatcher() - initializing file system watcher";
+
+    m_fileWatcher = new QFileSystemWatcher(this);
+    m_watcherDebounceTimer = new QTimer(this);
+    m_watcherDebounceTimer->setSingleShot(true);
+    m_watcherDebounceTimer->setInterval(WATCHER_DEBOUNCE_MS);
+
+    // Connect watcher signals
+    connect(m_fileWatcher, &QFileSystemWatcher::directoryChanged,
+            this, &LibraryManager::onDirectoryChanged);
+    connect(m_fileWatcher, &QFileSystemWatcher::fileChanged,
+            this, &LibraryManager::onFileChanged);
+
+    // Connect debounce timer
+    connect(m_watcherDebounceTimer, &QTimer::timeout,
+            this, &LibraryManager::onWatcherDebounceTimeout);
+
+    // Setup watches if enabled
+    if (m_watchFileChanges) {
+        updateFileWatcher();
+    }
+
+    qDebug() << "File system watcher initialized";
+}
+
+void LibraryManager::updateFileWatcher()
+{
+    if (!m_fileWatcher) {
+        return;
+    }
+
+    // Remove all existing watches
+    QStringList currentDirectories = m_fileWatcher->directories();
+    if (!currentDirectories.isEmpty()) {
+        m_fileWatcher->removePaths(currentDirectories);
+    }
+
+    if (!m_watchFileChanges || m_musicFolders.isEmpty()) {
+        qDebug() << "File watching disabled or no music folders";
+        return;
+    }
+
+    // Collect all directories to watch
+    QStringList dirsToWatch;
+    int totalDirs = 0;
+
+    for (const QString &musicFolder : m_musicFolders) {
+        // Add root folder
+        dirsToWatch << musicFolder;
+        totalDirs++;
+
+        // Get all subdirectories
+        QStringList subdirs = getAllSubdirectories(musicFolder);
+        totalDirs += subdirs.size();
+
+        // Check if we're approaching the limit
+        if (totalDirs > MAX_WATCHED_DIRS) {
+            qWarning() << "Library has" << totalDirs << "directories, exceeding limit of"
+                      << MAX_WATCHED_DIRS << "- disabling file watching for performance";
+            qWarning() << "Consider enabling 'Auto-refresh on startup' instead of 'Watch for changes'";
+            return;
+        }
+
+        dirsToWatch.append(subdirs);
+    }
+
+    // Add watches
+    QStringList failedPaths = m_fileWatcher->addPaths(dirsToWatch);
+    if (!failedPaths.isEmpty()) {
+        qWarning() << "Failed to watch" << failedPaths.size() << "paths";
+    }
+
+    qDebug() << "Now watching" << (dirsToWatch.size() - failedPaths.size())
+             << "directories for changes";
+}
+
+QStringList LibraryManager::getAllSubdirectories(const QString &rootPath) const
+{
+    QStringList subdirs;
+    QDirIterator it(rootPath, QDir::Dirs | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+
+    while (it.hasNext()) {
+        it.next();
+        subdirs << it.filePath();
+
+        // Safety check to avoid infinite loops or excessive directories
+        if (subdirs.size() > MAX_WATCHED_DIRS) {
+            break;
+        }
+    }
+
+    return subdirs;
+}
+
+void LibraryManager::onDirectoryChanged(const QString &path)
+{
+    qDebug() << "Directory changed:" << path;
+
+    // Add to pending changes
+    m_pendingChangedPaths.insert(path);
+
+    // Restart debounce timer
+    m_watcherDebounceTimer->start();
+}
+
+void LibraryManager::onFileChanged(const QString &path)
+{
+    qDebug() << "File changed:" << path;
+
+    // Only care about directory-level changes for now
+    // Individual file changes are too noisy
+    QString dir = QFileInfo(path).absolutePath();
+    m_pendingChangedPaths.insert(dir);
+
+    // Restart debounce timer
+    m_watcherDebounceTimer->start();
+}
+
+void LibraryManager::onWatcherDebounceTimeout()
+{
+    if (m_pendingChangedPaths.isEmpty()) {
+        return;
+    }
+
+    qDebug() << "Debounce timeout - processing" << m_pendingChangedPaths.size() << "changed paths";
+
+    // For now, just trigger a full refresh
+    // In the future, we could implement scanSpecificPathsInBackground for better performance
+    QStringList changedPaths = m_pendingChangedPaths.values();
+    m_pendingChangedPaths.clear();
+
+    // Only refresh if not already scanning
+    if (!m_scanning) {
+        qDebug() << "Triggering library refresh due to file system changes";
+        refreshLibrary();
+    } else {
+        qDebug() << "Scan already in progress, skipping watcher-triggered refresh";
+    }
 }
 
 

@@ -8,7 +8,7 @@ ApplicationWindow {
     id: libraryEditorWindow
     title: "Edit Library - mtoc"
     width: 600
-    height: 800
+    height: 900
     
     flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint
     
@@ -547,7 +547,7 @@ ApplicationWindow {
             // Info text and action buttons
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 160
+                Layout.preferredHeight: 320
                 color: Theme.panelBackground
                 radius: 4
                 
@@ -557,50 +557,90 @@ ApplicationWindow {
                     spacing: 8
                     
                     Label {
-                        text: "Scan your library to add audio files from the chosen folders to the library database. Clear and rescan to regenerate the database. \n\nAudio files are treated as read-only, changes made here only affect the database. \n\nRestart the application to apply changes if replacing the entire library."
+                        text: "Scan your library to add audio files from the chosen folders to the library database. Refresh Library intelligently updates changes. \n\nAudio files are treated as read-only, changes made here only affect the database. \n\nRestart the application to apply changes if replacing the entire library."
                         color: Theme.secondaryText
                         font.pixelSize: 12
                         wrapMode: Text.WordWrap
                         Layout.fillWidth: true
                     }
-                    
+
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
-                        
+
                         Button {
-                            text: "Clear Library"
+                            text: "Reset Library"
                             implicitHeight: 32
-                            implicitWidth: 100
-                            
+                            implicitWidth: 110
+                            enabled: !LibraryManager.scanning
+
                             background: Rectangle {
-                                color: parent.down ? "#cc6600" : parent.hovered ? "#aa5500" : Theme.inputBackground
-                                border.color: parent.hovered ? "#cc6600" : Theme.borderColor
+                                color: parent.enabled ? (parent.down ? "#cc0000" : parent.hovered ? "#aa0000" : Theme.inputBackground) : Theme.inputBackground
+                                border.color: parent.enabled && parent.hovered ? "#cc0000" : Theme.borderColor
                                 border.width: 1
                                 radius: 4
-                                
+
                                 Behavior on color {
                                     ColorAnimation { duration: 150 }
                                 }
                             }
-                            
+
                             contentItem: Text {
                                 text: parent.text
-                                color: parent.hovered ? Theme.primaryText : Theme.secondaryText
+                                color: parent.enabled ? (parent.hovered ? "#ff6666" : Theme.secondaryText) : Theme.disabledText
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
                                 font.pixelSize: 13
                             }
-                            
+
+                            ToolTip.text: "Clear entire library database (WARNING: All data will be lost!)"
+                            ToolTip.visible: hovered
+                            ToolTip.delay: 500
+
                             onClicked: {
-                                LibraryManager.clearLibrary();
+                                // TODO: Add confirmation dialog
+                                LibraryManager.resetLibrary();
                             }
                         }
-                        
-                        Item { Layout.fillWidth: true }
-                        
+
                         Button {
-                            text: LibraryManager.scanning ? "Cancel Scan" : "Scan Library"
+                            text: "Refresh Library"
+                            implicitHeight: 32
+                            implicitWidth: 120
+                            enabled: !LibraryManager.scanning
+
+                            background: Rectangle {
+                                color: parent.enabled ? (parent.down ? "#0088cc" : parent.hovered ? "#0077aa" : Theme.inputBackground) : Theme.inputBackground
+                                border.color: parent.enabled && parent.hovered ? "#00aaee" : Theme.borderColor
+                                border.width: 1
+                                radius: 4
+
+                                Behavior on color {
+                                    ColorAnimation { duration: 150 }
+                                }
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                color: parent.enabled ? (parent.hovered ? "#00ccff" : Theme.primaryText) : Theme.disabledText
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                font.pixelSize: 13
+                            }
+
+                            ToolTip.text: "Check for new, modified, or deleted files"
+                            ToolTip.visible: hovered
+                            ToolTip.delay: 500
+
+                            onClicked: {
+                                LibraryManager.refreshLibrary();
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        Button {
+                            text: LibraryManager.scanning ? "Cancel Scan" : "Full Scan"
                             implicitHeight: 32
                             implicitWidth: 120
                             
@@ -633,10 +673,70 @@ ApplicationWindow {
                             }
                         }
                     }
+
+                    // Auto-refresh and file watching settings
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 16
+                        spacing: 8
+
+                        Label {
+                            text: "Automatic Library Updates"
+                            color: Theme.primaryText
+                            font.pixelSize: 14
+                            font.bold: true
+                        }
+
+                        CheckBox {
+                            id: autoRefreshCheckbox
+                            text: "Auto-refresh on startup"
+                            checked: LibraryManager.autoRefreshOnStartup
+                            onCheckedChanged: {
+                                if (LibraryManager.autoRefreshOnStartup !== checked) {
+                                    LibraryManager.autoRefreshOnStartup = checked;
+                                }
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                color: Theme.primaryText
+                                leftPadding: parent.indicator.width + parent.spacing
+                                verticalAlignment: Text.AlignVCenter
+                                font.pixelSize: 13
+                            }
+                        }
+
+                        CheckBox {
+                            id: watchFileChangesCheckbox
+                            text: "Watch for file changes (requires restart)"
+                            checked: LibraryManager.watchFileChanges
+                            onCheckedChanged: {
+                                if (LibraryManager.watchFileChanges !== checked) {
+                                    LibraryManager.watchFileChanges = checked;
+                                }
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                color: Theme.primaryText
+                                leftPadding: parent.indicator.width + parent.spacing
+                                verticalAlignment: Text.AlignVCenter
+                                font.pixelSize: 13
+                            }
+                        }
+
+                        Label {
+                            text: "Note: For very large libraries (>5000 directories), 'Auto-refresh on startup' is recommended over 'Watch for changes' for better performance."
+                            color: Theme.secondaryText
+                            font.pixelSize: 11
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                    }
                 }
             }
         }
-    
+
     // Window closing behavior
     onClosing: function(close) {
         // Allow the window to close normally
