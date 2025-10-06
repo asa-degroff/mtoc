@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <QFileInfo>
 #include <QFile>
+#include <QDir>
 #include <QTextStream>
 #include <QRegularExpression>
 #include <QJsonDocument>
@@ -145,11 +146,9 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
     bool syncLyricsFound = false;
 
     // LRC File Handling
-    // as per convention the sidecar "lrc" file must have the exact same name as the song with
-    // the extension changed to .lrc
-    QFileInfo audioFileInfo(filePath);
-    QString lrcFilePath = audioFileInfo.path() + "/" + audioFileInfo.completeBaseName() + ".lrc";
-    if (QFileInfo::exists(lrcFilePath)) {
+    // Try to find a matching LRC file - supports both exact matches and fuzzy matching
+    QString lrcFilePath = findMatchingLrcFile(filePath);
+    if (!lrcFilePath.isEmpty()) {
         qDebug() << "MetadataExtractor: Found LRC file:" << lrcFilePath;
         auto lyricsData = parseLrcFile(lrcFilePath);
         
@@ -1276,6 +1275,93 @@ bool MetadataExtractor::hasAlbumArt(const QString &filePath)
 {
     TrackMetadata details = extract(filePath);
     return !details.albumArtData.isEmpty();
+}
+
+QString MetadataExtractor::findLongestCommonSubstring(const QString &s1, const QString &s2, int minLength) const
+{
+    if (s1.isEmpty() || s2.isEmpty() || minLength < 1) {
+        return QString();
+    }
+
+    QString longestMatch;
+    int maxLength = 0;
+
+    // Convert to lowercase for case-insensitive matching
+    QString s1Lower = s1.toLower();
+    QString s2Lower = s2.toLower();
+
+    // Try all possible substrings of s1, starting with longest
+    for (int len = s1.length(); len >= minLength && len > maxLength; --len) {
+        for (int i = 0; i <= s1.length() - len; ++i) {
+            QString substring = s1Lower.mid(i, len);
+
+            // Check if this substring exists in s2
+            if (s2Lower.contains(substring)) {
+                if (len > maxLength) {
+                    maxLength = len;
+                    longestMatch = s1.mid(i, len);  // Return original case
+                    break;  // Found longest at this length, move to next length
+                }
+            }
+        }
+    }
+
+    return longestMatch;
+}
+
+QString MetadataExtractor::findMatchingLrcFile(const QString &audioFilePath) const
+{
+    QFileInfo audioFileInfo(audioFilePath);
+    QString audioDir = audioFileInfo.path();
+    QString audioBaseName = audioFileInfo.completeBaseName();
+
+    // Pass 1: Try exact match (fast path - most common case)
+    QString exactMatchPath = audioDir + "/" + audioBaseName + ".lrc";
+    if (QFileInfo::exists(exactMatchPath)) {
+        return exactMatchPath;
+    }
+
+    // Pass 2: Fuzzy matching - find all .lrc files in directory
+    QDir dir(audioDir);
+    QStringList lrcFiles = dir.entryList(QStringList() << "*.lrc" << "*.LRC", QDir::Files);
+
+    if (lrcFiles.isEmpty()) {
+        return QString();  // No LRC files in directory
+    }
+
+    // Find best match based on longest common substring
+    QString bestMatch;
+    int bestMatchLength = 0;
+    bool bestMatchAtStart = false;
+
+    for (const QString &lrcFileName : lrcFiles) {
+        QString lrcBaseName = QFileInfo(lrcFileName).completeBaseName();
+
+        // Find longest common substring between audio and LRC basenames
+        QString commonSubstring = findLongestCommonSubstring(audioBaseName, lrcBaseName, 4);
+
+        if (!commonSubstring.isEmpty()) {
+            int matchLength = commonSubstring.length();
+
+            // Check if match is at the start of LRC filename (higher priority)
+            bool matchAtStart = lrcBaseName.toLower().startsWith(commonSubstring.toLower());
+
+            // Prefer longer matches, or matches at the start if length is equal
+            if (matchLength > bestMatchLength ||
+                (matchLength == bestMatchLength && matchAtStart && !bestMatchAtStart)) {
+                bestMatchLength = matchLength;
+                bestMatch = audioDir + "/" + lrcFileName;
+                bestMatchAtStart = matchAtStart;
+            }
+        }
+    }
+
+    if (!bestMatch.isEmpty()) {
+        qDebug() << "MetadataExtractor: Fuzzy matched LRC file:" << bestMatch
+                 << "for audio file:" << audioBaseName << "(match length:" << bestMatchLength << ")";
+    }
+
+    return bestMatch;
 }
 
 } // namespace Mtoc
