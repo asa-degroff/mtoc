@@ -10,6 +10,8 @@
 // However, for Fileref, it's common to include directly.
 #include <taglib/fileref.h>
 #include <taglib/tag.h>
+#include <taglib/id3v2frame.h>
+#include <taglib/synchronizedlyricsframe.h>
 
 namespace Mtoc {
 
@@ -56,6 +58,7 @@ public:
 
 private:
     std::pair<QString, QMap<qint64, QString>> parseLrcFile(const QString &lrcFilePath);
+    QMap<qint64, QString> parseSyltFrame(const TagLib::ID3v2::SynchronizedLyricsFrame *frame);
 };
 
 } // namespace Mtoc

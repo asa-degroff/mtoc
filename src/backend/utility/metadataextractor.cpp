@@ -117,6 +117,19 @@ std::pair<QString, QMap<qint64, QString>> MetadataExtractor::parseLrcFile(const 
     return {plainLyrics, synchronizedLyrics};
 }
 
+QMap<qint64, QString> MetadataExtractor::parseSyltFrame(const TagLib::ID3v2::SynchronizedLyricsFrame *syltFrame)
+{
+    QMap<qint64, QString> synchronizedLyrics;
+
+    TagLib::ID3v2::SynchronizedLyricsFrame::SynchedTextList syltData = syltFrame->synchedText();
+
+    for (const auto &line : syltData) {
+        synchronizedLyrics.insert(line.time, QString::fromStdString(line.text.to8Bit(true)));
+    }
+
+    return synchronizedLyrics;
+}
+
 
 MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &filePath)
 {
@@ -129,6 +142,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
     // qDebug() << "MetadataExtractor: Extracting metadata from" << filePath;
     TrackMetadata meta;
     bool lyricsFoundInLrc = false;
+    bool syncLyricsFound = false;
 
     // LRC File Handling
     // as per convention the sidecar "lrc" file must have the exact same name as the song with
@@ -150,6 +164,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             }
             meta.lyrics = QJsonDocument(syncLyricsArray).toJson(QJsonDocument::Compact);
             lyricsFoundInLrc = true;
+            syncLyricsFound = true;
             qDebug() << "MetadataExtractor: Successfully parsed synchronized lyrics from LRC file.";
         } 
         // Fallback to plain text from LRC if no sync data found
@@ -275,7 +290,30 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                     }
                 }
 
-                if (!lyricsFoundInLrc) {
+                if (!syncLyricsFound) {
+                    // Extract synchronized lyrics from SYLT frame
+                    TagLib::ID3v2::FrameList syltFrames = id3v2Tag->frameList("SYLT");
+                    if (!syltFrames.isEmpty()) {
+                        qDebug() << "MetadataExtractor: Found SYLT frame(s).";
+                        if (auto syltFrame = dynamic_cast<TagLib::ID3v2::SynchronizedLyricsFrame*>(syltFrames.front())) {
+                            auto lyricsData = parseSyltFrame(syltFrame);
+                            if (!lyricsData.isEmpty()) {
+                                QJsonArray syncLyricsArray;
+                                for (auto it = lyricsData.constBegin(); it != lyricsData.constEnd(); ++it) {
+                                    QJsonObject lyricLine;
+                                    lyricLine["time"] = it.key();
+                                    lyricLine["text"] = it.value();
+                                    syncLyricsArray.append(lyricLine);
+                                }
+                                meta.lyrics = QJsonDocument(syncLyricsArray).toJson(QJsonDocument::Compact);
+                                syncLyricsFound = true;
+                                qDebug() << "MetadataExtractor: Successfully parsed synchronized lyrics from SYLT frame.";
+                            }
+                        }
+                    }
+                }
+
+                if (!lyricsFoundInLrc && !syncLyricsFound) {
                     // Extract lyrics from USLT frame
                     TagLib::ID3v2::FrameList usltFrames = id3v2Tag->frameList("USLT");
                     if (!usltFrames.isEmpty() && usltFrames.front()) {
