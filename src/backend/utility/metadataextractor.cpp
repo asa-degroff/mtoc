@@ -1283,30 +1283,43 @@ QString MetadataExtractor::findLongestCommonSubstring(const QString &s1, const Q
         return QString();
     }
 
-    QString longestMatch;
+    const int len1 = s1.length();
+    const int len2 = s2.length();
+
     int maxLength = 0;
+    int endPos = 0;  // End position in s1 of the longest match
 
-    // Convert to lowercase for case-insensitive matching
-    QString s1Lower = s1.toLower();
-    QString s2Lower = s2.toLower();
+    // Dynamic programming table (only need current and previous row)
+    QVector<int> prevRow(len2 + 1, 0);
+    QVector<int> currRow(len2 + 1, 0);
 
-    // Try all possible substrings of s1, starting with longest
-    for (int len = s1.length(); len >= minLength && len > maxLength; --len) {
-        for (int i = 0; i <= s1.length() - len; ++i) {
-            QString substring = s1Lower.mid(i, len);
+    for (int i = 1; i <= len1; ++i) {
+        QChar c1 = s1[i - 1].toLower();
 
-            // Check if this substring exists in s2
-            if (s2Lower.contains(substring)) {
-                if (len > maxLength) {
-                    maxLength = len;
-                    longestMatch = s1.mid(i, len);  // Return original case
-                    break;  // Found longest at this length, move to next length
+        for (int j = 1; j <= len2; ++j) {
+            QChar c2 = s2[j - 1].toLower();
+
+            if (c1 == c2) {
+                currRow[j] = prevRow[j - 1] + 1;
+
+                if (currRow[j] > maxLength) {
+                    maxLength = currRow[j];
+                    endPos = i;  // Position in s1 where match ends
                 }
+            } else {
+                currRow[j] = 0;
             }
         }
+
+        // Swap rows for next iteration
+        qSwap(prevRow, currRow);
     }
 
-    return longestMatch;
+    if (maxLength >= minLength) {
+        return s1.mid(endPos - maxLength, maxLength);
+    }
+
+    return QString();
 }
 
 QString MetadataExtractor::findMatchingLrcFile(const QString &audioFilePath) const
@@ -1329,6 +1342,9 @@ QString MetadataExtractor::findMatchingLrcFile(const QString &audioFilePath) con
         return QString();  // No LRC files in directory
     }
 
+    // Pre-lowercase the audio basename once
+    QString audioBaseNameLower = audioBaseName.toLower();
+
     // Find best match based on longest common substring
     QString bestMatch;
     int bestMatchLength = 0;
@@ -1336,6 +1352,7 @@ QString MetadataExtractor::findMatchingLrcFile(const QString &audioFilePath) con
 
     for (const QString &lrcFileName : lrcFiles) {
         QString lrcBaseName = QFileInfo(lrcFileName).completeBaseName();
+        QString lrcBaseNameLower = lrcBaseName.toLower();  // Convert once
 
         // Find longest common substring between audio and LRC basenames
         QString commonSubstring = findLongestCommonSubstring(audioBaseName, lrcBaseName, 4);
@@ -1343,8 +1360,8 @@ QString MetadataExtractor::findMatchingLrcFile(const QString &audioFilePath) con
         if (!commonSubstring.isEmpty()) {
             int matchLength = commonSubstring.length();
 
-            // Check if match is at the start of LRC filename (higher priority)
-            bool matchAtStart = lrcBaseName.toLower().startsWith(commonSubstring.toLower());
+            // Check if match is at the start of LRC filename (use pre-lowercased version)
+            bool matchAtStart = lrcBaseNameLower.startsWith(commonSubstring.toLower());
 
             // Prefer longer matches, or matches at the start if length is equal
             if (matchLength > bestMatchLength ||
