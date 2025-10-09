@@ -19,13 +19,23 @@ ApplicationWindow {
     
     // Save state when window is closing
     onClosing: function(close) {
-        console.log("Main.qml: Window closing, saving playback state");
-        
+        console.log("Main.qml: Window closing event received");
+
+        // Check if minimize to tray is enabled
+        if (SettingsManager.minimizeToTray) {
+            console.log("Main.qml: Minimize to tray is enabled, hiding window instead of closing");
+            close.accepted = false;  // Prevent the window from actually closing
+            window.hide();  // Just hide the window
+            return;  // Don't execute the rest of the close logic
+        }
+
+        console.log("Main.qml: Closing application, saving playback state");
+
         // Close mini player window if it exists
         if (miniPlayerWindow) {
             miniPlayerWindow.close();
         }
-        
+
         // Close all child windows first
         if (libraryPaneWide && libraryPaneWide.closeAllWindows) {
             libraryPaneWide.closeAllWindows();
@@ -33,7 +43,7 @@ ApplicationWindow {
         if (libraryPaneCompact && libraryPaneCompact.closeAllWindows) {
             libraryPaneCompact.closeAllWindows();
         }
-        
+
         if (MediaPlayer) {
             MediaPlayer.saveState();
         }
