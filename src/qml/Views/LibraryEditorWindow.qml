@@ -570,7 +570,7 @@ ApplicationWindow {
                     spacing: 8
                     
                     Label {
-                        text: "Scan your library to add audio files from the chosen folders to the library database. Refresh Library intelligently updates changes. \n\nAudio files are treated as read-only, changes made here only affect the database. \n\nRestart the application to apply changes if replacing the entire library."
+                        text: "Scan your library to update the database with any new, modified, or deleted files. \n\nAudio files are treated as read-only, changes made here only affect the database. \n\nRestart the application to apply changes if replacing the entire library."
                         color: Theme.secondaryText
                         font.pixelSize: 12
                         wrapMode: Text.WordWrap
@@ -606,7 +606,7 @@ ApplicationWindow {
                                 font.pixelSize: 13
                             }
 
-                            ToolTip.text: "Clear entire library database (WARNING: All data will be lost!)"
+                            ToolTip.text: "Clear library database"
                             ToolTip.visible: hovered
                             ToolTip.delay: 500
 
@@ -616,44 +616,10 @@ ApplicationWindow {
                             }
                         }
 
-                        Button {
-                            text: "Refresh Library"
-                            implicitHeight: 32
-                            implicitWidth: 120
-                            enabled: !LibraryManager.scanning
-
-                            background: Rectangle {
-                                color: parent.enabled ? (parent.down ? "#0088cc" : parent.hovered ? "#0077aa" : Theme.inputBackground) : Theme.inputBackground
-                                border.color: parent.enabled && parent.hovered ? "#00aaee" : Theme.borderColor
-                                border.width: 1
-                                radius: 4
-
-                                Behavior on color {
-                                    ColorAnimation { duration: 150 }
-                                }
-                            }
-
-                            contentItem: Text {
-                                text: parent.text
-                                color: parent.enabled ? (parent.hovered ? "#00ccff" : Theme.primaryText) : Theme.disabledText
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                font.pixelSize: 13
-                            }
-
-                            ToolTip.text: "Check for new, modified, or deleted files"
-                            ToolTip.visible: hovered
-                            ToolTip.delay: 500
-
-                            onClicked: {
-                                LibraryManager.refreshLibrary();
-                            }
-                        }
-
                         Item { Layout.fillWidth: true }
 
                         Button {
-                            text: LibraryManager.scanning ? "Cancel Scan" : "Full Scan"
+                            text: LibraryManager.scanning ? "Cancel Scan" : "Scan Library"
                             implicitHeight: 32
                             implicitWidth: 120
                             
