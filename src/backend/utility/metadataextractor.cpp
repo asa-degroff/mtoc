@@ -145,13 +145,13 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
     bool lyricsFoundInLrc = false;
     bool syncLyricsFound = false;
 
-    // LRC File Handling
-    // Try to find a matching LRC file - supports both exact matches and fuzzy matching
+    // Lyrics File Handling (.lrc/.txt)
+    // Try to find a matching lyrics file - supports both exact matches and fuzzy matching
     QString lrcFilePath = findMatchingLrcFile(filePath);
     if (!lrcFilePath.isEmpty()) {
-        qDebug() << "MetadataExtractor: Found LRC file:" << lrcFilePath;
+        qDebug() << "MetadataExtractor: Found lyrics file:" << lrcFilePath;
         auto lyricsData = parseLrcFile(lrcFilePath);
-        
+
         // Check for synchronized lyrics first
         if (!lyricsData.second.isEmpty()) {
             QJsonArray syncLyricsArray;
@@ -164,13 +164,13 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             meta.lyrics = QJsonDocument(syncLyricsArray).toJson(QJsonDocument::Compact);
             lyricsFoundInLrc = true;
             syncLyricsFound = true;
-            qDebug() << "MetadataExtractor: Successfully parsed synchronized lyrics from LRC file.";
-        } 
-        // Fallback to plain text from LRC if no sync data found
+            qDebug() << "MetadataExtractor: Successfully parsed synchronized lyrics from lyrics file.";
+        }
+        // Fallback to plain text if no sync data found
         else if (!lyricsData.first.isEmpty()) {
             meta.lyrics = lyricsData.first;
             lyricsFoundInLrc = true;
-            qDebug() << "MetadataExtractor: Successfully parsed plain lyrics from LRC file.";
+            qDebug() << "MetadataExtractor: Successfully parsed plain lyrics from lyrics file.";
         }
     }
     
@@ -1328,18 +1328,24 @@ QString MetadataExtractor::findMatchingLrcFile(const QString &audioFilePath) con
     QString audioDir = audioFileInfo.path();
     QString audioBaseName = audioFileInfo.completeBaseName();
 
-    // Pass 1: Try exact match (fast path - most common case)
+    // Pass 1: Try exact match with .lrc (fast path - most common case)
     QString exactMatchPath = audioDir + "/" + audioBaseName + ".lrc";
     if (QFileInfo::exists(exactMatchPath)) {
         return exactMatchPath;
     }
 
-    // Pass 2: Fuzzy matching - find all .lrc files in directory
-    QDir dir(audioDir);
-    QStringList lrcFiles = dir.entryList(QStringList() << "*.lrc" << "*.LRC", QDir::Files);
+    // Pass 2: Try exact match with .txt (for unsynced lyrics)
+    exactMatchPath = audioDir + "/" + audioBaseName + ".txt";
+    if (QFileInfo::exists(exactMatchPath)) {
+        return exactMatchPath;
+    }
 
-    if (lrcFiles.isEmpty()) {
-        return QString();  // No LRC files in directory
+    // Pass 3: Fuzzy matching - find all .lrc and .txt files in directory
+    QDir dir(audioDir);
+    QStringList lyricsFiles = dir.entryList(QStringList() << "*.lrc" << "*.LRC" << "*.txt" << "*.TXT", QDir::Files);
+
+    if (lyricsFiles.isEmpty()) {
+        return QString();  // No lyrics files in directory
     }
 
     // Pre-lowercase the audio basename once
@@ -1349,32 +1355,36 @@ QString MetadataExtractor::findMatchingLrcFile(const QString &audioFilePath) con
     QString bestMatch;
     int bestMatchLength = 0;
     bool bestMatchAtStart = false;
+    bool bestMatchIsLrc = false;  // Prefer .lrc over .txt when match quality is equal
 
-    for (const QString &lrcFileName : lrcFiles) {
-        QString lrcBaseName = QFileInfo(lrcFileName).completeBaseName();
-        QString lrcBaseNameLower = lrcBaseName.toLower();  // Convert once
+    for (const QString &lyricsFileName : lyricsFiles) {
+        QString lyricsBaseName = QFileInfo(lyricsFileName).completeBaseName();
+        QString lyricsBaseNameLower = lyricsBaseName.toLower();  // Convert once
+        bool isLrcFile = lyricsFileName.toLower().endsWith(".lrc");
 
-        // Find longest common substring between audio and LRC basenames
-        QString commonSubstring = findLongestCommonSubstring(audioBaseName, lrcBaseName, 4);
+        // Find longest common substring between audio and lyrics basenames
+        QString commonSubstring = findLongestCommonSubstring(audioBaseName, lyricsBaseName, 4);
 
         if (!commonSubstring.isEmpty()) {
             int matchLength = commonSubstring.length();
 
-            // Check if match is at the start of LRC filename (use pre-lowercased version)
-            bool matchAtStart = lrcBaseNameLower.startsWith(commonSubstring.toLower());
+            // Check if match is at the start of lyrics filename (use pre-lowercased version)
+            bool matchAtStart = lyricsBaseNameLower.startsWith(commonSubstring.toLower());
 
-            // Prefer longer matches, or matches at the start if length is equal
+            // Prefer longer matches, matches at the start, and .lrc over .txt
             if (matchLength > bestMatchLength ||
-                (matchLength == bestMatchLength && matchAtStart && !bestMatchAtStart)) {
+                (matchLength == bestMatchLength && matchAtStart && !bestMatchAtStart) ||
+                (matchLength == bestMatchLength && matchAtStart == bestMatchAtStart && isLrcFile && !bestMatchIsLrc)) {
                 bestMatchLength = matchLength;
-                bestMatch = audioDir + "/" + lrcFileName;
+                bestMatch = audioDir + "/" + lyricsFileName;
                 bestMatchAtStart = matchAtStart;
+                bestMatchIsLrc = isLrcFile;
             }
         }
     }
 
     if (!bestMatch.isEmpty()) {
-        qDebug() << "MetadataExtractor: Fuzzy matched LRC file:" << bestMatch
+        qDebug() << "MetadataExtractor: Fuzzy matched lyrics file:" << bestMatch
                  << "for audio file:" << audioBaseName << "(match length:" << bestMatchLength << ")";
     }
 

@@ -23,6 +23,7 @@ SettingsManager::SettingsManager(QObject *parent)
     , m_expandedArtistsList()
     , m_librarySplitRatio(0.51)  // Default to 51%
     , m_singleClickToPlay(false)  // Default to double-click behavior
+    , m_minimizeToTray(false)  // Default to quit on close
 {
     loadSettings();
     setupSystemThemeDetection();
@@ -309,6 +310,15 @@ void SettingsManager::setSingleClickToPlay(bool enabled)
     }
 }
 
+void SettingsManager::setMinimizeToTray(bool enabled)
+{
+    if (m_minimizeToTray != enabled) {
+        m_minimizeToTray = enabled;
+        emit minimizeToTrayChanged(enabled);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -355,6 +365,7 @@ void SettingsManager::loadSettings()
     m_windowHeight = m_settings.value("height", 1200).toInt();
     m_windowX = m_settings.value("x", -1).toInt();  // -1 means use default positioning
     m_windowY = m_settings.value("y", -1).toInt();
+    m_minimizeToTray = m_settings.value("minimizeToTray", false).toBool();
     m_settings.endGroup();
     
     m_settings.beginGroup("MiniPlayer");
@@ -413,6 +424,7 @@ void SettingsManager::saveSettings()
     m_settings.setValue("height", m_windowHeight);
     m_settings.setValue("x", m_windowX);
     m_settings.setValue("y", m_windowY);
+    m_settings.setValue("minimizeToTray", m_minimizeToTray);
     m_settings.endGroup();
     
     m_settings.beginGroup("MiniPlayer");

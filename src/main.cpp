@@ -12,6 +12,10 @@
 #include <QDir>
 #include <QStandardPaths>
 #include <QWindow>
+#include <QSystemTrayIcon>
+#include <QMenu>
+#include <QAction>
+#include <QQuickWindow>
 
 #include "backend/systeminfo.h"
 #include "backend/utility/metadataextractor.h"
@@ -274,7 +278,73 @@ int main(int argc, char *argv[])
         
     qDebug() << "Main: Loading QML from:" << url;
     engine.load(url);
-    
+
+    // Set up system tray icon
+    QSystemTrayIcon *trayIcon = nullptr;
+    QQuickWindow *mainWindow = nullptr;
+
+    if (QSystemTrayIcon::isSystemTrayAvailable()) {
+        qDebug() << "Main: System tray is available, creating tray icon";
+
+        trayIcon = new QSystemTrayIcon(&app);
+
+        // Use the same icon as the application
+        QString flatpakId = qgetenv("FLATPAK_ID");
+        if (!flatpakId.isEmpty()) {
+            trayIcon->setIcon(QIcon::fromTheme(flatpakId));
+        } else {
+            trayIcon->setIcon(QIcon(":/resources/icons/mtoc-icon-512.png"));
+        }
+
+        trayIcon->setToolTip("mtoc - Music Player");
+
+        // Create context menu for tray icon
+        QMenu *trayMenu = new QMenu();
+
+        QAction *showAction = new QAction("Show mtoc", trayMenu);
+        QAction *quitAction = new QAction("Quit", trayMenu);
+
+        trayMenu->addAction(showAction);
+        trayMenu->addSeparator();
+        trayMenu->addAction(quitAction);
+
+        trayIcon->setContextMenu(trayMenu);
+
+        // Get the main window from QML
+        if (!engine.rootObjects().isEmpty()) {
+            mainWindow = qobject_cast<QQuickWindow*>(engine.rootObjects().first());
+        }
+
+        // Connect tray icon signals
+        if (mainWindow) {
+            // Show window when tray icon is activated (clicked)
+            QObject::connect(trayIcon, &QSystemTrayIcon::activated,
+                           [mainWindow](QSystemTrayIcon::ActivationReason reason) {
+                if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick) {
+                    mainWindow->show();
+                    mainWindow->raise();
+                    mainWindow->requestActivate();
+                }
+            });
+
+            // Show action
+            QObject::connect(showAction, &QAction::triggered, [mainWindow]() {
+                mainWindow->show();
+                mainWindow->raise();
+                mainWindow->requestActivate();
+            });
+        }
+
+        // Quit action
+        QObject::connect(quitAction, &QAction::triggered, &app, &QApplication::quit);
+
+        // Show the tray icon
+        trayIcon->show();
+        qDebug() << "Main: System tray icon created and shown";
+    } else {
+        qWarning() << "Main: System tray is not available on this system";
+    }
+
     // Connect to application aboutToQuit signal for cleanup
     QObject::connect(&app, &QApplication::aboutToQuit, [&]() {
         qDebug() << "Main: Application about to quit, performing cleanup...";
@@ -312,17 +382,24 @@ int main(int argc, char *argv[])
         delete mprisManager;
         mprisManager = nullptr;
         
+        // Clean up tray icon
+        if (trayIcon) {
+            trayIcon->hide();
+            delete trayIcon;
+            trayIcon = nullptr;
+        }
+
         // Do NOT delete QML-registered singletons here - let QML engine handle them:
         // - mediaPlayer
-        // - playlistManager  
+        // - playlistManager
         // - libraryManager
         // - metadataExtractor
         // - settingsManager
         // - systemInfo
-        
+
         // Process any pending deletions before returning
         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
-        
+
         qDebug() << "Main: Cleanup completed";
     });
     

@@ -177,7 +177,10 @@ private:
     void setupFileWatcher();
     void updateFileWatcher();
     QStringList getAllSubdirectories(const QString &rootPath) const;
-    
+    void updateLyricsForTrack(const QString &audioFilePath);
+    void processLrcFileChanges(const QString &directoryPath);
+    QStringList findAudioFilesForLrc(const QString &lrcFilePath, const QStringList &audioFiles) const;
+
     // Private data
     DatabaseManager *m_databaseManager;
     AlbumArtManager *m_albumArtManager;
