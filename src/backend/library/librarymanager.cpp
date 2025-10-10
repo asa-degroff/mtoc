@@ -2690,7 +2690,7 @@ void LibraryManager::updateLyricsForTrack(const QString &audioFilePath)
 
     if (!metadata.contains("lyrics")) {
         qDebug() << "No lyrics found for:" << audioFilePath;
-        // Update database to clear lyrics (in case .lrc file was deleted)
+        // Update database to clear lyrics (in case lyrics file was deleted)
         QVariantMap updateData;
         updateData["lyrics"] = QString();  // Empty string to clear lyrics
         int trackId = m_databaseManager->getTrackIdByPath(audioFilePath);
@@ -2759,7 +2759,7 @@ QStringList LibraryManager::findAudioFilesForLrc(const QString &lrcFilePath, con
 
 void LibraryManager::processLrcFileChanges(const QString &directoryPath)
 {
-    qDebug() << "Processing LRC file changes in directory:" << directoryPath;
+    qDebug() << "Processing lyrics file changes in directory:" << directoryPath;
 
     QDir dir(directoryPath);
     if (!dir.exists()) {
@@ -2767,8 +2767,8 @@ void LibraryManager::processLrcFileChanges(const QString &directoryPath)
         return;
     }
 
-    // Get all .lrc files in the directory
-    QStringList lrcFiles = dir.entryList(QStringList() << "*.lrc" << "*.LRC", QDir::Files);
+    // Get all .lrc and .txt files in the directory
+    QStringList lrcFiles = dir.entryList(QStringList() << "*.lrc" << "*.LRC" << "*.txt" << "*.TXT", QDir::Files);
 
     // Get all audio files in the directory
     QStringList audioFiles;
@@ -2786,20 +2786,20 @@ void LibraryManager::processLrcFileChanges(const QString &directoryPath)
         return;
     }
 
-    // For each .lrc file, find matching audio files and update their lyrics
+    // For each lyrics file, find matching audio files and update their lyrics
     for (const QString &lrcFileName : lrcFiles) {
         QString lrcFilePath = dir.absoluteFilePath(lrcFileName);
         QStringList matchingAudioFiles = findAudioFilesForLrc(lrcFilePath, audioFiles);
 
-        qDebug() << "LRC file" << lrcFileName << "matches" << matchingAudioFiles.size() << "audio files";
+        qDebug() << "Lyrics file" << lrcFileName << "matches" << matchingAudioFiles.size() << "audio files";
 
         for (const QString &audioFile : matchingAudioFiles) {
             updateLyricsForTrack(audioFile);
         }
     }
 
-    // Note: We don't need to explicitly check for deleted .lrc files here.
-    // If a user adds a new .lrc file and then deletes it, the next directory
+    // Note: We don't need to explicitly check for deleted lyrics files here.
+    // If a user adds a new lyrics file and then deletes it, the next directory
     // change will trigger this function again and updateLyricsForTrack() will
     // handle clearing the lyrics since it re-extracts metadata.
     // This keeps the logic simpler and avoids unnecessary database queries.
@@ -2840,7 +2840,7 @@ void LibraryManager::onWatcherDebounceTimeout()
     QStringList changedPaths = m_pendingChangedPaths.values();
     m_pendingChangedPaths.clear();
 
-    // First, process any .lrc file changes in the affected directories
+    // First, process any lyrics file changes (.lrc/.txt) in the affected directories
     // This is fast and doesn't require a full library scan
     for (const QString &path : changedPaths) {
         processLrcFileChanges(path);
