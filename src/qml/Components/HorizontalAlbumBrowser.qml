@@ -249,7 +249,7 @@ Item {
                 var sourceAlbums = (LibraryManager.albumModel) ? LibraryManager.albumModel : []
                 for (var i = 0; i < sourceAlbums.length; i++) {
                     if (sourceAlbums[i].id === currentAlbumId) {
-                        jumpToAlbum(sourceAlbums[i], false)  // Use animation for library changes
+                        jumpToAlbum(sourceAlbums[i], true)  // Jump instantly to maintain position during library changes
                         return
                     }
                 }
