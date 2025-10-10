@@ -2719,6 +2719,10 @@ void LibraryManager::updateLyricsForTrack(const QString &audioFilePath)
                 cachedTrack->setLyrics(lyrics);
             }
         }
+
+        // Emit signal to notify UI that track data has changed
+        // This ensures the UI refreshes to show the new lyrics
+        emit libraryChanged();
     }
 }
 
