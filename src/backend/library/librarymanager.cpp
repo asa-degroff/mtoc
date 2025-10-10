@@ -2673,6 +2673,138 @@ QStringList LibraryManager::getAllSubdirectories(const QString &rootPath) const
     return subdirs;
 }
 
+void LibraryManager::updateLyricsForTrack(const QString &audioFilePath)
+{
+    qDebug() << "Updating lyrics for track:" << audioFilePath;
+
+    // Check if track exists in database
+    QMutexLocker locker(&m_databaseMutex);
+    if (!m_databaseManager->trackExists(audioFilePath)) {
+        qDebug() << "Track not in database, skipping lyrics update:" << audioFilePath;
+        return;
+    }
+
+    // Extract only lyrics (without album art to save processing time)
+    Mtoc::MetadataExtractor localExtractor;
+    QVariantMap metadata = localExtractor.extractAsVariantMap(audioFilePath, false);
+
+    if (!metadata.contains("lyrics")) {
+        qDebug() << "No lyrics found for:" << audioFilePath;
+        // Update database to clear lyrics (in case .lrc file was deleted)
+        QVariantMap updateData;
+        updateData["lyrics"] = QString();  // Empty string to clear lyrics
+        int trackId = m_databaseManager->getTrackIdByPath(audioFilePath);
+        if (trackId > 0) {
+            m_databaseManager->updateTrack(trackId, updateData);
+            qDebug() << "Cleared lyrics for track:" << audioFilePath;
+        }
+        return;
+    }
+
+    // Update only the lyrics field in the database
+    QString lyrics = metadata.value("lyrics").toString();
+    QVariantMap updateData;
+    updateData["lyrics"] = lyrics;
+
+    int trackId = m_databaseManager->getTrackIdByPath(audioFilePath);
+    if (trackId > 0) {
+        m_databaseManager->updateTrack(trackId, updateData);
+        qDebug() << "Updated lyrics for track:" << audioFilePath;
+
+        // Invalidate track cache for this file
+        QMutexLocker cacheLock(&m_trackCacheMutex);
+        if (m_trackCache.contains(audioFilePath)) {
+            Track* cachedTrack = m_trackCache.value(audioFilePath);
+            if (cachedTrack) {
+                cachedTrack->setLyrics(lyrics);
+            }
+        }
+    }
+}
+
+QStringList LibraryManager::findAudioFilesForLrc(const QString &lrcFilePath, const QStringList &audioFiles) const
+{
+    QStringList matches;
+    QFileInfo lrcInfo(lrcFilePath);
+    QString lrcBaseName = lrcInfo.completeBaseName();
+    QString lrcBaseNameLower = lrcBaseName.toLower();
+
+    // First try exact match
+    for (const QString &audioFile : audioFiles) {
+        QFileInfo audioInfo(audioFile);
+        if (audioInfo.completeBaseName() == lrcBaseName) {
+            matches.append(audioFile);
+            return matches;  // Exact match found, no need to fuzzy search
+        }
+    }
+
+    // Fuzzy matching using longest common substring (same logic as MetadataExtractor)
+    for (const QString &audioFile : audioFiles) {
+        QFileInfo audioInfo(audioFile);
+        QString audioBaseName = audioInfo.completeBaseName();
+        QString audioBaseNameLower = audioBaseName.toLower();
+
+        // Simple substring check - if one is contained in the other
+        if (audioBaseNameLower.contains(lrcBaseNameLower) || lrcBaseNameLower.contains(audioBaseNameLower)) {
+            // Additional check: must have at least 4 characters in common
+            int minLength = qMin(lrcBaseName.length(), audioBaseName.length());
+            if (minLength >= 4) {
+                matches.append(audioFile);
+            }
+        }
+    }
+
+    return matches;
+}
+
+void LibraryManager::processLrcFileChanges(const QString &directoryPath)
+{
+    qDebug() << "Processing LRC file changes in directory:" << directoryPath;
+
+    QDir dir(directoryPath);
+    if (!dir.exists()) {
+        qDebug() << "Directory no longer exists:" << directoryPath;
+        return;
+    }
+
+    // Get all .lrc files in the directory
+    QStringList lrcFiles = dir.entryList(QStringList() << "*.lrc" << "*.LRC", QDir::Files);
+
+    // Get all audio files in the directory
+    QStringList audioFiles;
+    QStringList filters;
+    filters << "*.mp3" << "*.flac" << "*.ogg" << "*.m4a" << "*.opus" << "*.wav"
+            << "*.MP3" << "*.FLAC" << "*.OGG" << "*.M4A" << "*.OPUS" << "*.WAV";
+
+    QFileInfoList audioFileInfos = dir.entryInfoList(filters, QDir::Files);
+    for (const QFileInfo &fileInfo : audioFileInfos) {
+        audioFiles.append(fileInfo.absoluteFilePath());
+    }
+
+    if (audioFiles.isEmpty()) {
+        qDebug() << "No audio files in directory, nothing to update";
+        return;
+    }
+
+    // For each .lrc file, find matching audio files and update their lyrics
+    for (const QString &lrcFileName : lrcFiles) {
+        QString lrcFilePath = dir.absoluteFilePath(lrcFileName);
+        QStringList matchingAudioFiles = findAudioFilesForLrc(lrcFilePath, audioFiles);
+
+        qDebug() << "LRC file" << lrcFileName << "matches" << matchingAudioFiles.size() << "audio files";
+
+        for (const QString &audioFile : matchingAudioFiles) {
+            updateLyricsForTrack(audioFile);
+        }
+    }
+
+    // Note: We don't need to explicitly check for deleted .lrc files here.
+    // If a user adds a new .lrc file and then deletes it, the next directory
+    // change will trigger this function again and updateLyricsForTrack() will
+    // handle clearing the lyrics since it re-extracts metadata.
+    // This keeps the logic simpler and avoids unnecessary database queries.
+}
+
 void LibraryManager::onDirectoryChanged(const QString &path)
 {
     qDebug() << "Directory changed:" << path;
@@ -2705,11 +2837,16 @@ void LibraryManager::onWatcherDebounceTimeout()
 
     qDebug() << "Debounce timeout - processing" << m_pendingChangedPaths.size() << "changed paths";
 
-    // For now, just trigger a full refresh
-    // In the future, we could implement scanSpecificPathsInBackground for better performance
     QStringList changedPaths = m_pendingChangedPaths.values();
     m_pendingChangedPaths.clear();
 
+    // First, process any .lrc file changes in the affected directories
+    // This is fast and doesn't require a full library scan
+    for (const QString &path : changedPaths) {
+        processLrcFileChanges(path);
+    }
+
+    // Then trigger a full refresh for other changes (new/deleted audio files)
     // Only refresh if not already scanning
     if (!m_scanning) {
         qDebug() << "Triggering library refresh due to file system changes";
