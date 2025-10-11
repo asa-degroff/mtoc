@@ -37,7 +37,8 @@ The artists list features album artists sorted alphabetically. An artist can be 
 Keyboard navigation is featured in all lists, jumping between lists, and for search. You can perform the essential functions of searching for and playing music without lifting a hand. 
 
 ### Library Features
-A responsive search function finds artists, albums, and tracks, jumping to and selecting the relevant item in the list. 
+- Responsive search function finds artists, albums, and tracks, jumping to and selecting the relevant item in the list
+- File watcher and automatic library updates show your newly added music in mtoc with no manual action required
 
 ### Library Management
 The library editor lets you select one or multiple directories to scan for music, and optionally specify additional directories for .m3u playlist files. 
