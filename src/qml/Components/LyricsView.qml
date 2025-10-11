@@ -84,9 +84,18 @@ Item {
         topMargin: height / 2.5
         bottomMargin: height / 2
 
-        delegate: Item {
+        delegate: MouseArea {
             width: lyricsListView.width
             height: lyricText.height
+
+            // For synced lyrics, change cursor and allow seeking
+            cursorShape: modelData.time >= 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
+
+            onClicked: {
+                if (modelData.time >= 0) {
+                    MediaPlayer.seek(modelData.time)
+                }
+            }
 
             Text {
                 id: lyricText
