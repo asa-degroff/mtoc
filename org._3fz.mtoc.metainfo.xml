@@ -68,6 +68,21 @@
 
   <releases>
 
+    <release version="2.3" date="2025-10-11">
+      <description>
+        <p>Lyrics support, file watcher, automatic library updates, minimize to tray</p>
+        <ul>
+          <li>Support for displaying unsynced and synced lyrics embedded in track metadata and external .lrc and .txt files</li>
+          <li>Displays synced lyrics with line highlighting and reverse seeking by clicking a line in the lyrics</li>
+          <li>External lyrics stored in the same directory as audio files are detected by the scanner and associated with the track with the best filename match</li>
+          <li>New file watcher that updates your library to reflect added and removed music and lyrics files without manually triggering a scan</li>
+          <li>Added library management options to choose between automatic library updates, refresh on startup, or manual updates</li>
+          <li>Improved stability of the album carousel when albums are added and removed</li>
+          <li>Added the option to minimize to tray when closing the main window</li>
+        </ul>
+      </description>
+    </release>
+
     <release version="2.2.4" date="2025-09-08">
       <description>
         <p>Bug fixed for album carousel with large libraries, album sorting consistency, and carousel reflection consistency</p>

@@ -1,3 +1,13 @@
+# 2.3
+### Lyrics support, file watcher, automatic library updates, minimize to tray
+- Support for displaying unsynced and synced lyrics embedded in track metadata and external .lrc and .txt files
+- Displays synced lyrics with line highlighting and reverse seeking by clicking a line in the lyrics
+- External lyrics stored in the same directory as audio files are detected by the scanner and associated with the track with the best filename match
+- New file watcher that updates your library to reflect added and removed music and lyrics files without manually triggering a scan
+- Added library management options to choose between automatic library updates, refresh on startup, or manual updates
+- Improved stability of the album carousel when albums are added and removed
+- Added the option to minimize to tray when closing the main window
+
 # 2.2.4
 ### Bug fixed for album carousel with large libraries, album sorting consistency, and carousel reflection consistency
 - Fixed a bug where the album carousel would not display albums when the library contained more than 1000 albums
