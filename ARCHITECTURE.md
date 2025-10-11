@@ -11,7 +11,7 @@ mtoc is a modern music player and library management application built with Qt/Q
 The Model layer handles data representation and storage, located in `src/backend/`:
 
 #### Core Data Models
-- **Track** (`library/track.h`): Represents individual music tracks with metadata properties (title, artist, album, duration, etc.)
+- **Track** (`library/track.h`): Represents individual music tracks with metadata properties (title, artist, album, duration, lyrics, etc.)
 - **Album** (`library/album.h`): Represents music albums with aggregated track information
 - **Artist** (`library/artist.h`): Represents artists with associated albums and tracks
 - **VirtualTrackData** (`playlist/VirtualTrackData.h`): Lightweight track representation for virtual playlists
@@ -19,7 +19,8 @@ The Model layer handles data representation and storage, located in `src/backend
 #### List Models (Qt's QAbstractListModel)
 - **TrackModel** (`library/trackmodel.h`): Manages collections of tracks with sorting capabilities
 - **AlbumModel** (`library/albummodel.h`): Manages album collections with custom roles for QML binding
-- **VirtualPlaylistModel** (`playlist/VirtualPlaylistModel.h`): Provides paginated loading for large playlists with lazy loading support
+- **VirtualPlaylist** (`playlist/VirtualPlaylist.h`): Core playlist data management with buffering, shuffle support, and asynchronous loading
+- **VirtualPlaylistModel** (`playlist/VirtualPlaylistModel.h`): Provides paginated loading for large playlists with lazy loading support, built on top of VirtualPlaylist
 
 ### 2. View Layer (User Interface)
 
@@ -29,15 +30,31 @@ The View layer is implemented entirely in QML, located in `src/qml/`:
 - **LibraryPane**: Browse music library by artists and albums
 - **NowPlayingPane**: Display current track with album art and controls
 - **PlaylistView**: Manage and play saved playlists
+- **MiniPlayerWindow**: Standalone mini player with multiple layout modes (vertical, horizontal, compact bar)
 - **SettingsWindow**: Configure application settings
 - **LibraryEditorWindow**: Edit library metadata
 
 #### Reusable Components (`Components/`)
 - **PlaybackControls**: Transport controls (play/pause/skip)
+- **CompactNowPlayingBar**: Compact now playing bar for minimal UI
 - **QueueListView**: Display and manage playback queue
+- **QueuePopup**: Popup window for queue display
+- **QueueHeader**: Header component for queue view
+- **QueueActionDialog**: Dialog for queue-related actions
 - **HorizontalAlbumBrowser**: Browse albums in a horizontal carousel
+- **ThumbnailGridDelegate**: Grid view delegate for album thumbnails
 - **SearchBar**: Search functionality
 - **BlurredBackground**: Visual effects for album art backgrounds
+- **AlbumArtPopup**: Popup window for enlarged album artwork
+- **LyricsView**: Display synchronized or plain text lyrics
+- **LyricsPopup**: Popup window for lyrics display
+- **ResizeHandler**: Handle window resizing operations
+- **StyledMenu**, **StyledMenuItem**, **StyledMenuSeparator**: Custom styled menu components
+
+#### Utility QML Files
+- **Theme.qml**: Centralized theme management singleton (colors, fonts, spacing)
+- **Constants.qml**: Application-wide constants
+- **Styles.qml**: Style definitions and utilities
 
 ### 3. Controller Layer (Business Logic)
 
@@ -70,6 +87,7 @@ The Controller layer manages application logic and coordinates between models an
 - **DatabaseManager** (`database/databasemanager.h`): SQLite database operations
 - **MetadataExtractor** (`utility/metadataextractor.h`): Extract metadata from audio files using TagLib
 - **MprisManager** (`system/mprismanager.h`): Linux desktop integration for media controls
+- **SystemInfo** (`systeminfo.h`): Provides application metadata (name, version) for display in UI
 
 ### 4. Infrastructure Layer
 
@@ -116,12 +134,33 @@ The Controller layer manages application logic and coordinates between models an
 
 ### QML/C++ Integration
 
-The application registers C++ types and singletons with the QML engine:
+The application registers C++ types and singletons with the QML engine in `main.cpp`:
 
+#### Registered Types
 ```cpp
-// Type registration in main.cpp
-qmlRegisterType<Track>("Mtoc.Backend", 1, 0, "Track");
+// Instantiable types for QML
+qmlRegisterType<Mtoc::Track>("Mtoc.Backend", 1, 0, "Track");
+qmlRegisterType<Mtoc::Album>("Mtoc.Backend", 1, 0, "Album");
+```
+
+#### Registered Singletons
+```cpp
+// C++ singletons exposed to QML
+qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "SystemInfo", systemInfo);
 qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "LibraryManager", libraryManager);
+qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MetadataExtractor", metadataExtractor);
+qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "SettingsManager", settingsManager);
+qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MediaPlayer", mediaPlayer);
+qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "PlaylistManager", playlistManager);
+
+// QML singletons
+qmlRegisterSingletonType(QUrl("qrc:/src/qml/Theme.qml"), "Mtoc.Backend", 1, 0, "Theme");
+```
+
+#### Image Provider
+```cpp
+// Custom image provider for album artwork
+engine.addImageProvider("albumart", new Mtoc::AlbumArtImageProvider(libraryManager));
 ```
 
 QML components import and use these types:
@@ -131,49 +170,84 @@ import Mtoc.Backend 1.0
 // Direct access to C++ singletons
 LibraryManager.startScan()
 MediaPlayer.play()
+
+// Album art image provider usage
+Image { source: "image://albumart/artist/album/thumbnail" }
 ```
 
 ## Key Features Implementation
+
+### Lyrics Support
+- **Synchronized Lyrics**: Supports LRC format with timestamp-synced lyrics that highlight in real-time during playback
+- **Plain Text Lyrics**: Fallback support for plain text lyrics (.txt files)
+- **Database Integration**: Lyrics stored in database and associated with tracks
+- **UI Components**: Dedicated LyricsView and LyricsPopup for displaying lyrics
+- **Automatic Detection**: Lyrics files automatically detected and loaded from track directories
+
+### Mini Player
+- **Multiple Layouts**: Three distinct layout modes (vertical, horizontal, compact bar)
+- **Always-on-Top**: Frameless window that stays on top of other applications
+- **Position Persistence**: Remembers window position between sessions
+- **Full Playback Control**: Complete transport controls and progress bar in compact form
+- **Album Art Display**: Clickable album art for quick access to main window
 
 ### Virtual Playlists
 - Supports extremely large playlists through pagination
 - Loads tracks on-demand to minimize memory usage
 - Seamless integration with playback system
+- Buffer management and preloading for smooth playback
+- Shuffle support with efficient index mapping
 
 ### Album Art Management
 - Extracts embedded artwork from audio files
 - Caches processed images for performance
 - Custom QML image provider for efficient loading
+- Multiple size variants (full, thumbnail) for different UI contexts
+
+### System Tray Integration
+- System tray icon with context menu
+- Show/hide main window from tray
+- Quick access to playback controls
+- Graceful background operation
 
 ### State Persistence
 - Saves playback position and queue
-- Remembers UI state (carousel position)
+- Remembers UI state (carousel position, window positions)
+- Persists user preferences and settings
 - Restores state on application restart
 
 ### Multi-threaded Operations
 - Background library scanning
 - Concurrent metadata extraction
 - Asynchronous album art processing
+- Async playlist loading with progress reporting
 
 ## Performance Considerations
 
-1. **Lazy Loading**: Virtual playlists load data on-demand
-2. **Caching**: Multiple levels of caching for tracks, albums, and artwork
+1. **Lazy Loading**: Virtual playlists load data on-demand with configurable buffer sizes
+2. **Dynamic Caching**:
+   - Multiple levels of caching for tracks, albums, and artwork
+   - Adaptive QPixmapCache sizing based on system memory (5-10% of RAM, 128MB-1GB range)
+   - Cache scaling based on thumbnail size preferences
 3. **Batch Operations**: Database operations are batched for efficiency
-4. **Memory Management**: Careful management of QML object lifecycle
-5. **Concurrent Processing**: Uses Qt Concurrent for CPU-intensive tasks
+4. **Memory Management**:
+   - Careful management of QML object lifecycle
+   - Efficient cleanup on application exit
+   - Proper parent-child relationships for automatic cleanup
+5. **Concurrent Processing**:
+   - Uses Qt Concurrent for CPU-intensive tasks
+   - Background library scanning with progress reporting
+   - Async album art extraction and processing
 
 ## Platform Integration
 
-- **Linux**: MPRIS D-Bus interface for desktop integration
+- **Linux Desktop**:
+  - MPRIS D-Bus interface for media key and desktop environment integration
+  - System tray integration for background operation
+  - Theme icon support for consistent desktop appearance
+- **Flatpak Support**:
+  - Automatic detection and icon configuration for Flatpak environments
+  - Desktop file integration for proper app identification
 - **File Systems**: Handles various path formats and encodings
-- **Audio Formats**: Supports formats via TagLib (MP3, FLAC, OGG, etc.)
-
-## Future Extensibility
-
-The architecture supports easy extension through:
-- Plugin system for audio formats
-- Additional view types
-- Network streaming capabilities
-- Cloud synchronization
-- Mobile platform support
+- **Audio Formats**: Supports multiple formats via TagLib (MP3, FLAC, OGG, M4A, etc.)
+- **Locale Support**: Configurable locale for proper string sorting and comparison
