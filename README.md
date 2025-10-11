@@ -70,21 +70,33 @@ mtoc features shuffle and repeat modes. Shuffle uses a modified Fisher-Yates alg
 - ReplayGain support for volume normalization on tracks with the ReplayGain tag set, supporting either per-album or per-track modes
 - Fallback gain allows you to set a default gain for tracks that don't feature the ReplayGain tag, keeping your hearing safe when listening to a library with mixed ReplayGain tags
 
+### Lyrics Support
+mtoc provides comprehensive lyrics display for your music collection:
+- **Synchronized Lyrics**: Full support for LRC format with real-time highlighting that follows playback position
+- **Embedded and External**: Supports both embedded lyrics in audio metadata and external lyric files
+- **Automatic Detection**: Lyrics files are automatically detected and loaded from your track directories during library scanning, with fuzzy matching that pairs lyrics with the relevant track
+- **Integrated Display**: View lyrics in the now playing pane for the wide layout or a dedicated popup for the compact layout
+- **Multiple Formats**: Supports both .lrc (timestamped) and .txt (plain text) file formats
+
 ### State Persistence
-mtoc saves your position in the interface as well playback state including your queue, current track, and position, so that you can pick up where you left off after restarting the app. 
+mtoc saves your position in the interface as well as playback state including your queue, current track, playback position, carousel position, and window positions (including mini player), so that you can pick up where you left off after restarting the app.
 
 ### Desktop Integration
-- Full MPRIS 2 support for media keys and system controls
+- **MPRIS 2**: Full support for media keys and system controls, integrating seamlessly with your desktop environment's media controls
+- **System Tray**: Background operation with system tray icon, allowing you to minimize to tray and control playback from the tray menu
 
 ### High Performance
-Performance is a core design principle. mtoc aims for visual appeal and and continuity in browsing. 
+Performance is a core design principle. mtoc aims for visual appeal and continuity in browsing.
 - Hardware-accelerated rendering
-- Even-driven MVC architecture fine-tuned for efficiency
+- Event-driven MVC architecture fine-tuned for efficiency
+- **Dynamic Cache Management**: Adaptive image cache sizing based on available system memory (5-10% of RAM, 128MB-1GB range) that automatically adjusts based on thumbnail scale settings
 - Asynchronous metadata extraction and image loading
+- Virtual playlist architecture for efficient handling of large playlists (thousands of tracks)
 - Optimized for smooth scrolling and searching even with thousands of albums
 #### Implementation Guidelines
-Frequent reads and minimal writes makes this an application that benefits from extensive caching at the controller and view layers. 
+Frequent reads and minimal writes makes this an application that benefits from extensive caching at the controller and view layers.
 - Cache data generously to reduce disk access frequency
+- Lazy loading and buffering strategies for large datasets
 
 ### System Requirements
 - Linux with X11/Wayland
@@ -150,33 +162,31 @@ On first launch, mtoc will feature an empty library. Click "Edit Library" (or th
 ## Architecture
 
 - **Backend (C++)**
-  - `LibraryManager`: Music collection scanning and organization
+  - `LibraryManager`: Music collection scanning and organization with lyrics support
   - `DatabaseManager`: SQLite persistence layer
   - `MediaPlayer`: Playback control and queue management
-  - `AudioEngine`: GStreamer integration
+  - `AudioEngine`: GStreamer integration with gapless playback and ReplayGain
   - `MetadataExtractor`: TagLib wrapper for file analysis
   - `AlbumArtManager`: Intelligent album art caching
-  - `DatabaseManager`: SQLite persistence layer
-
+  - `PlaylistManager`: M3U playlist management and virtual playlists
+  - `SettingsManager`: Application configuration and preferences
+  - `MprisManager`: Linux desktop integration via MPRIS2
+  - `SystemInfo`: Application metadata provider
 
 - **Frontend (QML)**
-  - Library and Now Playing panes
-  - Horizontal album browser
+  - Main window with Library and Now Playing panes
+  - Mini player with multiple layout modes (vertical, horizontal, compact)
+  - Horizontal album carousel browser
+  - Lyrics display (synchronized and plain text)
+  - Queue management with drag-and-drop
   - Responsive search bar
   - Responsive playback controls
-  - Custom UI animations
+  - Custom UI animations and styled components
   - Hardware-accelerated rendering
   - Responsive two-pane layout
-  - Deferred window reloading for efficiency
+  - Theme system for consistent styling
 
   See [ARCHITECTURE.md](/ARCHITECTURE.md) for details. 
-
-## Roadmap
-The following features are in development or planned for a future release (subject to change): 
-
-- Additional grid view option in the library
-- Per-album shuffle mode
-- Suggestion and discovery features 
 
 ## License
 
