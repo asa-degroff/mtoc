@@ -7,6 +7,7 @@
 - Added library management options to choose between automatic library updates, refresh on startup, or manual updates
 - Improved stability of the album carousel when albums are added and removed
 - Added the option to minimize to tray when closing the main window
+- Added the option to single-click to play tracks
 
 # 2.2.4
 ### Bug fixed for album carousel with large libraries, album sorting consistency, and carousel reflection consistency

@@ -31,6 +31,10 @@
       <image>https://github.com/asa-degroff/mtoc/raw/75a68abbbf2ccba72bb5ec4a16a2f6e844effc5b/resources/banner/main-screenshot-compact-light.png</image>
     </screenshot>
     <screenshot>
+      <caption>Main window showing wide layout with lyrics in dark mode</caption>
+      <image>https://github.com/asa-degroff/mtoc/raw/62c6abd669d13fddf87c998e29ba6f9653570bbf/resources/banner/lyric-view-dark.png</image>
+    </screenshot>
+    <screenshot>
       <caption>Main window showing compact layout in dark mode</caption>
       <image>https://github.com/asa-degroff/raw/raw/75a68abbbf2ccba72bb5ec4a16a2f6e844effc5b/resources/banner/main-screenshot-compact-dark.png</image>
     </screenshot>
@@ -68,7 +72,7 @@
 
   <releases>
 
-    <release version="2.3" date="2025-10-11">
+    <release version="2.3" date="2025-10-13">
       <description>
         <p>Lyrics support, file watcher, automatic library updates, minimize to tray</p>
         <ul>
@@ -79,6 +83,7 @@
           <li>Added library management options to choose between automatic library updates, refresh on startup, or manual updates</li>
           <li>Improved stability of the album carousel when albums are added and removed</li>
           <li>Added the option to minimize to tray when closing the main window</li>
+          <li>Added the option to single-click to play tracks</li>
         </ul>
       </description>
     </release>
