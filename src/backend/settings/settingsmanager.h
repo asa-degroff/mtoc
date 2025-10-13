@@ -40,6 +40,7 @@ class SettingsManager : public QObject
     Q_PROPERTY(double librarySplitRatio READ librarySplitRatio WRITE setLibrarySplitRatio NOTIFY librarySplitRatioChanged)
     Q_PROPERTY(bool singleClickToPlay READ singleClickToPlay WRITE setSingleClickToPlay NOTIFY singleClickToPlayChanged)
     Q_PROPERTY(bool minimizeToTray READ minimizeToTray WRITE setMinimizeToTray NOTIFY minimizeToTrayChanged)
+    Q_PROPERTY(QString lastSeenChangelogVersion READ lastSeenChangelogVersion WRITE setLastSeenChangelogVersion NOTIFY lastSeenChangelogVersionChanged)
 
 public:
     enum QueueAction {
@@ -113,6 +114,7 @@ public:
     double librarySplitRatio() const { return m_librarySplitRatio; }
     bool singleClickToPlay() const { return m_singleClickToPlay; }
     bool minimizeToTray() const { return m_minimizeToTray; }
+    QString lastSeenChangelogVersion() const { return m_lastSeenChangelogVersion; }
 
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -144,6 +146,7 @@ public:
     void setLibrarySplitRatio(double ratio);
     void setSingleClickToPlay(bool enabled);
     void setMinimizeToTray(bool enabled);
+    void setLastSeenChangelogVersion(const QString& version);
 
 protected:
     bool event(QEvent *event) override;
@@ -180,6 +183,7 @@ signals:
     void librarySplitRatioChanged(double ratio);
     void singleClickToPlayChanged(bool enabled);
     void minimizeToTrayChanged(bool enabled);
+    void lastSeenChangelogVersionChanged(const QString& version);
 
 private slots:
 
@@ -223,6 +227,7 @@ private:
     double m_librarySplitRatio;
     bool m_singleClickToPlay;
     bool m_minimizeToTray;
+    QString m_lastSeenChangelogVersion;
 };
 
 #endif // SETTINGSMANAGER_H

@@ -51,9 +51,12 @@ ApplicationWindow {
 
     // Property to hold the current track metadata
     property var currentTrack: ({})
-    
+
     // Mini player window instance
     property var miniPlayerWindow: null
+
+    // Changelog popup visibility
+    property bool showChangelogPopup: false
     
     // Functions to show/hide mini player
     function showMiniPlayer() {
@@ -234,12 +237,23 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.preferredWidth: mainContent.width * nowPlayingPaneRatio
                     Layout.fillHeight: true
-                    
+
                     // Pass reference to library pane for navigation
                     libraryPane: libraryPaneWide
-                    
+
                     Component.onCompleted: {
                         console.log("NowPlayingPane added to Main.qml");
+                    }
+
+                    // Changelog popup for wide mode - parented to now playing pane
+                    ChangelogPopup {
+                        id: changelogPopupWide
+                        parent: nowPlayingPane
+                        isOpen: window.showChangelogPopup && effectiveLayoutMode === SettingsManager.Wide
+                        onClosed: {
+                            window.showChangelogPopup = false
+                            SettingsManager.lastSeenChangelogVersion = SystemInfo.appVersion
+                        }
                     }
                 }
             }
@@ -287,6 +301,17 @@ ApplicationWindow {
                         isOpen: compactNowPlayingBar.lyricsPopupVisible
                         onClosed: compactNowPlayingBar.lyricsPopupVisible = false
                     }
+
+                    // Changelog popup - parented to library pane container
+                    ChangelogPopup {
+                        id: changelogPopupCompact
+                        parent: parent
+                        isOpen: window.showChangelogPopup && effectiveLayoutMode === SettingsManager.Compact
+                        onClosed: {
+                            window.showChangelogPopup = false
+                            SettingsManager.lastSeenChangelogVersion = SystemInfo.appVersion
+                        }
+                    }
                 }
                 
                 // Compact Now Playing Bar
@@ -314,7 +339,39 @@ ApplicationWindow {
         var remainingSeconds = seconds % 60;
         return minutes + ":" + (remainingSeconds < 10 ? "0" : "") + remainingSeconds;
     }
-    
+
+    // Function to compare semantic version strings
+    // Returns: 1 if v1 > v2, -1 if v1 < v2, 0 if equal
+    function compareVersions(v1, v2) {
+        if (!v1) return -1;  // Empty/null v1 is less than anything
+        if (!v2) return 1;   // Empty/null v2 means v1 is greater
+
+        var parts1 = v1.split('.').map(function(p) { return parseInt(p) || 0; });
+        var parts2 = v2.split('.').map(function(p) { return parseInt(p) || 0; });
+
+        for (var i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+            var a = i < parts1.length ? parts1[i] : 0;
+            var b = i < parts2.length ? parts2[i] : 0;
+
+            if (a > b) return 1;
+            if (a < b) return -1;
+        }
+
+        return 0;  // Versions are equal
+    }
+
+    // Timer to show changelog popup after a delay on first launch
+    Timer {
+        id: changelogTimer
+        interval: 500  // 500ms delay for smooth startup
+        running: false
+        repeat: false
+        onTriggered: {
+            console.log("Main.qml: Showing changelog popup");
+            window.showChangelogPopup = true;
+        }
+    }
+
     // Timer to check rendering info after window is ready
     Timer {
         id: renderInfoTimer
@@ -359,17 +416,17 @@ ApplicationWindow {
     // Restore playback state when application is fully loaded
     Component.onCompleted: {
         //console.log("Main.qml: Window loaded");
-        
+
         // Ensure window is visible on screen
         ensureWindowVisible();
-        
+
         // Give focus to library pane for keyboard navigation
         if (effectiveLayoutMode === SettingsManager.Wide) {
             libraryPaneWide.forceActiveFocus();
         } else {
             libraryPaneCompact.forceActiveFocus();
         }
-        
+
         // Wait for MediaPlayer to be ready before restoring state
         if (MediaPlayer.isReady) {
             console.log("Main.qml: MediaPlayer is ready, restoring playback state");
@@ -378,6 +435,26 @@ ApplicationWindow {
             console.log("Main.qml: MediaPlayer not ready yet, waiting...");
             // MediaPlayer will handle restoration when it becomes ready
             MediaPlayer.restoreState();
+        }
+
+        // Check if we should show the changelog popup
+        var lastSeenVersion = SettingsManager.lastSeenChangelogVersion;
+        var currentVersion = SystemInfo.appVersion;
+
+        console.log("Main.qml: Version check - Last seen:", lastSeenVersion, "Current:", currentVersion);
+
+        // Show changelog if:
+        // 1. --show-changelog or --changelog flag is present (for testing)
+        // 2. This is a new version
+        // 3. First launch (no version recorded)
+        if (SystemInfo.forceShowChangelog) {
+            console.log("Main.qml: --show-changelog flag detected, forcing changelog display");
+            changelogTimer.start();
+        } else if (!lastSeenVersion || compareVersions(currentVersion, lastSeenVersion) > 0) {
+            console.log("Main.qml: New version detected, will show changelog");
+            changelogTimer.start();
+        } else {
+            console.log("Main.qml: Same version, not showing changelog");
         }
     }
     

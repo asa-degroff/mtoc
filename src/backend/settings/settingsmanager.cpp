@@ -319,6 +319,15 @@ void SettingsManager::setMinimizeToTray(bool enabled)
     }
 }
 
+void SettingsManager::setLastSeenChangelogVersion(const QString& version)
+{
+    if (m_lastSeenChangelogVersion != version) {
+        m_lastSeenChangelogVersion = version;
+        emit lastSeenChangelogVersionChanged(version);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -366,6 +375,7 @@ void SettingsManager::loadSettings()
     m_windowX = m_settings.value("x", -1).toInt();  // -1 means use default positioning
     m_windowY = m_settings.value("y", -1).toInt();
     m_minimizeToTray = m_settings.value("minimizeToTray", false).toBool();
+    m_lastSeenChangelogVersion = m_settings.value("lastSeenChangelogVersion", "").toString();
     m_settings.endGroup();
     
     m_settings.beginGroup("MiniPlayer");
@@ -425,6 +435,7 @@ void SettingsManager::saveSettings()
     m_settings.setValue("x", m_windowX);
     m_settings.setValue("y", m_windowY);
     m_settings.setValue("minimizeToTray", m_minimizeToTray);
+    m_settings.setValue("lastSeenChangelogVersion", m_lastSeenChangelogVersion);
     m_settings.endGroup();
     
     m_settings.beginGroup("MiniPlayer");
