@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.2.4
+Version:        2.3
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,67 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Mon Oct 13 2025 Asa DeGroff <asa@3fz.org> 2.3-1
+- updated changelog popup contents (asa@3fz.org)
+- Add changelog popup and version tracking in settings (asa@3fz.org)
+- updated metainfo and changelog (asa@3fz.org)
+- add lyric view screenshot (asa@3fz.org)
+- Add trackLyricsUpdated signal and update LyricsView for real-time lyric
+  updates after adding external lyric files (asa@3fz.org)
+- version bump and changelog (asa@3fz.org)
+- Enable seeking on clicking synced lyric lines (s20n@ters.dev)
+- update readme (asa@3fz.org)
+- update readme (asa@3fz.org)
+- Update architecture documentation (asa@3fz.org)
+- Emit signal to notify UI of track data changes after updating lyrics
+  (asa@3fz.org)
+- Refactor lyrics file handling to support both .lrc and .txt formats and
+  update related debug messages (asa@3fz.org)
+- simplify library editor options to accurately reflect unique functionality
+  and remove redundancy (asa@3fz.org)
+- maintain carousel position during library changes (asa@3fz.org)
+- Add functionality to automatically update lyrics from LRC files and process
+  changes in directories using file watcher (asa@3fz.org)
+- Add minimize to tray functionality and related settings (asa@3fz.org)
+- cleanup duplicate declaration (asa@3fz.org)
+- Add support for SYLT synchronized lyrics for MP3 files (s20n@ters.dev)
+- Optimize longest common substring search and improve LRC file matching
+  efficiency (asa@3fz.org)
+- Add LRC file fuzzy matching and substring search functionality (asa@3fz.org)
+- Add support for SYLT synchronized lyrics for MP3 files (s20n@ters.dev)
+- Add support for synchronized lyrics and sidecar (lrc) files (s20n@ters.dev)
+- Implement cache invalidation for updated album art in
+  processAlbumArtInBackground (asa@3fz.org)
+- library editor layout updates (asa@3fz.org)
+- Implement file watcher and auto-refresh settings in LibraryManager
+  (asa@3fz.org)
+- Revert "add heart icon" (asa@3fz.org)
+- add heart icon (asa@3fz.org)
+- Add LyricsPopup component and integrate with CompactNowPlayingBar
+  (asa@3fz.org)
+- update lyrics button theme for consistency (asa@3fz.org)
+- animation timing tweaked (asa@3fz.org)
+- Auto-hide lyrics or queue when toggling their visibility in NowPlayingPane
+  (asa@3fz.org)
+- Add animated transition for album art and lyrics visibility in NowPlayingPane
+  (asa@3fz.org)
+- Add null safe ternary operator for placeholder reflection effect origin
+  calculation (asa@3fz.org)
+- Auto-hide lyrics display when current track has no lyrics (asa@3fz.org)
+- Add single-click-to-play feature and related settings (asa@3fz.org)
+- Calculate preferred height for album art and queue container in
+  NowPlayingPane (asa@3fz.org)
+- Refactor queue button positioning and add animation when showing lyrics
+  button (asa@3fz.org)
+- Add hasCurrentTrackLyrics property and update PlaybackControls for
+  conditional lyrics button visibility (asa@3fz.org)
+- Fix getStringValue bug when using non-ascii keys (s20n@ters.dev)
+- Add MP4/M4A lyrics tag support (s20n@ters.dev)
+- Integrate new lyrics icon (s20n@ters.dev)
+- add lyrics icons (asa@3fz.org)
+- Implement lyrics display and refactor track metadata initialization
+  (s20n@ters.dev)
+
 * Mon Sep 08 2025 Asa DeGroff <asa@3fz.org> 2.2.4-1
 - fixed closing tag (asa@3fz.org)
 - bump version to 2.2.4 and update changelog (asa@3fz.org)
