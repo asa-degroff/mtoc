@@ -182,11 +182,10 @@ Item {
                         width: scrollView.width
                         spacing: 24
 
-                        // Intro text
+                        // Top spacing
                         Item {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: introText.height + 32
-                            Layout.topMargin: 24
+                            Layout.preferredHeight: 8
                         }
 
                         // Lyrics support section
@@ -209,11 +208,25 @@ Item {
 
                                 Label {
                                     Layout.fillWidth: true
-                                    text: "• Synchronized and unsynchronized lyrics display\n• Synced lyrics with real-time line highlighting\n• Click any line to seek to that position in the track\n• External .lrc and .txt file support\n• Automatic lyrics file detection with fuzzy matching"
+                                    text: "• Synchronized and unsynchronized lyrics display<br>• Synced lyrics with real-time line highlighting<br>• Click any line to seek to that position in the track<br>• External .lrc and .txt file support<br>• Automatic lyrics file detection with fuzzy matching<br>Add lyrics to your library with <a href=\"https://flathub.org/en/apps/net.lrclib.lrcget\">LRCGET</a> or your metadata editor of choice to get started."
                                     wrapMode: Text.WordWrap
                                     font.pixelSize: 14
                                     color: Theme.secondaryText
                                     lineHeight: 1.4
+                                    textFormat: Text.RichText
+                                    onLinkActivated: function(link) {
+                                        Qt.openUrlExternally(link)
+                                    }
+
+                                    // Make links use theme link color
+                                    linkColor: Theme.linkColor
+
+                                    // Show pointing hand cursor on links
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        acceptedButtons: Qt.NoButton
+                                        cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                    }
                                 }
                             }
                         }
@@ -238,7 +251,7 @@ Item {
 
                                 Label {
                                     Layout.fillWidth: true
-                                    text: "• File watcher monitors your music directory for changes\n• Automatic detection of added and removed music and lyrics\n• Library management options for update behavior\n• Choose between auto-update, startup refresh, or manual updates\n• Improved album carousel stability during library changes"
+                                    text: "• File watcher monitors your music directory for changes\n• Automatic detection of added and removed music and lyrics\n• Library management options for update behavior\n• Choose between auto-update, startup refresh, or manual updates\n• Improved album carousel stability during library changes\nFind these options in the Edit Library dialog."
                                     wrapMode: Text.WordWrap
                                     font.pixelSize: 14
                                     color: Theme.secondaryText
@@ -247,7 +260,7 @@ Item {
                             }
                         }
 
-                        // UI enhancements section
+                        // New setttings section
                         Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: uiSection.height
@@ -259,7 +272,7 @@ Item {
                                 spacing: 12
 
                                 Label {
-                                    text: "UI Enhancements"
+                                    text: "New Options in Settings"
                                     font.pixelSize: 16
                                     font.bold: true
                                     color: Theme.primaryText
@@ -267,7 +280,7 @@ Item {
 
                                 Label {
                                     Layout.fillWidth: true
-                                    text: "• Minimize to tray option when closing the main window\n• Single-click to play tracks option in settings"
+                                    text: "• Minimize to tray option when closing the main window\n• Single-click to play tracks"
                                     wrapMode: Text.WordWrap
                                     font.pixelSize: 14
                                     color: Theme.secondaryText
@@ -310,7 +323,7 @@ Item {
                     contentItem: Text {
                         text: parent.text
                         font: parent.font
-                        color: "#FFFFFF"  // White text on accent color background
+                        color: Theme.primaryText
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
@@ -318,8 +331,10 @@ Item {
                     background: Rectangle {
                         implicitWidth: 120
                         implicitHeight: 40
-                        color: parent.hovered ? Qt.lighter(Theme.accentColor, 1.1) : Theme.accentColor
+                        color: parent.hovered ? Theme.inputBackgroundHover : Theme.inputBackground
                         radius: 6
+                        border.width: 1
+                        border.color: Theme.borderColor
 
                         Behavior on color {
                             ColorAnimation { duration: 100 }
