@@ -153,6 +153,7 @@ signals:
     void thumbnailsRebuilt();
     void autoRefreshOnStartupChanged();
     void watchFileChangesChanged();
+    void trackLyricsUpdated(QString filePath, QString lyrics);  // Emitted when track lyrics are updated
 
 private slots:
     void onScanFinished();

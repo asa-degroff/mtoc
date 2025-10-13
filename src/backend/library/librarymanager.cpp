@@ -2720,8 +2720,12 @@ void LibraryManager::updateLyricsForTrack(const QString &audioFilePath)
             }
         }
 
-        // Emit signal to notify UI that track data has changed
-        // This ensures the UI refreshes to show the new lyrics
+        // Emit specific signal with the updated lyrics
+        // This allows UI components (especially LyricsView) to update immediately
+        qDebug() << "LibraryManager: Emitting trackLyricsUpdated signal for:" << audioFilePath;
+        emit trackLyricsUpdated(audioFilePath, lyrics);
+
+        // Emit general signal to notify UI that track data has changed
         emit libraryChanged();
     }
 }

@@ -19,6 +19,20 @@ Item {
         onTriggered: root.updateCurrentLineIndex(MediaPlayer.position)
     }
 
+    // Listen for lyrics updates from LibraryManager
+    // This ensures the view refreshes when external lyrics files are added/updated
+    Connections {
+        target: LibraryManager
+
+        function onTrackLyricsUpdated(filePath, lyrics) {
+            // Check if the updated track is the currently playing track
+            if (MediaPlayer.currentTrack && MediaPlayer.currentTrack.filePath === filePath) {
+                console.log("LyricsView: Received lyrics update for current track, refreshing display")
+                root.lyricsText = lyrics
+            }
+        }
+    }
+
     onLyricsTextChanged: {
         parseLyrics()
     }
