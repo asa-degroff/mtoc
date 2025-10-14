@@ -956,7 +956,27 @@ void LibraryManager::onScanFinished()
         QHash<QString, QVariantList> emptyCache;
         m_albumsByArtistCache.swap(emptyCache);
     }
-    
+
+    // Notify MediaPlayer and other listeners that library is about to be invalidated
+    // This allows them to stop playback and clear references BEFORE we clear the data
+    emit aboutToInvalidateLibrary();
+
+    // Clear and reload virtual playlist if it exists
+    if (m_allSongsPlaylist) {
+        qDebug() << "Clearing VirtualPlaylist to release old track data";
+        m_allSongsPlaylist->clear();
+        // Reload tracks asynchronously with updated library data
+        m_allSongsPlaylist->loadAllTracks();
+    }
+
+    // Clear track cache to release stale Track objects
+    {
+        QMutexLocker locker(&m_trackCacheMutex);
+        qDebug() << "Clearing track cache with" << m_trackCache.size() << "entries";
+        qDeleteAll(m_trackCache);
+        m_trackCache.clear();
+    }
+
     qDebug() << "Album and artist model cache invalidated and cleared after scan";
     
     // Force garbage collection in QPixmapCache after scan
@@ -1032,6 +1052,23 @@ void LibraryManager::resetLibrary()
     m_cachedAlbumModel.clear();
     m_cachedArtistModel.clear();
     m_albumsByArtistCache.clear();
+
+    // Notify MediaPlayer and other listeners that library is about to be invalidated
+    emit aboutToInvalidateLibrary();
+
+    // Clear virtual playlist if it exists
+    if (m_allSongsPlaylist) {
+        qDebug() << "Clearing VirtualPlaylist during library reset";
+        m_allSongsPlaylist->clear();
+    }
+
+    // Clear track cache
+    {
+        QMutexLocker locker(&m_trackCacheMutex);
+        qDebug() << "Clearing track cache during library reset";
+        qDeleteAll(m_trackCache);
+        m_trackCache.clear();
+    }
 
     emit libraryChanged();
     emit trackCountChanged();

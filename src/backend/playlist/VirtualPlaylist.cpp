@@ -352,48 +352,58 @@ void VirtualPlaylist::loadRange(int startIndex, int count)
     m_loadFuture = QtConcurrent::run([this, startIndex, count]() {
         // Store thread ID for cleanup
         QString connectionName = QString("MtocThread_%1").arg(quintptr(QThread::currentThreadId()));
-        
-        QVariantList tracks = m_dbManager->getAllTracks(count, startIndex);
-        
-        // Clean up thread connection
+
+        try {
+            QVariantList tracks = m_dbManager->getAllTracks(count, startIndex);
+
+            if (tracks.isEmpty()) {
+                qWarning() << "[VirtualPlaylist] Failed to load tracks at range" << startIndex << "count" << count;
+                // Clean up thread connection before returning
+                if (QSqlDatabase::contains(connectionName)) {
+                    QSqlDatabase::removeDatabase(connectionName);
+                }
+                return;
+            }
+
+            {
+                QMutexLocker locker(&m_trackMutex);
+
+                int index = startIndex;
+                for (const QVariant& trackVariant : tracks) {
+                    if (index >= m_tracks.size()) {
+                        break;
+                    }
+
+                    QVariantMap trackMap = trackVariant.toMap();
+                    auto* trackData = new VirtualTrackData(VirtualTrackData::fromVariantMap(trackMap));
+
+                    // Delete existing track if any
+                    delete m_tracks[index];
+                    m_tracks[index] = trackData;
+                    m_totalDuration += trackData->duration;
+
+                    ++index;
+                }
+
+                updateLoadedRanges(startIndex, startIndex + tracks.size() - 1);
+            }
+
+            emit rangeLoaded(startIndex, startIndex + tracks.size() - 1);
+            emit loadingProgress(loadedTrackCount(), m_totalTrackCount);
+
+            if (isFullyLoaded()) {
+                m_isLoading = false;
+                emit loadingFinished();
+            }
+        } catch (const std::exception& e) {
+            qCritical() << "[VirtualPlaylist::loadRange] Exception:" << e.what();
+        } catch (...) {
+            qCritical() << "[VirtualPlaylist::loadRange] Unknown exception";
+        }
+
+        // Clean up thread connection (always executed)
         if (QSqlDatabase::contains(connectionName)) {
             QSqlDatabase::removeDatabase(connectionName);
-        }
-        
-        if (tracks.isEmpty()) {
-            qWarning() << "[VirtualPlaylist] Failed to load tracks at range" << startIndex << "count" << count;
-            return;
-        }
-        
-        {
-            QMutexLocker locker(&m_trackMutex);
-            
-            int index = startIndex;
-            for (const QVariant& trackVariant : tracks) {
-                if (index >= m_tracks.size()) {
-                    break;
-                }
-                
-                QVariantMap trackMap = trackVariant.toMap();
-                auto* trackData = new VirtualTrackData(VirtualTrackData::fromVariantMap(trackMap));
-                
-                // Delete existing track if any
-                delete m_tracks[index];
-                m_tracks[index] = trackData;
-                m_totalDuration += trackData->duration;
-                
-                ++index;
-            }
-            
-            updateLoadedRanges(startIndex, startIndex + tracks.size() - 1);
-        }
-        
-        emit rangeLoaded(startIndex, startIndex + tracks.size() - 1);
-        emit loadingProgress(loadedTrackCount(), m_totalTrackCount);
-        
-        if (isFullyLoaded()) {
-            m_isLoading = false;
-            emit loadingFinished();
         }
     });
 }
