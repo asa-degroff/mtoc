@@ -95,7 +95,21 @@ bool MediaPlayer::hasCurrentTrackLyrics() const
 void MediaPlayer::setLibraryManager(Mtoc::LibraryManager* manager)
 {
     m_libraryManager = manager;
-    
+
+    // Listen for lyrics updates from LibraryManager
+    // When lyrics are updated for the current track, emit signal to update UI
+    if (m_libraryManager) {
+        connect(m_libraryManager, &Mtoc::LibraryManager::trackLyricsUpdated,
+                this, [this](const QString& filePath, const QString& lyrics) {
+            Q_UNUSED(lyrics)
+            // Check if the updated track is the currently playing track
+            if (m_currentTrack && m_currentTrack->filePath() == filePath) {
+                qDebug() << "MediaPlayer: Lyrics updated for current track, emitting currentTrackLyricsChanged";
+                emit currentTrackLyricsChanged();
+            }
+        });
+    }
+
     // Once we have a library manager, we're ready
     setReady(true);
 }
