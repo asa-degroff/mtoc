@@ -1,3 +1,8 @@
+# 2.3.1
+### Bug fixes for lyrics refresh and file watcher
+- Fixed a bug where newly added lyrics would cause the lyrics display not to update properly when changing trakcs
+- Fixed a bug where playing from the All Songs playlist after adding or removing tracks with the watcher enabled could cause a crash
+
 # 2.3
 ### Lyrics support, file watcher, automatic library updates, minimize to tray
 - Support for displaying unsynced and synced lyrics embedded in track metadata and external .lrc and .txt files

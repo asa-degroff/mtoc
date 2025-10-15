@@ -360,6 +360,33 @@ ApplicationWindow {
         return 0;  // Versions are equal
     }
 
+    // Function to check if minor version has changed (major.minor)
+    // Returns true if major or minor version changed, false if only patch changed
+    // Examples:
+    //   - 2.2.0 -> 2.3.1 returns true (minor changed)
+    //   - 2.3.0 -> 2.3.1 returns false (only patch changed)
+    //   - 2.3.0 -> 3.0.0 returns true (major changed)
+    function hasMinorVersionChanged(oldVersion, newVersion) {
+        if (!oldVersion) return true;  // First launch, show changelog
+        if (!newVersion) return false;  // No new version, don't show
+
+        var oldParts = oldVersion.split('.').map(function(p) { return parseInt(p) || 0; });
+        var newParts = newVersion.split('.').map(function(p) { return parseInt(p) || 0; });
+
+        // Check major version (index 0)
+        var oldMajor = oldParts.length > 0 ? oldParts[0] : 0;
+        var newMajor = newParts.length > 0 ? newParts[0] : 0;
+        if (oldMajor !== newMajor) return true;
+
+        // Check minor version (index 1)
+        var oldMinor = oldParts.length > 1 ? oldParts[1] : 0;
+        var newMinor = newParts.length > 1 ? newParts[1] : 0;
+        if (oldMinor !== newMinor) return true;
+
+        // Only patch version changed (or no change at all)
+        return false;
+    }
+
     // Timer to show changelog popup after a delay on first launch
     Timer {
         id: changelogTimer
@@ -445,16 +472,16 @@ ApplicationWindow {
 
         // Show changelog if:
         // 1. --show-changelog or --changelog flag is present (for testing)
-        // 2. This is a new version
+        // 2. Major or minor version changed (not just patch)
         // 3. First launch (no version recorded)
         if (SystemInfo.forceShowChangelog) {
             console.log("Main.qml: --show-changelog flag detected, forcing changelog display");
             changelogTimer.start();
-        } else if (!lastSeenVersion || compareVersions(currentVersion, lastSeenVersion) > 0) {
-            console.log("Main.qml: New version detected, will show changelog");
+        } else if (hasMinorVersionChanged(lastSeenVersion, currentVersion)) {
+            console.log("Main.qml: Minor version changed, will show changelog");
             changelogTimer.start();
         } else {
-            console.log("Main.qml: Same version, not showing changelog");
+            console.log("Main.qml: Patch-only update or same version, not showing changelog");
         }
     }
     
