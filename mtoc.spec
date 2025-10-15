@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.3
+Version:        2.3.1
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,16 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Tue Oct 14 2025 Asa DeGroff <asa@3fz.org> 2.3.1-1
+- update description in metainfo (asa@3fz.org)
+- Bump version to 2.3.1, update changelog, and refine version check logic
+  (asa@3fz.org)
+- second dot separator visibility depends on isSpecialPlylist (asa@3fz.org)
+- Add library invalidation signal and improve cache management and memory
+  safety in LibraryManager and MediaPlayer (asa@3fz.org)
+- fix lyrics update handling by moving logic from LyricsView to MediaPlayer
+  (asa@3fz.org)
+
 * Mon Oct 13 2025 Asa DeGroff <asa@3fz.org> 2.3-1
 - updated changelog popup contents (asa@3fz.org)
 - Add changelog popup and version tracking in settings (asa@3fz.org)
