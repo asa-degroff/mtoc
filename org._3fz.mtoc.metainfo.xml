@@ -15,10 +15,10 @@
     <p>Mtoc is a visually-rich music player and library browser that emphasizes a smooth, continuous experience with album artwork at the forefront.</p>
     <ul>
       <li>Animated, visual browsing made for music fans who enjoy flipping through albums</li>
-      <li>Library browsing with smart organization and responsive search</li>
-      <li>Wide mode places full-size album art in the right pane; compact mode optimizes density for smaller widths</li>
-      <li>Advanced queue management with library context menus and drag-and-drop reordering</li>
-      <li>Save playlists from your queue, manage M3U files, and use the intuitive playlist editor</li>
+      <li>Library browsing with smart organization, responsive search, and automatic updates as you add music</li>
+      <li>Lyrics support with synced and unsynced lyrics from embedded metadata and external files</li>
+      <li>Advanced queue management and playlist editor</li>
+      <li>Wide and compact modes fit the UI to a variety of display layouts</li>
       <li>Light and dark modes with tinted blurred backgrounds</li>
       <li>Mini player and desktop integration with full MPRIS 2 support</li>
       <li>Gapless playback and ReplayGain support</li>
