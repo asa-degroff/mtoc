@@ -199,6 +199,7 @@ Item {
                             text: "•"
                             color: Theme.tertiaryText
                             font.pixelSize: 11
+                            visible: !PlaylistManager.isSpecialPlaylist(modelData)
                         }
                         
                         Label {
