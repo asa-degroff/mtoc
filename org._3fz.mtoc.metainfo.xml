@@ -76,7 +76,7 @@
       <description>
         <p>Bug fixes for lyrics refresh and file watcher</p>
         <ul>
-          <li>Fixed a bug where newly added lyrics would cause the lyrics display not to update properly when changing trakcs</li>
+          <li>Fixed a bug where newly added lyrics would cause the lyrics display not to update properly when changing tracks</li>
           <li>Fixed a bug where playing from the All Songs playlist after adding or removing tracks with the watcher enabled could cause a crash</li>
         </ul>
       </description>
