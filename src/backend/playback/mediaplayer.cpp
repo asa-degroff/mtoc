@@ -108,6 +108,29 @@ void MediaPlayer::setLibraryManager(Mtoc::LibraryManager* manager)
                 emit currentTrackLyricsChanged();
             }
         });
+
+        // Listen for library invalidation signal (before VirtualPlaylist is cleared)
+        // This prevents crashes when library updates while playing from VirtualPlaylist
+        connect(m_libraryManager, &Mtoc::LibraryManager::aboutToInvalidateLibrary,
+                this, [this]() {
+            qDebug() << "MediaPlayer: Library about to be invalidated";
+
+            // If currently playing from a virtual playlist, we need to stop and clear
+            if (m_isVirtualPlaylist) {
+                qDebug() << "MediaPlayer: Stopping playback and clearing virtual playlist due to library update";
+
+                // Stop playback immediately
+                stop();
+
+                // Clear the queue to prevent accessing invalid tracks
+                clearQueue();
+
+                // Clear virtual playlist reference
+                clearVirtualPlaylist();
+
+                qDebug() << "MediaPlayer: Virtual playlist safely cleared before library update";
+            }
+        });
     }
 
     // Once we have a library manager, we're ready

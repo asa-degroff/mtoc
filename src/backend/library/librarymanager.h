@@ -154,6 +154,7 @@ signals:
     void autoRefreshOnStartupChanged();
     void watchFileChangesChanged();
     void trackLyricsUpdated(QString filePath, QString lyrics);  // Emitted when track lyrics are updated
+    void aboutToInvalidateLibrary();  // Emitted BEFORE clearing virtual playlists during library updates
 
 private slots:
     void onScanFinished();
