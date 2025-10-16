@@ -301,10 +301,33 @@ int main(int argc, char *argv[])
         // Create context menu for tray icon
         QMenu *trayMenu = new QMenu();
 
+        // Keep references to actions and submenus for dynamic updates
         QAction *showAction = new QAction("Show mtoc", trayMenu);
+        QAction *playPauseAction = new QAction("Play", trayMenu);
+        QAction *previousAction = new QAction("Previous", trayMenu);
+        QAction *nextAction = new QAction("Next", trayMenu);
+        QAction *shuffleAction = new QAction("Shuffle", trayMenu);
+        QAction *repeatAction = new QAction("Repeat", trayMenu);
+        QMenu *playlistsMenu = new QMenu("Playlists", trayMenu);
         QAction *quitAction = new QAction("Quit", trayMenu);
 
+        // Make shuffle and repeat checkable
+        shuffleAction->setCheckable(true);
+        repeatAction->setCheckable(true);
+        shuffleAction->setChecked(mediaPlayer->shuffleEnabled());
+        repeatAction->setChecked(mediaPlayer->repeatEnabled());
+
+        // Build the menu structure
         trayMenu->addAction(showAction);
+        trayMenu->addSeparator();
+        trayMenu->addAction(playPauseAction);
+        trayMenu->addAction(previousAction);
+        trayMenu->addAction(nextAction);
+        trayMenu->addSeparator();
+        trayMenu->addAction(shuffleAction);
+        trayMenu->addAction(repeatAction);
+        trayMenu->addSeparator();
+        trayMenu->addMenu(playlistsMenu);
         trayMenu->addSeparator();
         trayMenu->addAction(quitAction);
 
@@ -335,8 +358,103 @@ int main(int argc, char *argv[])
             });
         }
 
+        // Connect playback control actions
+        QObject::connect(playPauseAction, &QAction::triggered, [mediaPlayer]() {
+            mediaPlayer->togglePlayPause();
+        });
+
+        QObject::connect(previousAction, &QAction::triggered, [mediaPlayer]() {
+            mediaPlayer->previous();
+        });
+
+        QObject::connect(nextAction, &QAction::triggered, [mediaPlayer]() {
+            mediaPlayer->next();
+        });
+
+        // Connect shuffle and repeat toggles
+        QObject::connect(shuffleAction, &QAction::triggered, [mediaPlayer, shuffleAction](bool checked) {
+            mediaPlayer->setShuffleEnabled(checked);
+        });
+
+        QObject::connect(repeatAction, &QAction::triggered, [mediaPlayer, repeatAction](bool checked) {
+            mediaPlayer->setRepeatEnabled(checked);
+        });
+
         // Quit action
         QObject::connect(quitAction, &QAction::triggered, &app, &QApplication::quit);
+
+        // Function to populate playlists submenu
+        auto updatePlaylistsMenu = [playlistsMenu, playlistManager, mediaPlayer]() {
+            playlistsMenu->clear();
+            QStringList playlists = playlistManager->playlists();
+
+            // Limit to first 10 playlists to avoid menu overflow
+            int count = qMin(playlists.size(), 10);
+            for (int i = 0; i < count; i++) {
+                QString playlistName = playlists[i];
+                QAction *playlistAction = new QAction(playlistName, playlistsMenu);
+                playlistsMenu->addAction(playlistAction);
+
+                QObject::connect(playlistAction, &QAction::triggered, [mediaPlayer, playlistName]() {
+                    mediaPlayer->playPlaylist(playlistName, 0);
+                });
+            }
+
+            if (playlists.isEmpty()) {
+                QAction *emptyAction = new QAction("No playlists", playlistsMenu);
+                emptyAction->setEnabled(false);
+                playlistsMenu->addAction(emptyAction);
+            }
+        };
+
+        // Initial playlist menu population
+        updatePlaylistsMenu();
+
+        // Update Play/Pause text based on player state
+        auto updatePlayPauseText = [playPauseAction, mediaPlayer]() {
+            if (mediaPlayer->state() == MediaPlayer::PlayingState) {
+                playPauseAction->setText("Pause");
+            } else {
+                playPauseAction->setText("Play");
+            }
+        };
+
+        // Update tooltip with current track info
+        auto updateTooltip = [trayIcon, mediaPlayer]() {
+            if (mediaPlayer->currentTrack()) {
+                QString artist = mediaPlayer->currentTrack()->artist();
+                QString title = mediaPlayer->currentTrack()->title();
+                QString tooltip = QString("mtoc - %1\n%2").arg(artist, title);
+                trayIcon->setToolTip(tooltip);
+            } else {
+                trayIcon->setToolTip("mtoc - Music Player");
+            }
+        };
+
+        // Initial state updates
+        updatePlayPauseText();
+        updateTooltip();
+
+        // Connect dynamic updates
+        QObject::connect(mediaPlayer, &MediaPlayer::stateChanged, [updatePlayPauseText]() {
+            updatePlayPauseText();
+        });
+
+        QObject::connect(mediaPlayer, &MediaPlayer::currentTrackChanged, [updateTooltip]() {
+            updateTooltip();
+        });
+
+        QObject::connect(mediaPlayer, &MediaPlayer::shuffleEnabledChanged, [shuffleAction](bool enabled) {
+            shuffleAction->setChecked(enabled);
+        });
+
+        QObject::connect(mediaPlayer, &MediaPlayer::repeatEnabledChanged, [repeatAction](bool enabled) {
+            repeatAction->setChecked(enabled);
+        });
+
+        QObject::connect(playlistManager, &PlaylistManager::playlistsChanged, [updatePlaylistsMenu]() {
+            updatePlaylistsMenu();
+        });
 
         // Show the tray icon
         trayIcon->show();
