@@ -384,7 +384,7 @@ int main(int argc, char *argv[])
         QObject::connect(quitAction, &QAction::triggered, &app, &QApplication::quit);
 
         // Function to populate playlists submenu
-        auto updatePlaylistsMenu = [playlistsMenu, playlistManager, mediaPlayer]() {
+        auto updatePlaylistsMenu = [playlistsMenu, playlistManager, mediaPlayer, libraryManager]() {
             playlistsMenu->clear();
             QStringList playlists = playlistManager->playlists();
 
@@ -395,8 +395,24 @@ int main(int argc, char *argv[])
                 QAction *playlistAction = new QAction(playlistName, playlistsMenu);
                 playlistsMenu->addAction(playlistAction);
 
-                QObject::connect(playlistAction, &QAction::triggered, [mediaPlayer, playlistName]() {
-                    mediaPlayer->playPlaylist(playlistName, 0);
+                QObject::connect(playlistAction, &QAction::triggered, [mediaPlayer, playlistManager, libraryManager, playlistName]() {
+                    // Handle special playlists like "All Songs"
+                    if (playlistManager->isSpecialPlaylist(playlistName)) {
+                        if (playlistName == "All Songs") {
+                            // Get the virtual playlist model
+                            auto allSongsModel = libraryManager->getAllSongsPlaylist();
+                            if (allSongsModel) {
+                                // Clear queue and load virtual playlist
+                                mediaPlayer->clearQueue();
+                                mediaPlayer->loadVirtualPlaylist(allSongsModel);
+                                // Start playing respecting shuffle mode
+                                mediaPlayer->playVirtualPlaylist();
+                            }
+                        }
+                    } else {
+                        // Play regular playlist
+                        mediaPlayer->playPlaylist(playlistName, 0);
+                    }
                 });
             }
 
