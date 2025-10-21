@@ -1,3 +1,9 @@
+# 2.3.2
+### Improved system tray context menu and syncronized lyrics during paused state
+- System tray context menu now includes playback options and playlist picker
+- Added Flatpak permissions for KDE system tray support
+- Lyrics highlighting is now syncronized when playback is paused
+
 # 2.3.1
 ### Bug fixes for lyrics refresh and file watcher
 - Fixed a bug where newly added lyrics would cause the lyrics display not to update properly when changing tracks
