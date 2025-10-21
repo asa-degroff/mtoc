@@ -74,11 +74,11 @@
 
     <release version="2.3.2" date="2025-10-20">
       <description>
-        <p>Improved system tray context menu and syncronized lyrics during paused state</p>
+        <p>Improved system tray context menu and synchronized lyrics during paused state</p>
         <ul>
           <li>System tray context menu now includes playback options and playlist picker</li>
           <li>Added Flatpak permissions for KDE system tray support</li>
-          <li>Lyrics highlighting is now syncronized when playback is paused</li>
+          <li>Lyrics highlighting is now synchronized when playback is paused</li>
         </ul>
       </description>
     </release>
