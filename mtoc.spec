@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.3.1
+Version:        2.3.2
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,17 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Mon Oct 20 2025 Asa DeGroff <asa@3fz.org> 2.3.2-1
+- version bump and changelog (asa@3fz.org)
+- fix: integrate library manager for special playlists support in system tray
+  context menu (asa@3fz.org)
+- Add context menu actions for media playback control and playlist selection in
+  system tray (asa@3fz.org)
+- Add connections block for position change handling in LyricsView to enable
+  bidirectional synchronization of lyrics highlighting and seek position during
+  paused state (asa@3fz.org)
+- fixed typo (asa@3fz.org)
+
 * Tue Oct 14 2025 Asa DeGroff <asa@3fz.org> 2.3.1-1
 - update description in metainfo (asa@3fz.org)
 - Bump version to 2.3.1, update changelog, and refine version check logic
