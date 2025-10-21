@@ -19,6 +19,17 @@ Item {
         onTriggered: root.updateCurrentLineIndex(MediaPlayer.position)
     }
 
+    // Handle position changes when paused (timer only runs when playing)
+    Connections {
+        target: MediaPlayer
+        function onPositionChanged() {
+            // Only update when timer is not running (i.e., when paused or stopped)
+            if (!updateTimer.running && root.lyricsModel.length > 0 && root.lyricsModel[0].time >= 0) {
+                root.updateCurrentLineIndex(MediaPlayer.position)
+            }
+        }
+    }
+
     onLyricsTextChanged: {
         parseLyrics()
     }
