@@ -498,14 +498,17 @@ QString MprisManager::exportAlbumArt(Mtoc::Track *track) const
         return QString();
     }
     
-    // Create temp directory if it doesn't exist
+    // Create cache directory if it doesn't exist
+    // Use CacheLocation for flatpak compatibility
+    // CacheLocation (~/.var/app/org._3fz.mtoc/cache/) is accessible from both
+    // inside the sandbox and the host system, allowing MPRIS widgets to access album art
     if (m_tempDir.isEmpty()) {
-        QDir tempDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation));
-        QString mtocTempDir = tempDir.absoluteFilePath("mtoc-albumart");
-        if (!tempDir.exists("mtoc-albumart")) {
-            tempDir.mkpath("mtoc-albumart");
+        QDir cacheDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation));
+        QString mtocCacheDir = cacheDir.absoluteFilePath("mtoc-albumart");
+        if (!cacheDir.exists("mtoc-albumart")) {
+            cacheDir.mkpath("mtoc-albumart");
         }
-        m_tempDir = mtocTempDir;
+        m_tempDir = mtocCacheDir;
     }
     
     // Create filename for this album's art
