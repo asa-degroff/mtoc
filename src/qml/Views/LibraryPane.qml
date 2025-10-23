@@ -4622,24 +4622,25 @@ Item {
             console.log("scrollToArtistIndex: Invalid index")
             return
         }
-        
+
         // Stop any ongoing animation first
         scrollAnimation.running = false
-        
+
+        // Store current position BEFORE setting currentIndex to avoid race condition
+        // where ListView automatically scrolls when currentIndex changes
+        var currentPos = artistsListView.contentY
+
         // Update currentIndex to ensure synchronization
         artistsListView.currentIndex = index
-        
+
         // Ensure the ListView has updated its internal state
         artistsListView.forceLayout()
-        
+
         if (smooth) {
             var targetIndex = index
-            
+
             // Force layout update to ensure everything is current
             artistsListView.forceLayout()
-            
-            // Store current position
-            var currentPos = artistsListView.contentY
             
             // Use positionViewAtIndex to position the artist at the top
             artistsListView.positionViewAtIndex(targetIndex, ListView.Beginning)
