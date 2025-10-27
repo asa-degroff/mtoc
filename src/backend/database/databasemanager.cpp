@@ -829,25 +829,25 @@ int DatabaseManager::getTrackCount()
 int DatabaseManager::insertOrGetArtist(const QString& artistName)
 {
     if (!m_db.isOpen() || artistName.isEmpty()) return 0;
-    
+
     QSqlQuery query(m_db);
-    
-    // Try to find existing artist
-    query.prepare("SELECT id FROM artists WHERE name = :name");
+
+    // Try to find existing artist (case-insensitive)
+    query.prepare("SELECT id FROM artists WHERE LOWER(name) = LOWER(:name)");
     query.bindValue(":name", artistName);
-    
+
     if (query.exec() && query.next()) {
         return query.value(0).toInt();
     }
-    
+
     // Insert new artist
     query.prepare("INSERT INTO artists (name) VALUES (:name)");
     query.bindValue(":name", artistName);
-    
+
     if (query.exec()) {
         return query.lastInsertId().toInt();
     }
-    
+
     logError("Insert or get artist", query);
     return 0;
 }
@@ -855,25 +855,25 @@ int DatabaseManager::insertOrGetArtist(const QString& artistName)
 int DatabaseManager::insertOrGetAlbumArtist(const QString& albumArtistName)
 {
     if (!m_db.isOpen() || albumArtistName.isEmpty()) return 0;
-    
+
     QSqlQuery query(m_db);
-    
-    // Try to find existing album artist
-    query.prepare("SELECT id FROM album_artists WHERE name = :name");
+
+    // Try to find existing album artist (case-insensitive)
+    query.prepare("SELECT id FROM album_artists WHERE LOWER(name) = LOWER(:name)");
     query.bindValue(":name", albumArtistName);
-    
+
     if (query.exec() && query.next()) {
         return query.value(0).toInt();
     }
-    
+
     // Insert new album artist
     query.prepare("INSERT INTO album_artists (name) VALUES (:name)");
     query.bindValue(":name", albumArtistName);
-    
+
     if (query.exec()) {
         return query.lastInsertId().toInt();
     }
-    
+
     logError("Insert or get album artist", query);
     return 0;
 }
@@ -1137,32 +1137,32 @@ QVariantList DatabaseManager::searchArtists(const QString& searchTerm)
 {
     QVariantList results;
     if (!m_db.isOpen() || searchTerm.isEmpty()) return results;
-    
+
     // Normalize the search term for accent-insensitive search
     QString normalizedSearchTerm = normalizeForSearch(searchTerm);
-    
+
     QSqlQuery query(m_db);
-    // Get all artists and filter in memory for accent-insensitive search
+    // Get all album artists and filter in memory for accent-insensitive search
+    // Query album_artists to match what's displayed in the library view
     query.prepare(
-        "SELECT a.*, "
+        "SELECT aa.id, aa.name, "
         "       (SELECT COUNT(*) FROM albums al WHERE al.album_artist_id = aa.id) as album_count "
-        "FROM artists a "
-        "LEFT JOIN album_artists aa ON a.name = aa.name "
-        "ORDER BY a.name"
+        "FROM album_artists aa "
+        "ORDER BY aa.name"
     );
-    
+
     if (query.exec()) {
         while (query.next()) {
             QString artistName = query.value("name").toString();
             QString normalizedArtistName = normalizeForSearch(artistName);
-            
+
             // Check if the normalized artist name contains the normalized search term
             if (normalizedArtistName.contains(normalizedSearchTerm)) {
                 QVariantMap artist;
                 artist["id"] = query.value("id");
                 artist["name"] = artistName;
                 artist["albumCount"] = query.value("album_count");
-                
+
                 // Determine priority for sorting
                 int priority = 3;
                 if (normalizedArtistName == normalizedSearchTerm) {
@@ -1171,11 +1171,11 @@ QVariantList DatabaseManager::searchArtists(const QString& searchTerm)
                     priority = 2; // Prefix match
                 }
                 artist["searchPriority"] = priority;
-                
+
                 results.append(artist);
             }
         }
-        
+
         // Sort results by priority and then by name
         std::sort(results.begin(), results.end(), [](const QVariant& a, const QVariant& b) {
             QVariantMap mapA = a.toMap();
@@ -1187,7 +1187,7 @@ QVariantList DatabaseManager::searchArtists(const QString& searchTerm)
             }
             return mapA["name"].toString().toLower() < mapB["name"].toString().toLower();
         });
-        
+
         // Remove the searchPriority field from results
         for (auto& result : results) {
             QVariantMap map = result.toMap();
@@ -1197,7 +1197,7 @@ QVariantList DatabaseManager::searchArtists(const QString& searchTerm)
     } else {
         logError("Search artists", query);
     }
-    
+
     return results;
 }
 
@@ -1413,7 +1413,7 @@ QVariantList DatabaseManager::getAllArtists()
 {
     QVariantList artists;
     if (!m_db.isOpen()) return artists;
-    
+
     QSqlQuery query(m_db);
     // Get album artists instead of track artists to avoid clutter
     // Note: We fetch without ORDER BY and sort in C++ for locale-aware sorting
@@ -1426,23 +1426,50 @@ QVariantList DatabaseManager::getAllArtists()
         "GROUP BY aa.id "
         "HAVING COUNT(t.id) > 0"
     );
-    
+
+    // Fetch all artists and deduplicate case-insensitively
+    QMap<QString, QVariantMap> deduplicatedArtists; // Key: lowercase name
+
     while (query.next()) {
-        QVariantMap artist;
-        artist["id"] = query.value("id");
-        artist["name"] = query.value("name");
-        artist["albumCount"] = query.value("album_count");
-        artist["trackCount"] = query.value("track_count");
+        QString artistName = query.value("name").toString();
+        QString lowerName = artistName.toLower();
+        int albumCount = query.value("album_count").toInt();
+        int trackCount = query.value("track_count").toInt();
+
+        if (deduplicatedArtists.contains(lowerName)) {
+            // Merge with existing entry
+            QVariantMap& existing = deduplicatedArtists[lowerName];
+            existing["albumCount"] = existing["albumCount"].toInt() + albumCount;
+            existing["trackCount"] = existing["trackCount"].toInt() + trackCount;
+
+            // Keep the name variant that comes first alphabetically
+            if (artistName < existing["name"].toString()) {
+                existing["name"] = artistName;
+                existing["id"] = query.value("id");
+            }
+        } else {
+            // New entry
+            QVariantMap artist;
+            artist["id"] = query.value("id");
+            artist["name"] = artistName;
+            artist["albumCount"] = albumCount;
+            artist["trackCount"] = trackCount;
+            deduplicatedArtists[lowerName] = artist;
+        }
+    }
+
+    // Convert map to list
+    for (const QVariantMap& artist : deduplicatedArtists) {
         artists.append(artist);
     }
-    
+
     // Sort using locale-aware comparison to match JavaScript's localeCompare
     std::sort(artists.begin(), artists.end(), [](const QVariant& a, const QVariant& b) {
         QVariantMap artistA = a.toMap();
         QVariantMap artistB = b.toMap();
         QString nameA = artistA["name"].toString().toLower();
         QString nameB = artistB["name"].toString().toLower();
-        
+
         // Remove "the " prefix for sorting (case-insensitive)
         if (nameA.startsWith("the ")) {
             nameA = nameA.mid(4);
@@ -1450,19 +1477,19 @@ QVariantList DatabaseManager::getAllArtists()
         if (nameB.startsWith("the ")) {
             nameB = nameB.mid(4);
         }
-        
+
         // First, separate letters from non-letters (numbers/symbols go last)
         bool aStartsWithLetter = !nameA.isEmpty() && nameA[0].isLetter();
         bool bStartsWithLetter = !nameB.isEmpty() && nameB[0].isLetter();
-        
+
         if (aStartsWithLetter != bStartsWithLetter) {
             return aStartsWithLetter; // Letters come before non-letters
         }
-        
+
         // Use locale-aware comparison for consistent sorting with accented characters
         return nameA.localeAwareCompare(nameB) < 0;
     });
-    
+
     return artists;
 }
 
@@ -1510,11 +1537,46 @@ QVariantList DatabaseManager::getAlbumsByAlbumArtist(int albumArtistId)
 
 QVariantList DatabaseManager::getAlbumsByAlbumArtistName(const QString& albumArtistName)
 {
-    int artistId = getAlbumArtistIdByName(albumArtistName);
-    if (artistId > 0) {
-        return getAlbumsByAlbumArtist(artistId);
+    QMutexLocker locker(&m_databaseMutex);
+    QVariantList albums;
+    if (!m_db.isOpen() || albumArtistName.isEmpty()) return albums;
+
+    QSqlQuery query(m_db);
+    // Fetch albums from ALL album_artist entries matching the name case-insensitively
+    // This handles legacy duplicate artist entries with different capitalizations
+    query.prepare(
+        "SELECT DISTINCT al.*, aa.name as album_artist_name, "
+        "COUNT(t.id) as track_count, SUM(t.duration) as total_duration, "
+        "art.thumbnail as art_thumbnail, art.full_path as art_path "
+        "FROM albums al "
+        "LEFT JOIN album_artists aa ON al.album_artist_id = aa.id "
+        "LEFT JOIN tracks t ON al.id = t.album_id "
+        "LEFT JOIN album_art art ON al.id = art.album_id "
+        "WHERE LOWER(aa.name) = LOWER(:artist_name) "
+        "GROUP BY al.id "
+        "ORDER BY al.year DESC, al.title COLLATE NOCASE"
+    );
+    query.bindValue(":artist_name", albumArtistName);
+
+    if (query.exec()) {
+        while (query.next()) {
+            QVariantMap album;
+            album["id"] = query.value("id");
+            album["title"] = query.value("title");
+            album["albumArtist"] = query.value("album_artist_name");
+            album["year"] = query.value("year");
+            album["trackCount"] = query.value("track_count");
+            album["duration"] = query.value("total_duration");
+            album["hasArt"] = !query.value("art_thumbnail").isNull();
+            album["artThumbnail"] = query.value("art_thumbnail");
+            album["artPath"] = query.value("art_path");
+            albums.append(album);
+        }
+    } else {
+        logError("Get albums by album artist name", query);
     }
-    return QVariantList();
+
+    return albums;
 }
 
 int DatabaseManager::getAlbumIdByArtistAndTitle(const QString& albumArtist, const QString& albumTitle)
@@ -1542,11 +1604,11 @@ int DatabaseManager::getAlbumArtistIdByName(const QString& albumArtistName)
 {
     QMutexLocker locker(&m_databaseMutex);
     if (!m_db.isOpen() || albumArtistName.isEmpty()) return 0;
-    
+
     QSqlQuery query(m_db);
-    query.prepare("SELECT id FROM album_artists WHERE name = :name");
+    query.prepare("SELECT id FROM album_artists WHERE LOWER(name) = LOWER(:name)");
     query.bindValue(":name", albumArtistName);
-    
+
     if (query.exec()) {
         if (query.next()) {
             return query.value(0).toInt();
@@ -1554,7 +1616,7 @@ int DatabaseManager::getAlbumArtistIdByName(const QString& albumArtistName)
     } else {
         logError("Get album artist ID by name", query);
     }
-    
+
     return 0;
 }
 
