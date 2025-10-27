@@ -18,8 +18,8 @@
       <li>Library browsing with smart organization, responsive search, and automatic updates as you add music</li>
       <li>Lyrics support with synced and unsynced lyrics from embedded metadata and external files</li>
       <li>Advanced queue management and playlist editor</li>
-      <li>Wide and compact modes fit the UI to a variety of display layouts</li>
-      <li>Light and dark modes with tinted blurred backgrounds</li>
+      <li>Wide and compact layout modes fit a variety of display layouts</li>
+      <li>Light and dark mode support with tinted blurred backgrounds</li>
       <li>Mini player and desktop integration with full MPRIS 2 support</li>
       <li>Gapless playback and ReplayGain support</li>
     </ul>
@@ -41,10 +41,6 @@
     <screenshot>
       <caption>Main window showing wide layout in light mode</caption>
       <image>https://github.com/asa-degroff/mtoc/raw/75a68abbbf2ccba72bb5ec4a16a2f6e844effc5b/resources/banner/main-screenshot-wide-light.png</image>
-    </screenshot>
-    <screenshot>
-      <caption>Mini player</caption>
-      <image>https://github.com/asa-degroff/mtoc/raw/75a68abbbf2ccba72bb5ec4a16a2f6e844effc5b/resources/banner/mini-player-horizontal.png</image>
     </screenshot>
     <screenshot>
       <caption>Queue list</caption>
