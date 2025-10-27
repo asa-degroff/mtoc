@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.3.2
+Version:        2.3.3
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,17 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Mon Oct 27 2025 Asa DeGroff <asa@3fz.org> 2.3.3-1
+- changelog and version bump (asa@3fz.org)
+- fix: enhance system theme detection using Qt 6.5+ color scheme API for
+  switching without a restart (asa@3fz.org)
+- update metainfo for clarity and brevity (asa@3fz.org)
+- fix: implement case-insensitive search for artists and albums (asa@3fz.org)
+- fix: prevent race condition in artist list scrolling (asa@3fz.org)
+- fix: update album art cache directory for flatpak compatibility (asa@3fz.org)
+- fixed typo (asa@3fz.org)
+- Automatic commit of package [mtoc] release [2.3.2-1]. (asa@3fz.org)
+
 * Mon Oct 20 2025 Asa DeGroff <asa@3fz.org> 2.3.2-1
 - version bump and changelog (asa@3fz.org)
 - fix: integrate library manager for special playlists support in system tray
