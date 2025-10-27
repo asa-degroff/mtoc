@@ -1,3 +1,10 @@
+# 2.3.3
+### Bug fixes for MPRIS album art, case-insensitive artist grouping, and theme switching
+- Album art now appears in the MPRIS widget when using the Flatpak build
+- Artists are now grouped case-insensitively in the artists list
+- Tracks with case-mismatched album artists now appear in search results as expected
+- Improved system theme detection for switching between light and dark modes without a restart
+
 # 2.3.2
 ### Improved system tray context menu and synchronized lyrics during paused state
 - System tray context menu now includes playback options and playlist picker

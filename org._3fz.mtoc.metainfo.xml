@@ -68,6 +68,18 @@
 
   <releases>
 
+    <release version="2.3.3" date="2025-10-27">
+      <description>
+        <p>Bug fixes for MPRIS album art, case-insensitive artist grouping, and theme switching</p>
+        <ul>
+          <li>Album art now appears in the MPRIS widget when using the Flatpak build</li>
+          <li>Artists are now grouped case-insensitively in the artists list</li>
+          <li>Tracks with case-mismatched album artists now appear in search results as expected</li>
+          <li>Improved system theme detection for switching between light and dark modes without a restart</li>
+        </ul>
+      </description>
+    </release>
+
     <release version="2.3.2" date="2025-10-20">
       <description>
         <p>Improved system tray context menu and synchronized lyrics during paused state</p>
