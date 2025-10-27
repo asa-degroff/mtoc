@@ -451,10 +451,20 @@ void SettingsManager::saveSettings()
 
 bool SettingsManager::isSystemDark() const
 {
-    // Get the system palette to detect if we're in dark mode
+    // Use Qt 6.5+ color scheme API for reliable detection (preferred method)
+    QStyleHints *hints = QGuiApplication::styleHints();
+    Qt::ColorScheme colorScheme = hints->colorScheme();
+
+    if (colorScheme == Qt::ColorScheme::Dark) {
+        return true;
+    } else if (colorScheme == Qt::ColorScheme::Light) {
+        return false;
+    }
+
+    // Fallback: If colorScheme is Unknown, use palette lightness heuristic
     QPalette palette = QGuiApplication::palette();
     QColor windowColor = palette.color(QPalette::Window);
-    
+
     // Consider it dark mode if the window background is dark
     // Using a threshold of 128 for the lightness value
     return windowColor.lightness() < 128;
@@ -472,18 +482,44 @@ QColor SettingsManager::systemAccentColor() const
 
 void SettingsManager::setupSystemThemeDetection()
 {
-    // Event handling for palette changes is done in event() method
+    // Connect to Qt 6.5+ color scheme change signal for reliable theme detection
+    QStyleHints *hints = QGuiApplication::styleHints();
+    connect(hints, &QStyleHints::colorSchemeChanged,
+            this, &SettingsManager::onColorSchemeChanged);
+
+    // Note: We also keep the event() method as a fallback for palette changes
+    qDebug() << "SettingsManager: System theme detection initialized";
+}
+
+void SettingsManager::onColorSchemeChanged(Qt::ColorScheme scheme)
+{
+    qDebug() << "SettingsManager: System color scheme changed to:" <<
+        (scheme == Qt::ColorScheme::Dark ? "Dark" :
+         scheme == Qt::ColorScheme::Light ? "Light" : "Unknown");
+
+    // Emit signal when system theme changes
+    emit systemThemeChanged();
+
+    // Emit signal when system accent color might have changed
+    emit systemAccentColorChanged();
+
+    // If we're using the System theme, also emit themeChanged
+    if (m_theme == System) {
+        emit themeChanged(m_theme);
+    }
 }
 
 bool SettingsManager::event(QEvent *event)
 {
     if (event->type() == QEvent::ApplicationPaletteChange) {
+        qDebug() << "SettingsManager: ApplicationPaletteChange event received (fallback)";
+
         // Emit signal when system theme changes
         emit systemThemeChanged();
-        
+
         // Emit signal when system accent color might have changed
         emit systemAccentColorChanged();
-        
+
         // If we're using the System theme, also emit themeChanged
         if (m_theme == System) {
             emit themeChanged(m_theme);

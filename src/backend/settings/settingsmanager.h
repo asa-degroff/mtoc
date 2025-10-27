@@ -5,6 +5,7 @@
 #include <QSettings>
 #include <QString>
 #include <QColor>
+#include <QStyleHints>
 
 class SettingsManager : public QObject
 {
@@ -186,6 +187,7 @@ signals:
     void lastSeenChangelogVersionChanged(const QString& version);
 
 private slots:
+    void onColorSchemeChanged(Qt::ColorScheme scheme);
 
 private:
     explicit SettingsManager(QObject *parent = nullptr);
