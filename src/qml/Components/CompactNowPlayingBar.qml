@@ -217,8 +217,17 @@ Rectangle {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             if (MediaPlayer.currentTrack) {
-                                var artistName = MediaPlayer.currentTrack.albumArtist || MediaPlayer.currentTrack.artist
-                                var albumTitle = MediaPlayer.currentTrack.album
+                                var track = MediaPlayer.currentTrack
+                                var artistName = ""
+
+                                // Smart navigation: prioritize track artist if different from album artist
+                                if (track.artist && track.albumArtist && track.artist !== track.albumArtist) {
+                                    artistName = track.artist
+                                } else {
+                                    artistName = track.albumArtist || track.artist
+                                }
+
+                                var albumTitle = track.album
                                 if (artistName && albumTitle) {
                                     root.albumTitleClicked(artistName, albumTitle)
                                 }
@@ -248,9 +257,18 @@ Rectangle {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             if (MediaPlayer.currentTrack) {
-                                var albumArtist = MediaPlayer.currentTrack.albumArtist || MediaPlayer.currentTrack.artist
-                                if (albumArtist) {
-                                    root.artistClicked(albumArtist)
+                                var track = MediaPlayer.currentTrack
+                                var artistToJump = ""
+
+                                // Smart navigation: prioritize track artist if different from album artist
+                                if (track.artist && track.albumArtist && track.artist !== track.albumArtist) {
+                                    artistToJump = track.artist
+                                } else {
+                                    artistToJump = track.albumArtist || track.artist
+                                }
+
+                                if (artistToJump) {
+                                    root.artistClicked(artistToJump)
                                 }
                             }
                         }
