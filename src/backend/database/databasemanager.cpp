@@ -978,6 +978,15 @@ bool DatabaseManager::insertAlbumArtistLinks(int albumId, const QStringList& alb
         return false;
     }
 
+    // Check if junction table exists - if not, migration hasn't run yet
+    QSqlQuery checkQuery(m_db);
+    checkQuery.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='album_album_artists'");
+    if (!checkQuery.next()) {
+        qDebug() << "Junction table 'album_album_artists' does not exist yet, skipping link creation. "
+                 << "Links will be created after database migration completes.";
+        return true;  // Not an error, just skip for now
+    }
+
     QSqlQuery query(m_db);
 
     // First, clear existing links for this album
@@ -1509,19 +1518,49 @@ QVariantList DatabaseManager::getAllArtists()
     QVariantList artists;
     if (!m_db.isOpen()) return artists;
 
+    // Check if junction table exists - if not, ensure migration runs
+    QSqlQuery checkQuery(m_db);
+    checkQuery.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='album_album_artists'");
+    bool junctionTableExists = checkQuery.next();
+
     QSqlQuery query(m_db);
-    // Get album artists using junction table - includes artists from collab albums
-    // Note: We fetch without ORDER BY and sort in C++ for locale-aware sorting
-    query.exec(
-        "SELECT aa.*, COUNT(DISTINCT aaa.album_id) as album_count, "
-        "COUNT(DISTINCT t.id) as track_count "
-        "FROM album_artists aa "
-        "INNER JOIN album_album_artists aaa ON aa.id = aaa.album_artist_id "
-        "INNER JOIN albums al ON aaa.album_id = al.id "
-        "INNER JOIN tracks t ON al.id = t.album_id "
-        "GROUP BY aa.id "
-        "HAVING COUNT(t.id) > 0"
-    );
+
+    if (junctionTableExists) {
+        // Get album artists using junction table - includes artists from collab albums
+        // Uses LEFT JOIN for backward compatibility with databases that haven't been scanned yet
+        // Note: We fetch without ORDER BY and sort in C++ for locale-aware sorting
+        if (!query.exec(
+            "SELECT aa.id, aa.name, aa.created_at, "
+            "COUNT(DISTINCT COALESCE(aaa.album_id, al_direct.id)) as album_count, "
+            "COUNT(DISTINCT t.id) as track_count "
+            "FROM album_artists aa "
+            "LEFT JOIN album_album_artists aaa ON aa.id = aaa.album_artist_id "
+            "LEFT JOIN albums al_direct ON aa.id = al_direct.album_artist_id "
+            "LEFT JOIN albums al ON (aaa.album_id = al.id OR al_direct.id = al.id) "
+            "LEFT JOIN tracks t ON al.id = t.album_id "
+            "GROUP BY aa.id, aa.name, aa.created_at "
+            "HAVING COUNT(t.id) > 0"
+        )) {
+            qWarning() << "Failed to get all artists (with junction table):" << query.lastError().text();
+            return artists;
+        }
+    } else {
+        // Fallback to old query without junction table for backward compatibility
+        qWarning() << "Junction table 'album_album_artists' does not exist, using fallback query. "
+                   << "Please restart the application to apply database migrations.";
+        if (!query.exec(
+            "SELECT aa.*, COUNT(DISTINCT al.id) as album_count, "
+            "COUNT(DISTINCT t.id) as track_count "
+            "FROM album_artists aa "
+            "INNER JOIN albums al ON aa.id = al.album_artist_id "
+            "INNER JOIN tracks t ON al.id = t.album_id "
+            "GROUP BY aa.id "
+            "HAVING COUNT(t.id) > 0"
+        )) {
+            qWarning() << "Failed to get all artists (fallback query):" << query.lastError().text();
+            return artists;
+        }
+    }
 
     // Fetch all artists and deduplicate case-insensitively
     QMap<QString, QVariantMap> deduplicatedArtists; // Key: lowercase name
@@ -1595,31 +1634,59 @@ QVariantList DatabaseManager::getAlbumsByAlbumArtist(int albumArtistId)
     QVariantList albums;
     if (!m_db.isOpen()) return albums;
 
+    // Check if junction table exists
+    QSqlQuery checkQuery(m_db);
+    checkQuery.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='album_album_artists'");
+    bool junctionTableExists = checkQuery.next();
+
     QSqlQuery query(m_db);
-    // Updated to use junction table - finds albums where artist is ANY of the album artists
-    query.prepare(
-        "SELECT al.*, "
-        "GROUP_CONCAT(aa_all.name, '; ') as album_artist_names, "
-        "COUNT(DISTINCT t.id) as track_count, SUM(t.duration) as total_duration, "
-        "art.thumbnail as art_thumbnail, art.full_path as art_path "
-        "FROM albums al "
-        "INNER JOIN album_album_artists aaa ON al.id = aaa.album_id "
-        "LEFT JOIN album_album_artists aaa_all ON al.id = aaa_all.album_id "
-        "LEFT JOIN album_artists aa_all ON aaa_all.album_artist_id = aa_all.id "
-        "LEFT JOIN tracks t ON al.id = t.album_id "
-        "LEFT JOIN album_art art ON al.id = art.album_id "
-        "WHERE aaa.album_artist_id = :artist_id "
-        "GROUP BY al.id "
-        "ORDER BY al.year DESC, al.title COLLATE NOCASE"
-    );
-    query.bindValue(":artist_id", albumArtistId);
+
+    if (junctionTableExists) {
+        // Updated to use junction table - finds albums where artist is ANY of the album artists
+        query.prepare(
+            "SELECT al.*, "
+            "GROUP_CONCAT(aa_all.name, '; ') as album_artist_names, "
+            "COUNT(DISTINCT t.id) as track_count, SUM(t.duration) as total_duration, "
+            "art.thumbnail as art_thumbnail, art.full_path as art_path "
+            "FROM albums al "
+            "INNER JOIN album_album_artists aaa ON al.id = aaa.album_id "
+            "LEFT JOIN album_album_artists aaa_all ON al.id = aaa_all.album_id "
+            "LEFT JOIN album_artists aa_all ON aaa_all.album_artist_id = aa_all.id "
+            "LEFT JOIN tracks t ON al.id = t.album_id "
+            "LEFT JOIN album_art art ON al.id = art.album_id "
+            "WHERE aaa.album_artist_id = :artist_id "
+            "GROUP BY al.id "
+            "ORDER BY al.year DESC, al.title COLLATE NOCASE"
+        );
+        query.bindValue(":artist_id", albumArtistId);
+    } else {
+        // Fallback to old query without junction table
+        query.prepare(
+            "SELECT al.*, aa.name as album_artist_name, "
+            "COUNT(t.id) as track_count, SUM(t.duration) as total_duration, "
+            "art.thumbnail as art_thumbnail, art.full_path as art_path "
+            "FROM albums al "
+            "LEFT JOIN album_artists aa ON al.album_artist_id = aa.id "
+            "LEFT JOIN tracks t ON al.id = t.album_id "
+            "LEFT JOIN album_art art ON al.id = art.album_id "
+            "WHERE al.album_artist_id = :artist_id "
+            "GROUP BY al.id "
+            "ORDER BY al.year DESC, al.title COLLATE NOCASE"
+        );
+        query.bindValue(":artist_id", albumArtistId);
+    }
     
     if (query.exec()) {
         while (query.next()) {
             QVariantMap album;
             album["id"] = query.value("id");
             album["title"] = query.value("title");
-            album["albumArtist"] = query.value("album_artist_names");  // Now contains all artists
+            // Use the appropriate column based on which query was executed
+            if (junctionTableExists) {
+                album["albumArtist"] = query.value("album_artist_names");  // Contains all artists
+            } else {
+                album["albumArtist"] = query.value("album_artist_name");  // Single artist
+            }
             album["year"] = query.value("year");
             album["trackCount"] = query.value("track_count");
             album["duration"] = query.value("total_duration");
