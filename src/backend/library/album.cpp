@@ -63,6 +63,19 @@ void Album::setArtist(const QString &artist)
     }
 }
 
+QStringList Album::artists() const
+{
+    return m_artists;
+}
+
+void Album::setArtists(const QStringList &artists)
+{
+    if (m_artists != artists) {
+        m_artists = artists;
+        emit artistsChanged();
+    }
+}
+
 void Album::setYear(int year)
 {
     if (m_year != year) {

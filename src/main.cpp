@@ -230,7 +230,19 @@ int main(int argc, char *argv[])
     settingsManager->setParent(&engine);  // Parent to engine for cleanup
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "SettingsManager", settingsManager);
     qDebug() << "Main: SettingsManager registered";
-    
+
+    // Connect multi-artist settings changes to trigger library rescan
+    QObject::connect(settingsManager, &SettingsManager::showCollabAlbumsUnderAllArtistsChanged,
+                     libraryManager, [libraryManager](bool enabled) {
+        qDebug() << "Multi-artist album setting changed to:" << enabled << "- triggering library rescan";
+        libraryManager->startScan();
+    });
+    QObject::connect(settingsManager, &SettingsManager::albumArtistDelimitersChanged,
+                     libraryManager, [libraryManager](const QStringList& delimiters) {
+        qDebug() << "Album artist delimiters changed to:" << delimiters << "- triggering library rescan";
+        libraryManager->startScan();
+    });
+
     // Create and register MediaPlayer
     qDebug() << "Main: Creating MediaPlayer...";
     MediaPlayer *mediaPlayer = new MediaPlayer(&engine);

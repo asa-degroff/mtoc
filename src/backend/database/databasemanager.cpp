@@ -308,7 +308,48 @@ bool DatabaseManager::applyMigrations(int currentVersion)
             return false;
         }
     }
-    
+
+    // Migration 3: Add album_album_artists junction table for multi-artist albums
+    if (currentVersion < 3) {
+        qDebug() << "Applying migration 3: Creating album_album_artists junction table";
+
+        // Create junction table
+        if (!query.exec(
+            "CREATE TABLE IF NOT EXISTS album_album_artists ("
+            "album_id INTEGER NOT NULL,"
+            "album_artist_id INTEGER NOT NULL,"
+            "position INTEGER NOT NULL,"
+            "PRIMARY KEY (album_id, album_artist_id),"
+            "FOREIGN KEY (album_id) REFERENCES albums(id) ON DELETE CASCADE,"
+            "FOREIGN KEY (album_artist_id) REFERENCES album_artists(id) ON DELETE CASCADE"
+            ")")) {
+            logError("Create album_album_artists table", query);
+            return false;
+        }
+
+        // Populate junction table from existing albums
+        if (!query.exec(
+            "INSERT INTO album_album_artists (album_id, album_artist_id, position) "
+            "SELECT id, album_artist_id, 0 FROM albums WHERE album_artist_id IS NOT NULL")) {
+            logError("Populate album_album_artists from existing albums", query);
+            return false;
+        }
+
+        // Create index for efficient lookups
+        query.exec("CREATE INDEX IF NOT EXISTS idx_album_album_artists_album ON album_album_artists(album_id)");
+        query.exec("CREATE INDEX IF NOT EXISTS idx_album_album_artists_artist ON album_album_artists(album_artist_id)");
+
+        // Record migration
+        query.prepare("INSERT INTO schema_version (version) VALUES (:version)");
+        query.bindValue(":version", 3);
+        if (!query.exec()) {
+            logError("Record migration 3", query);
+            return false;
+        }
+
+        qDebug() << "Migration 3 completed: album_album_artists junction table created";
+    }
+
     return true;
 }
 
@@ -340,7 +381,8 @@ bool DatabaseManager::insertTrack(const QVariantMap& trackData)
     QString filePath = trackData.value("filePath").toString();
     QString title = trackData.value("title").toString();
     QString artist = trackData.value("artist").toString();
-    QString albumArtist = trackData.value("albumArtist").toString();
+    QStringList albumArtists = trackData.value("albumArtists").toStringList();
+    QString albumArtist = trackData.value("albumArtist").toString();  // Backward compatibility
     QString album = trackData.value("album").toString();
     QString genre = trackData.value("genre").toString();
     int year = trackData.value("year").toInt();
@@ -349,33 +391,40 @@ bool DatabaseManager::insertTrack(const QVariantMap& trackData)
     int duration = trackData.value("duration").toInt();
     qint64 fileSize = trackData.value("fileSize", 0).toLongLong();
     QDateTime fileModified = trackData.value("fileModified").toDateTime();
-    
+
     // Extract replay gain data
     double replayGainTrackGain = trackData.value("replayGainTrackGain", QVariant()).toDouble();
     double replayGainTrackPeak = trackData.value("replayGainTrackPeak", QVariant()).toDouble();
     double replayGainAlbumGain = trackData.value("replayGainAlbumGain", QVariant()).toDouble();
     double replayGainAlbumPeak = trackData.value("replayGainAlbumPeak", QVariant()).toDouble();
     QString lyrics = trackData.value("lyrics").toString();
-    
+
     // Get or create artist
     int artistId = 0;
     if (!artist.isEmpty()) {
         artistId = insertOrGetArtist(artist);
     }
-    
-    // Get or create album artist
-    int albumArtistId = 0;
-    if (!albumArtist.isEmpty()) {
-        albumArtistId = insertOrGetAlbumArtist(albumArtist);
-    } else if (!artist.isEmpty()) {
-        // Fallback to artist if no album artist specified
-        albumArtistId = insertOrGetAlbumArtist(artist);
+
+    // Handle album artists (backward compatible with single albumArtist string)
+    if (albumArtists.isEmpty() && !albumArtist.isEmpty()) {
+        albumArtists.append(albumArtist);
     }
-    
-    // Get or create album
+    if (albumArtists.isEmpty() && !artist.isEmpty()) {
+        // Fallback to artist if no album artist specified
+        albumArtists.append(artist);
+    }
+
+    // Get or create album using first album artist (for backward compatibility)
     int albumId = 0;
-    if (!album.isEmpty()) {
-        albumId = insertOrGetAlbum(album, albumArtistId, year);
+    int primaryAlbumArtistId = 0;
+    if (!album.isEmpty() && !albumArtists.isEmpty()) {
+        primaryAlbumArtistId = insertOrGetAlbumArtist(albumArtists.first());
+        albumId = insertOrGetAlbum(album, primaryAlbumArtistId, year);
+
+        // Create junction table links for all album artists
+        if (albumId > 0 && albumArtists.size() > 0) {
+            insertAlbumArtistLinks(albumId, albumArtists);
+        }
     }
     
     // Insert track
@@ -923,6 +972,52 @@ int DatabaseManager::insertOrGetAlbum(const QString& albumName, int albumArtistI
     return 0;
 }
 
+bool DatabaseManager::insertAlbumArtistLinks(int albumId, const QStringList& albumArtistNames)
+{
+    if (!m_db.isOpen() || albumId <= 0 || albumArtistNames.isEmpty()) {
+        return false;
+    }
+
+    QSqlQuery query(m_db);
+
+    // First, clear existing links for this album
+    query.prepare("DELETE FROM album_album_artists WHERE album_id = :album_id");
+    query.bindValue(":album_id", albumId);
+    if (!query.exec()) {
+        logError("Clear album artist links", query);
+        return false;
+    }
+
+    // Insert new links for each artist
+    int position = 0;
+    for (const QString& artistName : albumArtistNames) {
+        if (artistName.trimmed().isEmpty()) {
+            continue;
+        }
+
+        // Get or create the album artist
+        int artistId = insertOrGetAlbumArtist(artistName);
+        if (artistId <= 0) {
+            qWarning() << "DatabaseManager: Failed to get/create album artist:" << artistName;
+            continue;
+        }
+
+        // Insert the link
+        query.prepare("INSERT INTO album_album_artists (album_id, album_artist_id, position) "
+                     "VALUES (:album_id, :artist_id, :position)");
+        query.bindValue(":album_id", albumId);
+        query.bindValue(":artist_id", artistId);
+        query.bindValue(":position", position++);
+
+        if (!query.exec()) {
+            logError("Insert album artist link", query);
+            // Continue with other artists even if one fails
+        }
+    }
+
+    return true;
+}
+
 bool DatabaseManager::trackExists(const QString& filePath)
 {
     if (!m_db.isOpen()) return false;
@@ -1415,13 +1510,14 @@ QVariantList DatabaseManager::getAllArtists()
     if (!m_db.isOpen()) return artists;
 
     QSqlQuery query(m_db);
-    // Get album artists instead of track artists to avoid clutter
+    // Get album artists using junction table - includes artists from collab albums
     // Note: We fetch without ORDER BY and sort in C++ for locale-aware sorting
     query.exec(
-        "SELECT aa.*, COUNT(DISTINCT al.id) as album_count, "
+        "SELECT aa.*, COUNT(DISTINCT aaa.album_id) as album_count, "
         "COUNT(DISTINCT t.id) as track_count "
         "FROM album_artists aa "
-        "INNER JOIN albums al ON aa.id = al.album_artist_id "
+        "INNER JOIN album_album_artists aaa ON aa.id = aaa.album_artist_id "
+        "INNER JOIN albums al ON aaa.album_id = al.id "
         "INNER JOIN tracks t ON al.id = t.album_id "
         "GROUP BY aa.id "
         "HAVING COUNT(t.id) > 0"
@@ -1498,17 +1594,21 @@ QVariantList DatabaseManager::getAlbumsByAlbumArtist(int albumArtistId)
     QMutexLocker locker(&m_databaseMutex);
     QVariantList albums;
     if (!m_db.isOpen()) return albums;
-    
+
     QSqlQuery query(m_db);
+    // Updated to use junction table - finds albums where artist is ANY of the album artists
     query.prepare(
-        "SELECT al.*, aa.name as album_artist_name, "
-        "COUNT(t.id) as track_count, SUM(t.duration) as total_duration, "
+        "SELECT al.*, "
+        "GROUP_CONCAT(aa_all.name, '; ') as album_artist_names, "
+        "COUNT(DISTINCT t.id) as track_count, SUM(t.duration) as total_duration, "
         "art.thumbnail as art_thumbnail, art.full_path as art_path "
         "FROM albums al "
-        "LEFT JOIN album_artists aa ON al.album_artist_id = aa.id "
+        "INNER JOIN album_album_artists aaa ON al.id = aaa.album_id "
+        "LEFT JOIN album_album_artists aaa_all ON al.id = aaa_all.album_id "
+        "LEFT JOIN album_artists aa_all ON aaa_all.album_artist_id = aa_all.id "
         "LEFT JOIN tracks t ON al.id = t.album_id "
         "LEFT JOIN album_art art ON al.id = art.album_id "
-        "WHERE al.album_artist_id = :artist_id "
+        "WHERE aaa.album_artist_id = :artist_id "
         "GROUP BY al.id "
         "ORDER BY al.year DESC, al.title COLLATE NOCASE"
     );
@@ -1519,7 +1619,7 @@ QVariantList DatabaseManager::getAlbumsByAlbumArtist(int albumArtistId)
             QVariantMap album;
             album["id"] = query.value("id");
             album["title"] = query.value("title");
-            album["albumArtist"] = query.value("album_artist_name");
+            album["albumArtist"] = query.value("album_artist_names");  // Now contains all artists
             album["year"] = query.value("year");
             album["trackCount"] = query.value("track_count");
             album["duration"] = query.value("total_duration");
@@ -1531,7 +1631,7 @@ QVariantList DatabaseManager::getAlbumsByAlbumArtist(int albumArtistId)
     } else {
         logError("Get albums by album artist", query);
     }
-    
+
     return albums;
 }
 
