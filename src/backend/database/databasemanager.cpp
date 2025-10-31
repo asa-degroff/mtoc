@@ -716,30 +716,46 @@ QVariantMap DatabaseManager::getTrack(int trackId)
 
 QVariantList DatabaseManager::getTracksByAlbumAndArtist(const QString& albumTitle, const QString& albumArtistName)
 {
-    // qDebug() << "[DatabaseManager::getTracksByAlbumAndArtist] Called with album:" << albumTitle << "artist:" << albumArtistName;
-    
-    QMutexLocker locker(&m_databaseMutex);
+    qDebug() << "[DatabaseManager::getTracksByAlbumAndArtist] Called with album:" << albumTitle << "artist:" << albumArtistName;
+
     QVariantList tracks;
+
+    // First, get the album ID using the multi-artist aware lookup
+    // Note: getAlbumIdByArtistAndTitle locks the mutex internally, so we call it before locking
+    int albumId = getAlbumIdByArtistAndTitle(albumArtistName, albumTitle);
+
+    if (albumId <= 0) {
+        qDebug() << "[DatabaseManager::getTracksByAlbumAndArtist] Album not found for artist:" << albumArtistName << "title:" << albumTitle;
+        return tracks;
+    }
+
+    qDebug() << "[DatabaseManager::getTracksByAlbumAndArtist] Found album ID:" << albumId;
+
+    // Now lock the mutex for the track query
+    QMutexLocker locker(&m_databaseMutex);
     if (!m_db.isOpen()) {
         qWarning() << "[DatabaseManager::getTracksByAlbumAndArtist] Database is not open!";
         return tracks;
     }
-    
+
+    // Now get all tracks for this album
     QSqlQuery query(m_db);
     query.prepare(
         "SELECT t.*, a.name as artist_name, al.title as album_title, "
-        "aa.name as album_artist_name "
+        "(SELECT GROUP_CONCAT(aa_sub.name, '; ') "
+        " FROM album_album_artists aaa_sub "
+        " JOIN album_artists aa_sub ON aaa_sub.album_artist_id = aa_sub.id "
+        " WHERE aaa_sub.album_id = al.id "
+        " ORDER BY aaa_sub.position) as album_artist_name "
         "FROM tracks t "
         "LEFT JOIN artists a ON t.artist_id = a.id "
         "LEFT JOIN albums al ON t.album_id = al.id "
-        "LEFT JOIN album_artists aa ON al.album_artist_id = aa.id "
-        "WHERE al.title = :album_title AND aa.name = :album_artist "
+        "WHERE t.album_id = :album_id "
         "ORDER BY t.disc_number, t.track_number, t.title COLLATE NOCASE"
     );
-    
-    query.bindValue(":album_title", albumTitle);
-    query.bindValue(":album_artist", albumArtistName);
-    
+
+    query.bindValue(":album_id", albumId);
+
     if (query.exec()) {
         while (query.next()) {
             QVariantMap track;
@@ -758,6 +774,7 @@ QVariantList DatabaseManager::getTracksByAlbumAndArtist(const QString& albumTitl
             track["lyrics"] = query.value("lyrics");
             tracks.append(track);
         }
+        qDebug() << "[DatabaseManager::getTracksByAlbumAndArtist] Found" << tracks.size() << "tracks";
     } else {
         qWarning() << "[DatabaseManager::getTracksByAlbumAndArtist] Query execution failed!";
         logError("Get tracks by album and artist", query);

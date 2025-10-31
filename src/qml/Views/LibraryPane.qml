@@ -5265,39 +5265,50 @@ Item {
         try {
             console.log("jumpToArtist called with:", artistName)
             if (!artistName || typeof artistName !== "string") return
-            
+
+            // Handle multi-artist names: if the artist name contains a delimiter ("; " or ";"),
+            // use the first artist as the primary artist
+            var primaryArtist = artistName
+            if (artistName.indexOf("; ") !== -1) {
+                primaryArtist = artistName.split("; ")[0]
+                console.log("jumpToArtist: Multi-artist detected, using primary artist:", primaryArtist)
+            } else if (artistName.indexOf(";") !== -1) {
+                primaryArtist = artistName.split(";")[0]
+                console.log("jumpToArtist: Multi-artist detected (no space), using primary artist:", primaryArtist)
+            }
+
             // Switch to Artists tab if currently showing Playlists
             if (currentTab === 1) {
                 currentTab = 0
             }
-            
+
             // Prevent concurrent jump operations
             if (isJumping) {
                 console.log("jumpToArtist: Already jumping, ignoring request")
                 return
             }
             isJumping = true
-            
-            // Clear search state and highlight the artist
+
+            // Clear search state and highlight the primary artist
             clearSearch()
-            highlightedArtist = artistName
-            
+            highlightedArtist = primaryArtist
+
             // Use O(1) lookup instead of O(n) search
-            var artistIndex = artistNameToIndex[artistName]
+            var artistIndex = artistNameToIndex[primaryArtist]
             console.log("jumpToArtist: Artist index from lookup:", artistIndex, "Total artists:", LibraryManager.artistModel.length)
             if (artistIndex === undefined) {
                 console.log("jumpToArtist: Artist not found in index mapping")
                 isJumping = false
                 return
             }
-            
+
             // Update navigation state to sync with jump
             selectedArtistIndex = artistIndex
-            selectedArtistName = artistName
+            selectedArtistName = primaryArtist
             artistsListView.currentIndex = artistIndex
             
             // Check if already expanded
-            var wasExpanded = expandedArtists[artistName] === true
+            var wasExpanded = expandedArtists[primaryArtist] === true
             console.log("jumpToArtist: Artist was expanded:", wasExpanded)
             
             if (wasExpanded) {
