@@ -2014,7 +2014,8 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         QString filePath = metadata.value("filePath").toString();
         QString title = metadata.value("title").toString();
         QString artist = metadata.value("artist").toString();
-        QString albumArtist = metadata.value("albumArtist").toString();
+        QStringList albumArtists = metadata.value("albumArtists").toStringList();
+        QString albumArtist = metadata.value("albumArtist").toString();  // Backward compatibility
         QString album = metadata.value("album").toString();
         QString genre = metadata.value("genre").toString();
         int year = metadata.value("year").toInt();
@@ -2024,18 +2025,25 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         qint64 fileSize = metadata.value("fileSize", 0).toLongLong();
         QDateTime fileModified = metadata.value("fileModified").toDateTime();
         QString lyrics = metadata.value("lyrics").toString();
-        
+
         // Get or create artist (using cache)
         int artistId = getCachedArtist(artist);
-        
-        // Get or create album artist (using cache)
-        int albumArtistId = 0;
-        if (!albumArtist.isEmpty()) {
-            albumArtistId = getCachedAlbumArtist(albumArtist);
-        } else if (!artist.isEmpty()) {
-            albumArtistId = getCachedAlbumArtist(artist);
+
+        // Handle album artists (backward compatible with single albumArtist string)
+        if (albumArtists.isEmpty() && !albumArtist.isEmpty()) {
+            albumArtists.append(albumArtist);
         }
-        
+        if (albumArtists.isEmpty() && !artist.isEmpty()) {
+            // Fallback to artist if no album artist specified
+            albumArtists.append(artist);
+        }
+
+        // Get or create album using first album artist (for backward compatibility)
+        int albumArtistId = 0;
+        if (!albumArtists.isEmpty()) {
+            albumArtistId = getCachedAlbumArtist(albumArtists.first());
+        }
+
         // Get or create album (using cache)
         int albumId = getCachedAlbum(album, albumArtistId, year);
         
@@ -2061,6 +2069,51 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
             failCount++;
         } else {
             successCount++;
+
+            // Create junction table links for all album artists
+            if (albumId > 0 && albumArtists.size() > 0) {
+                // Check if junction table exists
+                QSqlQuery checkQuery(db);
+                checkQuery.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='album_album_artists'");
+                if (checkQuery.next()) {
+                    // Clear existing links for this album
+                    QSqlQuery clearQuery(db);
+                    clearQuery.prepare("DELETE FROM album_album_artists WHERE album_id = :album_id");
+                    clearQuery.bindValue(":album_id", albumId);
+                    clearQuery.exec();
+                    clearQuery.finish();
+
+                    // Insert links for all album artists
+                    int position = 0;
+                    for (const QString& artistName : albumArtists) {
+                        if (artistName.trimmed().isEmpty()) {
+                            continue;
+                        }
+
+                        // Get or create the album artist
+                        int artistId = getCachedAlbumArtist(artistName);
+                        if (artistId <= 0) {
+                            continue;
+                        }
+
+                        // Insert the link
+                        QSqlQuery linkQuery(db);
+                        linkQuery.prepare("INSERT INTO album_album_artists (album_id, album_artist_id, position) "
+                                         "VALUES (:album_id, :artist_id, :position)");
+                        linkQuery.bindValue(":album_id", albumId);
+                        linkQuery.bindValue(":artist_id", artistId);
+                        linkQuery.bindValue(":position", position);
+
+                        if (!linkQuery.exec()) {
+                            qWarning() << "[insertBatchTracksInThread] Failed to insert album artist link:"
+                                      << linkQuery.lastError().text();
+                        }
+                        linkQuery.finish();
+                        position++;
+                    }
+                }
+                checkQuery.finish();
+            }
         }
     }
     

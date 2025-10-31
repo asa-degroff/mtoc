@@ -60,6 +60,9 @@ QStringList MetadataExtractor::parseAlbumArtists(const TagLib::StringList& tagLi
     bool multiArtistEnabled = settings->showCollabAlbumsUnderAllArtists();
     QStringList delimiters = settings->albumArtistDelimiters();
 
+    qDebug() << "[MetadataExtractor] parseAlbumArtists called - multiArtistEnabled:" << multiArtistEnabled
+             << "delimiters:" << delimiters << "tagLibList.size():" << tagLibList.size();
+
     if (!multiArtistEnabled || tagLibList.isEmpty()) {
         // Feature disabled or no data - return first item only
         if (!tagLibList.isEmpty()) {
@@ -76,15 +79,21 @@ QStringList MetadataExtractor::parseAlbumArtists(const TagLib::StringList& tagLi
     if (tagLibList.size() > 1) {
         // Multiple lines exist - use them directly
         QStringList artists;
+        qDebug() << "[MetadataExtractor] Multi-line mode: processing" << tagLibList.size() << "lines";
         for (const auto& item : tagLibList) {
             QString artist = QString::fromStdString(item.to8Bit(true)).trimmed();
+            qDebug() << "[MetadataExtractor] Multi-line item:" << artist;
             if (!artist.isEmpty() && !artists.contains(artist, Qt::CaseInsensitive)) {
                 artists.append(artist);
+                qDebug() << "[MetadataExtractor] Added artist, total now:" << artists.size();
+            } else {
+                qDebug() << "[MetadataExtractor] Skipped (empty or duplicate)";
             }
         }
         result = artists;
         // Join with primary delimiter for display
         outOriginalString = artists.join(delimiters.isEmpty() ? "; " : delimiters.first());
+        qDebug() << "[MetadataExtractor] Multi-line result:" << result << "original:" << outOriginalString;
         return result;
     }
 
@@ -115,6 +124,7 @@ QStringList MetadataExtractor::parseAlbumArtists(const TagLib::StringList& tagLi
         result.append(trimmed);
     }
 
+    qDebug() << "[MetadataExtractor] parseAlbumArtists result:" << result << "original:" << outOriginalString;
     return result;
 }
 
@@ -161,6 +171,7 @@ QStringList MetadataExtractor::parseAlbumArtists(const QString& singleValue, QSt
         result.append(trimmed);
     }
 
+    qDebug() << "[MetadataExtractor] parseAlbumArtists result:" << result << "original:" << outOriginalString;
     return result;
 }
 
