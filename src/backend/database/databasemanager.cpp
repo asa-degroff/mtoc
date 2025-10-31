@@ -729,17 +729,22 @@ QVariantList DatabaseManager::getTracksByAlbumAndArtist(const QString& albumTitl
     }
     
     QSqlQuery query(m_db);
+    // Use junction table to support many-to-many album-artist relationships
+    // and also check original_album_artist for backward compatibility
     query.prepare(
-        "SELECT t.*, a.name as artist_name, al.title as album_title, "
-        "aa.name as album_artist_name "
+        "SELECT DISTINCT t.*, a.name as artist_name, al.title as album_title, "
+        "COALESCE(al.original_album_artist, aa_legacy.name) as album_artist_name "
         "FROM tracks t "
         "LEFT JOIN artists a ON t.artist_id = a.id "
         "LEFT JOIN albums al ON t.album_id = al.id "
-        "LEFT JOIN album_artists aa ON al.album_artist_id = aa.id "
-        "WHERE al.title = :album_title AND aa.name = :album_artist "
+        "LEFT JOIN album_artists aa_legacy ON al.album_artist_id = aa_legacy.id "
+        "LEFT JOIN album_artist_mappings aam ON al.id = aam.album_id "
+        "LEFT JOIN album_artists aa_filter ON aam.album_artist_id = aa_filter.id "
+        "WHERE al.title = :album_title AND "
+        "(aa_filter.name = :album_artist OR al.original_album_artist = :album_artist OR aa_legacy.name = :album_artist) "
         "ORDER BY t.disc_number, t.track_number, t.title COLLATE NOCASE"
     );
-    
+
     query.bindValue(":album_title", albumTitle);
     query.bindValue(":album_artist", albumArtistName);
     
