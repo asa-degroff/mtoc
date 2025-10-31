@@ -338,13 +338,29 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 try {
                     TagLib::StringList albumArtistList = properties.value("ALBUMARTIST");
                     if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
-                        meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                        // Join multiple album artist tags with semicolon
+                        QStringList artists;
+                        for (const auto& artist : albumArtistList) {
+                            QString artistStr = QString::fromStdString(artist.to8Bit(true));
+                            if (!artistStr.isEmpty()) {
+                                artists << artistStr;
+                            }
+                        }
+                        meta.albumArtist = artists.join("; ");
                         qDebug() << "MetadataExtractor: Found ALBUMARTIST property:" << meta.albumArtist;
                     } else {
                         // Try alternate spelling
                         albumArtistList = properties.value("ALBUM ARTIST");
                         if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
-                            meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                            // Join multiple album artist tags with semicolon
+                            QStringList artists;
+                            for (const auto& artist : albumArtistList) {
+                                QString artistStr = QString::fromStdString(artist.to8Bit(true));
+                                if (!artistStr.isEmpty()) {
+                                    artists << artistStr;
+                                }
+                            }
+                            meta.albumArtist = artists.join("; ");
                             qDebug() << "MetadataExtractor: Found 'ALBUM ARTIST' property:" << meta.albumArtist;
                         }
                     }
@@ -617,7 +633,15 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 try {
                     TagLib::StringList albumArtistList = properties.value("ALBUMARTIST");
                     if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
-                        meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                        // Join multiple album artist tags with semicolon
+                        QStringList artists;
+                        for (const auto& artist : albumArtistList) {
+                            QString artistStr = QString::fromStdString(artist.to8Bit(true));
+                            if (!artistStr.isEmpty()) {
+                                artists << artistStr;
+                            }
+                        }
+                        meta.albumArtist = artists.join("; ");
                     }
                 } catch (const std::exception& e) {
                     qDebug() << "MetadataExtractor: Exception accessing ALBUMARTIST property:" << e.what();
@@ -837,7 +861,15 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 try {
                     TagLib::StringList albumArtistList = properties.value("ALBUMARTIST");
                     if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
-                        meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                        // Join multiple album artist tags with semicolon
+                        QStringList artists;
+                        for (const auto& artist : albumArtistList) {
+                            QString artistStr = QString::fromStdString(artist.to8Bit(true));
+                            if (!artistStr.isEmpty()) {
+                                artists << artistStr;
+                            }
+                        }
+                        meta.albumArtist = artists.join("; ");
                     }
                 } catch (const std::exception& e) {
                     qDebug() << "MetadataExtractor: Exception accessing ALBUMARTIST property:" << e.what();
@@ -1056,7 +1088,15 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 try {
                     TagLib::StringList albumArtistList = properties.value("ALBUMARTIST");
                     if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
-                        meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                        // Join multiple album artist tags with semicolon
+                        QStringList artists;
+                        for (const auto& artist : albumArtistList) {
+                            QString artistStr = QString::fromStdString(artist.to8Bit(true));
+                            if (!artistStr.isEmpty()) {
+                                artists << artistStr;
+                            }
+                        }
+                        meta.albumArtist = artists.join("; ");
                     }
                 } catch (const std::exception& e) {
                     qDebug() << "MetadataExtractor: Exception accessing ALBUMARTIST property:" << e.what();
