@@ -1681,20 +1681,24 @@ int DatabaseManager::getAlbumIdByArtistAndTitle(const QString& albumArtist, cons
 {
     QMutexLocker locker(&m_databaseMutex);
     if (!m_db.isOpen() || albumArtist.isEmpty() || albumTitle.isEmpty()) return 0;
-    
+
     QSqlQuery query(m_db);
+    // Use junction table to support many-to-many album-artist relationships
     query.prepare(
-        "SELECT al.id FROM albums al "
-        "JOIN album_artists aa ON al.album_artist_id = aa.id "
-        "WHERE aa.name = :artist AND al.title = :title"
+        "SELECT DISTINCT al.id FROM albums al "
+        "LEFT JOIN album_artists aa_legacy ON al.album_artist_id = aa_legacy.id "
+        "LEFT JOIN album_artist_mappings aam ON al.id = aam.album_id "
+        "LEFT JOIN album_artists aa_filter ON aam.album_artist_id = aa_filter.id "
+        "WHERE al.title = :title AND "
+        "(aa_filter.name = :artist OR al.original_album_artist = :artist OR aa_legacy.name = :artist)"
     );
     query.bindValue(":artist", albumArtist);
     query.bindValue(":title", albumTitle);
-    
+
     if (query.exec() && query.next()) {
         return query.value(0).toInt();
     }
-    
+
     return 0;
 }
 
