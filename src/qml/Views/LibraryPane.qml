@@ -5268,12 +5268,12 @@ Item {
 
             // Handle multi-artist names: if the artist name contains a delimiter ("; " or ";"),
             // use the first artist as the primary artist
-            var primaryArtist = artistName
-            if (artistName.indexOf("; ") !== -1) {
-                primaryArtist = artistName.split("; ")[0]
+            var primaryArtist = artistName.trim()
+            if (primaryArtist.indexOf("; ") !== -1) {
+                primaryArtist = primaryArtist.split("; ")[0].trim()
                 console.log("jumpToArtist: Multi-artist detected, using primary artist:", primaryArtist)
-            } else if (artistName.indexOf(";") !== -1) {
-                primaryArtist = artistName.split(";")[0]
+            } else if (primaryArtist.indexOf(";") !== -1) {
+                primaryArtist = primaryArtist.split(";")[0].trim()
                 console.log("jumpToArtist: Multi-artist detected (no space), using primary artist:", primaryArtist)
             }
 
@@ -5296,8 +5296,24 @@ Item {
             // Use O(1) lookup instead of O(n) search
             var artistIndex = artistNameToIndex[primaryArtist]
             console.log("jumpToArtist: Artist index from lookup:", artistIndex, "Total artists:", LibraryManager.artistModel.length)
+
+            // If exact match not found, try case-insensitive search
             if (artistIndex === undefined) {
-                console.log("jumpToArtist: Artist not found in index mapping")
+                console.log("jumpToArtist: Exact match not found, trying case-insensitive search")
+                var lowerArtist = primaryArtist.toLowerCase()
+                for (var key in artistNameToIndex) {
+                    if (key.toLowerCase() === lowerArtist) {
+                        artistIndex = artistNameToIndex[key]
+                        primaryArtist = key  // Use the exact name from the index
+                        highlightedArtist = key
+                        console.log("jumpToArtist: Found case-insensitive match:", key)
+                        break
+                    }
+                }
+            }
+
+            if (artistIndex === undefined) {
+                console.log("jumpToArtist: Artist not found in index mapping (even with case-insensitive search)")
                 isJumping = false
                 return
             }
@@ -5375,10 +5391,20 @@ Item {
     function jumpToAlbum(artistName, albumTitle, skipBrowserJump) {
         try {
             if (!artistName || !albumTitle || typeof artistName !== "string" || typeof albumTitle !== "string") return
-            
+
+            // Handle multi-artist names: use the first artist as the primary artist
+            var primaryArtist = artistName
+            if (artistName.indexOf("; ") !== -1) {
+                primaryArtist = artistName.split("; ")[0].trim()
+                console.log("jumpToAlbum: Multi-artist detected, using primary artist:", primaryArtist)
+            } else if (artistName.indexOf(";") !== -1) {
+                primaryArtist = artistName.split(";")[0].trim()
+                console.log("jumpToAlbum: Multi-artist detected (no space), using primary artist:", primaryArtist)
+            }
+
             // Check if we're already at this artist
-            var alreadyAtArtist = (selectedArtistName === artistName)
-            
+            var alreadyAtArtist = (selectedArtistName === primaryArtist)
+
             // Jump to the artist if needed
             if (!alreadyAtArtist) {
                 // If currently jumping, we need to wait
@@ -5389,24 +5415,24 @@ Item {
                         delayTimer.triggered.disconnect(arguments.callee)
                         // Only retry once - if still jumping, just proceed anyway
                         if (!isJumping) {
-                            jumpToArtist(artistName)
+                            jumpToArtist(primaryArtist)
                         }
                         // Continue with album selection regardless
-                        selectAlbumForArtist(artistName, albumTitle, skipBrowserJump)
+                        selectAlbumForArtist(primaryArtist, albumTitle, skipBrowserJump)
                     })
                     delayTimer.start()
                     return
                 }
-                
-                jumpToArtist(artistName)
+
+                jumpToArtist(primaryArtist)
             }
-            
+
             // Select the album (with a slight delay if we jumped to a new artist)
             if (alreadyAtArtist) {
-                selectAlbumForArtist(artistName, albumTitle, skipBrowserJump)
+                selectAlbumForArtist(primaryArtist, albumTitle, skipBrowserJump)
             } else {
                 Qt.callLater(function() {
-                    selectAlbumForArtist(artistName, albumTitle, skipBrowserJump)
+                    selectAlbumForArtist(primaryArtist, albumTitle, skipBrowserJump)
                 })
             }
         } catch (error) {
