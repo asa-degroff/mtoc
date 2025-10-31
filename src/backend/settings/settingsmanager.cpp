@@ -25,7 +25,7 @@ SettingsManager::SettingsManager(QObject *parent)
     , m_singleClickToPlay(false)  // Default to double-click behavior
     , m_minimizeToTray(false)  // Default to quit on close
     , m_showCollabAlbumsUnderAllArtists(true)  // Default to showing collab albums under all artists
-    , m_albumArtistDelimiters({"; "})  // Default delimiter is semicolon with space
+    , m_albumArtistDelimiters({";", "; "})  // Default delimiters: semicolon with and without space
 {
     loadSettings();
     setupSystemThemeDetection();
@@ -407,7 +407,7 @@ void SettingsManager::loadSettings()
 
     m_settings.beginGroup("Metadata");
     m_showCollabAlbumsUnderAllArtists = m_settings.value("showCollabAlbumsUnderAllArtists", true).toBool();
-    m_albumArtistDelimiters = m_settings.value("albumArtistDelimiters", QStringList({"; "})).toStringList();
+    m_albumArtistDelimiters = m_settings.value("albumArtistDelimiters", QStringList({";", "; "})).toStringList();
     m_settings.endGroup();
 
     qDebug() << "SettingsManager: Loaded settings - Queue action:" << m_queueActionDefault

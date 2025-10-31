@@ -1213,7 +1213,7 @@ ApplicationWindow {
                         }
 
                         Label {
-                            text: "Default: \"; \" (semicolon with space). Changes trigger an automatic library rescan."
+                            text: "Default: \";\", \"; \" (semicolon with or without space). Changes trigger an automatic library rescan."
                             font.pixelSize: 11
                             font.italic: true
                             color: Theme.tertiaryText
