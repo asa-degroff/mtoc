@@ -328,6 +328,24 @@ void SettingsManager::setLastSeenChangelogVersion(const QString& version)
     }
 }
 
+void SettingsManager::setSplitCollaborativeAlbums(bool split)
+{
+    if (m_splitCollaborativeAlbums != split) {
+        m_splitCollaborativeAlbums = split;
+        emit splitCollaborativeAlbumsChanged(split);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setAlbumArtistDelimiters(const QStringList& delimiters)
+{
+    if (m_albumArtistDelimiters != delimiters) {
+        m_albumArtistDelimiters = delimiters;
+        emit albumArtistDelimitersChanged(delimiters);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -384,7 +402,15 @@ void SettingsManager::loadSettings()
     m_miniPlayerY = m_settings.value("y", -1).toInt();
     m_miniPlayerHidesMainWindow = m_settings.value("hidesMainWindow", true).toBool();
     m_settings.endGroup();
-    
+
+    m_settings.beginGroup("Library");
+    m_splitCollaborativeAlbums = m_settings.value("splitCollaborativeAlbums", true).toBool();
+    // Default delimiters: semicolon, ampersand with spaces, feat., ft.
+    QStringList defaultDelimiters;
+    defaultDelimiters << ";" << " & " << " feat. " << " ft. ";
+    m_albumArtistDelimiters = m_settings.value("albumArtistDelimiters", defaultDelimiters).toStringList();
+    m_settings.endGroup();
+
     qDebug() << "SettingsManager: Loaded settings - Queue action:" << m_queueActionDefault 
              << "Show track info:" << m_showTrackInfoByDefault 
              << "Restore position:" << m_restorePlaybackPosition
@@ -444,7 +470,12 @@ void SettingsManager::saveSettings()
     m_settings.setValue("y", m_miniPlayerY);
     m_settings.setValue("hidesMainWindow", m_miniPlayerHidesMainWindow);
     m_settings.endGroup();
-    
+
+    m_settings.beginGroup("Library");
+    m_settings.setValue("splitCollaborativeAlbums", m_splitCollaborativeAlbums);
+    m_settings.setValue("albumArtistDelimiters", m_albumArtistDelimiters);
+    m_settings.endGroup();
+
     m_settings.sync();
     qDebug() << "SettingsManager: Settings saved";
 }

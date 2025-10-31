@@ -308,7 +308,63 @@ bool DatabaseManager::applyMigrations(int currentVersion)
             return false;
         }
     }
-    
+
+    // Migration 3: Add collaborative album support (many-to-many album-artist relationships)
+    if (currentVersion < 3) {
+        qDebug() << "Applying migration 3: Adding collaborative album support";
+
+        // Create junction table for album-artist mappings
+        if (!query.exec(
+            "CREATE TABLE IF NOT EXISTS album_artist_mappings ("
+            "album_id INTEGER NOT NULL,"
+            "album_artist_id INTEGER NOT NULL,"
+            "PRIMARY KEY (album_id, album_artist_id),"
+            "FOREIGN KEY (album_id) REFERENCES albums(id) ON DELETE CASCADE,"
+            "FOREIGN KEY (album_artist_id) REFERENCES album_artists(id) ON DELETE CASCADE"
+            ")")) {
+            logError("Create album_artist_mappings table", query);
+            return false;
+        }
+
+        // Add original_album_artist column to albums table to preserve display name
+        if (!query.exec("ALTER TABLE albums ADD COLUMN original_album_artist TEXT")) {
+            logError("Add original_album_artist column", query);
+            return false;
+        }
+
+        // Populate junction table from existing albums.album_artist_id relationships
+        // and populate original_album_artist column
+        if (!query.exec(
+            "INSERT INTO album_artist_mappings (album_id, album_artist_id) "
+            "SELECT id, album_artist_id FROM albums WHERE album_artist_id IS NOT NULL")) {
+            logError("Populate album_artist_mappings from existing data", query);
+            return false;
+        }
+
+        // Copy album artist names to original_album_artist column
+        if (!query.exec(
+            "UPDATE albums SET original_album_artist = ("
+            "SELECT aa.name FROM album_artists aa WHERE aa.id = albums.album_artist_id"
+            ") WHERE album_artist_id IS NOT NULL")) {
+            logError("Populate original_album_artist column", query);
+            return false;
+        }
+
+        // Create indexes for performance
+        query.exec("CREATE INDEX IF NOT EXISTS idx_album_artist_mappings_album ON album_artist_mappings(album_id)");
+        query.exec("CREATE INDEX IF NOT EXISTS idx_album_artist_mappings_artist ON album_artist_mappings(album_artist_id)");
+
+        // Record migration
+        query.prepare("INSERT INTO schema_version (version) VALUES (:version)");
+        query.bindValue(":version", 3);
+        if (!query.exec()) {
+            logError("Record migration 3", query);
+            return false;
+        }
+
+        qDebug() << "Migration 3 completed: Collaborative album support added";
+    }
+
     return true;
 }
 
@@ -921,6 +977,40 @@ int DatabaseManager::insertOrGetAlbum(const QString& albumName, int albumArtistI
     
     logError("Insert or get album", query);
     return 0;
+}
+
+bool DatabaseManager::insertAlbumArtistMapping(int albumId, int albumArtistId)
+{
+    if (!m_db.isOpen() || albumId <= 0 || albumArtistId <= 0) return false;
+
+    QSqlQuery query(m_db);
+    query.prepare("INSERT OR IGNORE INTO album_artist_mappings (album_id, album_artist_id) VALUES (:album_id, :artist_id)");
+    query.bindValue(":album_id", albumId);
+    query.bindValue(":artist_id", albumArtistId);
+
+    if (query.exec()) {
+        return true;
+    }
+
+    logError("Insert album artist mapping", query);
+    return false;
+}
+
+bool DatabaseManager::updateAlbumOriginalArtist(int albumId, const QString& originalArtist)
+{
+    if (!m_db.isOpen() || albumId <= 0) return false;
+
+    QSqlQuery query(m_db);
+    query.prepare("UPDATE albums SET original_album_artist = :original WHERE id = :id");
+    query.bindValue(":original", originalArtist);
+    query.bindValue(":id", albumId);
+
+    if (query.exec()) {
+        return true;
+    }
+
+    logError("Update album original artist", query);
+    return false;
 }
 
 bool DatabaseManager::trackExists(const QString& filePath)
@@ -1542,17 +1632,20 @@ QVariantList DatabaseManager::getAlbumsByAlbumArtistName(const QString& albumArt
     if (!m_db.isOpen() || albumArtistName.isEmpty()) return albums;
 
     QSqlQuery query(m_db);
-    // Fetch albums from ALL album_artist entries matching the name case-insensitively
-    // This handles legacy duplicate artist entries with different capitalizations
+    // Fetch albums using the junction table for many-to-many relationships
+    // This allows collaborative albums to appear under each individual artist
     query.prepare(
-        "SELECT DISTINCT al.*, aa.name as album_artist_name, "
+        "SELECT DISTINCT al.*, "
+        "COALESCE(al.original_album_artist, aa_legacy.name) as album_artist_name, "
         "COUNT(t.id) as track_count, SUM(t.duration) as total_duration, "
         "art.thumbnail as art_thumbnail, art.full_path as art_path "
         "FROM albums al "
-        "LEFT JOIN album_artists aa ON al.album_artist_id = aa.id "
+        "INNER JOIN album_artist_mappings aam ON al.id = aam.album_id "
+        "INNER JOIN album_artists aa_filter ON aam.album_artist_id = aa_filter.id "
+        "LEFT JOIN album_artists aa_legacy ON al.album_artist_id = aa_legacy.id "
         "LEFT JOIN tracks t ON al.id = t.album_id "
         "LEFT JOIN album_art art ON al.id = art.album_id "
-        "WHERE LOWER(aa.name) = LOWER(:artist_name) "
+        "WHERE LOWER(aa_filter.name) = LOWER(:artist_name) "
         "GROUP BY al.id "
         "ORDER BY al.year DESC, al.title COLLATE NOCASE"
     );
@@ -1720,6 +1813,44 @@ QString DatabaseManager::normalizeForSearch(const QString& text)
     }
     
     return normalized;
+}
+
+QStringList DatabaseManager::splitAlbumArtistString(const QString& albumArtist, const QStringList& delimiters)
+{
+    QStringList result;
+
+    if (albumArtist.isEmpty() || delimiters.isEmpty()) {
+        if (!albumArtist.isEmpty()) {
+            result << albumArtist.trimmed();
+        }
+        return result;
+    }
+
+    // Start with the original string
+    QStringList parts;
+    parts << albumArtist;
+
+    // Split by each delimiter
+    for (const QString& delimiter : delimiters) {
+        if (delimiter.isEmpty()) continue;
+
+        QStringList newParts;
+        for (const QString& part : parts) {
+            QStringList splitParts = part.split(delimiter, Qt::SkipEmptyParts);
+            newParts.append(splitParts);
+        }
+        parts = newParts;
+    }
+
+    // Trim whitespace from each part and remove empty strings
+    for (const QString& part : parts) {
+        QString trimmed = part.trimmed();
+        if (!trimmed.isEmpty() && !result.contains(trimmed)) {
+            result << trimmed;
+        }
+    }
+
+    return result;
 }
 
 bool DatabaseManager::insertAlbumArt(int albumId, const QString& fullPath, const QString& hash, 

@@ -1,4 +1,5 @@
 #include "librarymanager.h"
+#include "../settings/settingsmanager.h"
 #include <QDebug>
 #include <QDirIterator>
 #include <QStandardPaths>
@@ -1807,21 +1808,60 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
     if (!artist.isEmpty()) {
         artistId = insertOrGetArtist(artist);
     }
-    
-    // Get or create album artist
-    int albumArtistId = 0;
-    if (!albumArtist.isEmpty()) {
-        albumArtistId = insertOrGetAlbumArtist(albumArtist);
-    } else if (!artist.isEmpty()) {
+
+    // Handle album artist - split if collaborative albums feature is enabled
+    QString finalAlbumArtist = albumArtist;
+    if (finalAlbumArtist.isEmpty() && !artist.isEmpty()) {
         // Fallback to artist if no album artist specified
-        albumArtistId = insertOrGetAlbumArtist(artist);
+        finalAlbumArtist = artist;
     }
-    
-    // Get or create album
+
+    QStringList albumArtistList;
+    bool splitAlbums = SettingsManager::instance()->splitCollaborativeAlbums();
+
+    if (splitAlbums && !finalAlbumArtist.isEmpty()) {
+        QStringList delimiters = SettingsManager::instance()->albumArtistDelimiters();
+        albumArtistList = DatabaseManager::splitAlbumArtistString(finalAlbumArtist, delimiters);
+    } else if (!finalAlbumArtist.isEmpty()) {
+        albumArtistList << finalAlbumArtist;
+    }
+
+    // Get or create each album artist
+    QList<int> albumArtistIds;
+    for (const QString& artistName : albumArtistList) {
+        int id = insertOrGetAlbumArtist(artistName);
+        if (id > 0) {
+            albumArtistIds << id;
+        }
+    }
+
+    // Get or create album (use first artist ID for the album_artist_id column)
     int albumId = 0;
-    if (!album.isEmpty()) {
-        albumId = insertOrGetAlbum(album, albumArtistId, year);
-        
+    if (!album.isEmpty() && !albumArtistIds.isEmpty()) {
+        albumId = insertOrGetAlbum(album, albumArtistIds.first(), year);
+
+        if (albumId > 0) {
+            // Store original album artist string if collaborative
+            if (albumArtistList.size() > 1) {
+                QSqlQuery updateQuery(db);
+                updateQuery.prepare("UPDATE albums SET original_album_artist = :original WHERE id = :id");
+                updateQuery.bindValue(":original", finalAlbumArtist);
+                updateQuery.bindValue(":id", albumId);
+                updateQuery.exec();
+                updateQuery.finish();
+            }
+
+            // Add mappings for all artists
+            for (int artistId : albumArtistIds) {
+                QSqlQuery mappingQuery(db);
+                mappingQuery.prepare("INSERT OR IGNORE INTO album_artist_mappings (album_id, album_artist_id) VALUES (:album_id, :artist_id)");
+                mappingQuery.bindValue(":album_id", albumId);
+                mappingQuery.bindValue(":artist_id", artistId);
+                mappingQuery.exec();
+                mappingQuery.finish();
+            }
+        }
+
         // Album art processing removed from bulk scanning to save memory
         // Album art will be processed in a separate pass after initial scan
     }
@@ -1995,6 +2035,14 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         return 0;
     };
     
+    // Get settings for collaborative album splitting
+    bool splitAlbums = SettingsManager::instance()->splitCollaborativeAlbums();
+    QStringList delimiters = SettingsManager::instance()->albumArtistDelimiters();
+
+    // Track which albums need multi-artist mappings
+    QHash<int, QList<int>> albumArtistMappings; // album_id -> list of artist IDs
+    QHash<int, QString> albumOriginalArtists; // album_id -> original artist string
+
     // Prepare track insert statement once
     QSqlQuery trackInsert(db);
     trackInsert.prepare(
@@ -2003,13 +2051,13 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         "VALUES (:file_path, :title, :artist_id, :album_id, :genre, :year, "
         ":track_number, :disc_number, :duration, :file_size, :file_modified, :lyrics)"
     );
-    
+
     // Process each track in the batch
     for (const QVariantMap &metadata : batchMetadata) {
         if (m_cancelRequested) {
             break;
         }
-        
+
         // Extract data
         QString filePath = metadata.value("filePath").toString();
         QString title = metadata.value("title").toString();
@@ -2024,21 +2072,48 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         qint64 fileSize = metadata.value("fileSize", 0).toLongLong();
         QDateTime fileModified = metadata.value("fileModified").toDateTime();
         QString lyrics = metadata.value("lyrics").toString();
-        
+
         // Get or create artist (using cache)
         int artistId = getCachedArtist(artist);
-        
-        // Get or create album artist (using cache)
-        int albumArtistId = 0;
-        if (!albumArtist.isEmpty()) {
-            albumArtistId = getCachedAlbumArtist(albumArtist);
-        } else if (!artist.isEmpty()) {
-            albumArtistId = getCachedAlbumArtist(artist);
+
+        // Handle album artist - split if collaborative albums feature is enabled
+        QString finalAlbumArtist = albumArtist;
+        if (finalAlbumArtist.isEmpty() && !artist.isEmpty()) {
+            finalAlbumArtist = artist;
         }
-        
-        // Get or create album (using cache)
-        int albumId = getCachedAlbum(album, albumArtistId, year);
-        
+
+        QStringList albumArtistList;
+        if (splitAlbums && !finalAlbumArtist.isEmpty()) {
+            albumArtistList = DatabaseManager::splitAlbumArtistString(finalAlbumArtist, delimiters);
+        } else if (!finalAlbumArtist.isEmpty()) {
+            albumArtistList << finalAlbumArtist;
+        }
+
+        // Get or create each album artist (using cache)
+        QList<int> albumArtistIds;
+        for (const QString& artistName : albumArtistList) {
+            int id = getCachedAlbumArtist(artistName);
+            if (id > 0) {
+                albumArtistIds << id;
+            }
+        }
+
+        // Get or create album (using first artist ID, with cache)
+        int albumId = 0;
+        if (!album.isEmpty() && !albumArtistIds.isEmpty()) {
+            albumId = getCachedAlbum(album, albumArtistIds.first(), year);
+
+            if (albumId > 0) {
+                // Store mapping info for later batch processing
+                if (!albumArtistMappings.contains(albumId)) {
+                    albumArtistMappings[albumId] = albumArtistIds;
+                    if (albumArtistList.size() > 1) {
+                        albumOriginalArtists[albumId] = finalAlbumArtist;
+                    }
+                }
+            }
+        }
+
         // Album art processing removed from bulk scanning to save memory
         // Album art will be processed in a separate pass after initial scan
         
@@ -2066,8 +2141,37 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
     
     // Finish the prepared query to release resources
     trackInsert.finish();
-    
-    qDebug() << "[insertBatchTracksInThread] Batch complete - Successfully inserted" << successCount 
+
+    // Batch process album-artist mappings and original artist strings
+    if (!albumArtistMappings.isEmpty()) {
+        QSqlQuery mappingQuery(db);
+        QSqlQuery updateQuery(db);
+
+        for (auto it = albumArtistMappings.constBegin(); it != albumArtistMappings.constEnd(); ++it) {
+            int albumId = it.key();
+            const QList<int>& artistIds = it.value();
+
+            // Update original album artist if collaborative
+            if (albumOriginalArtists.contains(albumId)) {
+                updateQuery.prepare("UPDATE albums SET original_album_artist = :original WHERE id = :id");
+                updateQuery.bindValue(":original", albumOriginalArtists[albumId]);
+                updateQuery.bindValue(":id", albumId);
+                updateQuery.exec();
+                updateQuery.finish();
+            }
+
+            // Insert all artist mappings
+            for (int artistId : artistIds) {
+                mappingQuery.prepare("INSERT OR IGNORE INTO album_artist_mappings (album_id, album_artist_id) VALUES (:album_id, :artist_id)");
+                mappingQuery.bindValue(":album_id", albumId);
+                mappingQuery.bindValue(":artist_id", artistId);
+                mappingQuery.exec();
+                mappingQuery.finish();
+            }
+        }
+    }
+
+    qDebug() << "[insertBatchTracksInThread] Batch complete - Successfully inserted" << successCount
              << "tracks, failed" << failCount << "tracks";
 }
 

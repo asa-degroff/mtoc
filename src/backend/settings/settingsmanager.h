@@ -42,6 +42,8 @@ class SettingsManager : public QObject
     Q_PROPERTY(bool singleClickToPlay READ singleClickToPlay WRITE setSingleClickToPlay NOTIFY singleClickToPlayChanged)
     Q_PROPERTY(bool minimizeToTray READ minimizeToTray WRITE setMinimizeToTray NOTIFY minimizeToTrayChanged)
     Q_PROPERTY(QString lastSeenChangelogVersion READ lastSeenChangelogVersion WRITE setLastSeenChangelogVersion NOTIFY lastSeenChangelogVersionChanged)
+    Q_PROPERTY(bool splitCollaborativeAlbums READ splitCollaborativeAlbums WRITE setSplitCollaborativeAlbums NOTIFY splitCollaborativeAlbumsChanged)
+    Q_PROPERTY(QStringList albumArtistDelimiters READ albumArtistDelimiters WRITE setAlbumArtistDelimiters NOTIFY albumArtistDelimitersChanged)
 
 public:
     enum QueueAction {
@@ -116,6 +118,8 @@ public:
     bool singleClickToPlay() const { return m_singleClickToPlay; }
     bool minimizeToTray() const { return m_minimizeToTray; }
     QString lastSeenChangelogVersion() const { return m_lastSeenChangelogVersion; }
+    bool splitCollaborativeAlbums() const { return m_splitCollaborativeAlbums; }
+    QStringList albumArtistDelimiters() const { return m_albumArtistDelimiters; }
 
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -148,6 +152,8 @@ public:
     void setSingleClickToPlay(bool enabled);
     void setMinimizeToTray(bool enabled);
     void setLastSeenChangelogVersion(const QString& version);
+    void setSplitCollaborativeAlbums(bool split);
+    void setAlbumArtistDelimiters(const QStringList& delimiters);
 
 protected:
     bool event(QEvent *event) override;
@@ -185,6 +191,8 @@ signals:
     void singleClickToPlayChanged(bool enabled);
     void minimizeToTrayChanged(bool enabled);
     void lastSeenChangelogVersionChanged(const QString& version);
+    void splitCollaborativeAlbumsChanged(bool split);
+    void albumArtistDelimitersChanged(const QStringList& delimiters);
 
 private slots:
     void onColorSchemeChanged(Qt::ColorScheme scheme);
@@ -230,6 +238,8 @@ private:
     bool m_singleClickToPlay;
     bool m_minimizeToTray;
     QString m_lastSeenChangelogVersion;
+    bool m_splitCollaborativeAlbums;
+    QStringList m_albumArtistDelimiters;
 };
 
 #endif // SETTINGSMANAGER_H

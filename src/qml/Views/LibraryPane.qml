@@ -43,7 +43,34 @@ Item {
         }
     }
     property string highlightedArtist: ""  // Track which artist to highlight
-    
+
+    // Helper function to split album artist strings
+    function splitAlbumArtistString(albumArtist) {
+        if (!albumArtist || !SettingsManager.splitCollaborativeAlbums) {
+            return [albumArtist]
+        }
+
+        var delimiters = SettingsManager.albumArtistDelimiters
+        var parts = [albumArtist]
+
+        for (var i = 0; i < delimiters.length; i++) {
+            var delimiter = delimiters[i]
+            var newParts = []
+            for (var j = 0; j < parts.length; j++) {
+                var splitParts = parts[j].split(delimiter)
+                for (var k = 0; k < splitParts.length; k++) {
+                    var trimmed = splitParts[k].trim()
+                    if (trimmed.length > 0) {
+                        newParts.push(trimmed)
+                    }
+                }
+            }
+            parts = newParts
+        }
+
+        return parts.length > 0 ? parts : [albumArtist]
+    }
+
     // Properties for split ratio management
     property real storedSplitRatio: SettingsManager.librarySplitRatio
     property bool isDragging: false
@@ -1159,39 +1186,68 @@ Item {
                 height: 50
                 z: 20  // Higher z-order than gradient overlay
                 
-                Label {
-                    id: albumTitleLabel
+                // Album title with clickable individual artists
+                Row {
+                    id: albumTitleRow
                     anchors.centerIn: parent
                     anchors.bottomMargin: 12
-                    text: albumBrowser.selectedAlbum && albumBrowser.selectedAlbum.albumArtist && albumBrowser.selectedAlbum.title ? 
-                          albumBrowser.selectedAlbum.albumArtist + " - " + albumBrowser.selectedAlbum.title : ""
-                    color: "white"  // Always white due to dark gradient overlay
-                    font.pixelSize: 16
-                    font.bold: true
-                    elide: Text.ElideRight
-                    horizontalAlignment: Text.AlignHCenter
-                    
-                    // Simple text shadow using duplicate text instead of DropShadow
-                    Text {
-                        anchors.centerIn: parent
-                        anchors.horizontalCenterOffset: 1
-                        anchors.verticalCenterOffset: 1
-                        text: parent.text
-                        color: Theme.isDark ? "#80000000" : "#40000000"
-                        font: parent.font
-                        elide: parent.elide
-                        horizontalAlignment: parent.horizontalAlignment
-                        z: -1
-                    }
-                    
-                    // Make the label clickable
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (albumBrowser.selectedAlbum && albumBrowser.selectedAlbum.albumArtist && albumBrowser.selectedAlbum.title) {
-                                // Emit signal to jump to artist
-                                albumBrowser.albumTitleClicked(albumBrowser.selectedAlbum.albumArtist, albumBrowser.selectedAlbum.title)
+                    spacing: 4
+
+                    Repeater {
+                        model: {
+                            if (!albumBrowser.selectedAlbum || !albumBrowser.selectedAlbum.albumArtist || !albumBrowser.selectedAlbum.title) {
+                                return []
+                            }
+
+                            var artists = root.splitAlbumArtistString(albumBrowser.selectedAlbum.albumArtist)
+                            var items = []
+                            for (var i = 0; i < artists.length; i++) {
+                                items.push({ type: "artist", text: artists[i] })
+                                if (i < artists.length - 1) {
+                                    items.push({ type: "separator", text: ", " })
+                                }
+                            }
+                            items.push({ type: "separator", text: " - " })
+                            items.push({ type: "album", text: albumBrowser.selectedAlbum.title })
+                            return items
+                        }
+
+                        delegate: Item {
+                            width: textContent.width
+                            height: textContent.height
+
+                            // Simple text shadow using duplicate text
+                            Text {
+                                anchors.centerIn: parent
+                                anchors.horizontalCenterOffset: 1
+                                anchors.verticalCenterOffset: 1
+                                text: textContent.text
+                                color: Theme.isDark ? "#80000000" : "#40000000"
+                                font: textContent.font
+                                z: -1
+                            }
+
+                            Text {
+                                id: textContent
+                                text: modelData.text
+                                color: "white"
+                                font.pixelSize: 16
+                                font.bold: true
+                                font.underline: modelData.type === "artist" && artistMouseArea.containsMouse
+                            }
+
+                            MouseArea {
+                                id: artistMouseArea
+                                anchors.fill: parent
+                                cursorShape: modelData.type === "artist" ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                hoverEnabled: modelData.type === "artist"
+                                enabled: modelData.type === "artist"
+                                onClicked: {
+                                    if (modelData.type === "artist") {
+                                        // Navigate to this specific artist
+                                        albumBrowser.albumTitleClicked(modelData.text, albumBrowser.selectedAlbum.title)
+                                    }
+                                }
                             }
                         }
                     }

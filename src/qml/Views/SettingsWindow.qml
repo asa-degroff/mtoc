@@ -1083,7 +1083,172 @@ ApplicationWindow {
                     }
                 }
             }
-            
+
+            // Library Section
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: libraryLayout.implicitHeight + 24
+                color: Theme.panelBackground
+                radius: 4
+
+                ColumnLayout {
+                    id: libraryLayout
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 12
+
+                    Label {
+                        text: "Library"
+                        font.pixelSize: 16
+                        font.bold: true
+                        color: Theme.primaryText
+                    }
+
+                    CheckBox {
+                        id: splitCollabAlbumsCheck
+                        text: "Split collaborative albums by artist"
+                        checked: SettingsManager.splitCollaborativeAlbums
+
+                        onToggled: {
+                            SettingsManager.splitCollaborativeAlbums = checked
+                        }
+
+                        contentItem: Text {
+                            text: parent.text
+                            font.pixelSize: 14
+                            color: Theme.secondaryText
+                            verticalAlignment: Text.AlignVCenter
+                            leftPadding: parent.indicator.width + parent.spacing
+                        }
+
+                        indicator: Rectangle {
+                            implicitWidth: 20
+                            implicitHeight: 20
+                            x: parent.leftPadding
+                            y: parent.height / 2 - height / 2
+                            radius: 3
+                            color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                            border.color: parent.checked ? Theme.linkColor : Theme.borderColor
+
+                            Canvas {
+                                anchors.fill: parent
+                                anchors.margins: 4
+                                visible: parent.parent.checked
+
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.reset()
+                                    ctx.strokeStyle = "white"
+                                    ctx.lineWidth = 2
+                                    ctx.lineCap = "round"
+                                    ctx.lineJoin = "round"
+                                    ctx.beginPath()
+                                    ctx.moveTo(width * 0.2, height * 0.5)
+                                    ctx.lineTo(width * 0.45, height * 0.75)
+                                    ctx.lineTo(width * 0.8, height * 0.25)
+                                    ctx.stroke()
+                                }
+                            }
+                        }
+                    }
+
+                    Label {
+                        text: "Show albums with multiple artists (e.g., \"Artist A; Artist B\") under each individual artist's discography."
+                        font.pixelSize: 12
+                        color: Theme.secondaryText
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 28
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Label {
+                        text: "Album artist delimiters (one per line):"
+                        font.pixelSize: 14
+                        color: Theme.secondaryText
+                        Layout.fillWidth: true
+                        Layout.topMargin: 8
+                        enabled: splitCollabAlbumsCheck.checked
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 120
+                        color: Theme.inputBackground
+                        border.width: 1
+                        border.color: Theme.borderColor
+                        radius: 4
+                        enabled: splitCollabAlbumsCheck.checked
+                        opacity: enabled ? 1.0 : 0.5
+
+                        ScrollView {
+                            anchors.fill: parent
+                            anchors.margins: 2
+                            clip: true
+
+                            TextArea {
+                                id: delimitersTextArea
+                                text: SettingsManager.albumArtistDelimiters.join("\n")
+                                font.pixelSize: 12
+                                font.family: "monospace"
+                                color: Theme.primaryText
+                                wrapMode: TextEdit.NoWrap
+                                selectByMouse: true
+                                enabled: splitCollabAlbumsCheck.checked
+
+                                background: Rectangle {
+                                    color: "transparent"
+                                }
+
+                                onEditingFinished: {
+                                    var lines = text.split("\n")
+                                    var delimiters = []
+                                    for (var i = 0; i < lines.length; i++) {
+                                        var line = lines[i].trim()
+                                        if (line.length > 0) {
+                                            delimiters.push(line)
+                                        }
+                                    }
+                                    SettingsManager.albumArtistDelimiters = delimiters
+                                }
+                            }
+                        }
+                    }
+
+                    Label {
+                        text: "Default delimiters: ; (semicolon), & (ampersand), feat., ft."
+                        font.pixelSize: 11
+                        color: Theme.tertiaryText
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        enabled: splitCollabAlbumsCheck.checked
+                    }
+
+                    Button {
+                        text: "Rescan Library Now"
+                        Layout.preferredWidth: 200
+                        Layout.topMargin: 8
+
+                        onClicked: {
+                            LibraryManager.refreshLibrary()
+                            settingsWindow.close()
+                        }
+
+                        background: Rectangle {
+                            color: parent.down ? Theme.pressedBackground : (parent.hovered ? Theme.hoverBackground : Theme.selectedBackground)
+                            radius: 4
+                        }
+
+                        contentItem: Text {
+                            text: parent.text
+                            font.pixelSize: 14
+                            color: "white"
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
+                }
+            }
+
             // Playback Section
             Rectangle {
                 Layout.fillWidth: true

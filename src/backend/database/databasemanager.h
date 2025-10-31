@@ -37,6 +37,8 @@ public:
     
     // Album operations
     int insertOrGetAlbum(const QString& albumName, int albumArtistId, int albumYear = 0);
+    bool insertAlbumArtistMapping(int albumId, int albumArtistId);
+    bool updateAlbumOriginalArtist(int albumId, const QString& originalArtist);
     QVariantMap getAlbum(int albumId);
     QVariantList getAllAlbums();
     QVariantList getAlbumsByAlbumArtist(int albumArtistId);
@@ -82,7 +84,10 @@ public:
     
     // Helper for accent-insensitive search
     static QString normalizeForSearch(const QString& text);
-    
+
+    // Helper for splitting album artists by multiple delimiters
+    static QStringList splitAlbumArtistString(const QString& albumArtist, const QStringList& delimiters);
+
     // Album art operations
     bool insertAlbumArt(int albumId, const QString& fullPath, const QString& hash, 
                        const QByteArray& thumbnail, int width, int height, 
