@@ -1083,7 +1083,147 @@ ApplicationWindow {
                     }
                 }
             }
-            
+
+            // Library & Metadata Section
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: libraryMetadataLayout.implicitHeight + 24
+                color: Theme.panelBackground
+                radius: 4
+
+                ColumnLayout {
+                    id: libraryMetadataLayout
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 12
+
+                    Label {
+                        text: "Library & Metadata"
+                        font.pixelSize: 16
+                        font.bold: true
+                        color: Theme.primaryText
+                    }
+
+                    // Multi-artist album toggle
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 12
+
+                        CheckBox {
+                            id: multiArtistToggle
+                            checked: SettingsManager.showCollabAlbumsUnderAllArtists
+
+                            onToggled: {
+                                SettingsManager.showCollabAlbumsUnderAllArtists = checked
+                            }
+
+                            indicator: Rectangle {
+                                implicitWidth: 20
+                                implicitHeight: 20
+                                x: parent.leftPadding
+                                y: parent.height / 2 - height / 2
+                                radius: 3
+                                color: parent.checked ? Theme.accentColor : Theme.inputBackground
+                                border.color: parent.checked ? Theme.accentColor : Theme.borderColor
+                                border.width: 2
+
+                                Rectangle {
+                                    width: 8
+                                    height: 8
+                                    x: (parent.width - width) / 2
+                                    y: (parent.height - height) / 2
+                                    radius: 2
+                                    color: Theme.backgroundColor
+                                    visible: parent.parent.checked
+                                }
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+
+                            Label {
+                                text: "Show collaboration albums under all artists"
+                                font.pixelSize: 14
+                                color: Theme.primaryText
+                                Layout.fillWidth: true
+                            }
+
+                            Label {
+                                text: "When enabled, albums with multiple artists (e.g., \"Artist A; Artist B\") will appear in each artist's discography. A library rescan is triggered when this setting changes."
+                                font.pixelSize: 12
+                                color: Theme.secondaryText
+                                Layout.fillWidth: true
+                                wrapMode: Text.WordWrap
+                            }
+                        }
+                    }
+
+                    // Delimiter configuration
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Label {
+                            text: "Album artist delimiters"
+                            font.pixelSize: 14
+                            color: Theme.primaryText
+                        }
+
+                        Label {
+                            text: "Characters used to separate multiple artists in a single tag (e.g., \"Artist A; Artist B\"). Multiple delimiters can be specified, separated by commas."
+                            font.pixelSize: 12
+                            color: Theme.secondaryText
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                        }
+
+                        TextField {
+                            id: delimitersField
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 36
+                            text: SettingsManager.albumArtistDelimiters.join(", ")
+                            placeholderText: "; "
+
+                            color: Theme.primaryText
+                            font.pixelSize: 14
+
+                            background: Rectangle {
+                                color: parent.activeFocus ? Theme.inputBackgroundHover : Theme.inputBackground
+                                radius: 4
+                                border.width: 1
+                                border.color: parent.activeFocus ? Theme.accentColor : Theme.borderColor
+                            }
+
+                            onEditingFinished: {
+                                // Parse comma-separated delimiters
+                                var delims = text.split(",").map(function(d) {
+                                    return d.trim();
+                                }).filter(function(d) {
+                                    return d.length > 0;
+                                });
+
+                                if (delims.length === 0) {
+                                    delims = ["; "];  // Default fallback
+                                }
+
+                                SettingsManager.albumArtistDelimiters = delims;
+                            }
+                        }
+
+                        Label {
+                            text: "Default: \"; \" (semicolon with space). Changes trigger an automatic library rescan."
+                            font.pixelSize: 11
+                            font.italic: true
+                            color: Theme.tertiaryText
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+                }
+            }
+
             // Playback Section
             Rectangle {
                 Layout.fillWidth: true
