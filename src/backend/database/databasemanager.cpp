@@ -1876,7 +1876,7 @@ int DatabaseManager::getAlbumIdByArtistAndTitle(const QString& albumArtist, cons
             }
         }
 
-        // Fallback: Try finding by any single artist name in the concatenated string
+        // Fallback 1: Try finding by any single artist name in the concatenated string
         QStringList artistNames = albumArtist.split(QRegularExpression("[;,]\\s*"), Qt::SkipEmptyParts);
         for (const QString& artistName : artistNames) {
             QString trimmedArtist = artistName.trimmed();
@@ -1896,6 +1896,23 @@ int DatabaseManager::getAlbumIdByArtistAndTitle(const QString& albumArtist, cons
             if (fallbackQuery.exec() && fallbackQuery.next()) {
                 return fallbackQuery.value(0).toInt();
             }
+        }
+
+        // Fallback 2: Try original unsplit artist name
+        // This handles artists with delimiters in their name like "Invent, Animate"
+        QSqlQuery unsplitQuery(m_db);
+        unsplitQuery.prepare(
+            "SELECT DISTINCT al.id FROM albums al "
+            "JOIN album_album_artists aaa ON al.id = aaa.album_id "
+            "JOIN album_artists aa ON aaa.album_artist_id = aa.id "
+            "WHERE LOWER(aa.name) = LOWER(:artist) AND al.title = :title "
+            "LIMIT 1"
+        );
+        unsplitQuery.bindValue(":artist", albumArtist.trimmed());
+        unsplitQuery.bindValue(":title", albumTitle);
+
+        if (unsplitQuery.exec() && unsplitQuery.next()) {
+            return unsplitQuery.value(0).toInt();
         }
     } else {
         // Fallback to old query without junction table

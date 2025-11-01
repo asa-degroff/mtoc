@@ -5266,15 +5266,50 @@ Item {
             console.log("jumpToArtist called with:", artistName)
             if (!artistName || typeof artistName !== "string") return
 
-            // Handle multi-artist names: if the artist name contains a delimiter ("; " or ";"),
-            // use the first artist as the primary artist
             var primaryArtist = artistName.trim()
-            if (primaryArtist.indexOf("; ") !== -1) {
-                primaryArtist = primaryArtist.split("; ")[0].trim()
-                console.log("jumpToArtist: Multi-artist detected, using primary artist:", primaryArtist)
-            } else if (primaryArtist.indexOf(";") !== -1) {
-                primaryArtist = primaryArtist.split(";")[0].trim()
-                console.log("jumpToArtist: Multi-artist detected (no space), using primary artist:", primaryArtist)
+            var artistIndex = undefined
+
+            // Strategy 1: Try exact match first (handles artists with delimiters in their name like "Invent, Animate")
+            artistIndex = artistNameToIndex[primaryArtist]
+            if (artistIndex !== undefined) {
+                console.log("jumpToArtist: Found exact match:", primaryArtist)
+            } else {
+                console.log("jumpToArtist: No exact match found, trying delimiter splitting")
+
+                // Strategy 2: Try splitting by user-configured delimiters
+                var delimiters = SettingsManager.albumArtistDelimiters
+                for (var i = 0; i < delimiters.length; i++) {
+                    var delimiter = delimiters[i]
+                    if (primaryArtist.indexOf(delimiter) !== -1) {
+                        var splitArtist = primaryArtist.split(delimiter)[0].trim()
+                        console.log("jumpToArtist: Multi-artist detected with delimiter '" + delimiter + "', using primary artist:", splitArtist)
+                        artistIndex = artistNameToIndex[splitArtist]
+                        if (artistIndex !== undefined) {
+                            primaryArtist = splitArtist
+                            console.log("jumpToArtist: Found match after splitting:", primaryArtist)
+                            break
+                        }
+                    }
+                }
+            }
+
+            // Strategy 3: Try case-insensitive search if still not found
+            if (artistIndex === undefined) {
+                console.log("jumpToArtist: Exact match not found, trying case-insensitive search")
+                var lowerArtist = primaryArtist.toLowerCase()
+                for (var key in artistNameToIndex) {
+                    if (key.toLowerCase() === lowerArtist) {
+                        artistIndex = artistNameToIndex[key]
+                        primaryArtist = key  // Use the exact name from the index
+                        console.log("jumpToArtist: Found case-insensitive match:", key)
+                        break
+                    }
+                }
+            }
+
+            if (artistIndex === undefined) {
+                console.log("jumpToArtist: Artist not found in index mapping (even with case-insensitive search)")
+                return
             }
 
             // Switch to Artists tab if currently showing Playlists
@@ -5292,31 +5327,6 @@ Item {
             // Clear search state and highlight the primary artist
             clearSearch()
             highlightedArtist = primaryArtist
-
-            // Use O(1) lookup instead of O(n) search
-            var artistIndex = artistNameToIndex[primaryArtist]
-            console.log("jumpToArtist: Artist index from lookup:", artistIndex, "Total artists:", LibraryManager.artistModel.length)
-
-            // If exact match not found, try case-insensitive search
-            if (artistIndex === undefined) {
-                console.log("jumpToArtist: Exact match not found, trying case-insensitive search")
-                var lowerArtist = primaryArtist.toLowerCase()
-                for (var key in artistNameToIndex) {
-                    if (key.toLowerCase() === lowerArtist) {
-                        artistIndex = artistNameToIndex[key]
-                        primaryArtist = key  // Use the exact name from the index
-                        highlightedArtist = key
-                        console.log("jumpToArtist: Found case-insensitive match:", key)
-                        break
-                    }
-                }
-            }
-
-            if (artistIndex === undefined) {
-                console.log("jumpToArtist: Artist not found in index mapping (even with case-insensitive search)")
-                isJumping = false
-                return
-            }
 
             // Update navigation state to sync with jump
             selectedArtistIndex = artistIndex
@@ -5392,14 +5402,26 @@ Item {
         try {
             if (!artistName || !albumTitle || typeof artistName !== "string" || typeof albumTitle !== "string") return
 
-            // Handle multi-artist names: use the first artist as the primary artist
-            var primaryArtist = artistName
-            if (artistName.indexOf("; ") !== -1) {
-                primaryArtist = artistName.split("; ")[0].trim()
-                console.log("jumpToAlbum: Multi-artist detected, using primary artist:", primaryArtist)
-            } else if (artistName.indexOf(";") !== -1) {
-                primaryArtist = artistName.split(";")[0].trim()
-                console.log("jumpToAlbum: Multi-artist detected (no space), using primary artist:", primaryArtist)
+            var primaryArtist = artistName.trim()
+            var artistIndex = undefined
+
+            // Strategy 1: Try exact match first (handles artists with delimiters in their name like "Invent, Animate")
+            artistIndex = artistNameToIndex[primaryArtist]
+            if (artistIndex === undefined) {
+                // Strategy 2: Try splitting by user-configured delimiters
+                var delimiters = SettingsManager.albumArtistDelimiters
+                for (var i = 0; i < delimiters.length; i++) {
+                    var delimiter = delimiters[i]
+                    if (primaryArtist.indexOf(delimiter) !== -1) {
+                        var splitArtist = primaryArtist.split(delimiter)[0].trim()
+                        console.log("jumpToAlbum: Multi-artist detected with delimiter '" + delimiter + "', using primary artist:", splitArtist)
+                        artistIndex = artistNameToIndex[splitArtist]
+                        if (artistIndex !== undefined) {
+                            primaryArtist = splitArtist
+                            break
+                        }
+                    }
+                }
             }
 
             // Check if we're already at this artist

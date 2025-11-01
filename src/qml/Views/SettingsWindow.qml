@@ -1165,6 +1165,8 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         spacing: 8
 
+                        property var delimiters: SettingsManager.albumArtistDelimiters
+
                         Label {
                             text: "Album artist delimiters"
                             font.pixelSize: 14
@@ -1172,43 +1174,108 @@ ApplicationWindow {
                         }
 
                         Label {
-                            text: "Characters used to separate multiple artists in a single tag (e.g., \"Artist A; Artist B\"). Multiple delimiters can be specified, separated by commas."
+                            text: "Characters used to separate multiple artists in a single tag (e.g., \"Artist A; Artist B\"). Each delimiter can be any character or sequence of characters."
                             font.pixelSize: 12
                             color: Theme.secondaryText
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
                         }
 
-                        TextField {
-                            id: delimitersField
+                        // Delimiter list
+                        ColumnLayout {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 36
-                            text: SettingsManager.albumArtistDelimiters.join(", ")
-                            placeholderText: "; "
+                            spacing: 4
 
-                            color: Theme.primaryText
-                            font.pixelSize: 14
+                            Repeater {
+                                model: parent.parent.delimiters
 
-                            background: Rectangle {
-                                color: parent.activeFocus ? Theme.inputBackgroundHover : Theme.inputBackground
-                                radius: 4
-                                border.width: 1
-                                border.color: parent.activeFocus ? Theme.accentColor : Theme.borderColor
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 8
+
+                                    TextField {
+                                        id: delimiterInput
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 36
+                                        text: modelData
+                                        placeholderText: "Enter delimiter"
+
+                                        color: Theme.primaryText
+                                        font.pixelSize: 14
+
+                                        background: Rectangle {
+                                            color: parent.activeFocus ? Theme.inputBackgroundHover : Theme.inputBackground
+                                            radius: 4
+                                            border.width: 1
+                                            border.color: parent.activeFocus ? Theme.accentColor : Theme.borderColor
+                                        }
+
+                                        onEditingFinished: {
+                                            var newDelims = parent.parent.parent.parent.delimiters.slice()
+                                            newDelims[index] = text
+                                            parent.parent.parent.parent.delimiters = newDelims
+                                            SettingsManager.albumArtistDelimiters = newDelims
+                                        }
+                                    }
+
+                                    Button {
+                                        Layout.preferredWidth: 36
+                                        Layout.preferredHeight: 36
+                                        text: "×"
+                                        enabled: parent.parent.parent.parent.delimiters.length > 1
+
+                                        onClicked: {
+                                            var newDelims = parent.parent.parent.parent.delimiters.slice()
+                                            newDelims.splice(index, 1)
+                                            parent.parent.parent.parent.delimiters = newDelims
+                                            SettingsManager.albumArtistDelimiters = newDelims
+                                        }
+
+                                        background: Rectangle {
+                                            color: parent.enabled ? (parent.hovered ? Theme.selectedBackground : Theme.inputBackground) : Theme.disabledBackground
+                                            radius: 4
+                                            border.width: 1
+                                            border.color: parent.enabled ? Theme.borderColor : Theme.disabledBorderColor
+                                        }
+
+                                        contentItem: Text {
+                                            text: parent.text
+                                            color: parent.enabled ? Theme.primaryText : Theme.disabledText
+                                            font.pixelSize: 18
+                                            font.bold: true
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Add delimiter button
+                        Button {
+                            Layout.preferredWidth: 100
+                            Layout.preferredHeight: 32
+                            text: "+ Add"
+
+                            onClicked: {
+                                var newDelims = parent.delimiters.slice()
+                                newDelims.push("")
+                                parent.delimiters = newDelims
                             }
 
-                            onEditingFinished: {
-                                // Parse comma-separated delimiters
-                                var delims = text.split(",").map(function(d) {
-                                    return d.trim();
-                                }).filter(function(d) {
-                                    return d.length > 0;
-                                });
+                            background: Rectangle {
+                                color: parent.hovered ? Theme.selectedBackground : Theme.inputBackground
+                                radius: 4
+                                border.width: 1
+                                border.color: Theme.borderColor
+                            }
 
-                                if (delims.length === 0) {
-                                    delims = ["; "];  // Default fallback
-                                }
-
-                                SettingsManager.albumArtistDelimiters = delims;
+                            contentItem: Text {
+                                text: parent.text
+                                color: Theme.primaryText
+                                font.pixelSize: 13
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
                             }
                         }
 
