@@ -1162,10 +1162,9 @@ ApplicationWindow {
 
                     // Delimiter configuration
                     ColumnLayout {
+                        id: delimiterConfigLayout
                         Layout.fillWidth: true
                         spacing: 8
-
-                        property var delimiters: SettingsManager.albumArtistDelimiters
 
                         Label {
                             text: "Album artist delimiters"
@@ -1187,7 +1186,8 @@ ApplicationWindow {
                             spacing: 4
 
                             Repeater {
-                                model: parent.parent.delimiters
+                                id: delimiterRepeater
+                                model: SettingsManager.albumArtistDelimiters
 
                                 RowLayout {
                                     Layout.fillWidth: true
@@ -1211,9 +1211,8 @@ ApplicationWindow {
                                         }
 
                                         onEditingFinished: {
-                                            var newDelims = parent.parent.parent.parent.delimiters.slice()
+                                            var newDelims = SettingsManager.albumArtistDelimiters.slice()
                                             newDelims[index] = text
-                                            parent.parent.parent.parent.delimiters = newDelims
                                             SettingsManager.albumArtistDelimiters = newDelims
                                         }
                                     }
@@ -1222,12 +1221,11 @@ ApplicationWindow {
                                         Layout.preferredWidth: 36
                                         Layout.preferredHeight: 36
                                         text: "×"
-                                        enabled: parent.parent.parent.parent.delimiters.length > 1
+                                        enabled: SettingsManager.albumArtistDelimiters.length > 1
 
                                         onClicked: {
-                                            var newDelims = parent.parent.parent.parent.delimiters.slice()
+                                            var newDelims = SettingsManager.albumArtistDelimiters.slice()
                                             newDelims.splice(index, 1)
-                                            parent.parent.parent.parent.delimiters = newDelims
                                             SettingsManager.albumArtistDelimiters = newDelims
                                         }
 
@@ -1258,9 +1256,9 @@ ApplicationWindow {
                             text: "+ Add"
 
                             onClicked: {
-                                var newDelims = parent.delimiters.slice()
+                                var newDelims = SettingsManager.albumArtistDelimiters.slice()
                                 newDelims.push("")
-                                parent.delimiters = newDelims
+                                SettingsManager.albumArtistDelimiters = newDelims
                             }
 
                             background: Rectangle {
