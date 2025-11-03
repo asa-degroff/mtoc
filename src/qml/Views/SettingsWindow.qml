@@ -1105,59 +1105,62 @@ ApplicationWindow {
                     }
 
                     // Multi-artist album toggle
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 12
+                    CheckBox {
+                        id: multiArtistToggle
+                        text: "Show collaboration albums under all artists"
+                        checked: SettingsManager.showCollabAlbumsUnderAllArtists
+                        Layout.topMargin: 10
 
-                        CheckBox {
-                            id: multiArtistToggle
-                            checked: SettingsManager.showCollabAlbumsUnderAllArtists
+                        onToggled: {
+                            SettingsManager.showCollabAlbumsUnderAllArtists = checked
+                        }
 
-                            onToggled: {
-                                SettingsManager.showCollabAlbumsUnderAllArtists = checked
-                            }
+                        contentItem: Text {
+                            text: parent.text
+                            font.pixelSize: 14
+                            color: Theme.secondaryText
+                            verticalAlignment: Text.AlignVCenter
+                            leftPadding: parent.indicator.width + parent.spacing
+                        }
 
-                            indicator: Rectangle {
-                                implicitWidth: 20
-                                implicitHeight: 20
-                                x: parent.leftPadding
-                                y: parent.height / 2 - height / 2
-                                radius: 3
-                                color: parent.checked ? Theme.accentColor : Theme.inputBackground
-                                border.color: parent.checked ? Theme.accentColor : Theme.borderColor
-                                border.width: 2
+                        indicator: Rectangle {
+                            implicitWidth: 20
+                            implicitHeight: 20
+                            x: parent.leftPadding
+                            y: parent.height / 2 - height / 2
+                            radius: 3
+                            color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                            border.color: parent.checked ? Theme.linkColor : Theme.borderColor
 
-                                Rectangle {
-                                    width: 8
-                                    height: 8
-                                    x: (parent.width - width) / 2
-                                    y: (parent.height - height) / 2
-                                    radius: 2
-                                    color: Theme.backgroundColor
-                                    visible: parent.parent.checked
+                            Canvas {
+                                anchors.fill: parent
+                                anchors.margins: 4
+                                visible: parent.parent.checked
+
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.reset()
+                                    ctx.strokeStyle = "white"
+                                    ctx.lineWidth = 2
+                                    ctx.lineCap = "round"
+                                    ctx.lineJoin = "round"
+                                    ctx.beginPath()
+                                    ctx.moveTo(width * 0.2, height * 0.5)
+                                    ctx.lineTo(width * 0.45, height * 0.75)
+                                    ctx.lineTo(width * 0.8, height * 0.25)
+                                    ctx.stroke()
                                 }
                             }
                         }
+                    }
 
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 4
-
-                            Label {
-                                text: "Show collaboration albums under all artists"
-                                font.pixelSize: 14
-                                color: Theme.primaryText
-                                Layout.fillWidth: true
-                            }
-
-                            Label {
-                                text: "When enabled, albums with multiple artists (e.g., \"Artist A; Artist B\") will appear in each artist's discography. A library rescan is triggered when this setting changes."
-                                font.pixelSize: 12
-                                color: Theme.secondaryText
-                                Layout.fillWidth: true
-                                wrapMode: Text.WordWrap
-                            }
-                        }
+                    Label {
+                        text: "When enabled, albums with multiple artists (e.g., \"Artist A; Artist B\") will appear in each artist's discography. A library rescan is triggered when this setting changes."
+                        font.pixelSize: 12
+                        color: Theme.secondaryText
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        Layout.topMargin: -6
                     }
 
                     // Delimiter configuration
@@ -1195,13 +1198,14 @@ ApplicationWindow {
 
                                     TextField {
                                         id: delimiterInput
-                                        Layout.fillWidth: true
+                                        Layout.preferredWidth: 80
                                         Layout.preferredHeight: 36
                                         text: modelData
-                                        placeholderText: "Enter delimiter"
+                                        placeholderText: "Delimiter"
 
                                         color: Theme.primaryText
                                         font.pixelSize: 14
+                                        horizontalAlignment: Text.AlignHCenter
 
                                         background: Rectangle {
                                             color: parent.activeFocus ? Theme.inputBackgroundHover : Theme.inputBackground
