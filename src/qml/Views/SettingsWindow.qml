@@ -1307,7 +1307,7 @@ ApplicationWindow {
                         }
 
                         Label {
-                            text: "Characters used to separate multiple artists in a single tag (e.g., \"Artist A; Artist B\"). Each delimiter can be any character or sequence of characters."
+                            text: "Characters used to separate multiple artists in a single tag (e.g., \"Artist A; Artist B\"). Whitespace around artist names is automatically trimmed, so you don't need to include spaces in delimiters."
                             font.pixelSize: 12
                             color: Theme.secondaryText
                             Layout.fillWidth: true

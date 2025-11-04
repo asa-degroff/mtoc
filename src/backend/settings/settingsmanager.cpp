@@ -26,7 +26,7 @@ SettingsManager::SettingsManager(QObject *parent)
     , m_minimizeToTray(false)  // Default to quit on close
     , m_showCollabAlbumsUnderAllArtists(true)  // Default to showing collab albums under all artists
     , m_useAlbumArtistDelimiters(true)  // Default to enabled for backward compatibility
-    , m_albumArtistDelimiters({";", "; "})  // Default delimiters: semicolon with and without space
+    , m_albumArtistDelimiters({";", "|"})  // Default delimiters: semicolon and pipe (whitespace-insensitive)
 {
     loadSettings();
     setupSystemThemeDetection();
