@@ -717,8 +717,12 @@ void LibraryManager::scanInBackground()
             }
             cleanupQuery.finish();
             
-            // Delete album artists that have no albums
-            if (!cleanupQuery.exec("DELETE FROM album_artists WHERE id NOT IN (SELECT DISTINCT album_artist_id FROM albums WHERE album_artist_id IS NOT NULL)")) {
+            // Delete album artists that have no albums (checking both primary and junction)
+            if (!cleanupQuery.exec("DELETE FROM album_artists WHERE id NOT IN ("
+                                  "SELECT DISTINCT album_artist_id FROM albums WHERE album_artist_id IS NOT NULL "
+                                  "UNION "
+                                  "SELECT DISTINCT album_artist_id FROM album_album_artists"
+                                  ")")) {
                 qWarning() << "Failed to delete orphaned album artists:" << cleanupQuery.lastError().text();
             } else {
                 int deletedAlbumArtists = cleanupQuery.numRowsAffected();
@@ -896,9 +900,55 @@ void LibraryManager::scanInBackground()
             insertBatchTracksInThread(db, batchMetadata, m_forceMetadataUpdate);
             batchMetadata.clear();
         }
-        
+
+        // If we forced metadata updates, cleanup orphaned records
+        if (m_forceMetadataUpdate && !m_cancelRequested) {
+            qDebug() << "Force metadata update - cleaning up orphaned entries...";
+
+            QSqlQuery cleanupQuery(db);
+
+            // Delete albums that have no tracks
+            if (!cleanupQuery.exec("DELETE FROM albums WHERE id NOT IN "
+                                  "(SELECT DISTINCT album_id FROM tracks WHERE album_id IS NOT NULL)")) {
+                qWarning() << "Failed to delete orphaned albums:" << cleanupQuery.lastError().text();
+            } else {
+                int deletedAlbums = cleanupQuery.numRowsAffected();
+                if (deletedAlbums > 0) {
+                    qDebug() << "Deleted" << deletedAlbums << "orphaned albums";
+                }
+            }
+
+            // Delete album artists that have no albums (checking both primary and junction)
+            if (!cleanupQuery.exec("DELETE FROM album_artists WHERE id NOT IN ("
+                                  "SELECT DISTINCT album_artist_id FROM albums WHERE album_artist_id IS NOT NULL "
+                                  "UNION "
+                                  "SELECT DISTINCT album_artist_id FROM album_album_artists"
+                                  ")")) {
+                qWarning() << "Failed to delete orphaned album artists:" << cleanupQuery.lastError().text();
+            } else {
+                int deletedArtists = cleanupQuery.numRowsAffected();
+                if (deletedArtists > 0) {
+                    qDebug() << "Deleted" << deletedArtists << "orphaned album artists";
+                }
+            }
+
+            // Delete artists that have no tracks
+            if (!cleanupQuery.exec("DELETE FROM artists WHERE id NOT IN "
+                                  "(SELECT DISTINCT artist_id FROM tracks WHERE artist_id IS NOT NULL)")) {
+                qWarning() << "Failed to delete orphaned artists:" << cleanupQuery.lastError().text();
+            } else {
+                int deletedArtists = cleanupQuery.numRowsAffected();
+                if (deletedArtists > 0) {
+                    qDebug() << "Deleted" << deletedArtists << "orphaned artists";
+                }
+            }
+
+            cleanupQuery.finish();
+            qDebug() << "Force metadata update cleanup complete";
+        }
+
         // No longer using transactions - each operation auto-commits
-        
+
         // Log final track count in this connection
         {
             QSqlQuery finalCountQuery(db);
