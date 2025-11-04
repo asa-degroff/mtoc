@@ -1169,6 +1169,12 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         spacing: 8
 
+                        property var localDelimiters: []
+
+                        Component.onCompleted: {
+                            localDelimiters = SettingsManager.albumArtistDelimiters.slice()
+                        }
+
                         Label {
                             text: "Album artist delimiters"
                             font.pixelSize: 14
@@ -1190,7 +1196,7 @@ ApplicationWindow {
 
                             Repeater {
                                 id: delimiterRepeater
-                                model: SettingsManager.albumArtistDelimiters
+                                model: delimiterConfigLayout.localDelimiters
 
                                 RowLayout {
                                     Layout.fillWidth: true
@@ -1215,9 +1221,18 @@ ApplicationWindow {
                                         }
 
                                         onEditingFinished: {
-                                            var newDelims = SettingsManager.albumArtistDelimiters.slice()
+                                            // Update local list
+                                            var newDelims = delimiterConfigLayout.localDelimiters.slice()
                                             newDelims[index] = text
-                                            SettingsManager.albumArtistDelimiters = newDelims
+                                            delimiterConfigLayout.localDelimiters = newDelims
+
+                                            // Filter out empty delimiters and save to SettingsManager
+                                            var filteredDelims = newDelims.filter(function(d) {
+                                                return d.length > 0
+                                            })
+                                            if (filteredDelims.length > 0) {
+                                                SettingsManager.albumArtistDelimiters = filteredDelims
+                                            }
                                         }
                                     }
 
@@ -1225,11 +1240,14 @@ ApplicationWindow {
                                         Layout.preferredWidth: 36
                                         Layout.preferredHeight: 36
                                         text: "×"
-                                        enabled: SettingsManager.albumArtistDelimiters.length > 1
+                                        enabled: delimiterConfigLayout.localDelimiters.length > 1
 
                                         onClicked: {
-                                            var newDelims = SettingsManager.albumArtistDelimiters.slice()
+                                            var newDelims = delimiterConfigLayout.localDelimiters.slice()
                                             newDelims.splice(index, 1)
+                                            delimiterConfigLayout.localDelimiters = newDelims
+
+                                            // Save to SettingsManager (this will trigger rescan)
                                             SettingsManager.albumArtistDelimiters = newDelims
                                         }
 
@@ -1260,9 +1278,10 @@ ApplicationWindow {
                             text: "+ Add"
 
                             onClicked: {
-                                var newDelims = SettingsManager.albumArtistDelimiters.slice()
+                                // Only update local list, don't trigger SettingsManager update
+                                var newDelims = delimiterConfigLayout.localDelimiters.slice()
                                 newDelims.push("")
-                                SettingsManager.albumArtistDelimiters = newDelims
+                                delimiterConfigLayout.localDelimiters = newDelims
                             }
 
                             background: Rectangle {
