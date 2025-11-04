@@ -58,10 +58,11 @@ QStringList MetadataExtractor::parseAlbumArtists(const TagLib::StringList& tagLi
     // Get settings for multi-artist support
     SettingsManager* settings = SettingsManager::instance();
     bool multiArtistEnabled = settings->showCollabAlbumsUnderAllArtists();
+    bool useDelimiters = settings->useAlbumArtistDelimiters();
     QStringList delimiters = settings->albumArtistDelimiters();
 
     qDebug() << "[MetadataExtractor] parseAlbumArtists called - multiArtistEnabled:" << multiArtistEnabled
-             << "delimiters:" << delimiters << "tagLibList.size():" << tagLibList.size();
+             << "useDelimiters:" << useDelimiters << "delimiters:" << delimiters << "tagLibList.size():" << tagLibList.size();
 
     if (!multiArtistEnabled || tagLibList.isEmpty()) {
         // Feature disabled or no data - return first item only
@@ -97,28 +98,30 @@ QStringList MetadataExtractor::parseAlbumArtists(const TagLib::StringList& tagLi
         return result;
     }
 
-    // Single line - try delimiter parsing
+    // Single line - try delimiter parsing if enabled
     QString singleValue = QString::fromStdString(tagLibList.front().to8Bit(true));
     outOriginalString = singleValue;  // Store original before parsing
 
-    // Try each delimiter in order
-    for (const QString& delimiter : delimiters) {
-        if (singleValue.contains(delimiter)) {
-            QStringList parts = singleValue.split(delimiter, Qt::SkipEmptyParts);
-            for (const QString& part : parts) {
-                QString trimmed = part.trimmed();
-                if (!trimmed.isEmpty() && !result.contains(trimmed, Qt::CaseInsensitive)) {
-                    result.append(trimmed);
+    if (useDelimiters) {
+        // Try each delimiter in order
+        for (const QString& delimiter : delimiters) {
+            if (singleValue.contains(delimiter)) {
+                QStringList parts = singleValue.split(delimiter, Qt::SkipEmptyParts);
+                for (const QString& part : parts) {
+                    QString trimmed = part.trimmed();
+                    if (!trimmed.isEmpty() && !result.contains(trimmed, Qt::CaseInsensitive)) {
+                        result.append(trimmed);
+                    }
                 }
-            }
-            // Found delimiter match, stop trying others
-            if (!result.isEmpty()) {
-                return result;
+                // Found delimiter match, stop trying others
+                if (!result.isEmpty()) {
+                    return result;
+                }
             }
         }
     }
 
-    // No delimiters found - treat as single artist
+    // No delimiters found or delimiter parsing disabled - treat as single artist
     QString trimmed = singleValue.trimmed();
     if (!trimmed.isEmpty()) {
         result.append(trimmed);
@@ -135,6 +138,7 @@ QStringList MetadataExtractor::parseAlbumArtists(const QString& singleValue, QSt
     // Get settings for multi-artist support
     SettingsManager* settings = SettingsManager::instance();
     bool multiArtistEnabled = settings->showCollabAlbumsUnderAllArtists();
+    bool useDelimiters = settings->useAlbumArtistDelimiters();
     QStringList delimiters = settings->albumArtistDelimiters();
 
     outOriginalString = singleValue;  // Store original
@@ -148,24 +152,26 @@ QStringList MetadataExtractor::parseAlbumArtists(const QString& singleValue, QSt
         return result;
     }
 
-    // Try each delimiter in order
-    for (const QString& delimiter : delimiters) {
-        if (singleValue.contains(delimiter)) {
-            QStringList parts = singleValue.split(delimiter, Qt::SkipEmptyParts);
-            for (const QString& part : parts) {
-                QString trimmed = part.trimmed();
-                if (!trimmed.isEmpty() && !result.contains(trimmed, Qt::CaseInsensitive)) {
-                    result.append(trimmed);
+    if (useDelimiters) {
+        // Try each delimiter in order
+        for (const QString& delimiter : delimiters) {
+            if (singleValue.contains(delimiter)) {
+                QStringList parts = singleValue.split(delimiter, Qt::SkipEmptyParts);
+                for (const QString& part : parts) {
+                    QString trimmed = part.trimmed();
+                    if (!trimmed.isEmpty() && !result.contains(trimmed, Qt::CaseInsensitive)) {
+                        result.append(trimmed);
+                    }
                 }
-            }
-            // Found delimiter match, stop trying others
-            if (!result.isEmpty()) {
-                return result;
+                // Found delimiter match, stop trying others
+                if (!result.isEmpty()) {
+                    return result;
+                }
             }
         }
     }
 
-    // No delimiters found - treat as single artist
+    // No delimiters found or delimiter parsing disabled - treat as single artist
     QString trimmed = singleValue.trimmed();
     if (!trimmed.isEmpty()) {
         result.append(trimmed);

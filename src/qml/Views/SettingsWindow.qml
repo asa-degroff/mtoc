@@ -1163,11 +1163,65 @@ ApplicationWindow {
                         Layout.topMargin: -6
                     }
 
+                    // Delimiter toggle
+                    CheckBox {
+                        id: delimiterToggle
+                        text: "Split single-line album artists using delimiters"
+                        checked: SettingsManager.useAlbumArtistDelimiters
+                        visible: multiArtistToggle.checked
+                        Layout.leftMargin: 20
+                        Layout.topMargin: 4
+
+                        onToggled: {
+                            SettingsManager.useAlbumArtistDelimiters = checked
+                        }
+
+                        contentItem: Text {
+                            text: parent.text
+                            font.pixelSize: 14
+                            color: Theme.secondaryText
+                            verticalAlignment: Text.AlignVCenter
+                            leftPadding: parent.indicator.width + parent.spacing
+                        }
+
+                        indicator: Rectangle {
+                            implicitWidth: 20
+                            implicitHeight: 20
+                            x: parent.leftPadding
+                            y: parent.height / 2 - height / 2
+                            radius: 3
+                            color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                            border.color: parent.checked ? Theme.linkColor : Theme.borderColor
+
+                            Canvas {
+                                anchors.fill: parent
+                                anchors.margins: 4
+                                visible: parent.parent.checked
+
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.reset()
+                                    ctx.strokeStyle = "white"
+                                    ctx.lineWidth = 2
+                                    ctx.lineCap = "round"
+                                    ctx.lineJoin = "round"
+                                    ctx.beginPath()
+                                    ctx.moveTo(width * 0.2, height * 0.5)
+                                    ctx.lineTo(width * 0.45, height * 0.75)
+                                    ctx.lineTo(width * 0.8, height * 0.25)
+                                    ctx.stroke()
+                                }
+                            }
+                        }
+                    }
+
                     // Delimiter configuration
                     ColumnLayout {
                         id: delimiterConfigLayout
                         Layout.fillWidth: true
                         spacing: 8
+                        visible: multiArtistToggle.checked && delimiterToggle.checked
+                        Layout.leftMargin: 20
 
                         property var localDelimiters: []
 

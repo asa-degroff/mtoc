@@ -25,6 +25,7 @@ SettingsManager::SettingsManager(QObject *parent)
     , m_singleClickToPlay(false)  // Default to double-click behavior
     , m_minimizeToTray(false)  // Default to quit on close
     , m_showCollabAlbumsUnderAllArtists(true)  // Default to showing collab albums under all artists
+    , m_useAlbumArtistDelimiters(true)  // Default to enabled for backward compatibility
     , m_albumArtistDelimiters({";", "; "})  // Default delimiters: semicolon with and without space
 {
     loadSettings();
@@ -339,6 +340,15 @@ void SettingsManager::setShowCollabAlbumsUnderAllArtists(bool enabled)
     }
 }
 
+void SettingsManager::setUseAlbumArtistDelimiters(bool enabled)
+{
+    if (m_useAlbumArtistDelimiters != enabled) {
+        m_useAlbumArtistDelimiters = enabled;
+        emit useAlbumArtistDelimitersChanged(enabled);
+        saveSettings();
+    }
+}
+
 void SettingsManager::setAlbumArtistDelimiters(const QStringList& delimiters)
 {
     if (m_albumArtistDelimiters != delimiters) {
@@ -407,6 +417,7 @@ void SettingsManager::loadSettings()
 
     m_settings.beginGroup("Metadata");
     m_showCollabAlbumsUnderAllArtists = m_settings.value("showCollabAlbumsUnderAllArtists", true).toBool();
+    m_useAlbumArtistDelimiters = m_settings.value("useAlbumArtistDelimiters", true).toBool();
     m_albumArtistDelimiters = m_settings.value("albumArtistDelimiters", QStringList({";", "; "})).toStringList();
     m_settings.endGroup();
 
@@ -472,6 +483,7 @@ void SettingsManager::saveSettings()
 
     m_settings.beginGroup("Metadata");
     m_settings.setValue("showCollabAlbumsUnderAllArtists", m_showCollabAlbumsUnderAllArtists);
+    m_settings.setValue("useAlbumArtistDelimiters", m_useAlbumArtistDelimiters);
     m_settings.setValue("albumArtistDelimiters", m_albumArtistDelimiters);
     m_settings.endGroup();
 

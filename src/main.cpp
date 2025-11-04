@@ -238,6 +238,11 @@ int main(int argc, char *argv[])
         qDebug() << "Multi-artist album setting changed to:" << enabled << "- triggering library rescan";
         libraryManager->startScan();
     });
+    QObject::connect(settingsManager, &SettingsManager::useAlbumArtistDelimitersChanged,
+                     libraryManager, [libraryManager](bool enabled) {
+        qDebug() << "Album artist delimiter usage changed to:" << enabled << "- triggering library rescan";
+        libraryManager->startScan();
+    });
     QObject::connect(settingsManager, &SettingsManager::albumArtistDelimitersChanged,
                      libraryManager, [libraryManager](const QStringList& delimiters) {
         qDebug() << "Album artist delimiters changed to:" << delimiters << "- triggering library rescan";
