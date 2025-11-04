@@ -1211,7 +1211,7 @@ ApplicationWindow {
                                             color: parent.activeFocus ? Theme.inputBackgroundHover : Theme.inputBackground
                                             radius: 4
                                             border.width: 1
-                                            border.color: parent.activeFocus ? Theme.accentColor : Theme.borderColor
+                                            border.color: parent.activeFocus ? Theme.linkColor : Theme.borderColor
                                         }
 
                                         onEditingFinished: {
