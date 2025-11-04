@@ -78,6 +78,7 @@ public:
     void setMusicFolders(const QStringList &folders);
     void setAutoRefreshOnStartup(bool enabled);
     void setWatchFileChanges(bool enabled);
+    void setForceMetadataUpdate(bool force);
 
     // Library management methods
     Q_INVOKABLE bool addMusicFolder(const QString &path);
@@ -172,7 +173,7 @@ private:
     void scanInBackground();
     void scanSpecificPathsInBackground(const QStringList &paths);
     void insertTrackInThread(QSqlDatabase& db, const QVariantMap& metadata);
-    void insertBatchTracksInThread(QSqlDatabase& db, const QList<QVariantMap>& batchMetadata);
+    void insertBatchTracksInThread(QSqlDatabase& db, const QList<QVariantMap>& batchMetadata, bool forceUpdate = false);
     void processAlbumArtInBackground();
     QString getCanonicalPathFromDisplay(const QString& displayPath) const;
     void rebuildThumbnailsInBackground();
@@ -220,6 +221,7 @@ private:
     QFuture<void> m_scanFuture;
     QFutureWatcher<void> m_scanWatcher;
     bool m_cancelRequested;
+    bool m_forceMetadataUpdate;  // Force re-extraction of metadata for existing files
     int m_originalPixmapCacheLimit;  // Store original cache limit to restore after scan
     bool m_processingAlbumArt;  // Track album art processing status
     

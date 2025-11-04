@@ -232,20 +232,23 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "SettingsManager", settingsManager);
     qDebug() << "Main: SettingsManager registered";
 
-    // Connect multi-artist settings changes to trigger library rescan
+    // Connect multi-artist settings changes to trigger library rescan with metadata update
     QObject::connect(settingsManager, &SettingsManager::showCollabAlbumsUnderAllArtistsChanged,
                      libraryManager, [libraryManager](bool enabled) {
-        qDebug() << "Multi-artist album setting changed to:" << enabled << "- triggering library rescan";
+        qDebug() << "Multi-artist album setting changed to:" << enabled << "- triggering library rescan with metadata update";
+        libraryManager->setForceMetadataUpdate(true);
         libraryManager->startScan();
     });
     QObject::connect(settingsManager, &SettingsManager::useAlbumArtistDelimitersChanged,
                      libraryManager, [libraryManager](bool enabled) {
-        qDebug() << "Album artist delimiter usage changed to:" << enabled << "- triggering library rescan";
+        qDebug() << "Album artist delimiter usage changed to:" << enabled << "- triggering library rescan with metadata update";
+        libraryManager->setForceMetadataUpdate(true);
         libraryManager->startScan();
     });
     QObject::connect(settingsManager, &SettingsManager::albumArtistDelimitersChanged,
                      libraryManager, [libraryManager](const QStringList& delimiters) {
-        qDebug() << "Album artist delimiters changed to:" << delimiters << "- triggering library rescan";
+        qDebug() << "Album artist delimiters changed to:" << delimiters << "- triggering library rescan with metadata update";
+        libraryManager->setForceMetadataUpdate(true);
         libraryManager->startScan();
     });
 

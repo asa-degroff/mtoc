@@ -33,6 +33,7 @@ LibraryManager::LibraryManager(QObject *parent)
     , m_totalFilesToScan(0)
     , m_filesScanned(0)
     , m_cancelRequested(false)
+    , m_forceMetadataUpdate(false)
     , m_albumModelCacheValid(false)
     , m_cachedAlbumCount(-1)
     , m_albumCountCacheValid(false)
@@ -359,6 +360,12 @@ void LibraryManager::setWatchFileChanges(bool enabled)
         // Update file watcher based on new setting
         updateFileWatcher();
     }
+}
+
+void LibraryManager::setForceMetadataUpdate(bool force)
+{
+    m_forceMetadataUpdate = force;
+    qDebug() << "LibraryManager: Force metadata update set to:" << force;
 }
 
 // Library management methods
@@ -744,8 +751,8 @@ void LibraryManager::scanInBackground()
             const QString &filePath = allFiles[i];
             QFileInfo fileInfo(filePath);
             
-            // Check if already in database before extracting metadata
-            {
+            // Check if already in database before extracting metadata (unless forcing update)
+            if (!m_forceMetadataUpdate) {
                 QSqlQuery checkQuery(db);
                 checkQuery.prepare("SELECT 1 FROM tracks WHERE file_path = :path LIMIT 1");
                 checkQuery.bindValue(":path", filePath);
@@ -762,6 +769,9 @@ void LibraryManager::scanInBackground()
                     qDebug() << "[" << connectionName << "] New track found, will process:" << filePath;
                 }
                 checkQuery.finish();
+            } else {
+                // Force metadata update enabled - process all files
+                qDebug() << "[" << connectionName << "] Force metadata update enabled, processing:" << filePath;
             }
             
             // Queue metadata extraction for parallel processing
@@ -825,7 +835,7 @@ void LibraryManager::scanInBackground()
             if (batchMetadata.size() >= batchSize || i == allFiles.size() - 1) {
                 if (!batchMetadata.isEmpty()) {
                     // Use prepared statements for better performance
-                    insertBatchTracksInThread(db, batchMetadata);
+                    insertBatchTracksInThread(db, batchMetadata, m_forceMetadataUpdate);
                     batchMetadata.clear();
                 }
             }
@@ -883,7 +893,7 @@ void LibraryManager::scanInBackground()
         // Process any remaining items in the batch
         if (!batchMetadata.isEmpty() && !m_cancelRequested) {
             qDebug() << "Processing final batch with" << batchMetadata.size() << "tracks";
-            insertBatchTracksInThread(db, batchMetadata);
+            insertBatchTracksInThread(db, batchMetadata, m_forceMetadataUpdate);
             batchMetadata.clear();
         }
         
@@ -932,10 +942,16 @@ void LibraryManager::cancelScan()
 void LibraryManager::onScanFinished()
 {
     qDebug() << "LibraryManager::onScanFinished() called";
-    
+
     m_scanning = false;
     m_scanProgress = 100;
-    
+
+    // Reset force metadata update flag
+    if (m_forceMetadataUpdate) {
+        qDebug() << "Resetting force metadata update flag";
+        m_forceMetadataUpdate = false;
+    }
+
     // Transaction is now handled in the background thread
     
     // Invalidate cache after scan and clear it to free memory
@@ -1855,13 +1871,13 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
     query.finish();
 }
 
-void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVariantMap>& batchMetadata)
+void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVariantMap>& batchMetadata, bool forceUpdate)
 {
     if (batchMetadata.isEmpty() || m_cancelRequested) {
         return;
     }
-    
-    qDebug() << "[insertBatchTracksInThread] Starting to insert batch of" << batchMetadata.size() << "tracks";
+
+    qDebug() << "[insertBatchTracksInThread] Starting to insert batch of" << batchMetadata.size() << "tracks (forceUpdate:" << forceUpdate << ")";
     int successCount = 0;
     int failCount = 0;
     
@@ -2046,10 +2062,23 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
 
         // Get or create album (using cache)
         int albumId = getCachedAlbum(album, albumArtistId, year);
-        
+
         // Album art processing removed from bulk scanning to save memory
         // Album art will be processed in a separate pass after initial scan
-        
+
+        // If forcing metadata update, delete existing track first to allow re-insertion
+        if (forceUpdate) {
+            QSqlQuery deleteQuery(db);
+            deleteQuery.prepare("DELETE FROM tracks WHERE file_path = :path");
+            deleteQuery.bindValue(":path", filePath);
+            if (!deleteQuery.exec()) {
+                qWarning() << "[insertBatchTracksInThread] Failed to delete existing track:" << filePath << "-" << deleteQuery.lastError().text();
+            } else {
+                qDebug() << "[insertBatchTracksInThread] Deleted existing track for re-insertion:" << filePath;
+            }
+            deleteQuery.finish();
+        }
+
         // Insert track using prepared statement
         trackInsert.bindValue(":file_path", filePath);
         trackInsert.bindValue(":title", title);
