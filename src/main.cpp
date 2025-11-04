@@ -43,9 +43,7 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context, const QSt
                       msg.contains("calculateArtistPosition") || msg.contains("updateArtistIndexMapping") ||
                       msg.contains("MediaPlayer::") || msg.contains("PlaylistManager::") ||
                       msg.contains("[ReplayGain]") || msg.contains("AudioEngine") || msg.contains("rgvolume") ||
-                      msg.contains("[AudioEngine] Transition check") ||
-                      msg.contains("MetadataExtractor") ||
-                      msg.contains("[DatabaseManager]")
+                      msg.contains("[AudioEngine] Transition check")
                     ) {
                 // Also show our specific debug messages even if not properly prefixed
                 fprintf(stderr, "[Debug] %s\n", qPrintable(msg));
