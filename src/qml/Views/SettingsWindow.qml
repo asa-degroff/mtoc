@@ -1105,114 +1105,185 @@ ApplicationWindow {
                     }
 
                     // Multi-artist album toggle
-                    CheckBox {
-                        id: multiArtistToggle
-                        text: "Show collaboration albums under all artists"
-                        checked: SettingsManager.showCollabAlbumsUnderAllArtists
+                    RowLayout {
+                        Layout.fillWidth: true
                         Layout.topMargin: 10
+                        spacing: 4
 
-                        onToggled: {
-                            SettingsManager.showCollabAlbumsUnderAllArtists = checked
-                        }
+                        CheckBox {
+                            id: multiArtistToggle
+                            text: "Show collaboration albums under each artist"
+                            checked: SettingsManager.showCollabAlbumsUnderAllArtists
 
-                        contentItem: Text {
-                            text: parent.text
-                            font.pixelSize: 14
-                            color: Theme.secondaryText
-                            verticalAlignment: Text.AlignVCenter
-                            leftPadding: parent.indicator.width + parent.spacing
-                        }
+                            onToggled: {
+                                SettingsManager.showCollabAlbumsUnderAllArtists = checked
+                            }
 
-                        indicator: Rectangle {
-                            implicitWidth: 20
-                            implicitHeight: 20
-                            x: parent.leftPadding
-                            y: parent.height / 2 - height / 2
-                            radius: 3
-                            color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
-                            border.color: parent.checked ? Theme.linkColor : Theme.borderColor
+                            contentItem: Text {
+                                text: parent.text
+                                font.pixelSize: 14
+                                color: Theme.secondaryText
+                                verticalAlignment: Text.AlignVCenter
+                                leftPadding: parent.indicator.width + parent.spacing
+                            }
 
-                            Canvas {
-                                anchors.fill: parent
-                                anchors.margins: 4
-                                visible: parent.parent.checked
+                            indicator: Rectangle {
+                                implicitWidth: 20
+                                implicitHeight: 20
+                                x: parent.leftPadding
+                                y: parent.height / 2 - height / 2
+                                radius: 3
+                                color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                                border.color: parent.checked ? Theme.linkColor : Theme.borderColor
 
-                                onPaint: {
-                                    var ctx = getContext("2d")
-                                    ctx.reset()
-                                    ctx.strokeStyle = "white"
-                                    ctx.lineWidth = 2
-                                    ctx.lineCap = "round"
-                                    ctx.lineJoin = "round"
-                                    ctx.beginPath()
-                                    ctx.moveTo(width * 0.2, height * 0.5)
-                                    ctx.lineTo(width * 0.45, height * 0.75)
-                                    ctx.lineTo(width * 0.8, height * 0.25)
-                                    ctx.stroke()
+                                Canvas {
+                                    anchors.fill: parent
+                                    anchors.margins: 4
+                                    visible: parent.parent.checked
+
+                                    onPaint: {
+                                        var ctx = getContext("2d")
+                                        ctx.reset()
+                                        ctx.strokeStyle = "white"
+                                        ctx.lineWidth = 2
+                                        ctx.lineCap = "round"
+                                        ctx.lineJoin = "round"
+                                        ctx.beginPath()
+                                        ctx.moveTo(width * 0.2, height * 0.5)
+                                        ctx.lineTo(width * 0.45, height * 0.75)
+                                        ctx.lineTo(width * 0.8, height * 0.25)
+                                        ctx.stroke()
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    Label {
-                        text: "When enabled, albums with multiple artists (e.g., \"Artist A; Artist B\") will appear in each artist's discography. A library rescan is triggered when this setting changes."
-                        font.pixelSize: 12
-                        color: Theme.secondaryText
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        Layout.topMargin: -6
+                        Image {
+                            source: Theme.isDark ? "qrc:/resources/icons/info.svg" : "qrc:/resources/icons/info-dark.svg"
+                            Layout.preferredWidth: 16
+                            Layout.preferredHeight: 16
+                            sourceSize.width: 16
+                            sourceSize.height: 16
+
+                            MouseArea {
+                                anchors.centerIn: parent
+                                width: 24
+                                height: 24
+                                hoverEnabled: true
+
+                                ToolTip {
+                                    id: multiArtistTooltip
+                                    visible: parent.containsMouse
+                                    text: "When enabled, albums with multiple album artist tags will appear in each artist's discography.\nA library rescan is triggered when this setting changes."
+                                    delay: 200
+                                    timeout: 8000
+                                    background: Rectangle {
+                                        color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                                        border.color: Theme.borderColor
+                                        radius: 4
+                                    }
+                                    contentItem: Text {
+                                        text: multiArtistTooltip.text
+                                        font.pixelSize: 12
+                                        color: Theme.primaryText
+                                    }
+                                }
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
                     }
 
                     // Delimiter toggle
-                    CheckBox {
-                        id: delimiterToggle
-                        text: "Split single-line album artists using delimiters"
-                        checked: SettingsManager.useAlbumArtistDelimiters
-                        visible: multiArtistToggle.checked
+                    RowLayout {
+                        Layout.fillWidth: true
                         Layout.leftMargin: 20
                         Layout.topMargin: 4
+                        spacing: 4
+                        visible: multiArtistToggle.checked
 
-                        onToggled: {
-                            SettingsManager.useAlbumArtistDelimiters = checked
-                        }
+                        CheckBox {
+                            id: delimiterToggle
+                            text: "Split single-line album artists using delimiters"
+                            checked: SettingsManager.useAlbumArtistDelimiters
 
-                        contentItem: Text {
-                            text: parent.text
-                            font.pixelSize: 14
-                            color: Theme.secondaryText
-                            verticalAlignment: Text.AlignVCenter
-                            leftPadding: parent.indicator.width + parent.spacing
-                        }
+                            onToggled: {
+                                SettingsManager.useAlbumArtistDelimiters = checked
+                            }
 
-                        indicator: Rectangle {
-                            implicitWidth: 20
-                            implicitHeight: 20
-                            x: parent.leftPadding
-                            y: parent.height / 2 - height / 2
-                            radius: 3
-                            color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
-                            border.color: parent.checked ? Theme.linkColor : Theme.borderColor
+                            contentItem: Text {
+                                text: parent.text
+                                font.pixelSize: 14
+                                color: Theme.secondaryText
+                                verticalAlignment: Text.AlignVCenter
+                                leftPadding: parent.indicator.width + parent.spacing
+                            }
 
-                            Canvas {
-                                anchors.fill: parent
-                                anchors.margins: 4
-                                visible: parent.parent.checked
+                            indicator: Rectangle {
+                                implicitWidth: 20
+                                implicitHeight: 20
+                                x: parent.leftPadding
+                                y: parent.height / 2 - height / 2
+                                radius: 3
+                                color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                                border.color: parent.checked ? Theme.linkColor : Theme.borderColor
 
-                                onPaint: {
-                                    var ctx = getContext("2d")
-                                    ctx.reset()
-                                    ctx.strokeStyle = "white"
-                                    ctx.lineWidth = 2
-                                    ctx.lineCap = "round"
-                                    ctx.lineJoin = "round"
-                                    ctx.beginPath()
-                                    ctx.moveTo(width * 0.2, height * 0.5)
-                                    ctx.lineTo(width * 0.45, height * 0.75)
-                                    ctx.lineTo(width * 0.8, height * 0.25)
-                                    ctx.stroke()
+                                Canvas {
+                                    anchors.fill: parent
+                                    anchors.margins: 4
+                                    visible: parent.parent.checked
+
+                                    onPaint: {
+                                        var ctx = getContext("2d")
+                                        ctx.reset()
+                                        ctx.strokeStyle = "white"
+                                        ctx.lineWidth = 2
+                                        ctx.lineCap = "round"
+                                        ctx.lineJoin = "round"
+                                        ctx.beginPath()
+                                        ctx.moveTo(width * 0.2, height * 0.5)
+                                        ctx.lineTo(width * 0.45, height * 0.75)
+                                        ctx.lineTo(width * 0.8, height * 0.25)
+                                        ctx.stroke()
+                                    }
                                 }
                             }
                         }
+
+                        Image {
+                            source: Theme.isDark ? "qrc:/resources/icons/info.svg" : "qrc:/resources/icons/info-dark.svg"
+                            Layout.preferredWidth: 16
+                            Layout.preferredHeight: 16
+                            sourceSize.width: 16
+                            sourceSize.height: 16
+
+                            MouseArea {
+                                anchors.centerIn: parent
+                                width: 24
+                                height: 24
+                                hoverEnabled: true
+
+                                ToolTip {
+                                    id: delimiterTooltip
+                                    visible: parent.containsMouse
+                                    text: "When enabled, album artist tags on a single line will be split using the configured delimiters below.\nAlbum artist tags on multiple lines are always split regardless of this setting.\nA library rescan is triggered when this setting changes."
+                                    delay: 200
+                                    timeout: 8000
+                                    background: Rectangle {
+                                        color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                                        border.color: Theme.borderColor
+                                        radius: 4
+                                    }
+                                    contentItem: Text {
+                                        text: delimiterTooltip.text
+                                        font.pixelSize: 12
+                                        color: Theme.primaryText
+                                    }
+                                }
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
                     }
 
                     // Delimiter configuration
@@ -1352,15 +1423,6 @@ ApplicationWindow {
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
                             }
-                        }
-
-                        Label {
-                            text: "Default: \";\", \"; \" (semicolon with or without space). Changes trigger an automatic library rescan."
-                            font.pixelSize: 11
-                            font.italic: true
-                            color: Theme.tertiaryText
-                            Layout.fillWidth: true
-                            wrapMode: Text.WordWrap
                         }
                     }
                 }
