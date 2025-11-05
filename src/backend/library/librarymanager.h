@@ -78,7 +78,7 @@ public:
     void setMusicFolders(const QStringList &folders);
     void setAutoRefreshOnStartup(bool enabled);
     void setWatchFileChanges(bool enabled);
-    void setForceMetadataUpdate(bool force);
+    Q_INVOKABLE void setForceMetadataUpdate(bool force);
 
     // Library management methods
     Q_INVOKABLE bool addMusicFolder(const QString &path);
