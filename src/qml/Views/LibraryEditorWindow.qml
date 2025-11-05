@@ -14,6 +14,9 @@ ApplicationWindow {
 
     color: Theme.backgroundColor
 
+    // Track whether we're extracting metadata (vs. regular scan)
+    property bool isExtractingMetadata: false
+
     // Folder dialog for adding music folders
     FolderDialog {
         id: folderDialog
@@ -85,6 +88,19 @@ ApplicationWindow {
             if (path.length > 0) {
                 PlaylistManager.addPlaylistFolder(path);
             }
+        }
+    }
+
+    // Handle scan completion to reset extraction flag
+    Connections {
+        target: LibraryManager
+
+        function onScanCompleted() {
+            isExtractingMetadata = false;
+        }
+
+        function onScanCancelled() {
+            isExtractingMetadata = false;
         }
     }
 
@@ -619,10 +635,60 @@ ApplicationWindow {
                         Item { Layout.fillWidth: true }
 
                         Button {
-                            text: LibraryManager.scanning ? "Cancel Scan" : "Scan Library"
+                            id: extractMetadataButton
+                            text: isExtractingMetadata && LibraryManager.scanning ? "Cancel Extraction" : "Extract Metadata"
+                            implicitHeight: 32
+                            implicitWidth: 150
+                            enabled: !LibraryManager.scanning || isExtractingMetadata
+
+                            background: Rectangle {
+                                color: parent.down ? "#00cc66" : parent.hovered ? "#00aa55" : "#00994d"
+                                border.color: parent.hovered ? "#00ff80" : "#00cc66"
+                                border.width: 1
+                                radius: 4
+                                opacity: parent.enabled ? 1.0 : 0.5
+
+                                Behavior on color {
+                                    ColorAnimation { duration: 150 }
+                                }
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                color: Theme.primaryText
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                font.pixelSize: 13
+                                font.bold: true
+                            }
+
+                            ToolTip.text: isExtractingMetadata && LibraryManager.scanning
+                                ? "Cancel metadata extraction"
+                                : "Re-extract metadata from all audio files"
+                            ToolTip.visible: hovered
+                            ToolTip.delay: 500
+
+                            onClicked: {
+                                if (LibraryManager.scanning && isExtractingMetadata) {
+                                    // Cancel the extraction
+                                    LibraryManager.cancelScan();
+                                    isExtractingMetadata = false;
+                                } else {
+                                    // Start metadata extraction
+                                    isExtractingMetadata = true;
+                                    LibraryManager.setForceMetadataUpdate(true);
+                                    LibraryManager.startScan();
+                                }
+                            }
+                        }
+
+                        Button {
+                            id: scanLibraryButton
+                            text: !isExtractingMetadata && LibraryManager.scanning ? "Cancel Scan" : "Scan Library"
                             implicitHeight: 32
                             implicitWidth: 120
-                            
+                            enabled: !LibraryManager.scanning || !isExtractingMetadata
+
                             background: Rectangle {
                                 color: parent.down ? "#00cc66" : parent.hovered ? "#00aa55" : "#00994d"
                                 border.color: parent.hovered ? "#00ff80" : "#00cc66"
@@ -644,9 +710,10 @@ ApplicationWindow {
                             }
                             
                             onClicked: {
-                                if (LibraryManager.scanning) {
+                                if (LibraryManager.scanning && !isExtractingMetadata) {
                                     LibraryManager.cancelScan();
                                 } else {
+                                    isExtractingMetadata = false;  // Ensure flag is cleared for regular scan
                                     LibraryManager.startScan();
                                 }
                             }

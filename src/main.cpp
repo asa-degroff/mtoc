@@ -43,8 +43,7 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context, const QSt
                       msg.contains("calculateArtistPosition") || msg.contains("updateArtistIndexMapping") ||
                       msg.contains("MediaPlayer::") || msg.contains("PlaylistManager::") ||
                       msg.contains("[ReplayGain]") || msg.contains("AudioEngine") || msg.contains("rgvolume") ||
-                      msg.contains("[AudioEngine] Transition check") || msg.contains("[VirtualPlaylist::]") ||
-                      msg.contains("[MediaPlayer::onAboutToFinish]")
+                      msg.contains("[AudioEngine] Transition check")
                     ) {
                 // Also show our specific debug messages even if not properly prefixed
                 fprintf(stderr, "[Debug] %s\n", qPrintable(msg));
@@ -230,7 +229,27 @@ int main(int argc, char *argv[])
     settingsManager->setParent(&engine);  // Parent to engine for cleanup
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "SettingsManager", settingsManager);
     qDebug() << "Main: SettingsManager registered";
-    
+
+    // Connect multi-artist settings changes to trigger library rescan with metadata update
+    QObject::connect(settingsManager, &SettingsManager::showCollabAlbumsUnderAllArtistsChanged,
+                     libraryManager, [libraryManager](bool enabled) {
+        qDebug() << "Multi-artist album setting changed to:" << enabled << "- triggering library rescan with metadata update";
+        libraryManager->setForceMetadataUpdate(true);
+        libraryManager->startScan();
+    });
+    QObject::connect(settingsManager, &SettingsManager::useAlbumArtistDelimitersChanged,
+                     libraryManager, [libraryManager](bool enabled) {
+        qDebug() << "Album artist delimiter usage changed to:" << enabled << "- triggering library rescan with metadata update";
+        libraryManager->setForceMetadataUpdate(true);
+        libraryManager->startScan();
+    });
+    QObject::connect(settingsManager, &SettingsManager::albumArtistDelimitersChanged,
+                     libraryManager, [libraryManager](const QStringList& delimiters) {
+        qDebug() << "Album artist delimiters changed to:" << delimiters << "- triggering library rescan with metadata update";
+        libraryManager->setForceMetadataUpdate(true);
+        libraryManager->startScan();
+    });
+
     // Create and register MediaPlayer
     qDebug() << "Main: Creating MediaPlayer...";
     MediaPlayer *mediaPlayer = new MediaPlayer(&engine);

@@ -1083,7 +1083,351 @@ ApplicationWindow {
                     }
                 }
             }
-            
+
+            // Library & Metadata Section
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: libraryMetadataLayout.implicitHeight + 24
+                color: Theme.panelBackground
+                radius: 4
+
+                ColumnLayout {
+                    id: libraryMetadataLayout
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 12
+
+                    Label {
+                        text: "Library & Metadata"
+                        font.pixelSize: 16
+                        font.bold: true
+                        color: Theme.primaryText
+                    }
+
+                    // Multi-artist album toggle
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 10
+                        spacing: 4
+
+                        CheckBox {
+                            id: multiArtistToggle
+                            text: "Show collaboration albums under each artist"
+                            checked: SettingsManager.showCollabAlbumsUnderAllArtists
+
+                            onToggled: {
+                                SettingsManager.showCollabAlbumsUnderAllArtists = checked
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                font.pixelSize: 14
+                                color: Theme.secondaryText
+                                verticalAlignment: Text.AlignVCenter
+                                leftPadding: parent.indicator.width + parent.spacing
+                            }
+
+                            indicator: Rectangle {
+                                implicitWidth: 20
+                                implicitHeight: 20
+                                x: parent.leftPadding
+                                y: parent.height / 2 - height / 2
+                                radius: 3
+                                color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                                border.color: parent.checked ? Theme.linkColor : Theme.borderColor
+
+                                Canvas {
+                                    anchors.fill: parent
+                                    anchors.margins: 4
+                                    visible: parent.parent.checked
+
+                                    onPaint: {
+                                        var ctx = getContext("2d")
+                                        ctx.reset()
+                                        ctx.strokeStyle = "white"
+                                        ctx.lineWidth = 2
+                                        ctx.lineCap = "round"
+                                        ctx.lineJoin = "round"
+                                        ctx.beginPath()
+                                        ctx.moveTo(width * 0.2, height * 0.5)
+                                        ctx.lineTo(width * 0.45, height * 0.75)
+                                        ctx.lineTo(width * 0.8, height * 0.25)
+                                        ctx.stroke()
+                                    }
+                                }
+                            }
+                        }
+
+                        Image {
+                            source: Theme.isDark ? "qrc:/resources/icons/info.svg" : "qrc:/resources/icons/info-dark.svg"
+                            Layout.preferredWidth: 16
+                            Layout.preferredHeight: 16
+                            sourceSize.width: 16
+                            sourceSize.height: 16
+
+                            MouseArea {
+                                anchors.centerIn: parent
+                                width: 24
+                                height: 24
+                                hoverEnabled: true
+
+                                ToolTip {
+                                    id: multiArtistTooltip
+                                    visible: parent.containsMouse
+                                    text: "When enabled, albums with multiple album artist tags will appear in each artist's discography.\nA library rescan is triggered when this setting changes."
+                                    delay: 200
+                                    timeout: 8000
+                                    background: Rectangle {
+                                        color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                                        border.color: Theme.borderColor
+                                        radius: 4
+                                    }
+                                    contentItem: Text {
+                                        text: multiArtistTooltip.text
+                                        font.pixelSize: 12
+                                        color: Theme.primaryText
+                                    }
+                                }
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    // Delimiter toggle
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 20
+                        Layout.topMargin: 4
+                        spacing: 4
+                        visible: multiArtistToggle.checked
+
+                        CheckBox {
+                            id: delimiterToggle
+                            text: "Split single-line album artists using delimiters"
+                            checked: SettingsManager.useAlbumArtistDelimiters
+
+                            onToggled: {
+                                SettingsManager.useAlbumArtistDelimiters = checked
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                font.pixelSize: 14
+                                color: Theme.secondaryText
+                                verticalAlignment: Text.AlignVCenter
+                                leftPadding: parent.indicator.width + parent.spacing
+                            }
+
+                            indicator: Rectangle {
+                                implicitWidth: 20
+                                implicitHeight: 20
+                                x: parent.leftPadding
+                                y: parent.height / 2 - height / 2
+                                radius: 3
+                                color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                                border.color: parent.checked ? Theme.linkColor : Theme.borderColor
+
+                                Canvas {
+                                    anchors.fill: parent
+                                    anchors.margins: 4
+                                    visible: parent.parent.checked
+
+                                    onPaint: {
+                                        var ctx = getContext("2d")
+                                        ctx.reset()
+                                        ctx.strokeStyle = "white"
+                                        ctx.lineWidth = 2
+                                        ctx.lineCap = "round"
+                                        ctx.lineJoin = "round"
+                                        ctx.beginPath()
+                                        ctx.moveTo(width * 0.2, height * 0.5)
+                                        ctx.lineTo(width * 0.45, height * 0.75)
+                                        ctx.lineTo(width * 0.8, height * 0.25)
+                                        ctx.stroke()
+                                    }
+                                }
+                            }
+                        }
+
+                        Image {
+                            source: Theme.isDark ? "qrc:/resources/icons/info.svg" : "qrc:/resources/icons/info-dark.svg"
+                            Layout.preferredWidth: 16
+                            Layout.preferredHeight: 16
+                            sourceSize.width: 16
+                            sourceSize.height: 16
+
+                            MouseArea {
+                                anchors.centerIn: parent
+                                width: 24
+                                height: 24
+                                hoverEnabled: true
+
+                                ToolTip {
+                                    id: delimiterTooltip
+                                    visible: parent.containsMouse
+                                    text: "When enabled, album artist tags on a single line will be split using the configured delimiters below.\nAlbum artist tags on multiple lines are always split regardless of this setting.\nA library rescan is triggered when this setting changes."
+                                    delay: 200
+                                    timeout: 8000
+                                    background: Rectangle {
+                                        color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                                        border.color: Theme.borderColor
+                                        radius: 4
+                                    }
+                                    contentItem: Text {
+                                        text: delimiterTooltip.text
+                                        font.pixelSize: 12
+                                        color: Theme.primaryText
+                                    }
+                                }
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    // Delimiter configuration
+                    ColumnLayout {
+                        id: delimiterConfigLayout
+                        Layout.fillWidth: true
+                        spacing: 8
+                        visible: multiArtistToggle.checked && delimiterToggle.checked
+                        Layout.leftMargin: 20
+
+                        property var localDelimiters: []
+
+                        Component.onCompleted: {
+                            localDelimiters = SettingsManager.albumArtistDelimiters.slice()
+                        }
+
+                        Label {
+                            text: "Album artist delimiters"
+                            font.pixelSize: 14
+                            color: Theme.primaryText
+                        }
+
+                        Label {
+                            text: "Characters used to separate multiple artists in a single tag (e.g., \"Artist A; Artist B\"). Whitespace around artist names is automatically trimmed, so you don't need to include spaces in delimiters."
+                            font.pixelSize: 12
+                            color: Theme.secondaryText
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                        }
+
+                        // Delimiter list
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+
+                            Repeater {
+                                id: delimiterRepeater
+                                model: delimiterConfigLayout.localDelimiters
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 8
+
+                                    TextField {
+                                        id: delimiterInput
+                                        Layout.preferredWidth: 80
+                                        Layout.preferredHeight: 36
+                                        text: modelData
+                                        placeholderText: "Delimiter"
+
+                                        color: Theme.primaryText
+                                        font.pixelSize: 14
+                                        horizontalAlignment: Text.AlignHCenter
+
+                                        background: Rectangle {
+                                            color: parent.activeFocus ? Theme.inputBackgroundHover : Theme.inputBackground
+                                            radius: 4
+                                            border.width: 1
+                                            border.color: parent.activeFocus ? Theme.linkColor : Theme.borderColor
+                                        }
+
+                                        onEditingFinished: {
+                                            // Update local list
+                                            var newDelims = delimiterConfigLayout.localDelimiters.slice()
+                                            newDelims[index] = text
+                                            delimiterConfigLayout.localDelimiters = newDelims
+
+                                            // Filter out empty delimiters and save to SettingsManager
+                                            var filteredDelims = newDelims.filter(function(d) {
+                                                return d.length > 0
+                                            })
+                                            if (filteredDelims.length > 0) {
+                                                SettingsManager.albumArtistDelimiters = filteredDelims
+                                            }
+                                        }
+                                    }
+
+                                    Button {
+                                        Layout.preferredWidth: 36
+                                        Layout.preferredHeight: 36
+                                        text: "×"
+                                        enabled: delimiterConfigLayout.localDelimiters.length > 1
+
+                                        onClicked: {
+                                            var newDelims = delimiterConfigLayout.localDelimiters.slice()
+                                            newDelims.splice(index, 1)
+                                            delimiterConfigLayout.localDelimiters = newDelims
+
+                                            // Save to SettingsManager (this will trigger rescan)
+                                            SettingsManager.albumArtistDelimiters = newDelims
+                                        }
+
+                                        background: Rectangle {
+                                            color: parent.enabled ? (parent.hovered ? Theme.selectedBackground : Theme.inputBackground) : Theme.disabledBackground
+                                            radius: 4
+                                            border.width: 1
+                                            border.color: parent.enabled ? Theme.borderColor : Theme.disabledBorderColor
+                                        }
+
+                                        contentItem: Text {
+                                            text: parent.text
+                                            color: parent.enabled ? Theme.primaryText : Theme.disabledText
+                                            font.pixelSize: 18
+                                            font.bold: true
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Add delimiter button
+                        Button {
+                            Layout.preferredWidth: 100
+                            Layout.preferredHeight: 32
+                            text: "+ Add"
+
+                            onClicked: {
+                                // Only update local list, don't trigger SettingsManager update
+                                var newDelims = delimiterConfigLayout.localDelimiters.slice()
+                                newDelims.push("")
+                                delimiterConfigLayout.localDelimiters = newDelims
+                            }
+
+                            background: Rectangle {
+                                color: parent.hovered ? Theme.selectedBackground : Theme.inputBackground
+                                radius: 4
+                                border.width: 1
+                                border.color: Theme.borderColor
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                color: Theme.primaryText
+                                font.pixelSize: 13
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                    }
+                }
+            }
+
             // Playback Section
             Rectangle {
                 Layout.fillWidth: true

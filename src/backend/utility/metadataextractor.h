@@ -24,7 +24,8 @@ public:
     struct TrackMetadata {
         QString title;
         QString artist;
-        QString albumArtist;
+        QStringList albumArtists;  // Changed from QString to QStringList for multi-artist support
+        QString originalAlbumArtistString;  // Original combined string for display
         QString album;
         QString genre;
         int year = 0;
@@ -61,6 +62,11 @@ private:
     QMap<qint64, QString> parseSyltFrame(const TagLib::ID3v2::SynchronizedLyricsFrame *frame);
     QString findMatchingLrcFile(const QString &audioFilePath) const;
     QString findLongestCommonSubstring(const QString &s1, const QString &s2, int minLength) const;
+
+    // Helper to parse album artists from TagLib StringList with multi-line and delimiter support
+    QStringList parseAlbumArtists(const TagLib::StringList& tagLibList, QString& outOriginalString) const;
+    // Overload for single QString values (e.g., from M4A or single TPE2 frames)
+    QStringList parseAlbumArtists(const QString& singleValue, QString& outOriginalString) const;
 };
 
 } // namespace Mtoc

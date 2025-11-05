@@ -24,6 +24,9 @@ SettingsManager::SettingsManager(QObject *parent)
     , m_librarySplitRatio(0.51)  // Default to 51%
     , m_singleClickToPlay(false)  // Default to double-click behavior
     , m_minimizeToTray(false)  // Default to quit on close
+    , m_showCollabAlbumsUnderAllArtists(true)  // Default to showing collab albums under all artists
+    , m_useAlbumArtistDelimiters(true)  // Default to enabled for backward compatibility
+    , m_albumArtistDelimiters({";", "|"})  // Default delimiters: semicolon and pipe (whitespace-insensitive)
 {
     loadSettings();
     setupSystemThemeDetection();
@@ -328,6 +331,33 @@ void SettingsManager::setLastSeenChangelogVersion(const QString& version)
     }
 }
 
+void SettingsManager::setShowCollabAlbumsUnderAllArtists(bool enabled)
+{
+    if (m_showCollabAlbumsUnderAllArtists != enabled) {
+        m_showCollabAlbumsUnderAllArtists = enabled;
+        emit showCollabAlbumsUnderAllArtistsChanged(enabled);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setUseAlbumArtistDelimiters(bool enabled)
+{
+    if (m_useAlbumArtistDelimiters != enabled) {
+        m_useAlbumArtistDelimiters = enabled;
+        emit useAlbumArtistDelimitersChanged(enabled);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setAlbumArtistDelimiters(const QStringList& delimiters)
+{
+    if (m_albumArtistDelimiters != delimiters) {
+        m_albumArtistDelimiters = delimiters;
+        emit albumArtistDelimitersChanged(delimiters);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -384,9 +414,15 @@ void SettingsManager::loadSettings()
     m_miniPlayerY = m_settings.value("y", -1).toInt();
     m_miniPlayerHidesMainWindow = m_settings.value("hidesMainWindow", true).toBool();
     m_settings.endGroup();
-    
-    qDebug() << "SettingsManager: Loaded settings - Queue action:" << m_queueActionDefault 
-             << "Show track info:" << m_showTrackInfoByDefault 
+
+    m_settings.beginGroup("Metadata");
+    m_showCollabAlbumsUnderAllArtists = m_settings.value("showCollabAlbumsUnderAllArtists", true).toBool();
+    m_useAlbumArtistDelimiters = m_settings.value("useAlbumArtistDelimiters", true).toBool();
+    m_albumArtistDelimiters = m_settings.value("albumArtistDelimiters", QStringList({";", "|"})).toStringList();
+    m_settings.endGroup();
+
+    qDebug() << "SettingsManager: Loaded settings - Queue action:" << m_queueActionDefault
+             << "Show track info:" << m_showTrackInfoByDefault
              << "Restore position:" << m_restorePlaybackPosition
              << "Repeat:" << m_repeatEnabled
              << "Shuffle:" << m_shuffleEnabled;
@@ -444,7 +480,13 @@ void SettingsManager::saveSettings()
     m_settings.setValue("y", m_miniPlayerY);
     m_settings.setValue("hidesMainWindow", m_miniPlayerHidesMainWindow);
     m_settings.endGroup();
-    
+
+    m_settings.beginGroup("Metadata");
+    m_settings.setValue("showCollabAlbumsUnderAllArtists", m_showCollabAlbumsUnderAllArtists);
+    m_settings.setValue("useAlbumArtistDelimiters", m_useAlbumArtistDelimiters);
+    m_settings.setValue("albumArtistDelimiters", m_albumArtistDelimiters);
+    m_settings.endGroup();
+
     m_settings.sync();
     qDebug() << "SettingsManager: Settings saved";
 }

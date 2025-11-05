@@ -1,4 +1,5 @@
 #include "metadataextractor.h"
+#include "../settings/settingsmanager.h"
 #include <QDebug>
 #include <QFileInfo>
 #include <QFile>
@@ -33,12 +34,12 @@ namespace Mtoc {
 // Helper function to parse replay gain value from string (format: "+#.## dB" or "-#.## dB")
 static double parseReplayGainValue(const QString& str) {
     QString trimmed = str.trimmed();
-    
+
     // Remove "dB" suffix if present
     if (trimmed.endsWith(" dB", Qt::CaseInsensitive)) {
         trimmed = trimmed.left(trimmed.length() - 3).trimmed();
     }
-    
+
     // Convert to double
     bool ok;
     double value = trimmed.toDouble(&ok);
@@ -48,6 +49,136 @@ static double parseReplayGainValue(const QString& str) {
 MetadataExtractor::MetadataExtractor(QObject *parent)
     : QObject{parent}
 {
+}
+
+QStringList MetadataExtractor::parseAlbumArtists(const TagLib::StringList& tagLibList, QString& outOriginalString) const
+{
+    QStringList result;
+
+    // Get settings for multi-artist support
+    SettingsManager* settings = SettingsManager::instance();
+    bool multiArtistEnabled = settings->showCollabAlbumsUnderAllArtists();
+    bool useDelimiters = settings->useAlbumArtistDelimiters();
+    QStringList delimiters = settings->albumArtistDelimiters();
+
+    qDebug() << "[MetadataExtractor] parseAlbumArtists called - multiArtistEnabled:" << multiArtistEnabled
+             << "useDelimiters:" << useDelimiters << "delimiters:" << delimiters << "tagLibList.size():" << tagLibList.size();
+
+    if (!multiArtistEnabled || tagLibList.isEmpty()) {
+        // Feature disabled or no data - return first item only
+        if (!tagLibList.isEmpty()) {
+            QString firstArtist = QString::fromStdString(tagLibList.front().to8Bit(true)).trimmed();
+            outOriginalString = firstArtist;
+            if (!firstArtist.isEmpty()) {
+                result.append(firstArtist);
+            }
+        }
+        return result;
+    }
+
+    // Multi-line tags take precedence (per user requirement)
+    if (tagLibList.size() > 1) {
+        // Multiple lines exist - use them directly
+        QStringList artists;
+        qDebug() << "[MetadataExtractor] Multi-line mode: processing" << tagLibList.size() << "lines";
+        for (const auto& item : tagLibList) {
+            QString artist = QString::fromStdString(item.to8Bit(true)).trimmed();
+            qDebug() << "[MetadataExtractor] Multi-line item:" << artist;
+            if (!artist.isEmpty() && !artists.contains(artist, Qt::CaseInsensitive)) {
+                artists.append(artist);
+                qDebug() << "[MetadataExtractor] Added artist, total now:" << artists.size();
+            } else {
+                qDebug() << "[MetadataExtractor] Skipped (empty or duplicate)";
+            }
+        }
+        result = artists;
+        // Join with primary delimiter for display
+        outOriginalString = artists.join(delimiters.isEmpty() ? "; " : delimiters.first());
+        qDebug() << "[MetadataExtractor] Multi-line result:" << result << "original:" << outOriginalString;
+        return result;
+    }
+
+    // Single line - try delimiter parsing if enabled
+    QString singleValue = QString::fromStdString(tagLibList.front().to8Bit(true));
+    outOriginalString = singleValue;  // Store original before parsing
+
+    if (useDelimiters) {
+        // Try each delimiter in order
+        for (const QString& delimiter : delimiters) {
+            if (singleValue.contains(delimiter)) {
+                QStringList parts = singleValue.split(delimiter, Qt::SkipEmptyParts);
+                for (const QString& part : parts) {
+                    QString trimmed = part.trimmed();
+                    if (!trimmed.isEmpty() && !result.contains(trimmed, Qt::CaseInsensitive)) {
+                        result.append(trimmed);
+                    }
+                }
+                // Found delimiter match, stop trying others
+                if (!result.isEmpty()) {
+                    return result;
+                }
+            }
+        }
+    }
+
+    // No delimiters found or delimiter parsing disabled - treat as single artist
+    QString trimmed = singleValue.trimmed();
+    if (!trimmed.isEmpty()) {
+        result.append(trimmed);
+    }
+
+    qDebug() << "[MetadataExtractor] parseAlbumArtists result:" << result << "original:" << outOriginalString;
+    return result;
+}
+
+QStringList MetadataExtractor::parseAlbumArtists(const QString& singleValue, QString& outOriginalString) const
+{
+    QStringList result;
+
+    // Get settings for multi-artist support
+    SettingsManager* settings = SettingsManager::instance();
+    bool multiArtistEnabled = settings->showCollabAlbumsUnderAllArtists();
+    bool useDelimiters = settings->useAlbumArtistDelimiters();
+    QStringList delimiters = settings->albumArtistDelimiters();
+
+    outOriginalString = singleValue;  // Store original
+
+    if (!multiArtistEnabled || singleValue.isEmpty()) {
+        // Feature disabled or no data - return as single artist
+        QString trimmed = singleValue.trimmed();
+        if (!trimmed.isEmpty()) {
+            result.append(trimmed);
+        }
+        return result;
+    }
+
+    if (useDelimiters) {
+        // Try each delimiter in order
+        for (const QString& delimiter : delimiters) {
+            if (singleValue.contains(delimiter)) {
+                QStringList parts = singleValue.split(delimiter, Qt::SkipEmptyParts);
+                for (const QString& part : parts) {
+                    QString trimmed = part.trimmed();
+                    if (!trimmed.isEmpty() && !result.contains(trimmed, Qt::CaseInsensitive)) {
+                        result.append(trimmed);
+                    }
+                }
+                // Found delimiter match, stop trying others
+                if (!result.isEmpty()) {
+                    return result;
+                }
+            }
+        }
+    }
+
+    // No delimiters found or delimiter parsing disabled - treat as single artist
+    QString trimmed = singleValue.trimmed();
+    if (!trimmed.isEmpty()) {
+        result.append(trimmed);
+    }
+
+    qDebug() << "[MetadataExtractor] parseAlbumArtists result:" << result << "original:" << outOriginalString;
+    return result;
 }
 
 std::pair<QString, QMap<qint64, QString>> MetadataExtractor::parseLrcFile(const QString &lrcFilePath)
@@ -233,9 +364,10 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                     if (!TPE2Frames.isEmpty() && TPE2Frames.front()) {
                         TagLib::String albumArtistStr = TPE2Frames.front()->toString();
                         if (!albumArtistStr.isEmpty()) {
-                            meta.albumArtist = QString::fromStdString(albumArtistStr.to8Bit(true));
+                            QString singleValue = QString::fromStdString(albumArtistStr.to8Bit(true));
+                            meta.albumArtists = parseAlbumArtists(singleValue, meta.originalAlbumArtistString);
                         }
-                        // qDebug() << "MetadataExtractor: Found ID3v2 album artist (TPE2):" << meta.albumArtist;
+                        // qDebug() << "MetadataExtractor: Found ID3v2 album artist (TPE2):" << meta.originalAlbumArtistString;
                     }
                 }
                 // else qDebug() << "MetadataExtractor: No ID3v2 album artist (TPE2) found";
@@ -329,7 +461,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             }
             
             // If album artist still empty, check the standard properties too
-            if (meta.albumArtist.isEmpty()) {
+            if (meta.albumArtists.isEmpty()) {
                 TagLib::PropertyMap properties = mpegFile.properties();
                 
                 // Debug logging removed - iterating properties can cause issues
@@ -338,14 +470,14 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                 try {
                     TagLib::StringList albumArtistList = properties.value("ALBUMARTIST");
                     if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
-                        meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
-                        qDebug() << "MetadataExtractor: Found ALBUMARTIST property:" << meta.albumArtist;
+                        meta.albumArtists = parseAlbumArtists(albumArtistList, meta.originalAlbumArtistString);
+                        qDebug() << "MetadataExtractor: Found ALBUMARTIST property:" << meta.originalAlbumArtistString;
                     } else {
                         // Try alternate spelling
                         albumArtistList = properties.value("ALBUM ARTIST");
                         if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
-                            meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
-                            qDebug() << "MetadataExtractor: Found 'ALBUM ARTIST' property:" << meta.albumArtist;
+                            meta.albumArtists = parseAlbumArtists(albumArtistList, meta.originalAlbumArtistString);
+                            qDebug() << "MetadataExtractor: Found 'ALBUM ARTIST' property:" << meta.originalAlbumArtistString;
                         }
                     }
                 } catch (const std::exception& e) {
@@ -525,10 +657,12 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             }
             
             // Album Artist - simplified to avoid crashes
-            meta.albumArtist = getStringValue("aART");
-            if (meta.albumArtist.isEmpty()) {
+            QString aartValue = getStringValue("aART");
+            if (!aartValue.isEmpty()) {
+                meta.albumArtists = parseAlbumArtists(aartValue, meta.originalAlbumArtistString);
+            } else {
                 // Fallback to artist if no album artist
-                meta.albumArtist = meta.artist;
+                meta.albumArtists = parseAlbumArtists(meta.artist, meta.originalAlbumArtistString);
             }
 
             if (!lyricsFoundInLrc) {
@@ -612,12 +746,12 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             if (xiphComment) {
                 // Get properties for album artist and disc number
                 TagLib::PropertyMap properties = xiphComment->properties();
-                
+
                 // Album Artist
                 try {
                     TagLib::StringList albumArtistList = properties.value("ALBUMARTIST");
                     if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
-                        meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                        meta.albumArtists = parseAlbumArtists(albumArtistList, meta.originalAlbumArtistString);
                     }
                 } catch (const std::exception& e) {
                     qDebug() << "MetadataExtractor: Exception accessing ALBUMARTIST property:" << e.what();
@@ -798,8 +932,8 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             }
             
             // If album artist is still empty, fallback to artist
-            if (meta.albumArtist.isEmpty()) {
-                meta.albumArtist = meta.artist;
+            if (meta.albumArtists.isEmpty()) {
+                meta.albumArtists = parseAlbumArtists(meta.artist, meta.originalAlbumArtistString);
             }
             
             qDebug() << "MetadataExtractor: Returning Opus metadata, has album art:" << !meta.albumArtData.isEmpty();
@@ -832,12 +966,12 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             if (xiphComment) {
                 // Get properties for album artist and disc number
                 TagLib::PropertyMap properties = xiphComment->properties();
-                
+
                 // Album Artist
                 try {
                     TagLib::StringList albumArtistList = properties.value("ALBUMARTIST");
                     if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
-                        meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                        meta.albumArtists = parseAlbumArtists(albumArtistList, meta.originalAlbumArtistString);
                     }
                 } catch (const std::exception& e) {
                     qDebug() << "MetadataExtractor: Exception accessing ALBUMARTIST property:" << e.what();
@@ -1018,8 +1152,8 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             }
             
             // If album artist is still empty, fallback to artist
-            if (meta.albumArtist.isEmpty()) {
-                meta.albumArtist = meta.artist;
+            if (meta.albumArtists.isEmpty()) {
+                meta.albumArtists = parseAlbumArtists(meta.artist, meta.originalAlbumArtistString);
             }
             
             qDebug() << "MetadataExtractor: Returning OGG Vorbis metadata, has album art:" << !meta.albumArtData.isEmpty();
@@ -1051,12 +1185,12 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             if (xiphComment) {
                 // Get properties for album artist and disc number
                 TagLib::PropertyMap properties = xiphComment->properties();
-                
+
                 // Album Artist
                 try {
                     TagLib::StringList albumArtistList = properties.value("ALBUMARTIST");
                     if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
-                        meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                        meta.albumArtists = parseAlbumArtists(albumArtistList, meta.originalAlbumArtistString);
                     }
                 } catch (const std::exception& e) {
                     qDebug() << "MetadataExtractor: Exception accessing ALBUMARTIST property:" << e.what();
@@ -1119,8 +1253,8 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             }
             
             // If album artist is still empty, fallback to artist
-            if (meta.albumArtist.isEmpty()) {
-                meta.albumArtist = meta.artist;
+            if (meta.albumArtists.isEmpty()) {
+                meta.albumArtists = parseAlbumArtists(meta.artist, meta.originalAlbumArtistString);
             }
             
             return meta;
@@ -1166,22 +1300,22 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             // Try different album artist tag variants
             TagLib::StringList albumArtistList = properties.value("ALBUMARTIST");
             if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
-                meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                meta.albumArtists = parseAlbumArtists(albumArtistList, meta.originalAlbumArtistString);
             } else {
                 // Try with space
                 albumArtistList = properties.value("ALBUM ARTIST");
                 if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
-                    meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                    meta.albumArtists = parseAlbumArtists(albumArtistList, meta.originalAlbumArtistString);
                 } else {
                     // Try ID3v2 TPE2 frame
                     albumArtistList = properties.value("TPE2");
                     if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
-                        meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                        meta.albumArtists = parseAlbumArtists(albumArtistList, meta.originalAlbumArtistString);
                     } else {
                         // Try iTunes/M4A specific tag
                         albumArtistList = properties.value("aART");
                         if (!albumArtistList.isEmpty() && albumArtistList.size() > 0) {
-                            meta.albumArtist = QString::fromStdString(albumArtistList.front().to8Bit(true));
+                            meta.albumArtists = parseAlbumArtists(albumArtistList, meta.originalAlbumArtistString);
                         }
                     }
                 }
@@ -1236,7 +1370,9 @@ QVariantMap MetadataExtractor::extractAsVariantMap(const QString &filePath, bool
     QVariantMap map;
     map.insert("title", details.title);
     map.insert("artist", details.artist);
-    map.insert("albumArtist", details.albumArtist);
+    map.insert("albumArtist", details.originalAlbumArtistString);  // For backward compatibility
+    map.insert("albumArtists", details.albumArtists);  // New: list of album artists
+    map.insert("originalAlbumArtistString", details.originalAlbumArtistString);  // Original combined string
     map.insert("album", details.album);
     map.insert("genre", details.genre);
     map.insert("year", details.year);

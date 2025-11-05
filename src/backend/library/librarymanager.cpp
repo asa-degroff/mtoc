@@ -33,6 +33,7 @@ LibraryManager::LibraryManager(QObject *parent)
     , m_totalFilesToScan(0)
     , m_filesScanned(0)
     , m_cancelRequested(false)
+    , m_forceMetadataUpdate(false)
     , m_albumModelCacheValid(false)
     , m_cachedAlbumCount(-1)
     , m_albumCountCacheValid(false)
@@ -359,6 +360,12 @@ void LibraryManager::setWatchFileChanges(bool enabled)
         // Update file watcher based on new setting
         updateFileWatcher();
     }
+}
+
+void LibraryManager::setForceMetadataUpdate(bool force)
+{
+    m_forceMetadataUpdate = force;
+    qDebug() << "LibraryManager: Force metadata update set to:" << force;
 }
 
 // Library management methods
@@ -710,8 +717,12 @@ void LibraryManager::scanInBackground()
             }
             cleanupQuery.finish();
             
-            // Delete album artists that have no albums
-            if (!cleanupQuery.exec("DELETE FROM album_artists WHERE id NOT IN (SELECT DISTINCT album_artist_id FROM albums WHERE album_artist_id IS NOT NULL)")) {
+            // Delete album artists that have no albums (checking both primary and junction)
+            if (!cleanupQuery.exec("DELETE FROM album_artists WHERE id NOT IN ("
+                                  "SELECT DISTINCT album_artist_id FROM albums WHERE album_artist_id IS NOT NULL "
+                                  "UNION "
+                                  "SELECT DISTINCT album_artist_id FROM album_album_artists"
+                                  ")")) {
                 qWarning() << "Failed to delete orphaned album artists:" << cleanupQuery.lastError().text();
             } else {
                 int deletedAlbumArtists = cleanupQuery.numRowsAffected();
@@ -744,8 +755,8 @@ void LibraryManager::scanInBackground()
             const QString &filePath = allFiles[i];
             QFileInfo fileInfo(filePath);
             
-            // Check if already in database before extracting metadata
-            {
+            // Check if already in database before extracting metadata (unless forcing update)
+            if (!m_forceMetadataUpdate) {
                 QSqlQuery checkQuery(db);
                 checkQuery.prepare("SELECT 1 FROM tracks WHERE file_path = :path LIMIT 1");
                 checkQuery.bindValue(":path", filePath);
@@ -762,6 +773,9 @@ void LibraryManager::scanInBackground()
                     qDebug() << "[" << connectionName << "] New track found, will process:" << filePath;
                 }
                 checkQuery.finish();
+            } else {
+                // Force metadata update enabled - process all files
+                qDebug() << "[" << connectionName << "] Force metadata update enabled, processing:" << filePath;
             }
             
             // Queue metadata extraction for parallel processing
@@ -825,7 +839,7 @@ void LibraryManager::scanInBackground()
             if (batchMetadata.size() >= batchSize || i == allFiles.size() - 1) {
                 if (!batchMetadata.isEmpty()) {
                     // Use prepared statements for better performance
-                    insertBatchTracksInThread(db, batchMetadata);
+                    insertBatchTracksInThread(db, batchMetadata, m_forceMetadataUpdate);
                     batchMetadata.clear();
                 }
             }
@@ -883,12 +897,58 @@ void LibraryManager::scanInBackground()
         // Process any remaining items in the batch
         if (!batchMetadata.isEmpty() && !m_cancelRequested) {
             qDebug() << "Processing final batch with" << batchMetadata.size() << "tracks";
-            insertBatchTracksInThread(db, batchMetadata);
+            insertBatchTracksInThread(db, batchMetadata, m_forceMetadataUpdate);
             batchMetadata.clear();
         }
-        
+
+        // If we forced metadata updates, cleanup orphaned records
+        if (m_forceMetadataUpdate && !m_cancelRequested) {
+            qDebug() << "Force metadata update - cleaning up orphaned entries...";
+
+            QSqlQuery cleanupQuery(db);
+
+            // Delete albums that have no tracks
+            if (!cleanupQuery.exec("DELETE FROM albums WHERE id NOT IN "
+                                  "(SELECT DISTINCT album_id FROM tracks WHERE album_id IS NOT NULL)")) {
+                qWarning() << "Failed to delete orphaned albums:" << cleanupQuery.lastError().text();
+            } else {
+                int deletedAlbums = cleanupQuery.numRowsAffected();
+                if (deletedAlbums > 0) {
+                    qDebug() << "Deleted" << deletedAlbums << "orphaned albums";
+                }
+            }
+
+            // Delete album artists that have no albums (checking both primary and junction)
+            if (!cleanupQuery.exec("DELETE FROM album_artists WHERE id NOT IN ("
+                                  "SELECT DISTINCT album_artist_id FROM albums WHERE album_artist_id IS NOT NULL "
+                                  "UNION "
+                                  "SELECT DISTINCT album_artist_id FROM album_album_artists"
+                                  ")")) {
+                qWarning() << "Failed to delete orphaned album artists:" << cleanupQuery.lastError().text();
+            } else {
+                int deletedArtists = cleanupQuery.numRowsAffected();
+                if (deletedArtists > 0) {
+                    qDebug() << "Deleted" << deletedArtists << "orphaned album artists";
+                }
+            }
+
+            // Delete artists that have no tracks
+            if (!cleanupQuery.exec("DELETE FROM artists WHERE id NOT IN "
+                                  "(SELECT DISTINCT artist_id FROM tracks WHERE artist_id IS NOT NULL)")) {
+                qWarning() << "Failed to delete orphaned artists:" << cleanupQuery.lastError().text();
+            } else {
+                int deletedArtists = cleanupQuery.numRowsAffected();
+                if (deletedArtists > 0) {
+                    qDebug() << "Deleted" << deletedArtists << "orphaned artists";
+                }
+            }
+
+            cleanupQuery.finish();
+            qDebug() << "Force metadata update cleanup complete";
+        }
+
         // No longer using transactions - each operation auto-commits
-        
+
         // Log final track count in this connection
         {
             QSqlQuery finalCountQuery(db);
@@ -932,10 +992,16 @@ void LibraryManager::cancelScan()
 void LibraryManager::onScanFinished()
 {
     qDebug() << "LibraryManager::onScanFinished() called";
-    
+
     m_scanning = false;
     m_scanProgress = 100;
-    
+
+    // Reset force metadata update flag
+    if (m_forceMetadataUpdate) {
+        qDebug() << "Resetting force metadata update flag";
+        m_forceMetadataUpdate = false;
+    }
+
     // Transaction is now handled in the background thread
     
     // Invalidate cache after scan and clear it to free memory
@@ -1855,13 +1921,13 @@ void LibraryManager::insertTrackInThread(QSqlDatabase& db, const QVariantMap& me
     query.finish();
 }
 
-void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVariantMap>& batchMetadata)
+void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVariantMap>& batchMetadata, bool forceUpdate)
 {
     if (batchMetadata.isEmpty() || m_cancelRequested) {
         return;
     }
-    
-    qDebug() << "[insertBatchTracksInThread] Starting to insert batch of" << batchMetadata.size() << "tracks";
+
+    qDebug() << "[insertBatchTracksInThread] Starting to insert batch of" << batchMetadata.size() << "tracks (forceUpdate:" << forceUpdate << ")";
     int successCount = 0;
     int failCount = 0;
     
@@ -2014,7 +2080,8 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         QString filePath = metadata.value("filePath").toString();
         QString title = metadata.value("title").toString();
         QString artist = metadata.value("artist").toString();
-        QString albumArtist = metadata.value("albumArtist").toString();
+        QStringList albumArtists = metadata.value("albumArtists").toStringList();
+        QString albumArtist = metadata.value("albumArtist").toString();  // Backward compatibility
         QString album = metadata.value("album").toString();
         QString genre = metadata.value("genre").toString();
         int year = metadata.value("year").toInt();
@@ -2024,24 +2091,44 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
         qint64 fileSize = metadata.value("fileSize", 0).toLongLong();
         QDateTime fileModified = metadata.value("fileModified").toDateTime();
         QString lyrics = metadata.value("lyrics").toString();
-        
+
         // Get or create artist (using cache)
         int artistId = getCachedArtist(artist);
-        
-        // Get or create album artist (using cache)
-        int albumArtistId = 0;
-        if (!albumArtist.isEmpty()) {
-            albumArtistId = getCachedAlbumArtist(albumArtist);
-        } else if (!artist.isEmpty()) {
-            albumArtistId = getCachedAlbumArtist(artist);
+
+        // Handle album artists (backward compatible with single albumArtist string)
+        if (albumArtists.isEmpty() && !albumArtist.isEmpty()) {
+            albumArtists.append(albumArtist);
         }
-        
+        if (albumArtists.isEmpty() && !artist.isEmpty()) {
+            // Fallback to artist if no album artist specified
+            albumArtists.append(artist);
+        }
+
+        // Get or create album using first album artist (for backward compatibility)
+        int albumArtistId = 0;
+        if (!albumArtists.isEmpty()) {
+            albumArtistId = getCachedAlbumArtist(albumArtists.first());
+        }
+
         // Get or create album (using cache)
         int albumId = getCachedAlbum(album, albumArtistId, year);
-        
+
         // Album art processing removed from bulk scanning to save memory
         // Album art will be processed in a separate pass after initial scan
-        
+
+        // If forcing metadata update, delete existing track first to allow re-insertion
+        if (forceUpdate) {
+            QSqlQuery deleteQuery(db);
+            deleteQuery.prepare("DELETE FROM tracks WHERE file_path = :path");
+            deleteQuery.bindValue(":path", filePath);
+            if (!deleteQuery.exec()) {
+                qWarning() << "[insertBatchTracksInThread] Failed to delete existing track:" << filePath << "-" << deleteQuery.lastError().text();
+            } else {
+                qDebug() << "[insertBatchTracksInThread] Deleted existing track for re-insertion:" << filePath;
+            }
+            deleteQuery.finish();
+        }
+
         // Insert track using prepared statement
         trackInsert.bindValue(":file_path", filePath);
         trackInsert.bindValue(":title", title);
@@ -2061,6 +2148,51 @@ void LibraryManager::insertBatchTracksInThread(QSqlDatabase& db, const QList<QVa
             failCount++;
         } else {
             successCount++;
+
+            // Create junction table links for all album artists
+            if (albumId > 0 && albumArtists.size() > 0) {
+                // Check if junction table exists
+                QSqlQuery checkQuery(db);
+                checkQuery.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='album_album_artists'");
+                if (checkQuery.next()) {
+                    // Clear existing links for this album
+                    QSqlQuery clearQuery(db);
+                    clearQuery.prepare("DELETE FROM album_album_artists WHERE album_id = :album_id");
+                    clearQuery.bindValue(":album_id", albumId);
+                    clearQuery.exec();
+                    clearQuery.finish();
+
+                    // Insert links for all album artists
+                    int position = 0;
+                    for (const QString& artistName : albumArtists) {
+                        if (artistName.trimmed().isEmpty()) {
+                            continue;
+                        }
+
+                        // Get or create the album artist
+                        int artistId = getCachedAlbumArtist(artistName);
+                        if (artistId <= 0) {
+                            continue;
+                        }
+
+                        // Insert the link
+                        QSqlQuery linkQuery(db);
+                        linkQuery.prepare("INSERT INTO album_album_artists (album_id, album_artist_id, position) "
+                                         "VALUES (:album_id, :artist_id, :position)");
+                        linkQuery.bindValue(":album_id", albumId);
+                        linkQuery.bindValue(":artist_id", artistId);
+                        linkQuery.bindValue(":position", position);
+
+                        if (!linkQuery.exec()) {
+                            qWarning() << "[insertBatchTracksInThread] Failed to insert album artist link:"
+                                      << linkQuery.lastError().text();
+                        }
+                        linkQuery.finish();
+                        position++;
+                    }
+                }
+                checkQuery.finish();
+            }
         }
     }
     

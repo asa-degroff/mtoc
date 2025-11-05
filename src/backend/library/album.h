@@ -16,6 +16,7 @@ class Album : public QObject
     Q_OBJECT
     Q_PROPERTY(QString title READ title WRITE setTitle NOTIFY titleChanged)
     Q_PROPERTY(QString artist READ artist WRITE setArtist NOTIFY artistChanged)
+    Q_PROPERTY(QStringList artists READ artists WRITE setArtists NOTIFY artistsChanged)
     Q_PROPERTY(int year READ year WRITE setYear NOTIFY yearChanged)
     Q_PROPERTY(int trackCount READ trackCount NOTIFY trackCountChanged)
     Q_PROPERTY(QString genre READ genre WRITE setGenre NOTIFY genreChanged)
@@ -28,14 +29,16 @@ public:
     // Property getters
     QString title() const;
     QString artist() const;
+    QStringList artists() const;
     int year() const;
     int trackCount() const;
     QString genre() const;
     QUrl coverArtUrl() const;
-    
+
     // Property setters
     void setTitle(const QString &title);
     void setArtist(const QString &artist);
+    void setArtists(const QStringList &artists);
     void setYear(int year);
     void setGenre(const QString &genre);
     void setCoverArtUrl(const QUrl &url);
@@ -54,6 +57,7 @@ public:
 signals:
     void titleChanged();
     void artistChanged();
+    void artistsChanged();
     void yearChanged();
     void trackCountChanged();
     void genreChanged();
@@ -61,10 +65,11 @@ signals:
     void trackAdded(Track *track);
     void trackRemoved(Track *track);
     void tracksReordered();
-    
+
 private:
     QString m_title;
-    QString m_artist;
+    QString m_artist;  // Display string (joined artists)
+    QStringList m_artists;  // List of album artists
     int m_year = 0;
     QString m_genre;
     QUrl m_coverArtUrl;

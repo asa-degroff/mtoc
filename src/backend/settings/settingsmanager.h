@@ -42,6 +42,9 @@ class SettingsManager : public QObject
     Q_PROPERTY(bool singleClickToPlay READ singleClickToPlay WRITE setSingleClickToPlay NOTIFY singleClickToPlayChanged)
     Q_PROPERTY(bool minimizeToTray READ minimizeToTray WRITE setMinimizeToTray NOTIFY minimizeToTrayChanged)
     Q_PROPERTY(QString lastSeenChangelogVersion READ lastSeenChangelogVersion WRITE setLastSeenChangelogVersion NOTIFY lastSeenChangelogVersionChanged)
+    Q_PROPERTY(bool showCollabAlbumsUnderAllArtists READ showCollabAlbumsUnderAllArtists WRITE setShowCollabAlbumsUnderAllArtists NOTIFY showCollabAlbumsUnderAllArtistsChanged)
+    Q_PROPERTY(bool useAlbumArtistDelimiters READ useAlbumArtistDelimiters WRITE setUseAlbumArtistDelimiters NOTIFY useAlbumArtistDelimitersChanged)
+    Q_PROPERTY(QStringList albumArtistDelimiters READ albumArtistDelimiters WRITE setAlbumArtistDelimiters NOTIFY albumArtistDelimitersChanged)
 
 public:
     enum QueueAction {
@@ -116,6 +119,9 @@ public:
     bool singleClickToPlay() const { return m_singleClickToPlay; }
     bool minimizeToTray() const { return m_minimizeToTray; }
     QString lastSeenChangelogVersion() const { return m_lastSeenChangelogVersion; }
+    bool showCollabAlbumsUnderAllArtists() const { return m_showCollabAlbumsUnderAllArtists; }
+    bool useAlbumArtistDelimiters() const { return m_useAlbumArtistDelimiters; }
+    QStringList albumArtistDelimiters() const { return m_albumArtistDelimiters; }
 
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -148,6 +154,9 @@ public:
     void setSingleClickToPlay(bool enabled);
     void setMinimizeToTray(bool enabled);
     void setLastSeenChangelogVersion(const QString& version);
+    void setShowCollabAlbumsUnderAllArtists(bool enabled);
+    void setUseAlbumArtistDelimiters(bool enabled);
+    void setAlbumArtistDelimiters(const QStringList& delimiters);
 
 protected:
     bool event(QEvent *event) override;
@@ -185,6 +194,9 @@ signals:
     void singleClickToPlayChanged(bool enabled);
     void minimizeToTrayChanged(bool enabled);
     void lastSeenChangelogVersionChanged(const QString& version);
+    void showCollabAlbumsUnderAllArtistsChanged(bool enabled);
+    void useAlbumArtistDelimitersChanged(bool enabled);
+    void albumArtistDelimitersChanged(const QStringList& delimiters);
 
 private slots:
     void onColorSchemeChanged(Qt::ColorScheme scheme);
@@ -230,6 +242,9 @@ private:
     bool m_singleClickToPlay;
     bool m_minimizeToTray;
     QString m_lastSeenChangelogVersion;
+    bool m_showCollabAlbumsUnderAllArtists;
+    bool m_useAlbumArtistDelimiters;
+    QStringList m_albumArtistDelimiters;
 };
 
 #endif // SETTINGSMANAGER_H

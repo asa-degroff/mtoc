@@ -499,9 +499,17 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (libraryPane && MediaPlayer.currentTrack) {
-                            // Use albumArtist for consistency with library organization
-                            var artistName = MediaPlayer.currentTrack.albumArtist || MediaPlayer.currentTrack.artist
-                            var albumTitle = MediaPlayer.currentTrack.album
+                            var track = MediaPlayer.currentTrack
+                            var artistName = ""
+
+                            // Smart navigation: prioritize track artist if different from album artist
+                            if (track.artist && track.albumArtist && track.artist !== track.albumArtist) {
+                                artistName = track.artist
+                            } else {
+                                artistName = track.albumArtist || track.artist
+                            }
+
+                            var albumTitle = track.album
                             if (artistName && albumTitle) {
                                 libraryPane.jumpToAlbum(artistName, albumTitle)
                             }
@@ -536,11 +544,21 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (libraryPane && MediaPlayer.currentTrack) {
-                            // Use album artist for navigation since library is organized by album artist
-                            // This ensures the artist exists in the library pane even for featured artists
-                            var albumArtist = MediaPlayer.currentTrack.albumArtist || MediaPlayer.currentTrack.artist
-                            if (albumArtist) {
-                                libraryPane.jumpToArtist(albumArtist)
+                            var track = MediaPlayer.currentTrack
+                            var artistToJump = ""
+
+                            // Smart navigation: prioritize track artist if different from album artist
+                            // This handles multi-artist albums where individual tracks have unique performers
+                            if (track.artist && track.albumArtist && track.artist !== track.albumArtist) {
+                                // Track has a unique artist - navigate to track artist
+                                artistToJump = track.artist
+                            } else {
+                                // Use album artist for navigation (standard behavior)
+                                artistToJump = track.albumArtist || track.artist
+                            }
+
+                            if (artistToJump) {
+                                libraryPane.jumpToArtist(artistToJump)
                             }
                         }
                     }
@@ -573,9 +591,17 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (libraryPane && MediaPlayer.currentTrack) {
-                            // Use albumArtist for consistency with library organization
-                            var artistName = MediaPlayer.currentTrack.albumArtist || MediaPlayer.currentTrack.artist
-                            var albumTitle = MediaPlayer.currentTrack.album
+                            var track = MediaPlayer.currentTrack
+                            var artistName = ""
+
+                            // Smart navigation: prioritize track artist if different from album artist
+                            if (track.artist && track.albumArtist && track.artist !== track.albumArtist) {
+                                artistName = track.artist
+                            } else {
+                                artistName = track.albumArtist || track.artist
+                            }
+
+                            var albumTitle = track.album
                             if (artistName && albumTitle) {
                                 libraryPane.jumpToAlbum(artistName, albumTitle)
                             }
