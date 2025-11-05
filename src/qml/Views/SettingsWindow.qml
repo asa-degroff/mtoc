@@ -1174,9 +1174,9 @@ ApplicationWindow {
                                 ToolTip {
                                     id: multiArtistTooltip
                                     visible: parent.containsMouse
-                                    text: "When enabled, albums with multiple album artist tags will appear in each artist's discography.\nA library rescan is triggered when this setting changes."
+                                    text: "When enabled, albums with multiple album artist tags will appear in each artist's discography.\n\nWhen disabled, only the first album artist tag will be used.\n\nThis enables multi-line album artist tags. To parse multiple album artists from single-line tags, \nenable the split single-line album artists option below.\n\nA library rescan is triggered when this setting changes."
                                     delay: 200
-                                    timeout: 8000
+                                    timeout: 12000
                                     background: Rectangle {
                                         color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
                                         border.color: Theme.borderColor
@@ -1266,9 +1266,9 @@ ApplicationWindow {
                                 ToolTip {
                                     id: delimiterTooltip
                                     visible: parent.containsMouse
-                                    text: "When enabled, album artist tags on a single line will be split using the configured delimiters below.\nAlbum artist tags on multiple lines are always split regardless of this setting.\nA library rescan is triggered when this setting changes."
+                                    text: "When enabled, album artist tags on a single line will be split using the configured delimiters below,\n and featured in each artist's discography.\n\nA library rescan is triggered when this setting changes."
                                     delay: 200
-                                    timeout: 8000
+                                    timeout: 12000
                                     background: Rectangle {
                                         color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
                                         border.color: Theme.borderColor
