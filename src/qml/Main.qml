@@ -15,8 +15,10 @@ ApplicationWindow {
     minimumWidth: effectiveLayoutMode === SettingsManager.Compact ? 700 : 1050
     minimumHeight: 700
     visible: true
-    title: SystemInfo.appName
-    
+    title: MediaPlayer.currentTrack
+        ? MediaPlayer.currentTrack.title + " - " + MediaPlayer.currentTrack.artist
+        : SystemInfo.appName
+
     // Save state when window is closing
     onClosing: function(close) {
         console.log("Main.qml: Window closing event received");
