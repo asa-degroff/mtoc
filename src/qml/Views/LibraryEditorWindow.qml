@@ -586,7 +586,7 @@ ApplicationWindow {
                     spacing: 8
                     
                     Label {
-                        text: "Scan your library to update the database with any new, modified, or deleted files. \n\nAudio files are treated as read-only, changes made here only affect the database. \n\nRestart the application to apply changes if replacing the entire library."
+                        text: "Scan your library to update the database with any new or deleted files. This functions the same as an automatic refresh.\n\nExtract metadata if you have made changes to tags or artwork, to update the library with your changes.\n\nAudio files are treated as read-only; changes made here only affect the database."
                         color: Theme.secondaryText
                         font.pixelSize: 12
                         wrapMode: Text.WordWrap
@@ -830,7 +830,7 @@ ApplicationWindow {
                         }
 
                         Label {
-                            text: "Note: For very large libraries (>5000 directories), 'Auto-refresh on startup' is recommended over 'Watch for changes' for better performance."
+                            text: "Note: For very large libraries (>5000 subdirectories), 'Auto-refresh on startup' is recommended over 'Watch for changes' for better performance."
                             color: Theme.secondaryText
                             font.pixelSize: 11
                             wrapMode: Text.WordWrap
