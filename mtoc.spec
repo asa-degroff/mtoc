@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.3.3
+Version:        2.4
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,67 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Sun Nov 09 2025 Asa DeGroff <asa@3fz.org> 2.4-1
+- version bump and changelog (asa@3fz.org)
+- new tooltips for library scanner options, formatting tweaks (asa@3fz.org)
+- update reminder text int library editor (asa@3fz.org)
+- update reminder text in libray editor (asa@3fz.org)
+- Performance and memory usage improvements for library scanning and album art
+  processing: - added calculateImageHash() method in album art manager -
+  changed image hash calculation in library manger to use QByteArray instead of
+  full image - added explicit cleanup for QImage assignments in album art
+  manager and library manager - process albums in batches of 20, garbage
+  collect after each batch - convert album art to RGB888 to reduce memory usage
+  - generate and encode thumbnails in a scoped block to be freed after creation
+  - memory monitoring debug output (asa@3fz.org)
+- add heaptrack files to gitignore (asa@3fz.org)
+- Add current track and artist to window title (asa@3fz.org)
+- add metadata extraction button in library editor window and wire it up to the
+  metadata extractor backend (asa@3fz.org)
+- update default delimiters and clarify reminder text in UI (asa@3fz.org)
+- moved reminder text to tooltip and changed default delimiters (asa@3fz.org)
+- debug logging cleanup (asa@3fz.org)
+- feat: enhance metadata update process by cleaning up orphaned records for
+  albums, album artists, and artists (asa@3fz.org)
+- feat: add force metadata update functionality in LibraryManager and connect
+  to settings changes (asa@3fz.org)
+- feat: add toggle for using album artist delimiters in SettingsWindow and
+  update SettingsManager to handle new setting (asa@3fz.org)
+- feat: implement local delimiter management for album artist settings in
+  SettingsWindow (asa@3fz.org)
+- fix: update border color for input field focus state in SettingsWindow
+  (asa@3fz.org)
+- update styling for multi-artist album toggle in SettingsWindow with improved
+  layout and visual feedback (asa@3fz.org)
+- feat: refactor delimiter configuration handling in SettingsWindow to directly
+  use SettingsManager for album artist delimiters (asa@3fz.org)
+- feat: enhance artist handling by adding support for user-defined delimiters
+  in settings and improving multi-artist detection logic, add unsplit fallback
+  logic to support single artist names that contain delimiter characters
+  (asa@3fz.org)
+- feat: implement smart navigation for artist and album handling in
+  NowPlayingPane and CompactNowPlayingBar, where unique track artists are
+  prioritized over the primary album artist (asa@3fz.org)
+- feat: improve handling of multi-artist names in jumpToArtist and jumpToAlbum
+  functions (asa@3fz.org)
+- feat: enhance track retrieval by implementing multi-artist support and
+  resolve multiple artists in programmatic library navigation (asa@3fz.org)
+- feat: enhance album retrieval with junction table support and improved query
+  handling (asa@3fz.org)
+- feat: update album retrieval to support junction table and add debug logging
+  (asa@3fz.org)
+- feat: enhance album artist handling with multi-artist support for
+  multithreded batch insertion (asa@3fz.org)
+- feat: update album artist delimiters to support both semicolon formats in
+  settings (asa@3fz.org)
+- feat: add library & metadata settings with multi-artist toggle and delimiter
+  configuration (asa@3fz.org)
+- feat: enhance album artist linking with junction table checks and fallback
+  queries (asa@3fz.org)
+- feat: implement multi-artist support with junction table and settings for
+  album artists (asa@3fz.org)
+- update gitigore (asa@3fz.org)
+
 * Mon Oct 27 2025 Asa DeGroff <asa@3fz.org> 2.3.3-1
 - changelog and version bump (asa@3fz.org)
 - fix: enhance system theme detection using Qt 6.5+ color scheme API for
