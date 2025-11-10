@@ -63,3 +63,6 @@ tito/
 
 # Letta
 .letta
+
+# Heaptrack
+heaptrack.*

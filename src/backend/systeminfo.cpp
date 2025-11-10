@@ -5,7 +5,7 @@
 SystemInfo::SystemInfo(QObject *parent)
     : QObject(parent),
       m_appName("mtoc"),
-      m_appVersion("2.3.3") // Corresponds to project version in CMakeLists.txt
+      m_appVersion("2.4") // Corresponds to project version in CMakeLists.txt
 {
     // Check for --show-changelog command line flag
     QStringList args = QCoreApplication::arguments();

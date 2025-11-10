@@ -48,55 +48,83 @@ AlbumArtManager::ProcessedAlbumArt AlbumArtManager::processAlbumArt(
         formatName = "jpeg";
     }
     
-    // Load image from raw data
-    QImage fullImage;
-    if (!fullImage.loadFromData(rawData)) {
+    // Load image from raw data - use Format_RGB888 for better memory efficiency
+    QImage originalImage;
+    if (!originalImage.loadFromData(rawData)) {
         result.error = "Failed to load image from data";
         return result;
     }
-    
-    result.originalSize = fullImage.size();
+
+    result.originalSize = originalImage.size();
     result.format = formatName;
     result.fileSize = rawData.size();
-    
-    // Scale down if too large
+
+    // Convert to RGB format early to reduce memory usage (no alpha channel for album art)
+    if (originalImage.format() != QImage::Format_RGB888 && originalImage.format() != QImage::Format_RGB32) {
+        originalImage = originalImage.convertToFormat(QImage::Format_RGB888);
+    }
+
+    // Create and save thumbnail FIRST, then free it before handling full image
+    {
+        QImage thumbnail = createThumbnail(originalImage);
+
+        // Convert thumbnail to byte array
+        QBuffer buffer;
+        buffer.open(QIODevice::WriteOnly);
+        if (!thumbnail.save(&buffer, formatName.toUtf8().constData(), 85)) {
+            result.error = "Failed to create thumbnail";
+            // Explicit cleanup before returning
+            thumbnail = QImage();
+            originalImage = QImage();
+            return result;
+        }
+        result.thumbnailData = buffer.buffer();
+        buffer.close();
+
+        // Explicitly free thumbnail memory immediately
+        thumbnail = QImage();
+    } // thumbnail goes out of scope here
+
+    // Now handle full image (thumbnail is already freed)
+    QImage fullImage = originalImage;
+
+    // Scale down full image if too large
     if (fullImage.width() > MAX_FULL_SIZE || fullImage.height() > MAX_FULL_SIZE) {
-        fullImage = fullImage.scaled(MAX_FULL_SIZE, MAX_FULL_SIZE, 
-                                     Qt::KeepAspectRatio, 
+        fullImage = fullImage.scaled(MAX_FULL_SIZE, MAX_FULL_SIZE,
+                                     Qt::KeepAspectRatio,
                                      Qt::SmoothTransformation);
+        // Free original if we created a scaled version
+        if (fullImage.constBits() != originalImage.constBits()) {
+            originalImage = QImage();
+        }
     }
-    
-    // Create thumbnail
-    QImage thumbnail = createThumbnail(fullImage);
-    
-    // Convert thumbnail to byte array
-    QBuffer buffer;
-    buffer.open(QIODevice::WriteOnly);
-    if (!thumbnail.save(&buffer, formatName.toUtf8().constData(), 85)) {
-        result.error = "Failed to create thumbnail";
-        return result;
-    }
-    result.thumbnailData = buffer.buffer();
-    
+
     // Generate filename and save full image
     QString filename = generateAlbumArtFilename(albumName, artistName, result.hash);
     QString fullPath = getAlbumArtDirectory() + "/" + filename;
-    
+
     // Ensure directory exists
     QDir dir(getAlbumArtDirectory());
     if (!dir.exists()) {
         dir.mkpath(".");
     }
-    
+
     // Save full image
     if (!saveFullImage(fullImage, fullPath, formatName)) {
         result.error = "Failed to save full image";
+        // Explicit cleanup before returning
+        fullImage = QImage();
+        originalImage = QImage();
         return result;
     }
-    
+
+    // Explicitly free all image memory now that everything is saved
+    fullImage = QImage();
+    originalImage = QImage();
+
     result.fullImagePath = fullPath;
     result.success = true;
-    
+
     emit albumArtProcessed(albumName, true);
     return result;
 }
@@ -123,6 +151,11 @@ QString AlbumArtManager::calculateHash(const QByteArray& data) const
     QCryptographicHash hash(QCryptographicHash::Sha1);
     hash.addData(data);
     return hash.result().toHex();
+}
+
+QString AlbumArtManager::calculateImageHash(const QByteArray& rawData) const
+{
+    return calculateHash(rawData);
 }
 
 int AlbumArtManager::getThumbnailSize() const

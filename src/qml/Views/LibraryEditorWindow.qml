@@ -586,7 +586,7 @@ ApplicationWindow {
                     spacing: 8
                     
                     Label {
-                        text: "Scan your library to update the database with any new, modified, or deleted files. \n\nAudio files are treated as read-only, changes made here only affect the database. \n\nRestart the application to apply changes if replacing the entire library."
+                        text: "Scan your library to update the database with any new or deleted files.\nExtract metadata if you have made changes to tags or artwork, to update the library with your changes.\nAudio files are treated as read-only; changes made here only affect the database."
                         color: Theme.secondaryText
                         font.pixelSize: 12
                         wrapMode: Text.WordWrap
@@ -733,104 +733,184 @@ ApplicationWindow {
                             font.bold: true
                         }
 
-                        CheckBox {
-                            id: autoRefreshCheckbox
-                            text: "Auto-refresh on startup"
-                            checked: LibraryManager.autoRefreshOnStartup
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
 
-                            onToggled: {
-                                LibraryManager.autoRefreshOnStartup = checked
-                            }
+                            CheckBox {
+                                id: autoRefreshCheckbox
+                                text: "Auto-refresh on startup"
+                                checked: LibraryManager.autoRefreshOnStartup
 
-                            contentItem: Text {
-                                text: parent.text
-                                font.pixelSize: 14
-                                color: Theme.secondaryText
-                                verticalAlignment: Text.AlignVCenter
-                                leftPadding: parent.indicator.width + parent.spacing
-                            }
+                                onToggled: {
+                                    LibraryManager.autoRefreshOnStartup = checked
+                                }
 
-                            indicator: Rectangle {
-                                implicitWidth: 20
-                                implicitHeight: 20
-                                x: parent.leftPadding
-                                y: parent.height / 2 - height / 2
-                                radius: 3
-                                color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
-                                border.color: parent.checked ? Theme.linkColor : Theme.borderColor
+                                contentItem: Text {
+                                    text: parent.text
+                                    font.pixelSize: 14
+                                    color: Theme.secondaryText
+                                    verticalAlignment: Text.AlignVCenter
+                                    leftPadding: parent.indicator.width + parent.spacing
+                                }
 
-                                Canvas {
-                                    anchors.fill: parent
-                                    anchors.margins: 4
-                                    visible: parent.parent.checked
+                                indicator: Rectangle {
+                                    implicitWidth: 20
+                                    implicitHeight: 20
+                                    x: parent.leftPadding
+                                    y: parent.height / 2 - height / 2
+                                    radius: 3
+                                    color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                                    border.color: parent.checked ? Theme.linkColor : Theme.borderColor
 
-                                    onPaint: {
-                                        var ctx = getContext("2d")
-                                        ctx.reset()
-                                        ctx.strokeStyle = "white"
-                                        ctx.lineWidth = 2
-                                        ctx.lineCap = "round"
-                                        ctx.lineJoin = "round"
-                                        ctx.beginPath()
-                                        ctx.moveTo(width * 0.2, height * 0.5)
-                                        ctx.lineTo(width * 0.4, height * 0.7)
-                                        ctx.lineTo(width * 0.8, height * 0.3)
-                                        ctx.stroke()
+                                    Canvas {
+                                        anchors.fill: parent
+                                        anchors.margins: 4
+                                        visible: parent.parent.checked
+
+                                        onPaint: {
+                                            var ctx = getContext("2d")
+                                            ctx.reset()
+                                            ctx.strokeStyle = "white"
+                                            ctx.lineWidth = 2
+                                            ctx.lineCap = "round"
+                                            ctx.lineJoin = "round"
+                                            ctx.beginPath()
+                                            ctx.moveTo(width * 0.2, height * 0.5)
+                                            ctx.lineTo(width * 0.4, height * 0.7)
+                                            ctx.lineTo(width * 0.8, height * 0.3)
+                                            ctx.stroke()
+                                        }
                                     }
                                 }
                             }
+
+                            Image {
+                                source: Theme.isDark ? "qrc:/resources/icons/info.svg" : "qrc:/resources/icons/info-dark.svg"
+                                Layout.preferredWidth: 16
+                                Layout.preferredHeight: 16
+                                sourceSize.width: 16
+                                sourceSize.height: 16
+
+                                MouseArea {
+                                    anchors.centerIn: parent
+                                    width: 24
+                                    height: 24
+                                    hoverEnabled: true
+
+                                    ToolTip {
+                                        id: startupRefreshTooltip
+                                        visible: parent.containsMouse
+                                        text: "When enabled, the scanner will run after each launch to update your library with files \nadded or removed since you last launched mtoc."
+                                        delay: 200
+                                        timeout: 12000
+                                        background: Rectangle {
+                                            color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                                            border.color: Theme.borderColor
+                                            radius: 4
+                                        }
+                                        contentItem: Text {
+                                            text: startupRefreshTooltip.text
+                                            font.pixelSize: 12
+                                            color: Theme.primaryText
+                                        }
+                                    }
+                                }
+                            }
+
+                            Item { Layout.fillWidth: true }
                         }
 
-                        CheckBox {
-                            id: watchFileChangesCheckbox
-                            text: "Watch for file changes (requires restart)"
-                            checked: LibraryManager.watchFileChanges
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
 
-                            onToggled: {
-                                LibraryManager.watchFileChanges = checked
-                            }
+                            CheckBox {
+                                id: watchFileChangesCheckbox
+                                text: "Watch for file changes (requires restart)"
+                                checked: LibraryManager.watchFileChanges
 
-                            contentItem: Text {
-                                text: parent.text
-                                font.pixelSize: 14
-                                color: Theme.secondaryText
-                                verticalAlignment: Text.AlignVCenter
-                                leftPadding: parent.indicator.width + parent.spacing
-                            }
+                                onToggled: {
+                                    LibraryManager.watchFileChanges = checked
+                                }
 
-                            indicator: Rectangle {
-                                implicitWidth: 20
-                                implicitHeight: 20
-                                x: parent.leftPadding
-                                y: parent.height / 2 - height / 2
-                                radius: 3
-                                color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
-                                border.color: parent.checked ? Theme.linkColor : Theme.borderColor
+                                contentItem: Text {
+                                    text: parent.text
+                                    font.pixelSize: 14
+                                    color: Theme.secondaryText
+                                    verticalAlignment: Text.AlignVCenter
+                                    leftPadding: parent.indicator.width + parent.spacing
+                                }
 
-                                Canvas {
-                                    anchors.fill: parent
-                                    anchors.margins: 4
-                                    visible: parent.parent.checked
+                                indicator: Rectangle {
+                                    implicitWidth: 20
+                                    implicitHeight: 20
+                                    x: parent.leftPadding
+                                    y: parent.height / 2 - height / 2
+                                    radius: 3
+                                    color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                                    border.color: parent.checked ? Theme.linkColor : Theme.borderColor
 
-                                    onPaint: {
-                                        var ctx = getContext("2d")
-                                        ctx.reset()
-                                        ctx.strokeStyle = "white"
-                                        ctx.lineWidth = 2
-                                        ctx.lineCap = "round"
-                                        ctx.lineJoin = "round"
-                                        ctx.beginPath()
-                                        ctx.moveTo(width * 0.2, height * 0.5)
-                                        ctx.lineTo(width * 0.4, height * 0.7)
-                                        ctx.lineTo(width * 0.8, height * 0.3)
-                                        ctx.stroke()
+                                    Canvas {
+                                        anchors.fill: parent
+                                        anchors.margins: 4
+                                        visible: parent.parent.checked
+
+                                        onPaint: {
+                                            var ctx = getContext("2d")
+                                            ctx.reset()
+                                            ctx.strokeStyle = "white"
+                                            ctx.lineWidth = 2
+                                            ctx.lineCap = "round"
+                                            ctx.lineJoin = "round"
+                                            ctx.beginPath()
+                                            ctx.moveTo(width * 0.2, height * 0.5)
+                                            ctx.lineTo(width * 0.4, height * 0.7)
+                                            ctx.lineTo(width * 0.8, height * 0.3)
+                                            ctx.stroke()
+                                        }
                                     }
                                 }
                             }
+
+                            Image {
+                                source: Theme.isDark ? "qrc:/resources/icons/info.svg" : "qrc:/resources/icons/info-dark.svg"
+                                Layout.preferredWidth: 16
+                                Layout.preferredHeight: 16
+                                sourceSize.width: 16
+                                sourceSize.height: 16
+
+                                MouseArea {
+                                    anchors.centerIn: parent
+                                    width: 24
+                                    height: 24
+                                    hoverEnabled: true
+
+                                    ToolTip {
+                                        id: fileWatcherTooltip
+                                        visible: parent.containsMouse
+                                        text: "When enabled, the file watcher will automatically add music to your library when you add files \nto monitored folders while mtoc is running, and remove music when files are deleted."
+                                        delay: 200
+                                        timeout: 12000
+                                        background: Rectangle {
+                                            color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                                            border.color: Theme.borderColor
+                                            radius: 4
+                                        }
+                                        contentItem: Text {
+                                            text: fileWatcherTooltip.text
+                                            font.pixelSize: 12
+                                            color: Theme.primaryText
+                                        }
+                                    }
+                                }
+                            }
+
+                            Item { Layout.fillWidth: true }
                         }
 
                         Label {
-                            text: "Note: For very large libraries (>5000 directories), 'Auto-refresh on startup' is recommended over 'Watch for changes' for better performance."
+                            text: "Note: For very large libraries (>5000 subdirectories), 'Auto-refresh on startup' is recommended over 'Watch for changes' for better performance."
                             color: Theme.secondaryText
                             font.pixelSize: 11
                             wrapMode: Text.WordWrap

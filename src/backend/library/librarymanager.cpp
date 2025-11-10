@@ -18,9 +18,28 @@
 
 #ifdef Q_OS_LINUX
 #include <malloc.h>
+#include <fstream>
+#include <unistd.h>
 #endif
 
 namespace Mtoc {
+
+// Helper function to get current process RSS memory usage (Linux only)
+#ifdef Q_OS_LINUX
+static qint64 getCurrentRssMemoryMB() {
+    std::ifstream statm("/proc/self/statm");
+    if (!statm.is_open()) return -1;
+
+    long pageSize = sysconf(_SC_PAGESIZE);
+    long rssPages = 0;
+
+    // statm format: total program size, resident set size, shared pages, ...
+    long dummy;
+    statm >> dummy >> rssPages;
+
+    return (rssPages * pageSize) / (1024 * 1024); // Convert to MB
+}
+#endif
 
 LibraryManager::LibraryManager(QObject *parent)
     : QObject(parent)
@@ -2284,17 +2303,25 @@ void LibraryManager::processAlbumArtInBackground()
         }
         
         qDebug() << "LibraryManager::processAlbumArtInBackground() - Processing art for" << totalAlbums << "albums";
-        
+
+        #ifdef Q_OS_LINUX
+        qint64 startMemoryMB = getCurrentRssMemoryMB();
+        qDebug() << "Starting memory usage:" << startMemoryMB << "MB";
+        #endif
+
         int processedCount = 0;
-        
+        const int BATCH_SIZE = 20; // Process albums in batches to manage memory
+
         // Process albums from the list
-        for (const AlbumInfo& albumInfo : albumsToProcess) {
+        for (int i = 0; i < albumsToProcess.size(); ++i) {
+            const AlbumInfo& albumInfo = albumsToProcess[i];
+
             // Check if we should stop processing
             if (m_cancelRequested) {
                 qDebug() << "LibraryManager: Album art processing cancelled";
                 break;
             }
-            
+
             int albumId = albumInfo.id;
             QString albumTitle = albumInfo.title;
             QString albumArtist = albumInfo.albumArtist;
@@ -2314,14 +2341,14 @@ void LibraryManager::processAlbumArtInBackground()
                     // Extract album art from this track
                     Mtoc::MetadataExtractor extractor;
                     QByteArray albumArtData = extractor.extractAlbumArt(filePath);
-                    
+
                     if (!albumArtData.isEmpty()) {
                         // Process and store album art
                         AlbumArtManager albumArtManager;
-                        AlbumArtManager::ProcessedAlbumArt processed = 
-                            albumArtManager.processAlbumArt(albumArtData, albumTitle, 
+                        AlbumArtManager::ProcessedAlbumArt processed =
+                            albumArtManager.processAlbumArt(albumArtData, albumTitle,
                                                            albumArtist, "");
-                        
+
                         if (processed.success) {
                             // Insert album art into database
                             QSqlQuery artInsert(db);
@@ -2332,7 +2359,7 @@ void LibraryManager::processAlbumArtInBackground()
                                 "VALUES (:album_id, :full_path, :full_hash, :thumbnail, :thumbnail_size, "
                                 ":width, :height, :format, :file_size)"
                             );
-                            
+
                             artInsert.bindValue(":album_id", albumId);
                             artInsert.bindValue(":full_path", processed.fullImagePath);
                             artInsert.bindValue(":full_hash", processed.hash);
@@ -2342,9 +2369,9 @@ void LibraryManager::processAlbumArtInBackground()
                             artInsert.bindValue(":height", processed.originalSize.height());
                             artInsert.bindValue(":format", processed.format);
                             artInsert.bindValue(":file_size", processed.fileSize);
-                            
+
                             if (!artInsert.exec()) {
-                                qWarning() << "Failed to insert album art for album:" << albumTitle 
+                                qWarning() << "Failed to insert album art for album:" << albumTitle
                                           << "-" << artInsert.lastError().text();
                             } else {
                                 qDebug() << "Successfully processed album art for:" << albumTitle;
@@ -2352,8 +2379,12 @@ void LibraryManager::processAlbumArtInBackground()
                             }
                             artInsert.finish();
                         }
+
+                        // Explicitly clear processed data to free memory
+                        processed.thumbnailData.clear();
+                        processed.thumbnailData.squeeze();
                     }
-                    
+
                     // Clear album art data immediately to free memory
                     albumArtData.clear();
                     albumArtData.squeeze(); // Force deallocation
@@ -2366,22 +2397,40 @@ void LibraryManager::processAlbumArtInBackground()
                 qDebug() << "No track found for album:" << albumTitle << "- skipping album art";
             }
             
-            // Emit update signal periodically (every 10 albums processed)
-            if (processedCount > 0 && processedCount % 10 == 0) {
+            // Batch memory cleanup - every BATCH_SIZE albums
+            if ((i + 1) % BATCH_SIZE == 0) {
+                #ifdef Q_OS_LINUX
+                qint64 beforeCleanupMB = getCurrentRssMemoryMB();
+                #endif
+
+                qDebug() << "Batch complete: Processed" << (i + 1) << "of" << totalAlbums << "albums. Performing memory cleanup...";
+
+                // Force garbage collection
+                QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+                QCoreApplication::processEvents();
+
+                // On Linux, release memory back to OS
+                #ifdef Q_OS_LINUX
+                malloc_trim(0);
+                qint64 afterCleanupMB = getCurrentRssMemoryMB();
+                qint64 freedMB = beforeCleanupMB - afterCleanupMB;
+                qDebug() << "Memory after cleanup:" << afterCleanupMB << "MB (freed" << freedMB << "MB)";
+                #endif
+
+                // Emit update signal after each batch
                 QMetaObject::invokeMethod(this, [this]() {
                     m_albumModelCacheValid = false;
                     emit libraryChanged();
-                    // qDebug() << "LibraryManager: Emitted libraryChanged after processing batch of album art";
                 }, Qt::QueuedConnection);
+
+                // Yield to other threads
+                QThread::yieldCurrentThread();
             }
-            
+
             // Add debug logging every 20 albums
-            if ((processedCount + 1) % 20 == 0) {
-                qDebug() << "Progress: Processed" << processedCount << "of" << totalAlbums << "albums. Current:" << albumTitle;
+            if ((i + 1) % 20 == 0) {
+                qDebug() << "Progress: Processed" << (i + 1) << "of" << totalAlbums << "albums. Current:" << albumTitle;
             }
-            
-            // Yield to other threads periodically
-            QThread::yieldCurrentThread();
         }
         
         qDebug() << "LibraryManager::processAlbumArtInBackground() completed -" << processedCount << "albums processed";
@@ -2421,9 +2470,9 @@ void LibraryManager::processAlbumArtInBackground()
                         QByteArray albumArtData = extractor.extractAlbumArt(filePath);
 
                         if (!albumArtData.isEmpty()) {
-                            // Calculate hash of current album art
+                            // Calculate hash of current album art (lightweight - no image loading)
                             AlbumArtManager albumArtManager;
-                            QString currentHash = albumArtManager.processAlbumArt(albumArtData, "", "", "").hash;
+                            QString currentHash = albumArtManager.calculateImageHash(albumArtData);
 
                             // Compare with stored hash
                             if (!currentHash.isEmpty() && currentHash != existingHash) {
@@ -2464,6 +2513,10 @@ void LibraryManager::processAlbumArtInBackground()
                                     }
                                     updateQuery.finish();
                                 }
+
+                                // Explicitly clear processed data to free memory
+                                processed.thumbnailData.clear();
+                                processed.thumbnailData.squeeze();
                             }
                         }
 
@@ -2507,6 +2560,18 @@ void LibraryManager::processAlbumArtInBackground()
                 // qDebug() << "LibraryManager: Emitted final libraryChanged after album art processing";
             }, Qt::QueuedConnection);
         }
+
+        // Final memory cleanup after processing all albums
+        qDebug() << "Final memory cleanup after processing all album art...";
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        QCoreApplication::processEvents();
+
+        #ifdef Q_OS_LINUX
+        malloc_trim(0);
+        qint64 endMemoryMB = getCurrentRssMemoryMB();
+        qint64 totalUsedMB = endMemoryMB - startMemoryMB;
+        qDebug() << "Final memory usage:" << endMemoryMB << "MB (delta:" << totalUsedMB << "MB)";
+        #endif
 
     } catch (const std::exception& e) {
         qCritical() << "Exception in processAlbumArtInBackground():" << e.what();

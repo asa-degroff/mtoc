@@ -188,19 +188,19 @@ Item {
                             Layout.preferredHeight: 8
                         }
 
-                        // Lyrics support section
+                        // Multi-artist album support section
                         Item {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: lyricsSection.height
+                            Layout.preferredHeight: multiArtistSection.height
 
                             ColumnLayout {
-                                id: lyricsSection
+                                id: multiArtistSection
                                 width: parent.width - 64
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 spacing: 12
 
                                 Label {
-                                    text: "Lyrics Support"
+                                    text: "Multi-Artist Album Support"
                                     font.pixelSize: 16
                                     font.bold: true
                                     color: Theme.primaryText
@@ -208,50 +208,7 @@ Item {
 
                                 Label {
                                     Layout.fillWidth: true
-                                    text: "• Synchronized and unsynchronized lyrics display<br>• Synced lyrics with real-time line highlighting<br>• Click any line to seek to that position in the track<br>• External .lrc and .txt file support<br>• Automatic lyrics file detection with fuzzy matching<br>Add lyrics to your library with <a href=\"https://flathub.org/en/apps/net.lrclib.lrcget\">LRCGET</a> or your metadata editor of choice to get started."
-                                    wrapMode: Text.WordWrap
-                                    font.pixelSize: 14
-                                    color: Theme.secondaryText
-                                    lineHeight: 1.4
-                                    textFormat: Text.RichText
-                                    onLinkActivated: function(link) {
-                                        Qt.openUrlExternally(link)
-                                    }
-
-                                    // Make links use theme link color
-                                    linkColor: Theme.linkColor
-
-                                    // Show pointing hand cursor on links
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        acceptedButtons: Qt.NoButton
-                                        cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
-                                    }
-                                }
-                            }
-                        }
-
-                        // Automatic library updates section
-                        Item {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: librarySection.height
-
-                            ColumnLayout {
-                                id: librarySection
-                                width: parent.width - 64
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                spacing: 12
-
-                                Label {
-                                    text: "Automatic Library Updates"
-                                    font.pixelSize: 16
-                                    font.bold: true
-                                    color: Theme.primaryText
-                                }
-
-                                Label {
-                                    Layout.fillWidth: true
-                                    text: "• File watcher monitors your music directory for changes\n• Automatic detection of added and removed music and lyrics\n• Library management options for update behavior\n• Choose between auto-update, startup refresh, or manual updates\n• Improved album carousel stability during library changes\nFind these options in the Edit Library dialog."
+                                    text: "• Albums with multiple album artists can now appear under each artist in the library\n• Multi-line album artist tags are parsed separately\n• Single-line album artist tags can be split with configurable delimiters\n• Customize this behavior in the settings window to match your tagging style"
                                     wrapMode: Text.WordWrap
                                     font.pixelSize: 14
                                     color: Theme.secondaryText
@@ -260,19 +217,19 @@ Item {
                             }
                         }
 
-                        // New setttings section
+                        // Track in window title section
                         Item {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: uiSection.height
+                            Layout.preferredHeight: windowTitleSection.height
 
                             ColumnLayout {
-                                id: uiSection
+                                id: windowTitleSection
                                 width: parent.width - 64
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 spacing: 12
 
                                 Label {
-                                    text: "New Options in Settings"
+                                    text: "Track in Window Title"
                                     font.pixelSize: 16
                                     font.bold: true
                                     color: Theme.primaryText
@@ -280,7 +237,36 @@ Item {
 
                                 Label {
                                     Layout.fillWidth: true
-                                    text: "• Minimize to tray option when closing the main window\n• Single-click to play tracks"
+                                    text: "• The title and artist for the current track are now shown in the window title"
+                                    wrapMode: Text.WordWrap
+                                    font.pixelSize: 14
+                                    color: Theme.secondaryText
+                                    lineHeight: 1.4
+                                }
+                            }
+                        }
+
+                        // Performance improvements section
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: performanceSection.height
+
+                            ColumnLayout {
+                                id: performanceSection
+                                width: parent.width - 64
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                spacing: 12
+
+                                Label {
+                                    text: "Performance Improvements"
+                                    font.pixelSize: 16
+                                    font.bold: true
+                                    color: Theme.primaryText
+                                }
+
+                                Label {
+                                    Layout.fillWidth: true
+                                    text: "• Reduced memory usage during library scanning\n• Improved scanning speed and efficiency\n• Better memory management for album art processing"
                                     wrapMode: Text.WordWrap
                                     font.pixelSize: 14
                                     color: Theme.secondaryText

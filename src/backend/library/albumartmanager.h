@@ -41,7 +41,10 @@ public:
     // Thumbnail configuration
     int getThumbnailSize() const;
     static constexpr int MAX_FULL_SIZE = 1800;
-    
+
+    // Lightweight hash calculation without image loading
+    QString calculateImageHash(const QByteArray& rawData) const;
+
 signals:
     void albumArtProcessed(const QString& albumName, bool success);
     void error(const QString& message);
