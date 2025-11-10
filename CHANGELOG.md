@@ -1,3 +1,10 @@
+# 2.4
+### Multi-artist album support, track in window title
+- Added the option to show albums with multiple album artists under each artist in the library
+- Multi-line album artist tags are parsed separately, single-line album artist tags can be split with configurable delimiters
+- The title and artist for the current track are now shown in the window title
+- Performance improvements and reduced memory usage during library scanning
+
 # 2.3.3
 ### Bug fixes for MPRIS album art, case-insensitive artist grouping, and theme switching
 - Album art now appears in the MPRIS widget when using the Flatpak build
