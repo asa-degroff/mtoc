@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.4
+Version:        2.4.1
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,13 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Wed Nov 12 2025 Asa DeGroff <asa@3fz.org> 2.4.1-1
+- version bump and changelog (asa@3fz.org)
+- Implement enhanced LRC format parsing for embedded plaintext lyrics with
+  timestamps (asa@3fz.org)
+- Enhance track loading logic to prevent dangling pointers during gapless
+  transitions (asa@3fz.org)
+
 * Sun Nov 09 2025 Asa DeGroff <asa@3fz.org> 2.4-1
 - version bump and changelog (asa@3fz.org)
 - new tooltips for library scanner options, formatting tweaks (asa@3fz.org)
