@@ -226,7 +226,13 @@ void AudioEngine::loadTrack(const QString &filePath)
     m_hasQueuedTrack = false;  // Reset gapless tracking
     m_trackTransitionDetected = false;
     m_lastKnownDuration = 0;  // Reset duration
-    
+
+    // Stop transition monitoring when loading a new track manually
+    // This prevents spurious transition signals after queue changes
+    if (m_transitionTimer && m_transitionTimer->isActive()) {
+        m_transitionTimer->stop();
+    }
+
     if (m_transitionFallbackTimer) {
         m_transitionFallbackTimer->stop();
     }

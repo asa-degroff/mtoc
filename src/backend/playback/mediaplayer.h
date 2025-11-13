@@ -5,6 +5,7 @@
 #include <QString>
 #include <QUrl>
 #include <QTimer>
+#include <QPointer>
 #include <memory>
 #include "audioengine.h"
 
@@ -179,7 +180,7 @@ private:
     void clearUndoQueue();
     
     std::unique_ptr<AudioEngine> m_audioEngine;
-    Mtoc::Track* m_currentTrack = nullptr;
+    QPointer<Mtoc::Track> m_currentTrack;
     Mtoc::Album* m_currentAlbum = nullptr;
     QList<Mtoc::Track*> m_playbackQueue;
     int m_currentQueueIndex = -1;
@@ -235,7 +236,7 @@ private:
     Mtoc::Track* getOrCreateTrackFromVirtual(int index);
     
     // Pending track info for gapless transitions
-    Mtoc::Track* m_pendingTrack = nullptr;
+    QPointer<Mtoc::Track> m_pendingTrack;
     int m_pendingQueueIndex = -1;
     int m_pendingVirtualIndex = -1;
     int m_pendingShuffleIndex = -1;

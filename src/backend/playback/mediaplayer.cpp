@@ -683,7 +683,14 @@ void MediaPlayer::loadTrack(Mtoc::Track* track, bool autoPlay)
         qWarning() << "MediaPlayer::loadTrack called with null track";
         return;
     }
-    
+
+    // Clear pending track state when loading a new track manually
+    // This prevents dangling pointers when gapless transition is interrupted
+    m_pendingTrack = nullptr;
+    m_pendingQueueIndex = -1;
+    m_pendingVirtualIndex = -1;
+    m_pendingShuffleIndex = -1;
+
     // If this is a virtual playlist track, preload neighboring tracks for gapless playback
     if (m_isVirtualPlaylist && m_virtualPlaylist) {
         int virtualIndex = track->property("virtualIndex").toInt();
@@ -1318,27 +1325,34 @@ void MediaPlayer::undoClearQueue()
 void MediaPlayer::playAlbumByName(const QString& artist, const QString& title, int startIndex)
 {
     qDebug() << "MediaPlayer::playAlbumByName called with artist:" << artist << "title:" << title << "startIndex:" << startIndex;
-    
+
     if (!m_libraryManager) {
         qWarning() << "LibraryManager not set on MediaPlayer";
         return;
     }
-    
+
     // Clear any restoration state to prevent old positions from being applied
     clearRestorationState();
     clearSavedPosition();
-    
+
     // Debug: Check library state
     qDebug() << "LibraryManager album count:" << m_libraryManager->albumCount();
     qDebug() << "LibraryManager track count:" << m_libraryManager->trackCount();
-    
+
     // Since albumByTitle might not work with deferred loading, let's use a different approach
     // Get tracks for the album and create a temporary queue
     qDebug() << "Calling getTracksForAlbumAsVariantList with artist:" << artist << "title:" << title;
     auto trackList = m_libraryManager->getTracksForAlbumAsVariantList(artist, title);
     qDebug() << "Found" << trackList.size() << "tracks for album via getTracksForAlbumAsVariantList";
-    
+
     if (!trackList.isEmpty()) {
+        // Clear pending track state before clearing queue
+        // This prevents dangling pointers when gapless transition is interrupted
+        m_pendingTrack = nullptr;
+        m_pendingQueueIndex = -1;
+        m_pendingVirtualIndex = -1;
+        m_pendingShuffleIndex = -1;
+
         // Clear current queue and set up new one
         clearQueue();
         
@@ -1417,7 +1431,14 @@ void MediaPlayer::playPlaylist(const QString& playlistName, int startIndex)
         qWarning() << "No tracks found in playlist:" << playlistName;
         return;
     }
-    
+
+    // Clear pending track state before clearing queue
+    // This prevents dangling pointers when gapless transition is interrupted
+    m_pendingTrack = nullptr;
+    m_pendingQueueIndex = -1;
+    m_pendingVirtualIndex = -1;
+    m_pendingShuffleIndex = -1;
+
     // Clear current queue
     clearQueue();
     
@@ -2053,13 +2074,24 @@ void MediaPlayer::handleTrackFinished()
 void MediaPlayer::onTrackTransitioned()
 {
     qDebug() << "[MediaPlayer::onTrackTransitioned] Track transition detected - updating UI";
-    
+
     // Check if we have a pending track to transition to
     if (!m_pendingTrack) {
         qDebug() << "[MediaPlayer::onTrackTransitioned] No pending track, ignoring transition";
         return;
     }
-    
+
+    // Verify the pending track is still in the current queue
+    // This prevents crashes when manual track selection interrupts gapless transition
+    if (!m_isVirtualPlaylist && !m_playbackQueue.contains(m_pendingTrack)) {
+        qDebug() << "[MediaPlayer::onTrackTransitioned] Pending track no longer in queue, clearing and ignoring";
+        m_pendingTrack = nullptr;
+        m_pendingQueueIndex = -1;
+        m_pendingVirtualIndex = -1;
+        m_pendingShuffleIndex = -1;
+        return;
+    }
+
     // Store a local copy of the pending track pointer before we clear it
     Mtoc::Track* trackToUpdate = m_pendingTrack;
     
