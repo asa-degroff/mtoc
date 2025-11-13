@@ -68,6 +68,16 @@
 
   <releases>
 
+    <release version="2.4.1" date="2025-11-12">
+      <description>
+        <p>Bug fixes for track transitions and lyrics display</p>
+        <ul>
+          <li>Fixed crash when manually selecting a track during gapless playback transition</li>
+          <li>Added support for parsing embedded LRC-format lyrics with timestamps</li>
+        </ul>
+      </description>
+    </release>
+
     <release version="2.4" date="2025-11-09">
       <description>
         <p>Multi-artist album support, track in window title</p>

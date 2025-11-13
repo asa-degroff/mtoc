@@ -1,3 +1,8 @@
+# 2.4.1
+### Bug fixes for track transitions and lyrics display
+- Fixed crash when manually selecting a track during gapless playback transition
+- Added support for parsing embedded LRC-format lyrics with timestamps
+
 # 2.4
 ### Multi-artist album support, track in window title
 - Added the option to show albums with multiple album artists under each artist in the library
