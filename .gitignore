@@ -35,7 +35,6 @@ vgcore.*
 # Local configuration
 .claude/
 .claude*
-CLAUDE.md
 settings.local.json
 
 # Flatpak
