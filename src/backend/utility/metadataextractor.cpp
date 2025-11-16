@@ -61,8 +61,8 @@ QStringList MetadataExtractor::parseAlbumArtists(const TagLib::StringList& tagLi
     bool useDelimiters = settings->useAlbumArtistDelimiters();
     QStringList delimiters = settings->albumArtistDelimiters();
 
-    qDebug() << "[MetadataExtractor] parseAlbumArtists called - multiArtistEnabled:" << multiArtistEnabled
-             << "useDelimiters:" << useDelimiters << "delimiters:" << delimiters << "tagLibList.size():" << tagLibList.size();
+    // qDebug() << "[MetadataExtractor] parseAlbumArtists called - multiArtistEnabled:" << multiArtistEnabled
+    //          << "useDelimiters:" << useDelimiters << "delimiters:" << delimiters << "tagLibList.size():" << tagLibList.size();
 
     if (!multiArtistEnabled || tagLibList.isEmpty()) {
         // Feature disabled or no data - return first item only
@@ -127,7 +127,7 @@ QStringList MetadataExtractor::parseAlbumArtists(const TagLib::StringList& tagLi
         result.append(trimmed);
     }
 
-    qDebug() << "[MetadataExtractor] parseAlbumArtists result:" << result << "original:" << outOriginalString;
+    // qDebug() << "[MetadataExtractor] parseAlbumArtists result:" << result << "original:" << outOriginalString;
     return result;
 }
 
@@ -177,7 +177,7 @@ QStringList MetadataExtractor::parseAlbumArtists(const QString& singleValue, QSt
         result.append(trimmed);
     }
 
-    qDebug() << "[MetadataExtractor] parseAlbumArtists result:" << result << "original:" << outOriginalString;
+    // qDebug() << "[MetadataExtractor] parseAlbumArtists result:" << result << "original:" << outOriginalString;
     return result;
 }
 
@@ -280,7 +280,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
     // Try to find a matching lyrics file - supports both exact matches and fuzzy matching
     QString lrcFilePath = findMatchingLrcFile(filePath);
     if (!lrcFilePath.isEmpty()) {
-        qDebug() << "MetadataExtractor: Found lyrics file:" << lrcFilePath;
+        // qDebug() << "MetadataExtractor: Found lyrics file:" << lrcFilePath;
         auto lyricsData = parseLrcFile(lrcFilePath);
 
         // Check for synchronized lyrics first
@@ -295,13 +295,13 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
             meta.lyrics = QJsonDocument(syncLyricsArray).toJson(QJsonDocument::Compact);
             lyricsFoundInLrc = true;
             syncLyricsFound = true;
-            qDebug() << "MetadataExtractor: Successfully parsed synchronized lyrics from lyrics file.";
+            // qDebug() << "MetadataExtractor: Successfully parsed synchronized lyrics from lyrics file.";
         }
         // Fallback to plain text if no sync data found
         else if (!lyricsData.first.isEmpty()) {
             meta.lyrics = lyricsData.first;
             lyricsFoundInLrc = true;
-            qDebug() << "MetadataExtractor: Successfully parsed plain lyrics from lyrics file.";
+            // qDebug() << "MetadataExtractor: Successfully parsed plain lyrics from lyrics file.";
         }
     }
     
@@ -438,7 +438,7 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
                                 }
                                 meta.lyrics = QJsonDocument(syncLyricsArray).toJson(QJsonDocument::Compact);
                                 syncLyricsFound = true;
-                                qDebug() << "MetadataExtractor: Successfully parsed synchronized lyrics from SYLT frame.";
+                                // qDebug() << "MetadataExtractor: Successfully parsed synchronized lyrics from SYLT frame.";
                             }
                         }
                     }
@@ -1355,7 +1355,37 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
     } catch (...) {
         qCritical() << "MetadataExtractor: Unknown exception while extracting metadata from" << filePath;
     }
-    
+
+    // If no embedded album art was found and extraction was requested, look for external cover art
+    if (extractAlbumArt && meta.albumArtData.isEmpty()) {
+        qDebug() << "[ExternalArt] No embedded art found, looking for external cover art...";
+        QString externalArtPath = findExternalAlbumArt(filePath);
+        if (!externalArtPath.isEmpty()) {
+            QFile artFile(externalArtPath);
+            if (artFile.open(QIODevice::ReadOnly)) {
+                meta.albumArtData = artFile.readAll();
+                artFile.close();
+
+                // Detect MIME type from file extension
+                if (externalArtPath.endsWith(".png", Qt::CaseInsensitive)) {
+                    meta.albumArtMimeType = "image/png";
+                } else if (externalArtPath.endsWith(".jpg", Qt::CaseInsensitive) ||
+                           externalArtPath.endsWith(".jpeg", Qt::CaseInsensitive)) {
+                    meta.albumArtMimeType = "image/jpeg";
+                } else {
+                    meta.albumArtMimeType = "image/jpeg";  // Default
+                }
+
+                qDebug() << "[ExternalArt] ✓ Successfully loaded external album art from" << externalArtPath
+                         << "(" << meta.albumArtData.size() << "bytes)";
+            } else {
+                qWarning() << "[ExternalArt] ✗ Found external album art but could not read file:" << externalArtPath;
+            }
+        }
+    } else if (extractAlbumArt) {
+        qDebug() << "[ExternalArt] Embedded art found, size:" << meta.albumArtData.size() << "bytes";
+    }
+
     return meta;
 }
 
@@ -1525,6 +1555,39 @@ QString MetadataExtractor::findMatchingLrcFile(const QString &audioFilePath) con
     }
 
     return bestMatch;
+}
+
+QString MetadataExtractor::findExternalAlbumArt(const QString &audioFilePath) const
+{
+    QFileInfo audioFileInfo(audioFilePath);
+    QString audioDir = audioFileInfo.path();
+
+    qDebug() << "[ExternalArt] Searching for external album art for:" << audioFilePath;
+    qDebug() << "[ExternalArt] Searching in directory:" << audioDir;
+
+    // Common album art filenames to look for (in priority order)
+    QStringList artFilenames = {
+        "cover.jpg", "cover.png", "cover.jpeg",
+        "folder.jpg", "folder.png", "folder.jpeg",
+        "front.jpg", "front.png", "front.jpeg",
+        "albumart.jpg", "albumart.png", "albumart.jpeg",
+        "Cover.jpg", "Cover.png", "Cover.jpeg",
+        "Folder.jpg", "Folder.png", "Folder.jpeg",
+        "Front.jpg", "Front.png", "Front.jpeg",
+        "AlbumArt.jpg", "AlbumArt.png", "AlbumArt.jpeg"
+    };
+
+    // Check each filename in priority order
+    for (const QString &filename : artFilenames) {
+        QString artPath = audioDir + "/" + filename;
+        if (QFileInfo::exists(artPath)) {
+            qDebug() << "[ExternalArt] ✓ Found external album art:" << artPath;
+            return artPath;
+        }
+    }
+
+    qDebug() << "[ExternalArt] ✗ No external album art found in:" << audioDir;
+    return QString();  // No external album art found
 }
 
 } // namespace Mtoc

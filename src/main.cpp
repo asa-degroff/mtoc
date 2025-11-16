@@ -39,11 +39,12 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context, const QSt
         case QtDebugMsg:
             if (isQmlMessage) {
                 fprintf(stderr, "[QML Debug] %s\n", qPrintable(msg));
-            } else if (msg.contains("jumpToArtist") || msg.contains("scrollToArtistIndex") || 
+            } else if (msg.contains("jumpToArtist") || msg.contains("scrollToArtistIndex") ||
                       msg.contains("calculateArtistPosition") || msg.contains("updateArtistIndexMapping") ||
                       msg.contains("MediaPlayer::") || msg.contains("PlaylistManager::") ||
                       msg.contains("[ReplayGain]") || msg.contains("AudioEngine") || msg.contains("rgvolume") ||
-                      msg.contains("[AudioEngine] Transition check")
+                      msg.contains("[AudioEngine] Transition check") ||
+                      msg.contains("[ExternalArt]") || msg.contains("MetadataExtractor")
                     ) {
                 // Also show our specific debug messages even if not properly prefixed
                 fprintf(stderr, "[Debug] %s\n", qPrintable(msg));
