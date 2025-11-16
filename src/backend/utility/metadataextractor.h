@@ -62,6 +62,7 @@ private:
     QMap<qint64, QString> parseSyltFrame(const TagLib::ID3v2::SynchronizedLyricsFrame *frame);
     QString findMatchingLrcFile(const QString &audioFilePath) const;
     QString findExternalAlbumArt(const QString &audioFilePath) const;
+    void checkExternalAlbumArt(const QString &filePath, TrackMetadata &meta, bool extractAlbumArt) const;
     QString findLongestCommonSubstring(const QString &s1, const QString &s2, int minLength) const;
 
     // Helper to parse album artists from TagLib StringList with multi-line and delimiter support
