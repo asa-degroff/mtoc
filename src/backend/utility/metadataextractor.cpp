@@ -273,7 +273,7 @@ void MetadataExtractor::checkExternalAlbumArt(const QString &filePath, TrackMeta
 {
     // If no embedded album art was found and extraction was requested, look for external cover art
     if (extractAlbumArt && meta.albumArtData.isEmpty()) {
-        qDebug() << "[ExternalArt] No embedded art found, looking for external cover art...";
+        // qDebug() << "[ExternalArt] No embedded art found, looking for external cover art...";
         QString externalArtPath = findExternalAlbumArt(filePath);
         if (!externalArtPath.isEmpty()) {
             QFile artFile(externalArtPath);
@@ -291,21 +291,21 @@ void MetadataExtractor::checkExternalAlbumArt(const QString &filePath, TrackMeta
                     meta.albumArtMimeType = "image/jpeg";  // Default
                 }
 
-                qDebug() << "[ExternalArt] ✓ Successfully loaded external album art from" << externalArtPath
-                         << "(" << meta.albumArtData.size() << "bytes)";
+                qDebug() << "[ExternalArt] Loaded external album art from" << externalArtPath;
             } else {
-                qWarning() << "[ExternalArt] ✗ Found external album art but could not read file:" << externalArtPath;
+                qWarning() << "[ExternalArt] Found external album art but could not read file:" << externalArtPath;
             }
         }
-    } else if (extractAlbumArt) {
-        qDebug() << "[ExternalArt] Embedded art found, size:" << meta.albumArtData.size() << "bytes";
     }
+    // else if (extractAlbumArt) {
+    //     qDebug() << "[ExternalArt] Embedded art found, size:" << meta.albumArtData.size() << "bytes";
+    // }
 }
 
 MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &filePath, bool extractAlbumArt)
 {
     // Debug logging to track extraction calls
-    qDebug() << "[ExternalArt] MetadataExtractor::extract() called for:" << filePath << "extractAlbumArt:" << extractAlbumArt;
+    // qDebug() << "[ExternalArt] MetadataExtractor::extract() called for:" << filePath << "extractAlbumArt:" << extractAlbumArt;
     TrackMetadata meta;
     bool lyricsFoundInLrc = false;
     bool syncLyricsFound = false;
@@ -1584,8 +1584,8 @@ QString MetadataExtractor::findExternalAlbumArt(const QString &audioFilePath) co
     QFileInfo audioFileInfo(audioFilePath);
     QString audioDir = audioFileInfo.path();
 
-    qDebug() << "[ExternalArt] Searching for external album art for:" << audioFilePath;
-    qDebug() << "[ExternalArt] Searching in directory:" << audioDir;
+    // qDebug() << "[ExternalArt] Searching for external album art for:" << audioFilePath;
+    // qDebug() << "[ExternalArt] Searching in directory:" << audioDir;
 
     // Common album art filenames to look for (in priority order)
     QStringList artFilenames = {
@@ -1603,12 +1603,12 @@ QString MetadataExtractor::findExternalAlbumArt(const QString &audioFilePath) co
     for (const QString &filename : artFilenames) {
         QString artPath = audioDir + "/" + filename;
         if (QFileInfo::exists(artPath)) {
-            qDebug() << "[ExternalArt] ✓ Found external album art:" << artPath;
+            // qDebug() << "[ExternalArt] Found external album art:" << artPath;
             return artPath;
         }
     }
 
-    qDebug() << "[ExternalArt] ✗ No external album art found in:" << audioDir;
+    // qDebug() << "[ExternalArt] No external album art found in:" << audioDir;
     return QString();  // No external album art found
 }
 
