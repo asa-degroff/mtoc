@@ -270,8 +270,8 @@ MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &fileP
 
 MetadataExtractor::TrackMetadata MetadataExtractor::extract(const QString &filePath, bool extractAlbumArt)
 {
-    // Reduce logging to prevent performance issues
-    // qDebug() << "MetadataExtractor: Extracting metadata from" << filePath;
+    // Debug logging to track extraction calls
+    qDebug() << "[ExternalArt] MetadataExtractor::extract() called for:" << filePath << "extractAlbumArt:" << extractAlbumArt;
     TrackMetadata meta;
     bool lyricsFoundInLrc = false;
     bool syncLyricsFound = false;
