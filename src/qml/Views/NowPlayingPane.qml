@@ -553,11 +553,10 @@ Item {
                 }
 
                 // Multi-artist display with individual clickable links
-                Flow {
+                Row {
                     id: multiArtistFlow
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width
                     visible: artistContainer.artistSegments.length > 0
                     spacing: 0
 
