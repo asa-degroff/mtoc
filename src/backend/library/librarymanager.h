@@ -111,7 +111,7 @@ public:
     
     // Direct data access (for advanced usage)
     Q_INVOKABLE Track* trackByPath(const QString &path) const;
-    Q_INVOKABLE Album* albumByTitle(const QString &title, const QString &artistName = QString()) const;
+    Q_INVOKABLE QVariantMap albumByTitle(const QString &title, const QString &artistName = QString()) const;
     Q_INVOKABLE Artist* artistByName(const QString &name) const;
     
     // Virtual playlist support

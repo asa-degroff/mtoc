@@ -32,9 +32,16 @@ QString Track::albumArtist() const
 
 QStringList Track::albumArtists() const
 {
+    // Return cached result if valid
+    if (m_albumArtistsCacheValid) {
+        return m_cachedAlbumArtists;
+    }
+
     // Parse album artist string using common delimiters
     if (m_albumArtist.isEmpty()) {
-        return QStringList();
+        m_cachedAlbumArtists = QStringList();
+        m_albumArtistsCacheValid = true;
+        return m_cachedAlbumArtists;
     }
 
     // Try common delimiters in order
@@ -47,12 +54,16 @@ QStringList Track::albumArtists() const
             for (QString &artist : artists) {
                 artist = artist.trimmed();
             }
-            return artists;
+            m_cachedAlbumArtists = artists;
+            m_albumArtistsCacheValid = true;
+            return m_cachedAlbumArtists;
         }
     }
 
     // No delimiter found, return single artist
-    return QStringList{m_albumArtist};
+    m_cachedAlbumArtists = QStringList{m_albumArtist};
+    m_albumArtistsCacheValid = true;
+    return m_cachedAlbumArtists;
 }
 
 QString Track::album() const
@@ -122,6 +133,7 @@ void Track::setAlbumArtist(const QString &albumArtist)
 {
     if (m_albumArtist != albumArtist) {
         m_albumArtist = albumArtist;
+        m_albumArtistsCacheValid = false;  // Invalidate cache
         emit albumArtistChanged();
     }
 }

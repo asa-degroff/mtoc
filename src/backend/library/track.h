@@ -91,6 +91,10 @@ private:
     int m_duration = 0; // in seconds
     QUrl m_fileUrl;
     QString m_lyrics;
+
+    // Cache for parsed album artists
+    mutable QStringList m_cachedAlbumArtists;
+    mutable bool m_albumArtistsCacheValid = false;
 };
 
 } // namespace Mtoc

@@ -1516,26 +1516,14 @@ QVariantMap LibraryManager::searchAll(const QString &query) const
 }
 
 
-Album* LibraryManager::albumByTitle(const QString &title, const QString &artistName) const
+QVariantMap LibraryManager::albumByTitle(const QString &title, const QString &artistName) const
 {
     if (title.isEmpty() || !m_databaseManager || !m_databaseManager->isOpen()) {
-        return nullptr;
+        return QVariantMap();
     }
 
-    // Get album data from database
-    QVariantMap albumData = m_databaseManager->getAlbumByTitleAndArtist(title, artistName);
-    if (albumData.isEmpty()) {
-        return nullptr;
-    }
-
-    // Create Album object
-    Album* album = new Album(const_cast<LibraryManager*>(this));
-    album->setTitle(albumData.value("title").toString());
-    album->setArtist(albumData.value("artist").toString());
-    album->setArtists(albumData.value("artists").toStringList());
-    album->setYear(albumData.value("year").toInt());
-
-    return album;
+    // Return album data directly from database (no object allocation needed)
+    return m_databaseManager->getAlbumByTitleAndArtist(title, artistName);
 }
 
 Artist* LibraryManager::artistByName(const QString &name) const
@@ -2670,7 +2658,7 @@ QVariantList LibraryManager::parseAndMatchTrackArtists(const QString &trackArtis
 
     // Define delimiters to try (in order of priority)
     // Include common delimiters and featuring patterns
-    QStringList delimiters = {", ", "; ", " & ", " | ", " feat. ", " feat ", " ft. ", " ft ", " featuring "};
+    static const QStringList delimiters = {", ", "; ", " & ", " | ", " feat. ", " feat ", " ft. ", " ft ", " featuring "};
 
     // Try to find which delimiter(s) appear in the track artist string
     QString foundDelimiter;
