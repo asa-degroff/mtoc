@@ -544,16 +544,12 @@ Item {
                         albumArtists = track.albumArtists || []
                     }
 
-                    console.log("[Artist parsing] Track artist:", trackArtist, "| Album artists:", JSON.stringify(albumArtists))
-
                     if (albumArtists.length === 0) {
                         return []
                     }
 
                     // Parse and match
-                    var segments = LibraryManager.parseAndMatchTrackArtists(trackArtist, albumArtists)
-                    console.log("[Artist parsing] Segments:", JSON.stringify(segments))
-                    return segments
+                    return LibraryManager.parseAndMatchTrackArtists(trackArtist, albumArtists)
                 }
 
                 // Multi-artist display with individual clickable links
@@ -564,10 +560,6 @@ Item {
                     width: parent.width
                     visible: artistContainer.artistSegments.length > 0
                     spacing: 0
-
-                    onVisibleChanged: {
-                        console.log("[Multi-artist Flow] Visible:", visible, "| Segments count:", artistContainer.artistSegments.length)
-                    }
 
                     Repeater {
                         model: artistContainer.artistSegments
@@ -602,7 +594,6 @@ Item {
 
                                 onClicked: {
                                     if (modelData.isClickable && libraryPane && modelData.artistName) {
-                                        console.log("[Multi-artist click] Segment text:", modelData.text, "| Artist name:", modelData.artistName)
                                         libraryPane.jumpToArtist(modelData.artistName)
                                     }
                                 }
@@ -634,7 +625,6 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        console.log("[Fallback MouseArea] Clicked! Segments length:", artistContainer.artistSegments.length)
                         if (libraryPane && MediaPlayer.currentTrack) {
                             var track = MediaPlayer.currentTrack
                             var artistToJump = ""
@@ -650,7 +640,6 @@ Item {
                             }
 
                             if (artistToJump) {
-                                console.log("[Fallback MouseArea] Navigating to:", artistToJump)
                                 libraryPane.jumpToArtist(artistToJump)
                             }
                         }
