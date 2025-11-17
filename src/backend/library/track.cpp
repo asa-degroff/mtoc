@@ -30,6 +30,31 @@ QString Track::albumArtist() const
     return m_albumArtist;
 }
 
+QStringList Track::albumArtists() const
+{
+    // Parse album artist string using common delimiters
+    if (m_albumArtist.isEmpty()) {
+        return QStringList();
+    }
+
+    // Try common delimiters in order
+    QStringList delimiters = {"; ", " | "};
+
+    for (const QString &delimiter : delimiters) {
+        if (m_albumArtist.contains(delimiter)) {
+            QStringList artists = m_albumArtist.split(delimiter, Qt::SkipEmptyParts);
+            // Trim whitespace from each artist
+            for (QString &artist : artists) {
+                artist = artist.trimmed();
+            }
+            return artists;
+        }
+    }
+
+    // No delimiter found, return single artist
+    return QStringList{m_albumArtist};
+}
+
 QString Track::album() const
 {
     return m_album;

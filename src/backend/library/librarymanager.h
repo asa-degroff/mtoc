@@ -117,6 +117,9 @@ public:
     // Virtual playlist support
     Q_INVOKABLE VirtualPlaylistModel* getAllSongsPlaylist();
     Q_INVOKABLE bool isTrackInLibrary(const QString &filePath) const;
+
+    // Artist parsing utility
+    Q_INVOKABLE QVariantList parseAndMatchTrackArtists(const QString &trackArtist, const QStringList &albumArtists) const;
     
     // Access to database manager (for image provider)
     DatabaseManager* databaseManager() const { return m_databaseManager; }

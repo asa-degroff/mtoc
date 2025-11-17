@@ -1518,7 +1518,24 @@ QVariantMap LibraryManager::searchAll(const QString &query) const
 
 Album* LibraryManager::albumByTitle(const QString &title, const QString &artistName) const
 {
-    return nullptr;
+    if (title.isEmpty() || !m_databaseManager || !m_databaseManager->isOpen()) {
+        return nullptr;
+    }
+
+    // Get album data from database
+    QVariantMap albumData = m_databaseManager->getAlbumByTitleAndArtist(title, artistName);
+    if (albumData.isEmpty()) {
+        return nullptr;
+    }
+
+    // Create Album object
+    Album* album = new Album(const_cast<LibraryManager*>(this));
+    album->setTitle(albumData.value("title").toString());
+    album->setArtist(albumData.value("artist").toString());
+    album->setArtists(albumData.value("artists").toStringList());
+    album->setYear(albumData.value("year").toInt());
+
+    return album;
 }
 
 Artist* LibraryManager::artistByName(const QString &name) const
@@ -2616,7 +2633,7 @@ bool LibraryManager::isTrackInLibrary(const QString &filePath) const
     if (filePath.isEmpty()) {
         return false;
     }
-    
+
     // Check cache first
     {
         QMutexLocker locker(&m_trackCacheMutex);
@@ -2624,9 +2641,118 @@ bool LibraryManager::isTrackInLibrary(const QString &filePath) const
             return true;
         }
     }
-    
+
     // Check database
     return m_databaseManager->trackExists(filePath);
+}
+
+QVariantList LibraryManager::parseAndMatchTrackArtists(const QString &trackArtist, const QStringList &albumArtists) const
+{
+    QVariantList result;
+
+    if (trackArtist.isEmpty() || albumArtists.isEmpty()) {
+        return result;
+    }
+
+    // First check: Does the track artist exactly match one of the album artists?
+    // This handles artists with delimiters in their name like "Invent, Animate"
+    for (const QString &albumArtist : albumArtists) {
+        if (trackArtist.compare(albumArtist, Qt::CaseInsensitive) == 0) {
+            // Exact match - return as single clickable segment
+            QVariantMap segmentMap;
+            segmentMap["text"] = trackArtist;
+            segmentMap["isClickable"] = true;
+            segmentMap["artistName"] = albumArtist;
+            result.append(segmentMap);
+            return result;
+        }
+    }
+
+    // Define delimiters to try (in order of priority)
+    // Include common delimiters and featuring patterns
+    QStringList delimiters = {", ", "; ", " & ", " | ", " feat. ", " feat ", " ft. ", " ft ", " featuring "};
+
+    // Try to find which delimiter(s) appear in the track artist string
+    QString foundDelimiter;
+    for (const QString &delim : delimiters) {
+        if (trackArtist.contains(delim, Qt::CaseInsensitive)) {
+            foundDelimiter = delim;
+            break;  // Use the first matching delimiter
+        }
+    }
+
+    // If no delimiter found, return empty (caller will use fallback behavior)
+    if (foundDelimiter.isEmpty()) {
+        return result;
+    }
+
+    // Split the track artist by the found delimiter while preserving the original text
+    QStringList segments;
+    int lastPos = 0;
+    int pos = 0;
+
+    while ((pos = trackArtist.indexOf(foundDelimiter, lastPos, Qt::CaseInsensitive)) >= 0) {
+        // Add the text before the delimiter (artist name)
+        if (pos > lastPos) {
+            segments.append(trackArtist.mid(lastPos, pos - lastPos));
+        }
+        // Add the delimiter itself (with original case and spacing)
+        segments.append(trackArtist.mid(pos, foundDelimiter.length()));
+        lastPos = pos + foundDelimiter.length();
+    }
+
+    // Add any remaining text after the last delimiter
+    if (lastPos < trackArtist.length()) {
+        segments.append(trackArtist.mid(lastPos));
+    }
+
+    // If we couldn't split properly, return empty
+    if (segments.size() <= 1) {
+        return result;
+    }
+
+    // Process each segment
+    bool isDelimiterSegment = false;
+    for (const QString &segment : segments) {
+        QString trimmed = segment.trimmed();
+
+        // Alternating between artist names and delimiters
+        if (isDelimiterSegment) {
+            // This is a delimiter - add as non-clickable
+            QVariantMap segmentMap;
+            segmentMap["text"] = segment;
+            segmentMap["isClickable"] = false;
+            result.append(segmentMap);
+            isDelimiterSegment = false;
+        } else {
+            // This is potentially an artist name
+            if (!trimmed.isEmpty()) {
+                // Check if this matches any album artist (case-insensitive)
+                bool isMatch = false;
+                QString matchedAlbumArtist;
+
+                for (const QString &albumArtist : albumArtists) {
+                    if (trimmed.compare(albumArtist, Qt::CaseInsensitive) == 0) {
+                        isMatch = true;
+                        matchedAlbumArtist = albumArtist;
+                        break;
+                    }
+                }
+
+                // Add this segment
+                QVariantMap segmentMap;
+                segmentMap["text"] = segment;  // Keep original spacing/formatting
+                segmentMap["isClickable"] = isMatch;
+                if (isMatch) {
+                    segmentMap["artistName"] = matchedAlbumArtist;
+                }
+                result.append(segmentMap);
+            }
+            isDelimiterSegment = true;
+        }
+    }
+
+    return result;
 }
 
 Track* LibraryManager::trackByPath(const QString &path) const

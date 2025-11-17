@@ -1932,6 +1932,81 @@ int DatabaseManager::getAlbumIdByArtistAndTitle(const QString& albumArtist, cons
     return 0;
 }
 
+QVariantMap DatabaseManager::getAlbumByTitleAndArtist(const QString& albumTitle, const QString& albumArtist)
+{
+    QVariantMap result;
+
+    // First get the album ID
+    int albumId = getAlbumIdByArtistAndTitle(albumArtist, albumTitle);
+    if (albumId <= 0) {
+        return result;
+    }
+
+    QMutexLocker locker(&m_databaseMutex);
+    if (!m_db.isOpen()) {
+        return result;
+    }
+
+    // Check if junction table exists
+    QSqlQuery checkQuery(m_db);
+    checkQuery.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='album_album_artists'");
+    bool junctionTableExists = checkQuery.next();
+    checkQuery.finish();
+
+    // Get album basic data
+    QSqlQuery query(m_db);
+    query.prepare("SELECT id, title, year FROM albums WHERE id = :id");
+    query.bindValue(":id", albumId);
+
+    if (query.exec() && query.next()) {
+        result["id"] = query.value("id");
+        result["title"] = query.value("title");
+        result["year"] = query.value("year");
+
+        // Get album artists as a list
+        QStringList artists;
+        QString artistsString;
+
+        if (junctionTableExists) {
+            // Use junction table to get all album artists in order
+            QSqlQuery artistQuery(m_db);
+            artistQuery.prepare(
+                "SELECT aa.name FROM album_album_artists aaa "
+                "JOIN album_artists aa ON aaa.album_artist_id = aa.id "
+                "WHERE aaa.album_id = :album_id "
+                "ORDER BY aaa.position"
+            );
+            artistQuery.bindValue(":album_id", albumId);
+
+            if (artistQuery.exec()) {
+                while (artistQuery.next()) {
+                    artists.append(artistQuery.value(0).toString());
+                }
+            }
+            artistsString = artists.join("; ");
+        } else {
+            // Fallback: use old album_artist_id field
+            QSqlQuery artistQuery(m_db);
+            artistQuery.prepare(
+                "SELECT aa.name FROM albums al "
+                "JOIN album_artists aa ON al.album_artist_id = aa.id "
+                "WHERE al.id = :album_id"
+            );
+            artistQuery.bindValue(":album_id", albumId);
+
+            if (artistQuery.exec() && artistQuery.next()) {
+                artistsString = artistQuery.value(0).toString();
+                artists = QStringList{artistsString};
+            }
+        }
+
+        result["artist"] = artistsString;
+        result["artists"] = artists;
+    }
+
+    return result;
+}
+
 int DatabaseManager::getAlbumArtistIdByName(const QString& albumArtistName)
 {
     QMutexLocker locker(&m_databaseMutex);

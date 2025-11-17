@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QUrl>
 #include <QDateTime>
 
@@ -14,6 +15,7 @@ class Track : public QObject
     Q_PROPERTY(QString title READ title WRITE setTitle NOTIFY titleChanged)
     Q_PROPERTY(QString artist READ artist WRITE setArtist NOTIFY artistChanged)
     Q_PROPERTY(QString albumArtist READ albumArtist WRITE setAlbumArtist NOTIFY albumArtistChanged)
+    Q_PROPERTY(QStringList albumArtists READ albumArtists NOTIFY albumArtistChanged)
     Q_PROPERTY(QString album READ album WRITE setAlbum NOTIFY albumChanged)
     Q_PROPERTY(QString genre READ genre WRITE setGenre NOTIFY genreChanged)
     Q_PROPERTY(int year READ year WRITE setYear NOTIFY yearChanged)
@@ -32,6 +34,7 @@ public:
     QString title() const;
     QString artist() const;
     QString albumArtist() const;
+    QStringList albumArtists() const;
     QString album() const;
     QString genre() const;
     int year() const;
