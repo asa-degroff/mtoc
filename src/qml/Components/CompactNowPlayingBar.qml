@@ -614,7 +614,7 @@ Rectangle {
                 Layout.preferredWidth: 24
                 Layout.preferredHeight: 24
                 visible: MediaPlayer.hasCurrentTrackLyrics
-                iconSource: Theme.isDark ? "qrc:/resources/icons/lyrics-icon.svg" : "qrc:/resources/icons/lyrics-icon-dark.svg"
+                iconSource: "qrc:/resources/icons/lyrics-icon.svg"
                 opacity: root.lyricsPopupVisible ? 1.0 : 0.6
                 addShadow: true
                 onClicked: {
