@@ -238,21 +238,103 @@ Rectangle {
                 
                 // Artist name (clickable)
                 Item {
+                    id: artistContainer
                     Layout.fillWidth: true
-                    Layout.preferredHeight: artistLabel.implicitHeight
-                    
+                    Layout.preferredHeight: Math.max(multiArtistRow.implicitHeight, artistLabel.implicitHeight)
+
+                    // Helper to parse and match artists
+                    property var artistSegments: {
+                        if (!MediaPlayer.currentTrack) {
+                            return []
+                        }
+
+                        var track = MediaPlayer.currentTrack
+                        var trackArtist = track.artist || ""
+
+                        // Get album artists from the database (more reliable than parsing)
+                        var album = LibraryManager.albumByTitle(track.album, track.albumArtist)
+                        var albumArtists = []
+
+                        if (album && album.artists && album.artists.length > 0) {
+                            albumArtists = album.artists
+                        } else {
+                            // Fallback to parsing albumArtist string if album lookup fails
+                            albumArtists = track.albumArtists || []
+                        }
+
+                        if (albumArtists.length === 0) {
+                            return []
+                        }
+
+                        // Parse and match
+                        return LibraryManager.parseAndMatchTrackArtists(trackArtist, albumArtists)
+                    }
+
+                    // Multi-artist display with individual clickable links
+                    Row {
+                        id: multiArtistRow
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        visible: artistContainer.artistSegments.length > 0
+                        spacing: 0
+
+                        Repeater {
+                            model: artistContainer.artistSegments
+
+                            delegate: Item {
+                                width: segmentText.implicitWidth
+                                height: segmentText.implicitHeight
+
+                                Text {
+                                    id: segmentText
+                                    text: modelData.text
+                                    font.pixelSize: 13
+                                    color: {
+                                        if (modelData.isClickable) {
+                                            return segmentMouseArea.containsMouse ? Theme.secondaryText : Theme.tertiaryText
+                                        } else {
+                                            return Theme.tertiaryText
+                                        }
+                                    }
+                                    elide: Text.ElideRight
+
+                                    Behavior on color {
+                                        ColorAnimation { duration: 150 }
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: segmentMouseArea
+                                    anchors.fill: parent
+                                    enabled: modelData.isClickable
+                                    hoverEnabled: modelData.isClickable
+                                    cursorShape: modelData.isClickable ? Qt.PointingHandCursor : Qt.ArrowCursor
+
+                                    onClicked: {
+                                        if (modelData.isClickable && modelData.artistName) {
+                                            root.artistClicked(modelData.artistName)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Fallback: single clickable label (original behavior)
                     Label {
                         id: artistLabel
                         anchors.fill: parent
+                        visible: artistContainer.artistSegments.length === 0
                         text: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.artist : ""
                         font.pixelSize: 13
                         color: artistMouseArea.containsMouse ? Theme.secondaryText : Theme.tertiaryText
                         elide: Text.ElideRight
                     }
-                    
+
                     MouseArea {
                         id: artistMouseArea
                         anchors.fill: parent
+                        visible: artistContainer.artistSegments.length === 0
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
@@ -614,7 +696,7 @@ Rectangle {
                 Layout.preferredWidth: 24
                 Layout.preferredHeight: 24
                 visible: MediaPlayer.hasCurrentTrackLyrics
-                iconSource: Theme.isDark ? "qrc:/resources/icons/lyrics-icon.svg" : "qrc:/resources/icons/lyrics-icon-dark.svg"
+                iconSource: "qrc:/resources/icons/lyrics-icon.svg"
                 opacity: root.lyricsPopupVisible ? 1.0 : 0.6
                 addShadow: true
                 onClicked: {

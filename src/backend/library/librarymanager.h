@@ -111,12 +111,15 @@ public:
     
     // Direct data access (for advanced usage)
     Q_INVOKABLE Track* trackByPath(const QString &path) const;
-    Q_INVOKABLE Album* albumByTitle(const QString &title, const QString &artistName = QString()) const;
+    Q_INVOKABLE QVariantMap albumByTitle(const QString &title, const QString &artistName = QString()) const;
     Q_INVOKABLE Artist* artistByName(const QString &name) const;
     
     // Virtual playlist support
     Q_INVOKABLE VirtualPlaylistModel* getAllSongsPlaylist();
     Q_INVOKABLE bool isTrackInLibrary(const QString &filePath) const;
+
+    // Artist parsing utility
+    Q_INVOKABLE QVariantList parseAndMatchTrackArtists(const QString &trackArtist, const QStringList &albumArtists) const;
     
     // Access to database manager (for image provider)
     DatabaseManager* databaseManager() const { return m_databaseManager; }

@@ -39,6 +39,7 @@ public:
     int insertOrGetAlbum(const QString& albumName, int albumArtistId, int albumYear = 0);
     bool insertAlbumArtistLinks(int albumId, const QStringList& albumArtistNames);
     QVariantMap getAlbum(int albumId);
+    QVariantMap getAlbumByTitleAndArtist(const QString& albumTitle, const QString& albumArtist);
     QVariantList getAllAlbums();
     QVariantList getAlbumsByAlbumArtist(int albumArtistId);
     QVariantList getAlbumsByAlbumArtistName(const QString& albumArtistName);
