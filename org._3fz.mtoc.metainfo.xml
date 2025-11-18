@@ -68,6 +68,16 @@
 
   <releases>
 
+    <release version="2.4.2" date="2025-11-17">
+      <description>
+        <p>Split artist navigation links, fix for external-only album art</p>
+        <ul>
+          <li>Added split artist parsing for track artists, enabling navigation links to existing album artists from the now playing UI</li>
+          <li>Enabled scanning of external album art for files that lack embedded art by matching common file names in the same directory</li>
+        </ul>
+      </description>
+    </release>
+
     <release version="2.4.1" date="2025-11-12">
       <description>
         <p>Bug fixes for track transitions and lyrics display</p>

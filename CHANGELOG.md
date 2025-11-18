@@ -1,3 +1,8 @@
+# 2.4.2
+### Split artist navigation links, fix for external-only album art
+- Added split artist parsing for track artists, enabling navigation links to existing album artists from the now playing UI
+- Enabled scanning of external album art for files that lack embedded art by matching common file names in the same directory
+
 # 2.4.1
 ### Bug fixes for track transitions and lyrics display
 - Fixed crash when manually selecting a track during gapless playback transition

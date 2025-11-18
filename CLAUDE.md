@@ -594,5 +594,5 @@ Always test:
 
 ---
 
-*Last Updated: 2025-11-16*
-*mtoc Version: 2.4.1*
+*Last Updated: 2025-11-17*
+*mtoc Version: 2.4.2*
