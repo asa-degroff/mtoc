@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.4.1
+Version:        2.4.2
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,25 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Mon Nov 17 2025 Asa DeGroff <asa@3fz.org> 2.4.2-1
+- version bump to 2.4.2 and update changelog with new features (asa@3fz.org)
+- feat: enhance multi-artist navigation link support in the compact now playing
+  interface (asa@3fz.org)
+- fix lyrics icon in light mode in compact now playing bar (asa@3fz.org)
+- perf: refactor albumByTitle to return QVariantMap instead of Album pointer;
+  add caching for album artists in Track class (asa@3fz.org)
+- layout fix (asa@3fz.org)
+- cleanup (asa@3fz.org)
+- Add album retrieval by title and artist, enhance artist parsing in
+  NowPlayingPane (asa@3fz.org)
+- commented out verbose logging (asa@3fz.org)
+- refactor external album art extraction to handle all file types (asa@3fz.org)
+- debug logging for external art extraction (asa@3fz.org)
+- improved external album art processing and related debug logging
+  (asa@3fz.org)
+- Add comprehensive CLAUDE.md documentation for AI assistants
+  (noreply@anthropic.com)
+
 * Wed Nov 12 2025 Asa DeGroff <asa@3fz.org> 2.4.1-1
 - version bump and changelog (asa@3fz.org)
 - Implement enhanced LRC format parsing for embedded plaintext lyrics with
