@@ -352,8 +352,8 @@ ListView {
                 return Theme.selectedBackgroundLowOpacity  // Keyboard selected
             } else if (index === root.currentPlayingIndex) {
                 return Theme.selectedBackgroundMediumOpacity  // Currently playing
-            } else if (queueItemMouseArea.containsMouse) {
-                return Qt.rgba(1, 1, 1, 0.04)  // Hover
+            } else if (queueItemMouseArea.containsMouse && !root.isFinalizingDrop) {
+                return Qt.rgba(1, 1, 1, 0.04)  // Hover (disabled during drop finalization)
             } else {
                 return Qt.rgba(1, 1, 1, 0.02)  // Default
             }

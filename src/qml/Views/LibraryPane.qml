@@ -2787,7 +2787,7 @@ Item {
                                 width: parent.width
                                 height: 45
                                 
-                                property bool isHovered: trackHoverArea.containsMouse
+                                property bool isHovered: trackHoverArea.containsMouse && !trackListView.isFinalizingDrop
                                 
                                 color: {
                                     if (root.selectedTrackIndices.indexOf(index) !== -1) {
