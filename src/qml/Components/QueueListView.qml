@@ -19,6 +19,37 @@ ListView {
     // Drag and drop state
     property int draggedTrackIndex: -1
     property int dropIndex: -1
+    property bool isAnimatingDrop: false
+
+    // Timer to complete drop animation and update model
+    Timer {
+        id: dropAnimationTimer
+        interval: 210  // Slightly longer than animation duration (200ms)
+        repeat: false
+        property int draggedIdx: -1
+        property int newIndex: -1
+        property int originalY: 0
+        onTriggered: {
+            // Set finalizing flag to disable offset animations during model update
+            root.isFinalizingDrop = true
+
+            // Clear drag state - offsets will snap to 0 instantly (no animation)
+            root.draggedTrackIndex = -1
+            root.dropIndex = -1
+            root.isAnimatingDrop = false
+
+            // Update model - delegates will be at correct positions with 0 offset
+            MediaPlayer.moveTrack(draggedIdx, newIndex)
+
+            // Clear finalizing flag after update
+            Qt.callLater(function() {
+                root.isFinalizingDrop = false
+            })
+        }
+    }
+
+    // Flag to disable offset animations during model update
+    property bool isFinalizingDrop: false
     
     // Multi-selection state
     property var selectedTrackIndices: []
@@ -334,13 +365,17 @@ ListView {
         
         
         property real verticalOffset: {
-            if (root.draggedTrackIndex === -1) return 0
-            
+            // During finalization, don't apply any offset - model is being updated
+            if (root.isFinalizingDrop) return 0
+
+            // Keep offsets during drop animation until model updates
+            if (root.draggedTrackIndex === -1 && !root.isAnimatingDrop) return 0
+
             var dragIdx = root.draggedTrackIndex
             var dropIdx = root.dropIndex
-            
+
             if (dragIdx === index || dropIdx === -1) return 0  // Don't offset the dragged item
-            
+
             if (dragIdx < dropIdx) {
                 // Dragging down: items between drag and drop move up
                 if (index > dragIdx && index <= dropIdx) {
@@ -352,7 +387,7 @@ ListView {
                     return height + root.spacing
                 }
             }
-            
+
             return 0
         }
         
@@ -375,7 +410,21 @@ ListView {
         // Animation properties
         property bool isRemoving: false
         property real slideX: 0
-        
+
+        // Drop animation for the dragged item
+        Behavior on y {
+            id: dropAnimation
+            enabled: root.isAnimatingDrop && root.draggedTrackIndex === index
+            NumberAnimation {
+                id: dropAnimationNumber
+                duration: 200
+                easing.type: Easing.InOutQuad
+            }
+        }
+
+        // Store animation completion data on the delegate
+        property var dropAnimData: null
+
         Behavior on height {
             enabled: !root.isRapidSkipping
             NumberAnimation { 
@@ -400,7 +449,8 @@ ListView {
             Translate {
                 y: queueItemDelegate.verticalOffset
                 Behavior on y {
-                    enabled: root.draggedTrackIndex !== -1 && !root.isRapidSkipping
+                    // Disable animation during finalization so offsets snap instantly
+                    enabled: (root.draggedTrackIndex !== -1 || root.isAnimatingDrop) && !root.isRapidSkipping && !root.isFinalizingDrop
                     NumberAnimation {
                         duration: 200
                         easing.type: Easing.InOutQuad
@@ -447,24 +497,30 @@ ListView {
                         // Use the pre-calculated drop index
                         var newIndex = root.dropIndex
                         var draggedIdx = root.draggedTrackIndex
-                        
+
                         // Keep track of whether we're actually moving
                         var isMoving = newIndex !== draggedIdx && draggedIdx >= 0
-                        
-                        // Reset visual properties
+
+                        // Reset z-index and opacity
                         queueItemDelegate.z = 0
                         queueItemDelegate.opacity = 1.0
-                        queueItemDelegate.y = dragArea.originalY
-                        
-                        // Reset drag state to remove all visual offsets
-                        root.draggedTrackIndex = -1
-                        root.dropIndex = -1
-                        
-                        // Perform the reorder after a brief delay to allow visual reset
+
                         if (isMoving) {
-                            Qt.callLater(function() {
-                                MediaPlayer.moveTrack(draggedIdx, newIndex)
-                            })
+                            // Calculate the target Y position for the dragged item
+                            var targetY = dragArea.originalY + (newIndex - draggedIdx) * (queueItemDelegate.height + root.spacing)
+
+                            // Start the drop animation
+                            root.isAnimatingDrop = true
+                            dropAnimationTimer.draggedIdx = draggedIdx
+                            dropAnimationTimer.newIndex = newIndex
+                            dropAnimationTimer.originalY = dragArea.originalY
+                            dropAnimationTimer.start()
+                            queueItemDelegate.y = targetY
+                        } else {
+                            // No move - reset visual properties immediately
+                            queueItemDelegate.y = dragArea.originalY
+                            root.draggedTrackIndex = -1
+                            root.dropIndex = -1
                         }
                     }
                 }

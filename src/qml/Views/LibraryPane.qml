@@ -2662,6 +2662,39 @@ Item {
                         // Drag and drop state
                         property int draggedTrackIndex: -1
                         property int dropIndex: -1
+                        property bool isAnimatingDrop: false
+
+                        // Timer to complete drop animation and update model
+                        Timer {
+                            id: dropAnimationTimer
+                            interval: 210  // Slightly longer than animation duration (200ms)
+                            repeat: false
+                            property int draggedIdx: -1
+                            property int newIndex: -1
+                            property int originalY: 0
+                            onTriggered: {
+                                // Set finalizing flag to disable offset animations during model update
+                                trackListView.isFinalizingDrop = true
+
+                                // Clear drag state - offsets will snap to 0 instantly (no animation)
+                                trackListView.draggedTrackIndex = -1
+                                trackListView.dropIndex = -1
+                                trackListView.isAnimatingDrop = false
+
+                                // Update model - delegates will be at correct positions with 0 offset
+                                var movedTrack = root.editedPlaylistTracks.splice(draggedIdx, 1)[0]
+                                root.editedPlaylistTracks.splice(newIndex, 0, movedTrack)
+                                rightPane.currentAlbumTracks = root.editedPlaylistTracks.slice()
+
+                                // Clear finalizing flag after update
+                                Qt.callLater(function() {
+                                    trackListView.isFinalizingDrop = false
+                                })
+                            }
+                        }
+
+                        // Flag to disable offset animations during model update
+                        property bool isFinalizingDrop: false
                         
                         // Smooth height animation synchronized with panel slide
                         Behavior on Layout.preferredHeight {
@@ -2778,11 +2811,21 @@ Item {
                                     acceptedButtons: Qt.NoButton
                                 }
                                 
+                                // Drop animation for the dragged item
+                                Behavior on y {
+                                    enabled: trackListView.isAnimatingDrop && trackListView.draggedTrackIndex === index
+                                    NumberAnimation {
+                                        duration: 200
+                                        easing.type: Easing.InOutQuad
+                                    }
+                                }
+
                                 // Animated vertical offset for drag feedback
                                 transform: Translate {
                                     y: trackDelegate.verticalOffset
                                     Behavior on y {
-                                        enabled: root.playlistEditMode && trackListView.draggedTrackIndex !== -1
+                                        // Disable animation during finalization so offsets snap instantly
+                                        enabled: root.playlistEditMode && (trackListView.draggedTrackIndex !== -1 || trackListView.isAnimatingDrop) && !trackListView.isFinalizingDrop
                                         NumberAnimation {
                                             duration: 200
                                             easing.type: Easing.InOutQuad
@@ -2791,13 +2834,17 @@ Item {
                                 }
                                 
                                 property real verticalOffset: {
-                                    if (!root.playlistEditMode || trackListView.draggedTrackIndex === -1) return 0
-                                    
+                                    // During finalization, don't apply any offset - model is being updated
+                                    if (trackListView.isFinalizingDrop) return 0
+
+                                    // Keep offsets during drop animation until model updates
+                                    if (!root.playlistEditMode || (trackListView.draggedTrackIndex === -1 && !trackListView.isAnimatingDrop)) return 0
+
                                     var dragIdx = trackListView.draggedTrackIndex
                                     var dropIdx = trackListView.dropIndex
-                                    
+
                                     if (dragIdx === index || dropIdx === -1) return 0  // Don't offset the dragged item
-                                    
+
                                     if (dragIdx < dropIdx) {
                                         // Dragging down
                                         if (index > dragIdx && index <= dropIdx) return -trackDelegate.height - trackListView.spacing
@@ -2805,7 +2852,7 @@ Item {
                                         // Dragging up
                                         if (index >= dropIdx && index < dragIdx) return trackDelegate.height + trackListView.spacing
                                     }
-                                    
+
                                     return 0
                                 }
                                 
@@ -2865,39 +2912,30 @@ Item {
                                                 // Use the pre-calculated drop index
                                                 var newIndex = trackListView.dropIndex
                                                 var draggedIdx = trackListView.draggedTrackIndex
-                                                
+
                                                 // Keep track of whether we're actually moving
                                                 var isMoving = newIndex !== draggedIdx && draggedIdx >= 0
-                                                
-                                                // Reset visual properties
+
+                                                // Reset z-index and opacity
                                                 trackDelegate.z = 0
                                                 trackDelegate.opacity = 1.0
-                                                trackDelegate.y = dragArea.originalY
-                                                
-                                                // Reset drag state to remove all visual offsets
-                                                trackListView.draggedTrackIndex = -1
-                                                trackListView.dropIndex = -1
-                                                
-                                                // Perform the reorder after a brief delay to allow visual reset
+
                                                 if (isMoving) {
-                                                    // Save the current scroll position before the delayed call
-                                                    var savedContentY = trackListView.contentY
-                                                    var listView = trackListView
-                                                    
-                                                    // Use a timer to ensure visual updates complete first
-                                                    Qt.callLater(function() {
-                                                        // Save scroll position again right before model update
-                                                        var currentContentY = listView.contentY
-                                                        
-                                                        var movedTrack = root.editedPlaylistTracks.splice(draggedIdx, 1)[0]
-                                                        root.editedPlaylistTracks.splice(newIndex, 0, movedTrack)
-                                                        
-                                                        // Update the view
-                                                        rightPane.currentAlbumTracks = root.editedPlaylistTracks.slice()
-                                                        
-                                                        // Immediately restore scroll position (synchronously)
-                                                        listView.contentY = currentContentY
-                                                    })
+                                                    // Calculate the target Y position for the dragged item
+                                                    var targetY = dragArea.originalY + (newIndex - draggedIdx) * (trackDelegate.height + trackListView.spacing)
+
+                                                    // Start the drop animation
+                                                    trackListView.isAnimatingDrop = true
+                                                    dropAnimationTimer.draggedIdx = draggedIdx
+                                                    dropAnimationTimer.newIndex = newIndex
+                                                    dropAnimationTimer.originalY = dragArea.originalY
+                                                    dropAnimationTimer.start()
+                                                    trackDelegate.y = targetY
+                                                } else {
+                                                    // No move - reset visual properties immediately
+                                                    trackDelegate.y = dragArea.originalY
+                                                    trackListView.draggedTrackIndex = -1
+                                                    trackListView.dropIndex = -1
                                                 }
                                             }
                                         }
