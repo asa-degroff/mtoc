@@ -501,27 +501,33 @@ ListView {
             anchors.margins: 8
             spacing: 10
             
-            // Drag handle
-            Image {
-                id: dragHandle
-                source: root.forceLightText ? "qrc:/resources/icons/list-drag-handle.svg" : 
-                        (Theme.isDark ? "qrc:/resources/icons/list-drag-handle.svg" : "qrc:/resources/icons/list-drag-handle-dark.svg")
+            // Drag handle - Item wrapper to allow full-height hit area
+            Item {
                 Layout.preferredWidth: 20
-                Layout.preferredHeight: 20
-                sourceSize.width: 40
-                sourceSize.height: 40
-                opacity: 0.5
-                
+                Layout.fillHeight: true
+
+                Image {
+                    id: dragHandle
+                    anchors.centerIn: parent
+                    source: root.forceLightText ? "qrc:/resources/icons/list-drag-handle.svg" :
+                            (Theme.isDark ? "qrc:/resources/icons/list-drag-handle.svg" : "qrc:/resources/icons/list-drag-handle-dark.svg")
+                    width: 20
+                    height: 20
+                    sourceSize.width: 40
+                    sourceSize.height: 40
+                    opacity: 0.5
+                }
+
                 MouseArea {
                     id: dragArea
                     anchors.fill: parent
                     cursorShape: Qt.DragMoveCursor
-                    
+
                     drag.target: queueItemDelegate
                     drag.axis: Drag.YAxis
-                    
+
                     property int originalY: 0
-                    
+
                     onPressed: {
                         root.draggedTrackIndex = index
                         root.dropIndex = index

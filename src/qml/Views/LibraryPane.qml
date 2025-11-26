@@ -2888,27 +2888,33 @@ Item {
                                     anchors.margins: 8
                                     spacing: 10
 
-                                    // Drag handle (only in edit mode for playlists)
-                                    Image {
-                                        id: dragHandle
-                                        source: Theme.isDark ? "qrc:/resources/icons/list-drag-handle.svg" : "qrc:/resources/icons/list-drag-handle-dark.svg"
+                                    // Drag handle (only in edit mode for playlists) - Item wrapper for full-height hit area
+                                    Item {
                                         Layout.preferredWidth: 20
-                                        Layout.preferredHeight: 20
-                                        sourceSize.width: 40
-                                        sourceSize.height: 40
-                                        opacity: 0.5
+                                        Layout.fillHeight: true
                                         visible: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist && !PlaylistManager.isSpecialPlaylist(root.selectedAlbum.title) && !PlaylistManager.isSpecialPlaylist(root.selectedAlbum.title)
-                                        
+
+                                        Image {
+                                            id: dragHandle
+                                            anchors.centerIn: parent
+                                            source: Theme.isDark ? "qrc:/resources/icons/list-drag-handle.svg" : "qrc:/resources/icons/list-drag-handle-dark.svg"
+                                            width: 20
+                                            height: 20
+                                            sourceSize.width: 40
+                                            sourceSize.height: 40
+                                            opacity: 0.5
+                                        }
+
                                         MouseArea {
                                             id: dragArea
                                             anchors.fill: parent
                                             cursorShape: Qt.DragMoveCursor
-                                            
+
                                             drag.target: trackDelegate
                                             drag.axis: Drag.YAxis
-                                            
+
                                             property int originalY: 0
-                                            
+
                                             onPressed: {
                                                 trackListView.draggedTrackIndex = index
                                                 trackListView.dropIndex = index
