@@ -2673,6 +2673,10 @@ Item {
                             property int newIndex: -1
                             property int originalY: 0
                             onTriggered: {
+                                // Store move info for highlight calculation during finalization
+                                trackListView.finalizingFromIndex = draggedIdx
+                                trackListView.finalizingToIndex = newIndex
+
                                 // Set finalizing flag to disable offset animations during model update
                                 trackListView.isFinalizingDrop = true
 
@@ -2689,12 +2693,35 @@ Item {
                                 // Clear finalizing flag after update
                                 Qt.callLater(function() {
                                     trackListView.isFinalizingDrop = false
+                                    trackListView.finalizingFromIndex = -1
+                                    trackListView.finalizingToIndex = -1
                                 })
                             }
                         }
 
                         // Flag to disable offset animations during model update
                         property bool isFinalizingDrop: false
+                        // Store move indices for calculating correct highlights during finalization
+                        property int finalizingFromIndex: -1
+                        property int finalizingToIndex: -1
+
+                        // Calculate what an index will be after the move is applied
+                        function getPostMoveIndex(currentIndex) {
+                            if (finalizingFromIndex === -1 || finalizingToIndex === -1) return currentIndex
+                            if (currentIndex === finalizingFromIndex) return finalizingToIndex
+                            if (finalizingFromIndex < finalizingToIndex) {
+                                // Moving down: indices between from and to shift up by 1
+                                if (currentIndex > finalizingFromIndex && currentIndex <= finalizingToIndex) {
+                                    return currentIndex - 1
+                                }
+                            } else {
+                                // Moving up: indices between to and from shift down by 1
+                                if (currentIndex >= finalizingToIndex && currentIndex < finalizingFromIndex) {
+                                    return currentIndex + 1
+                                }
+                            }
+                            return currentIndex
+                        }
                         
                         // Smooth height animation synchronized with panel slide
                         Behavior on Layout.preferredHeight {
@@ -2790,6 +2817,16 @@ Item {
                                 property bool isHovered: trackHoverArea.containsMouse && !trackListView.isFinalizingDrop
                                 
                                 color: {
+                                    // During drop finalization, only show current track highlight (adjusted for new position)
+                                    if (trackListView.isFinalizingDrop) {
+                                        // Check if this item will be the selected track after the move
+                                        var postMoveIndex = trackListView.getPostMoveIndex(root.selectedTrackIndex)
+                                        if (index === postMoveIndex) {
+                                            return Theme.selectedBackgroundLowOpacity  // Current track (lighter)
+                                        }
+                                        return Theme.isDark ? Qt.rgba(1, 1, 1, 0.03) : Qt.rgba(1, 1, 1, 0.12) // Default
+                                    }
+
                                     if (root.selectedTrackIndices.indexOf(index) !== -1) {
                                         return Theme.selectedBackgroundMediumOpacity  // Selected track
                                     } else if (root.selectedTrackIndex === index) {

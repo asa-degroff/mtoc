@@ -30,6 +30,10 @@ ListView {
         property int newIndex: -1
         property int originalY: 0
         onTriggered: {
+            // Store move info for highlight calculation during finalization
+            root.finalizingFromIndex = draggedIdx
+            root.finalizingToIndex = newIndex
+
             // Set finalizing flag to disable offset animations during model update
             root.isFinalizingDrop = true
 
@@ -44,12 +48,35 @@ ListView {
             // Clear finalizing flag after update
             Qt.callLater(function() {
                 root.isFinalizingDrop = false
+                root.finalizingFromIndex = -1
+                root.finalizingToIndex = -1
             })
         }
     }
 
     // Flag to disable offset animations during model update
     property bool isFinalizingDrop: false
+    // Store move indices for calculating correct highlights during finalization
+    property int finalizingFromIndex: -1
+    property int finalizingToIndex: -1
+
+    // Calculate what an index will be after the move is applied
+    function getPostMoveIndex(currentIndex) {
+        if (finalizingFromIndex === -1 || finalizingToIndex === -1) return currentIndex
+        if (currentIndex === finalizingFromIndex) return finalizingToIndex
+        if (finalizingFromIndex < finalizingToIndex) {
+            // Moving down: indices between from and to shift up by 1
+            if (currentIndex > finalizingFromIndex && currentIndex <= finalizingToIndex) {
+                return currentIndex - 1
+            }
+        } else {
+            // Moving up: indices between to and from shift down by 1
+            if (currentIndex >= finalizingToIndex && currentIndex < finalizingFromIndex) {
+                return currentIndex + 1
+            }
+        }
+        return currentIndex
+    }
     
     // Multi-selection state
     property var selectedTrackIndices: []
@@ -346,14 +373,24 @@ ListView {
         width: root.width
         height: isRemoving ? 0 : 45
         color: {
+            // During drop finalization, only show now-playing highlight (adjusted for new position)
+            if (root.isFinalizingDrop) {
+                // Check if this item will be the now-playing track after the move
+                var postMoveIndex = root.getPostMoveIndex(root.currentPlayingIndex)
+                if (index === postMoveIndex) {
+                    return Theme.selectedBackgroundMediumOpacity  // Currently playing
+                }
+                return Qt.rgba(1, 1, 1, 0.02)  // Default
+            }
+
             if (root.selectedTrackIndices.indexOf(index) !== -1) {
                 return Theme.selectedBackgroundHighOpacity  // Selected
             } else if (index === root.keyboardSelectedIndex) {
                 return Theme.selectedBackgroundLowOpacity  // Keyboard selected
             } else if (index === root.currentPlayingIndex) {
                 return Theme.selectedBackgroundMediumOpacity  // Currently playing
-            } else if (queueItemMouseArea.containsMouse && !root.isFinalizingDrop) {
-                return Qt.rgba(1, 1, 1, 0.04)  // Hover (disabled during drop finalization)
+            } else if (queueItemMouseArea.containsMouse) {
+                return Qt.rgba(1, 1, 1, 0.04)  // Hover
             } else {
                 return Qt.rgba(1, 1, 1, 0.02)  // Default
             }
