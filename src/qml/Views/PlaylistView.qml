@@ -60,6 +60,18 @@ Item {
         }
     }
     
+    // Function to select a playlist by name
+    function selectPlaylist(playlistName) {
+        var playlists = PlaylistManager.playlists
+        for (var i = 0; i < playlists.length; i++) {
+            if (playlists[i] === playlistName) {
+                keyboardSelectedIndex = i
+                ensureKeyboardSelectedVisible()
+                return
+            }
+        }
+    }
+
     // Function to ensure keyboard selected item is visible
     function ensureKeyboardSelectedVisible() {
         if (keyboardSelectedIndex < 0 || keyboardSelectedIndex >= playlistListView.count) {
