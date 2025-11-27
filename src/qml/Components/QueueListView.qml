@@ -28,7 +28,6 @@ ListView {
         repeat: false
         property int draggedIdx: -1
         property int newIndex: -1
-        property int originalY: 0
         onTriggered: {
             // Store move info for highlight calculation during finalization
             root.finalizingFromIndex = draggedIdx
@@ -42,15 +41,28 @@ ListView {
             root.dropIndex = -1
             root.isAnimatingDrop = false
 
+            // Save scroll position before model update (model change can reset it)
+            var savedContentY = root.contentY
+
             // Update model - delegates will be at correct positions with 0 offset
             MediaPlayer.moveTrack(draggedIdx, newIndex)
 
-            // Clear finalizing flag after update
+            // Restore scroll position after model update
+            root.contentY = savedContentY
+
+            // Clear finalizing flag after delegates have fully re-bound
             Qt.callLater(function() {
-                root.isFinalizingDrop = false
-                root.finalizingFromIndex = -1
-                root.finalizingToIndex = -1
+                Qt.callLater(function() {
+                    root.isFinalizingDrop = false
+                    root.finalizingFromIndex = -1
+                    root.finalizingToIndex = -1
+                })
             })
+            // Qt.callLater(function() {
+            //     root.isFinalizingDrop = false
+            //     root.finalizingFromIndex = -1
+            //     root.finalizingToIndex = -1
+            // })
         }
     }
 
@@ -59,6 +71,65 @@ ListView {
     // Store move indices for calculating correct highlights during finalization
     property int finalizingFromIndex: -1
     property int finalizingToIndex: -1
+
+    // Auto-scroll during drag
+    property bool isDragging: false
+    property real draggedItemY: 0
+    property int dragScrollDirection: 0  // -1 = up, 0 = none, 1 = down
+    property real dragStartContentY: 0  // contentY when drag started, to track scroll offset
+
+    // Smooth scroll animation for drag auto-scroll
+    NumberAnimation {
+        id: dragScrollAnimation
+        target: root
+        property: "contentY"
+        duration: 300
+        easing.type: Easing.Linear
+
+        onFinished: {
+            // Continue scrolling if still in edge zone
+            if (root.isDragging && root.dragScrollDirection !== 0) {
+                dragScrollTimer.restart()
+            }
+        }
+    }
+
+    Timer {
+        id: dragScrollTimer
+        interval: 16  // Single frame delay before next scroll segment
+        repeat: false
+        running: false
+
+        property real scrollAmount: 80  // Pixels per animation cycle
+        property real edgeThreshold: 60
+
+        onTriggered: {
+            if (!root.isDragging) return
+
+            var dragY = root.draggedItemY
+            var viewHeight = root.height
+            var targetY = root.contentY
+
+            // Check if near top edge
+            if (dragY < edgeThreshold && root.contentY > 0) {
+                root.dragScrollDirection = -1
+                targetY = Math.max(0, root.contentY - scrollAmount)
+            }
+            // Check if near bottom edge
+            else if (dragY > viewHeight - edgeThreshold &&
+                     root.contentY < root.contentHeight - viewHeight) {
+                root.dragScrollDirection = 1
+                targetY = Math.min(root.contentHeight - viewHeight, root.contentY + scrollAmount)
+            }
+            else {
+                root.dragScrollDirection = 0
+                return
+            }
+
+            dragScrollAnimation.to = targetY
+            dragScrollAnimation.start()
+        }
+    }
 
     // Calculate what an index will be after the move is applied
     function getPostMoveIndex(currentIndex) {
@@ -337,9 +408,12 @@ ListView {
     
     // Watch for changes to the current playing index
     onCurrentPlayingIndexChanged: {
+        // Don't auto-scroll during drag-drop reordering
+        if (isFinalizingDrop) return;
+
         var currentTime = Date.now();
         var timeSinceLastSkip = currentTime - lastSkipTime;
-        
+
         // Detect rapid skipping
         if (timeSinceLastSkip < rapidSkipThreshold) {
             isRapidSkipping = true;
@@ -347,16 +421,19 @@ ListView {
         } else {
             isRapidSkipping = false;
         }
-        
+
         lastSkipTime = currentTime;
-        
+
         // Delay the scroll slightly to ensure the list has updated
         Qt.callLater(scrollToCurrentTrack);
     }
     
     // Also scroll when the model changes (e.g., when queue is first loaded)
     onModelChanged: {
-        Qt.callLater(scrollToCurrentTrack);
+        // Don't auto-scroll during drag-drop reordering
+        if (!isFinalizingDrop) {
+            Qt.callLater(scrollToCurrentTrack);
+        }
         // Clear selection when queue changes
         selectedTrackIndices = [];
         lastSelectedIndex = -1;
@@ -373,8 +450,8 @@ ListView {
         width: root.width
         height: isRemoving ? 0 : 45
         color: {
-            // During drop finalization, only show now-playing highlight (adjusted for new position)
-            if (root.isFinalizingDrop) {
+            // During drop animation or finalization, suppress hover and only show now-playing highlight
+            if (root.isAnimatingDrop || root.isFinalizingDrop) {
                 // Check if this item will be the now-playing track after the move
                 var postMoveIndex = root.getPostMoveIndex(root.currentPlayingIndex)
                 if (index === postMoveIndex) {
@@ -436,10 +513,20 @@ ListView {
                 var itemsMoved = Math.round(dragDistance / (height + root.spacing))
                 var potentialIndex = root.draggedTrackIndex + itemsMoved
                 potentialIndex = Math.max(0, Math.min(potentialIndex, root.count - 1))
-                
+
                 // Update drop index if it changed
                 if (potentialIndex !== root.dropIndex) {
                     root.dropIndex = potentialIndex
+                }
+
+                // Update position for auto-scroll (convert to viewport coordinates)
+                root.draggedItemY = y - root.contentY
+
+                // Start auto-scroll if in edge zone and not already scrolling
+                var edgeThreshold = 60
+                var inEdgeZone = root.draggedItemY < edgeThreshold || root.draggedItemY > root.height - edgeThreshold
+                if (inEdgeZone && !dragScrollAnimation.running && !dragScrollTimer.running) {
+                    dragScrollTimer.start()
                 }
             }
         }
@@ -534,9 +621,16 @@ ListView {
                         originalY = queueItemDelegate.y
                         queueItemDelegate.z = 1000
                         queueItemDelegate.opacity = 0.8
+                        root.isDragging = true
+                        root.dragStartContentY = root.contentY
                     }
                     
                     onReleased: {
+                        root.isDragging = false
+                        dragScrollAnimation.stop()
+                        dragScrollTimer.stop()
+                        root.dragScrollDirection = 0
+
                         // Use the pre-calculated drop index
                         var newIndex = root.dropIndex
                         var draggedIdx = root.draggedTrackIndex
@@ -549,19 +643,19 @@ ListView {
                         queueItemDelegate.opacity = 1.0
 
                         if (isMoving) {
-                            // Calculate the target Y position for the dragged item
-                            var targetY = dragArea.originalY + (newIndex - draggedIdx) * (queueItemDelegate.height + root.spacing)
+                            // Calculate the target slot position in content coordinates
+                            var targetSlotY = newIndex * (queueItemDelegate.height + root.spacing)
 
                             // Start the drop animation
                             root.isAnimatingDrop = true
                             dropAnimationTimer.draggedIdx = draggedIdx
                             dropAnimationTimer.newIndex = newIndex
-                            dropAnimationTimer.originalY = dragArea.originalY
                             dropAnimationTimer.start()
-                            queueItemDelegate.y = targetY
+                            queueItemDelegate.y = targetSlotY
                         } else {
-                            // No move - reset visual properties immediately
-                            queueItemDelegate.y = dragArea.originalY
+                            // No move - reset to the item's correct slot position
+                            var originalSlotY = draggedIdx * (queueItemDelegate.height + root.spacing)
+                            queueItemDelegate.y = originalSlotY
                             root.draggedTrackIndex = -1
                             root.dropIndex = -1
                         }
