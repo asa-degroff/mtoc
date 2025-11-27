@@ -2685,21 +2685,97 @@ Item {
                                 root.selectedTrackIndex = -1
                                 root.selectedTrackIndices = []
 
+                                // Save scroll position before model update (model change can reset it)
+                                var savedContentY = trackListView.contentY
+
                                 // Update model - delegates will be at correct positions with 0 offset
                                 var movedTrack = root.editedPlaylistTracks.splice(draggedIdx, 1)[0]
                                 root.editedPlaylistTracks.splice(newIndex, 0, movedTrack)
                                 rightPane.currentAlbumTracks = root.editedPlaylistTracks.slice()
 
-                                // Clear finalizing flag after update
+                                // Restore scroll position after model update
+                                trackListView.contentY = savedContentY
+
+                                // Clear finalizing flag after delegates have fully re-bound
                                 Qt.callLater(function() {
-                                    trackListView.isFinalizingDrop = false
+                                    Qt.callLater(function() {
+                                        trackListView.isFinalizingDrop = false
+                                    })
                                 })
                             }
                         }
 
                         // Flag to disable offset animations during model update
                         property bool isFinalizingDrop: false
-                        
+
+                        // Auto-scroll during drag
+                        property bool isDragging: false
+                        property real draggedItemY: 0
+                        property int dragScrollDirection: 0  // -1 = up, 0 = none, 1 = down
+                        property real dragStartContentY: 0  // contentY when drag started, to track scroll offset
+                        property real lastDragContentY: 0  // Track contentY changes during drag for item position adjustment
+                        property real contentYDelta: 0  // Delta for this contentY change
+
+                        onContentYChanged: {
+                            if (isDragging) {
+                                contentYDelta = contentY - lastDragContentY
+                                lastDragContentY = contentY
+                            }
+                        }
+
+                        // Smooth scroll animation for drag auto-scroll
+                        NumberAnimation {
+                            id: dragScrollAnimation
+                            target: trackListView
+                            property: "contentY"
+                            duration: 300
+                            easing.type: Easing.Linear
+
+                            onFinished: {
+                                // Continue scrolling if still in edge zone
+                                if (trackListView.isDragging && trackListView.dragScrollDirection !== 0) {
+                                    dragScrollTimer.restart()
+                                }
+                            }
+                        }
+
+                        Timer {
+                            id: dragScrollTimer
+                            interval: 16  // Single frame delay before next scroll segment
+                            repeat: false
+                            running: false
+
+                            property real scrollAmount: 80  // Pixels per animation cycle
+                            property real edgeThreshold: 60
+
+                            onTriggered: {
+                                if (!trackListView.isDragging) return
+
+                                var dragY = trackListView.draggedItemY
+                                var viewHeight = trackListView.height
+                                var targetY = trackListView.contentY
+
+                                // Check if near top edge
+                                if (dragY < edgeThreshold && trackListView.contentY > 0) {
+                                    trackListView.dragScrollDirection = -1
+                                    targetY = Math.max(0, trackListView.contentY - scrollAmount)
+                                }
+                                // Check if near bottom edge
+                                else if (dragY > viewHeight - edgeThreshold &&
+                                         trackListView.contentY < trackListView.contentHeight - viewHeight) {
+                                    trackListView.dragScrollDirection = 1
+                                    targetY = Math.min(trackListView.contentHeight - viewHeight, trackListView.contentY + scrollAmount)
+                                }
+                                else {
+                                    trackListView.dragScrollDirection = 0
+                                    return
+                                }
+
+                                dragScrollAnimation.to = targetY
+                                dragScrollAnimation.start()
+                            }
+                        }
+
                         // Smooth height animation synchronized with panel slide
                         Behavior on Layout.preferredHeight {
                             enabled: !root.trackInfoPanelAnimating
@@ -2829,6 +2905,18 @@ Item {
                                     }
                                 }
 
+                                // Keep dragged item visible during auto-scroll by adjusting its y
+                                Connections {
+                                    target: trackListView
+                                    enabled: trackListView.isDragging && trackListView.draggedTrackIndex === index
+                                    function onContentYDeltaChanged() {
+                                        // Move the dragged item with the scroll to keep it at the same viewport position
+                                        if (dragArea.drag.active && trackListView.contentYDelta !== 0) {
+                                            trackDelegate.y = trackDelegate.y + trackListView.contentYDelta
+                                        }
+                                    }
+                                }
+
                                 // Animated vertical offset for drag feedback
                                 transform: Translate {
                                     y: trackDelegate.verticalOffset
@@ -2873,10 +2961,22 @@ Item {
                                         var itemsMoved = Math.round(dragDistance / (height + trackListView.spacing))
                                         var potentialIndex = trackListView.draggedTrackIndex + itemsMoved
                                         potentialIndex = Math.max(0, Math.min(potentialIndex, trackListView.count - 1))
-                                        
+
                                         // Update drop index if it changed
                                         if (potentialIndex !== trackListView.dropIndex) {
                                             trackListView.dropIndex = potentialIndex
+                                        }
+
+                                        // Update position for auto-scroll (convert to viewport coordinates)
+                                        // Use mapToItem since trackDelegate.y is relative to parent Column, not ListView
+                                        var mappedPos = trackDelegate.mapToItem(trackListView, 0, 0)
+                                        trackListView.draggedItemY = mappedPos.y
+
+                                        // Start auto-scroll if in edge zone and not already scrolling
+                                        var edgeThreshold = 60
+                                        var inEdgeZone = trackListView.draggedItemY < edgeThreshold || trackListView.draggedItemY > trackListView.height - edgeThreshold
+                                        if (inEdgeZone && !dragScrollAnimation.running && !dragScrollTimer.running) {
+                                            dragScrollTimer.start()
                                         }
                                     }
                                 }
@@ -2921,9 +3021,18 @@ Item {
                                                 originalY = trackDelegate.y
                                                 trackDelegate.z = 1000
                                                 trackDelegate.opacity = 0.8
+                                                trackListView.isDragging = true
+                                                trackListView.dragStartContentY = trackListView.contentY
+                                                trackListView.lastDragContentY = trackListView.contentY
+                                                trackListView.contentYDelta = 0
                                             }
                                             
                                             onReleased: {
+                                                trackListView.isDragging = false
+                                                dragScrollAnimation.stop()
+                                                dragScrollTimer.stop()
+                                                trackListView.dragScrollDirection = 0
+
                                                 // Use the pre-calculated drop index
                                                 var newIndex = trackListView.dropIndex
                                                 var draggedIdx = trackListView.draggedTrackIndex
@@ -2936,19 +3045,19 @@ Item {
                                                 trackDelegate.opacity = 1.0
 
                                                 if (isMoving) {
-                                                    // Calculate the target Y position for the dragged item
-                                                    var targetY = dragArea.originalY + (newIndex - draggedIdx) * (trackDelegate.height + trackListView.spacing)
+                                                    // Calculate the target slot position in content coordinates
+                                                    var targetSlotY = newIndex * (trackDelegate.height + trackListView.spacing)
 
                                                     // Start the drop animation
                                                     trackListView.isAnimatingDrop = true
                                                     dropAnimationTimer.draggedIdx = draggedIdx
                                                     dropAnimationTimer.newIndex = newIndex
-                                                    dropAnimationTimer.originalY = dragArea.originalY
                                                     dropAnimationTimer.start()
-                                                    trackDelegate.y = targetY
+                                                    trackDelegate.y = targetSlotY
                                                 } else {
-                                                    // No move - reset visual properties immediately
-                                                    trackDelegate.y = dragArea.originalY
+                                                    // No move - reset to the item's correct slot position
+                                                    var originalSlotY = draggedIdx * (trackDelegate.height + trackListView.spacing)
+                                                    trackDelegate.y = originalSlotY
                                                     trackListView.draggedTrackIndex = -1
                                                     trackListView.dropIndex = -1
                                                 }
