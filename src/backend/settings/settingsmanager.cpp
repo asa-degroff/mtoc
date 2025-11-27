@@ -27,6 +27,8 @@ SettingsManager::SettingsManager(QObject *parent)
     , m_showCollabAlbumsUnderAllArtists(true)  // Default to showing collab albums under all artists
     , m_useAlbumArtistDelimiters(true)  // Default to enabled for backward compatibility
     , m_albumArtistDelimiters({";", "|"})  // Default delimiters: semicolon and pipe (whitespace-insensitive)
+    , m_nowPlayingQueueVisible(false)
+    , m_nowPlayingLyricsVisible(false)
 {
     loadSettings();
     setupSystemThemeDetection();
@@ -358,6 +360,24 @@ void SettingsManager::setAlbumArtistDelimiters(const QStringList& delimiters)
     }
 }
 
+void SettingsManager::setNowPlayingQueueVisible(bool visible)
+{
+    if (m_nowPlayingQueueVisible != visible) {
+        m_nowPlayingQueueVisible = visible;
+        emit nowPlayingQueueVisibleChanged(visible);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setNowPlayingLyricsVisible(bool visible)
+{
+    if (m_nowPlayingLyricsVisible != visible) {
+        m_nowPlayingLyricsVisible = visible;
+        emit nowPlayingLyricsVisibleChanged(visible);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -419,6 +439,11 @@ void SettingsManager::loadSettings()
     m_showCollabAlbumsUnderAllArtists = m_settings.value("showCollabAlbumsUnderAllArtists", true).toBool();
     m_useAlbumArtistDelimiters = m_settings.value("useAlbumArtistDelimiters", true).toBool();
     m_albumArtistDelimiters = m_settings.value("albumArtistDelimiters", QStringList({";", "|"})).toStringList();
+    m_settings.endGroup();
+
+    m_settings.beginGroup("NowPlayingPane");
+    m_nowPlayingQueueVisible = m_settings.value("queueVisible", false).toBool();
+    m_nowPlayingLyricsVisible = m_settings.value("lyricsVisible", false).toBool();
     m_settings.endGroup();
 
     qDebug() << "SettingsManager: Loaded settings - Queue action:" << m_queueActionDefault
@@ -485,6 +510,11 @@ void SettingsManager::saveSettings()
     m_settings.setValue("showCollabAlbumsUnderAllArtists", m_showCollabAlbumsUnderAllArtists);
     m_settings.setValue("useAlbumArtistDelimiters", m_useAlbumArtistDelimiters);
     m_settings.setValue("albumArtistDelimiters", m_albumArtistDelimiters);
+    m_settings.endGroup();
+
+    m_settings.beginGroup("NowPlayingPane");
+    m_settings.setValue("queueVisible", m_nowPlayingQueueVisible);
+    m_settings.setValue("lyricsVisible", m_nowPlayingLyricsVisible);
     m_settings.endGroup();
 
     m_settings.sync();
