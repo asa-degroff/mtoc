@@ -457,9 +457,7 @@ ListView {
     }
     
     clip: true
-    displayMarginBeginning: 100
-    displayMarginEnd: 100
-    cacheBuffer: 100000  // Disable delegate recycling for debugging
+    cacheBuffer: 100000  // Keep all delegates instantiated to avoid recycling issues during drag
     spacing: 2
     
     model: queueModel
@@ -468,27 +466,6 @@ ListView {
         id: queueItemDelegate
         width: root.width
         height: isRemoving ? 0 : 45
-
-        // Track when this delegate is recycled to a new index
-        property int trackedIndex: index
-        property bool wasRecycled: false
-
-        onTrackedIndexChanged: {
-            if (wasRecycled) {
-                // Reset any stale animation state from previous delegate usage
-                isRemoving = false
-                slideX = 0
-                // Reset recycled flag after a frame so offset applies instantly
-                Qt.callLater(function() { wasRecycled = false })
-            }
-            // Mark as recycled for next index change
-            wasRecycled = true
-        }
-
-        Component.onCompleted: {
-            // Don't treat initial creation as recycling
-            wasRecycled = false
-        }
         color: {
             // During drop animation or finalization, suppress hover and only show now-playing highlight
             if (root.isAnimatingDrop || root.isFinalizingDrop) {
@@ -613,9 +590,8 @@ ListView {
             Translate {
                 y: queueItemDelegate.verticalOffset
                 Behavior on y {
-                    // Disable animation during finalization or delegate recycling so offsets snap instantly
-                    // Note: we allow animation during auto-scroll for smooth displacement of visible items
-                    enabled: (root.draggedTrackIndex !== -1 || root.isAnimatingDrop) && !root.isRapidSkipping && !root.isFinalizingDrop && !queueItemDelegate.wasRecycled
+                    // Disable animation during finalization so offsets snap instantly
+                    enabled: (root.draggedTrackIndex !== -1 || root.isAnimatingDrop) && !root.isRapidSkipping && !root.isFinalizingDrop
                     NumberAnimation {
                         duration: 200
                         easing.type: Easing.InOutQuad
