@@ -2986,6 +2986,7 @@ Item {
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     acceptedButtons: Qt.NoButton
+                                    // Don't set cursor here - let child MouseAreas handle it
                                 }
                                 
                                 // Drop animation for the dragged item
@@ -3312,9 +3313,10 @@ Item {
                                     id: trackMouseArea
                                     anchors.fill: parent
                                     hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
+                                    cursorShape: Qt.ArrowCursor
                                     acceptedButtons: Qt.LeftButton | Qt.RightButton
-                                    enabled: !root.playlistEditMode // Disable in edit mode to allow drag/delete
+                                    visible: !root.playlistEditMode // Hide completely in edit mode so drag handle cursor works
+                                    enabled: !root.playlistEditMode
                                     
                                     onClicked: function(mouse) {
                                         // Ensure the library pane has focus for keyboard navigation
