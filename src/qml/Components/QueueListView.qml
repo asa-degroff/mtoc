@@ -73,6 +73,19 @@ ListView {
     property int finalizingFromIndex: -1
     property int finalizingToIndex: -1
 
+    // Track removal animation state to maintain stable highlights
+    property bool isAnimatingRemoval: false
+    property int removingAtIndex: -1  // Index of item being removed
+
+    // Calculate adjusted index during removal animation
+    // Items below the removed index will shift up after removal
+    function getPostRemovalIndex(currentIndex) {
+        if (!isAnimatingRemoval || removingAtIndex === -1) return currentIndex
+        if (currentIndex === removingAtIndex) return -1  // Being removed
+        if (currentIndex > removingAtIndex) return currentIndex - 1
+        return currentIndex
+    }
+
     // Auto-scroll during drag
     property bool isDragging: false
     property real draggedItemY: 0
@@ -532,6 +545,16 @@ ListView {
                 return Qt.rgba(1, 1, 1, 0.02)  // Default
             }
 
+            // During removal animation, use post-removal indices for stable highlights
+            if (root.isAnimatingRemoval) {
+                var postRemovalIndex = root.getPostRemovalIndex(index)
+                var postRemovalPlayingIndex = root.getPostRemovalIndex(root.currentPlayingIndex)
+                if (postRemovalIndex === postRemovalPlayingIndex && postRemovalIndex !== -1) {
+                    return Theme.selectedBackgroundMediumOpacity  // Currently playing
+                }
+                return Qt.rgba(1, 1, 1, 0.02)  // Default (suppress hover during animation)
+            }
+
             if (root.selectedTrackIndices.indexOf(index) !== -1) {
                 return Theme.selectedBackgroundHighOpacity  // Selected
             } else if (index === root.keyboardSelectedIndex) {
@@ -839,6 +862,8 @@ ListView {
                             root.selectedTrackIndices = []
                         } else {
                             // Single track removal with animation
+                            root.isAnimatingRemoval = true
+                            root.removingAtIndex = index
                             queueItemDelegate.isRemoving = true
                             queueItemDelegate.slideX = root.width
 
@@ -915,13 +940,22 @@ ListView {
             ColorAnimation { duration: 150 }
         }
         
-        // Timer to delay removal until after animation
+        // Timer to delay removal until after animation completes
         Timer {
             id: removalTimer
-            interval: 350  // Slightly longer than slide animation
+            interval: 200  // Immediately after 200ms animation completes
             repeat: false
             onTriggered: {
-                root.removeTrackRequested(index)
+                // Store references before delegate might be destroyed
+                var listView = root
+                var indexToRemove = index
+
+                // Perform the actual removal - model and currentQueueIndex update atomically
+                listView.removeTrackRequested(indexToRemove)
+
+                // Clear animation state immediately - model has already updated
+                listView.isAnimatingRemoval = false
+                listView.removingAtIndex = -1
             }
         }
     }
