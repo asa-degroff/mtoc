@@ -77,6 +77,22 @@ ListView {
     property real draggedItemY: 0
     property int dragScrollDirection: 0  // -1 = up, 0 = none, 1 = down
     property real dragStartContentY: 0  // contentY when drag started, to track scroll offset
+    property real lastContentY: 0  // Track contentY to compensate dragged item position
+
+    // Compensate dragged item position when list scrolls during drag
+    onContentYChanged: {
+        if (isDragging && draggedTrackIndex >= 0) {
+            var delta = contentY - lastContentY
+            if (delta !== 0) {
+                // Find the dragged delegate and adjust its position
+                var draggedItem = itemAtIndex(draggedTrackIndex)
+                if (draggedItem) {
+                    draggedItem.y += delta
+                }
+            }
+        }
+        lastContentY = contentY
+    }
 
     // Smooth scroll animation for drag auto-scroll
     NumberAnimation {
@@ -441,14 +457,38 @@ ListView {
     }
     
     clip: true
+    displayMarginBeginning: 100
+    displayMarginEnd: 100
+    cacheBuffer: 100000  // Disable delegate recycling for debugging
     spacing: 2
     
     model: queueModel
-    
+
     delegate: Rectangle {
         id: queueItemDelegate
         width: root.width
         height: isRemoving ? 0 : 45
+
+        // Track when this delegate is recycled to a new index
+        property int trackedIndex: index
+        property bool wasRecycled: false
+
+        onTrackedIndexChanged: {
+            if (wasRecycled) {
+                // Reset any stale animation state from previous delegate usage
+                isRemoving = false
+                slideX = 0
+                // Reset recycled flag after a frame so offset applies instantly
+                Qt.callLater(function() { wasRecycled = false })
+            }
+            // Mark as recycled for next index change
+            wasRecycled = true
+        }
+
+        Component.onCompleted: {
+            // Don't treat initial creation as recycling
+            wasRecycled = false
+        }
         color: {
             // During drop animation or finalization, suppress hover and only show now-playing highlight
             if (root.isAnimatingDrop || root.isFinalizingDrop) {
@@ -573,8 +613,9 @@ ListView {
             Translate {
                 y: queueItemDelegate.verticalOffset
                 Behavior on y {
-                    // Disable animation during finalization so offsets snap instantly
-                    enabled: (root.draggedTrackIndex !== -1 || root.isAnimatingDrop) && !root.isRapidSkipping && !root.isFinalizingDrop
+                    // Disable animation during finalization or delegate recycling so offsets snap instantly
+                    // Note: we allow animation during auto-scroll for smooth displacement of visible items
+                    enabled: (root.draggedTrackIndex !== -1 || root.isAnimatingDrop) && !root.isRapidSkipping && !root.isFinalizingDrop && !queueItemDelegate.wasRecycled
                     NumberAnimation {
                         duration: 200
                         easing.type: Easing.InOutQuad
@@ -623,6 +664,7 @@ ListView {
                         queueItemDelegate.opacity = 0.8
                         root.isDragging = true
                         root.dragStartContentY = root.contentY
+                        root.lastContentY = root.contentY
                     }
                     
                     onReleased: {
