@@ -2283,6 +2283,17 @@ Item {
                 // Reset drag state when interrupted (focus loss, album change, etc.)
                 function resetDragState() {
                     if (trackListView.isDragging || showDragProxy) {
+                        // Restore visibility of the dragged item
+                        if (trackListView.draggedTrackIndex >= 0) {
+                            var draggedColumn = trackListView.itemAtIndex(trackListView.draggedTrackIndex)
+                            if (draggedColumn) {
+                                var trackRect = draggedColumn.children[1]
+                                if (trackRect) {
+                                    trackRect.opacity = 1.0
+                                    trackRect.y = 0  // Reset to default position within column
+                                }
+                            }
+                        }
                         showDragProxy = false
                         trackListView.isDragging = false
                         trackListView.draggedTrackIndex = -1
