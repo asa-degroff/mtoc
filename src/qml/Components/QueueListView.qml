@@ -492,8 +492,8 @@ ListView {
     
     // Watch for changes to the current playing index
     onCurrentPlayingIndexChanged: {
-        // Don't auto-scroll during drag-drop reordering
-        if (isFinalizingDrop) return;
+        // Don't auto-scroll during drag-drop reordering or removal animation
+        if (isFinalizingDrop || isAnimatingRemoval) return;
 
         var currentTime = Date.now();
         var timeSinceLastSkip = currentTime - lastSkipTime;
@@ -511,13 +511,18 @@ ListView {
         // Delay the scroll slightly to ensure the list has updated
         Qt.callLater(scrollToCurrentTrack);
     }
-    
+
     // Also scroll when the model changes (e.g., when queue is first loaded)
     onModelChanged: {
-        // Don't auto-scroll during drag-drop reordering
-        if (!isFinalizingDrop) {
-            Qt.callLater(scrollToCurrentTrack);
+        // Don't auto-scroll during drag-drop reordering or removal animation
+        if (isFinalizingDrop || isAnimatingRemoval) {
+            // Clear selection when queue changes
+            selectedTrackIndices = [];
+            lastSelectedIndex = -1;
+            keyboardSelectedIndex = -1;
+            return;
         }
+        Qt.callLater(scrollToCurrentTrack);
         // Clear selection when queue changes
         selectedTrackIndices = [];
         lastSelectedIndex = -1;
