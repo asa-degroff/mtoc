@@ -99,7 +99,7 @@ ListView {
         id: dragScrollAnimation
         target: root
         property: "contentY"
-        duration: 300
+        duration: 300  // Will be adjusted based on scroll speed
         easing.type: Easing.Linear
 
         onFinished: {
@@ -116,8 +116,9 @@ ListView {
         repeat: false
         running: false
 
-        property real scrollAmount: 80  // Pixels per animation cycle
-        property real edgeThreshold: 60
+        property real edgeThreshold: 60  // Distance from edge where scrolling starts
+        property real minScrollAmount: 30  // Slowest scroll (at threshold boundary)
+        property real maxScrollAmount: 150  // Fastest scroll (at or past edge)
 
         onTriggered: {
             if (!root.isDragging) return
@@ -125,16 +126,24 @@ ListView {
             var dragY = root.draggedItemY
             var viewHeight = root.height
             var targetY = root.contentY
+            var scrollAmount = minScrollAmount
+            var penetration = 0  // How far into the edge zone (0 to 1+)
 
             // Check if near top edge
             if (dragY < edgeThreshold && root.contentY > 0) {
                 root.dragScrollDirection = -1
+                // Calculate penetration: 0 at threshold, 1 at edge, >1 past edge
+                penetration = (edgeThreshold - dragY) / edgeThreshold
+                scrollAmount = minScrollAmount + (maxScrollAmount - minScrollAmount) * Math.min(penetration, 1.5)
                 targetY = Math.max(0, root.contentY - scrollAmount)
             }
             // Check if near bottom edge
             else if (dragY > viewHeight - edgeThreshold &&
                      root.contentY < root.contentHeight - viewHeight) {
                 root.dragScrollDirection = 1
+                // Calculate penetration: 0 at threshold, 1 at edge, >1 past edge
+                penetration = (dragY - (viewHeight - edgeThreshold)) / edgeThreshold
+                scrollAmount = minScrollAmount + (maxScrollAmount - minScrollAmount) * Math.min(penetration, 1.5)
                 targetY = Math.min(root.contentHeight - viewHeight, root.contentY + scrollAmount)
             }
             else {
