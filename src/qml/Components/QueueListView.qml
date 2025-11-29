@@ -948,19 +948,26 @@ ListView {
         // Timer to delay removal until after animation completes
         Timer {
             id: removalTimer
-            interval: 200  // Immediately after 200ms animation completes
+            interval: 210  // Just after 200ms animation completes
             repeat: false
             onTriggered: {
                 // Store references before delegate might be destroyed
                 var listView = root
                 var indexToRemove = index
 
+                // Save scroll position before model update (model change can reset it)
+                var savedContentY = listView.contentY
+
+                // Clear animation state BEFORE model update so bindings use actual indices
+                // when they re-evaluate in response to the model change
+                listView.isAnimatingRemoval = false
+                listView.removingAtIndex = -1
+
                 // Perform the actual removal - model and currentQueueIndex update atomically
                 listView.removeTrackRequested(indexToRemove)
 
-                // Clear animation state immediately - model has already updated
-                listView.isAnimatingRemoval = false
-                listView.removingAtIndex = -1
+                // Restore scroll position after model update
+                listView.contentY = savedContentY
             }
         }
     }
