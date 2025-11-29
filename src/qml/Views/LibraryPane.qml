@@ -2824,6 +2824,7 @@ Item {
                         }
 
                         delegate: Column {
+                            id: delegateColumn
                             width: ListView.view.width
                             
                             // Helper property to determine if using virtual model
@@ -2968,9 +2969,8 @@ Item {
                                         }
 
                                         // Update position for auto-scroll (convert to viewport coordinates)
-                                        // Use mapToItem since trackDelegate.y is relative to parent Column, not ListView
-                                        var mappedPos = trackDelegate.mapToItem(trackListView, 0, 0)
-                                        trackListView.draggedItemY = mappedPos.y
+                                        // trackDelegate.y is relative to parent Column, so add Column's content y
+                                        trackListView.draggedItemY = (delegateColumn.y + trackDelegate.y) - trackListView.contentY
 
                                         // Start auto-scroll if in edge zone and not already scrolling
                                         var edgeThreshold = 60
