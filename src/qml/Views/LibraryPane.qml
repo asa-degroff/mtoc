@@ -2277,9 +2277,10 @@ Item {
                 onCurrentAlbumTracksChanged: {
                     if (trackListView) {
                         trackListView.currentIndex = -1
-                        
+
                         // If we're in playlist edit mode and tracks were just added, scroll to bottom
-                        if (root.playlistEditMode && root.editedPlaylistTracks.length > 0) {
+                        // But skip this during drag-drop reordering (isFinalizingDrop)
+                        if (root.playlistEditMode && root.editedPlaylistTracks.length > 0 && !trackListView.isFinalizingDrop) {
                             Qt.callLater(function() {
                                 var lastIndex = currentAlbumTracks.length - 1
                                 if (lastIndex >= 0) {
@@ -3046,18 +3047,19 @@ Item {
 
                                                 if (isMoving) {
                                                     // Calculate the target slot position in content coordinates
-                                                    var targetSlotY = newIndex * (trackDelegate.height + trackListView.spacing)
+                                                    var targetContentY = newIndex * (trackDelegate.height + trackListView.spacing)
+                                                    // Convert to Column-relative coordinates for trackDelegate.y
+                                                    var targetY = targetContentY - delegateColumn.y
 
                                                     // Start the drop animation
                                                     trackListView.isAnimatingDrop = true
                                                     dropAnimationTimer.draggedIdx = draggedIdx
                                                     dropAnimationTimer.newIndex = newIndex
                                                     dropAnimationTimer.start()
-                                                    trackDelegate.y = targetSlotY
+                                                    trackDelegate.y = targetY
                                                 } else {
-                                                    // No move - reset to the item's correct slot position
-                                                    var originalSlotY = draggedIdx * (trackDelegate.height + trackListView.spacing)
-                                                    trackDelegate.y = originalSlotY
+                                                    // No move - reset to the item's correct slot position (0 within its Column)
+                                                    trackDelegate.y = 0
                                                     trackListView.draggedTrackIndex = -1
                                                     trackListView.dropIndex = -1
                                                 }
