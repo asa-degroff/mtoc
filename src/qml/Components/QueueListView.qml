@@ -75,9 +75,11 @@ ListView {
     // Auto-scroll during drag
     property bool isDragging: false
     property real draggedItemY: 0
+    property real dragStartY: 0  // Viewport Y position where drag started
     property int dragScrollDirection: 0  // -1 = up, 0 = none, 1 = down
     property real dragStartContentY: 0  // contentY when drag started, to track scroll offset
     property real lastContentY: 0  // Track contentY to compensate dragged item position
+    property real autoScrollActivationDistance: 30  // Min distance from start before auto-scroll activates
 
     // Compensate dragged item position when list scrolls during drag
     onContentYChanged: {
@@ -129,8 +131,15 @@ ListView {
             var scrollAmount = minScrollAmount
             var penetration = 0  // How far into the edge zone (0 to 1+)
 
+            // Calculate distance moved from drag start
+            var distanceFromStart = Math.abs(dragY - root.dragStartY)
+
             // Check if near top edge
             if (dragY < edgeThreshold && root.contentY > 0) {
+                // Only activate if moved enough from start position, or if we've already started scrolling
+                if (distanceFromStart < root.autoScrollActivationDistance && root.dragScrollDirection === 0) {
+                    return
+                }
                 root.dragScrollDirection = -1
                 // Calculate penetration: 0 at threshold, 1 at edge, >1 past edge
                 penetration = (edgeThreshold - dragY) / edgeThreshold
@@ -140,6 +149,10 @@ ListView {
             // Check if near bottom edge
             else if (dragY > viewHeight - edgeThreshold &&
                      root.contentY < root.contentHeight - viewHeight) {
+                // Only activate if moved enough from start position, or if we've already started scrolling
+                if (distanceFromStart < root.autoScrollActivationDistance && root.dragScrollDirection === 0) {
+                    return
+                }
                 root.dragScrollDirection = 1
                 // Calculate penetration: 0 at threshold, 1 at edge, >1 past edge
                 penetration = (dragY - (viewHeight - edgeThreshold)) / edgeThreshold
@@ -650,6 +663,8 @@ ListView {
                         root.isDragging = true
                         root.dragStartContentY = root.contentY
                         root.lastContentY = root.contentY
+                        // Record starting viewport position for auto-scroll activation
+                        root.dragStartY = queueItemDelegate.y - root.contentY
                     }
                     
                     onReleased: {
