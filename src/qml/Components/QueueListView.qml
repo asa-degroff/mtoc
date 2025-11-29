@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Window
 import Mtoc.Backend 1.0
 import ".."
 
@@ -80,6 +81,38 @@ ListView {
     property real dragStartContentY: 0  // contentY when drag started, to track scroll offset
     property real lastContentY: 0  // Track contentY to compensate dragged item position
     property real autoScrollActivationDistance: 30  // Min distance from start before auto-scroll activates
+
+    // Reset drag state when interrupted (focus loss, etc.)
+    function resetDragState() {
+        if (isDragging || draggedTrackIndex >= 0) {
+            // Restore visibility and position of the dragged item
+            if (draggedTrackIndex >= 0) {
+                var draggedItem = itemAtIndex(draggedTrackIndex)
+                if (draggedItem) {
+                    draggedItem.opacity = 1.0
+                    draggedItem.z = 0
+                    // Reset to correct slot position
+                    draggedItem.y = draggedTrackIndex * (draggedItem.height + spacing)
+                }
+            }
+            isDragging = false
+            draggedTrackIndex = -1
+            dropIndex = -1
+            dragScrollDirection = 0
+            dragScrollAnimation.stop()
+            dragScrollTimer.stop()
+        }
+    }
+
+    // Reset drag state when window loses focus
+    Connections {
+        target: root.Window.window
+        function onActiveChanged() {
+            if (root.Window.window && !root.Window.window.active) {
+                root.resetDragState()
+            }
+        }
+    }
 
     // Compensate dragged item position when list scrolls during drag
     onContentYChanged: {
