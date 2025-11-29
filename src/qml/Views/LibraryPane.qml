@@ -2274,7 +2274,38 @@ Item {
                 property var currentAlbumTracks: []
                 property string albumTitleText: "No album selected"
 
+                // Drag proxy properties for playlist reordering
+                property var dragProxyTrackData: null
+                property real dragProxyY: 0
+                property real dragProxyX: 0
+                property bool showDragProxy: false
+
+                // Reset drag state when interrupted (focus loss, album change, etc.)
+                function resetDragState() {
+                    if (trackListView.isDragging || showDragProxy) {
+                        showDragProxy = false
+                        trackListView.isDragging = false
+                        trackListView.draggedTrackIndex = -1
+                        trackListView.dropIndex = -1
+                        trackListView.dragScrollDirection = 0
+                        dragScrollAnimation.stop()
+                        dragScrollTimer.stop()
+                    }
+                }
+
+                // Reset drag state when window loses focus
+                Connections {
+                    target: root.Window.window
+                    function onActiveChanged() {
+                        if (!root.Window.window.active) {
+                            rightPane.resetDragState()
+                        }
+                    }
+                }
+
                 onCurrentAlbumTracksChanged: {
+                    // Reset any in-progress drag when album/playlist changes
+                    resetDragState()
                     if (trackListView) {
                         trackListView.currentIndex = -1
 
@@ -2657,7 +2688,7 @@ Item {
                         visible: (root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist) || rightPane.currentAlbumTracks.length > 0
                         spacing: 1
                         reuseItems: false
-                        cacheBuffer: 1200  // Increased cache without recycling
+                        cacheBuffer: 100000  // Keep all delegates instantiated to avoid recycling issues during drag
                         currentIndex: -1  // Start with no selection
                         
                         // Drag and drop state
@@ -2712,15 +2743,41 @@ Item {
                         // Auto-scroll during drag
                         property bool isDragging: false
                         property real draggedItemY: 0
+                        property real dragStartY: 0  // Viewport Y position where drag started
                         property int dragScrollDirection: 0  // -1 = up, 0 = none, 1 = down
                         property real dragStartContentY: 0  // contentY when drag started, to track scroll offset
                         property real lastDragContentY: 0  // Track contentY changes during drag for item position adjustment
-                        property real contentYDelta: 0  // Delta for this contentY change
+                        property real autoScrollActivationDistance: 30  // Min distance from start before auto-scroll activates
 
                         onContentYChanged: {
-                            if (isDragging) {
-                                contentYDelta = contentY - lastDragContentY
+                            if (isDragging && draggedTrackIndex >= 0) {
+                                var delta = contentY - lastDragContentY
                                 lastDragContentY = contentY
+
+                                // Adjust dragged item position to keep it under cursor (like QueueListView)
+                                if (delta !== 0) {
+                                    var draggedColumn = itemAtIndex(draggedTrackIndex)
+                                    if (draggedColumn) {
+                                        // Find trackDelegate (second child after disc number Item)
+                                        var trackRect = draggedColumn.children[1]
+                                        if (trackRect) {
+                                            trackRect.y += delta
+                                            // Update draggedItemY for auto-scroll calculation
+                                            draggedItemY = (draggedColumn.y + trackRect.y) - contentY
+
+                                            // Update drag proxy position
+                                            var listViewPos = trackListView.mapToItem(rightPane, 0, 0)
+                                            rightPane.dragProxyY = listViewPos.y + draggedItemY
+                                        }
+                                    }
+                                }
+
+                                // Restart auto-scroll timer if in edge zone and not already running
+                                var edgeThreshold = 60
+                                var inEdgeZone = draggedItemY < edgeThreshold || draggedItemY > height - edgeThreshold
+                                if (inEdgeZone && !dragScrollAnimation.running && !dragScrollTimer.running) {
+                                    dragScrollTimer.start()
+                                }
                             }
                         }
 
@@ -2746,8 +2803,9 @@ Item {
                             repeat: false
                             running: false
 
-                            property real scrollAmount: 80  // Pixels per animation cycle
-                            property real edgeThreshold: 60
+                            property real edgeThreshold: 60  // Distance from edge where scrolling starts
+                            property real minScrollAmount: 30  // Slowest scroll (at threshold boundary)
+                            property real maxScrollAmount: 150  // Fastest scroll (at or past edge)
 
                             onTriggered: {
                                 if (!trackListView.isDragging) return
@@ -2755,16 +2813,35 @@ Item {
                                 var dragY = trackListView.draggedItemY
                                 var viewHeight = trackListView.height
                                 var targetY = trackListView.contentY
+                                var scrollAmount = minScrollAmount
+                                var penetration = 0  // How far into the edge zone (0 to 1+)
+
+                                // Calculate distance moved from drag start
+                                var distanceFromStart = Math.abs(dragY - trackListView.dragStartY)
 
                                 // Check if near top edge
                                 if (dragY < edgeThreshold && trackListView.contentY > 0) {
+                                    // Only activate if moved enough from start position, or if we've already started scrolling
+                                    if (distanceFromStart < trackListView.autoScrollActivationDistance && trackListView.dragScrollDirection === 0) {
+                                        return
+                                    }
                                     trackListView.dragScrollDirection = -1
+                                    // Calculate penetration: 0 at threshold, 1 at edge, >1 past edge
+                                    penetration = (edgeThreshold - dragY) / edgeThreshold
+                                    scrollAmount = minScrollAmount + (maxScrollAmount - minScrollAmount) * Math.min(penetration, 1.5)
                                     targetY = Math.max(0, trackListView.contentY - scrollAmount)
                                 }
                                 // Check if near bottom edge
                                 else if (dragY > viewHeight - edgeThreshold &&
                                          trackListView.contentY < trackListView.contentHeight - viewHeight) {
+                                    // Only activate if moved enough from start position, or if we've already started scrolling
+                                    if (distanceFromStart < trackListView.autoScrollActivationDistance && trackListView.dragScrollDirection === 0) {
+                                        return
+                                    }
                                     trackListView.dragScrollDirection = 1
+                                    // Calculate penetration: 0 at threshold, 1 at edge, >1 past edge
+                                    penetration = (dragY - (viewHeight - edgeThreshold)) / edgeThreshold
+                                    scrollAmount = minScrollAmount + (maxScrollAmount - minScrollAmount) * Math.min(penetration, 1.5)
                                     targetY = Math.min(trackListView.contentHeight - viewHeight, trackListView.contentY + scrollAmount)
                                 }
                                 else {
@@ -2827,6 +2904,8 @@ Item {
                         delegate: Column {
                             id: delegateColumn
                             width: ListView.view.width
+                            clip: false  // Allow trackDelegate to be visible when dragged outside column bounds
+                            z: trackListView.draggedTrackIndex === index ? 1000 : 0  // Bring dragged item's column to front
                             
                             // Helper property to determine if using virtual model
                             property bool isVirtualModel: root.selectedAlbum && (root.selectedAlbum.isVirtualPlaylist === true)
@@ -2907,18 +2986,6 @@ Item {
                                     }
                                 }
 
-                                // Keep dragged item visible during auto-scroll by adjusting its y
-                                Connections {
-                                    target: trackListView
-                                    enabled: trackListView.isDragging && trackListView.draggedTrackIndex === index
-                                    function onContentYDeltaChanged() {
-                                        // Move the dragged item with the scroll to keep it at the same viewport position
-                                        if (dragArea.drag.active && trackListView.contentYDelta !== 0) {
-                                            trackDelegate.y = trackDelegate.y + trackListView.contentYDelta
-                                        }
-                                    }
-                                }
-
                                 // Animated vertical offset for drag feedback
                                 transform: Translate {
                                     y: trackDelegate.verticalOffset
@@ -2973,6 +3040,10 @@ Item {
                                         // trackDelegate.y is relative to parent Column, so add Column's content y
                                         trackListView.draggedItemY = (delegateColumn.y + trackDelegate.y) - trackListView.contentY
 
+                                        // Update drag proxy position
+                                        var listViewPos = trackListView.mapToItem(rightPane, 0, 0)
+                                        rightPane.dragProxyY = listViewPos.y + trackListView.draggedItemY
+
                                         // Start auto-scroll if in edge zone and not already scrolling
                                         var edgeThreshold = 60
                                         var inEdgeZone = trackListView.draggedItemY < edgeThreshold || trackListView.draggedItemY > trackListView.height - edgeThreshold
@@ -3020,12 +3091,19 @@ Item {
                                                 trackListView.draggedTrackIndex = index
                                                 trackListView.dropIndex = index
                                                 originalY = trackDelegate.y
-                                                trackDelegate.z = 1000
-                                                trackDelegate.opacity = 0.8
+                                                trackDelegate.opacity = 0  // Hide the actual item, show proxy instead
                                                 trackListView.isDragging = true
                                                 trackListView.dragStartContentY = trackListView.contentY
                                                 trackListView.lastDragContentY = trackListView.contentY
-                                                trackListView.contentYDelta = 0
+                                                // Record starting viewport position for auto-scroll activation
+                                                trackListView.dragStartY = (delegateColumn.y + trackDelegate.y) - trackListView.contentY
+
+                                                // Setup and show drag proxy
+                                                rightPane.dragProxyTrackData = delegateColumn.trackData
+                                                // Calculate proxy Y in rightPane coordinates
+                                                var listViewPos = trackListView.mapToItem(rightPane, 0, 0)
+                                                rightPane.dragProxyY = listViewPos.y + (delegateColumn.y + trackDelegate.y) - trackListView.contentY
+                                                rightPane.showDragProxy = true
                                             }
                                             
                                             onReleased: {
@@ -3034,6 +3112,9 @@ Item {
                                                 dragScrollTimer.stop()
                                                 trackListView.dragScrollDirection = 0
 
+                                                // Hide drag proxy
+                                                rightPane.showDragProxy = false
+
                                                 // Use the pre-calculated drop index
                                                 var newIndex = trackListView.dropIndex
                                                 var draggedIdx = trackListView.draggedTrackIndex
@@ -3041,8 +3122,7 @@ Item {
                                                 // Keep track of whether we're actually moving
                                                 var isMoving = newIndex !== draggedIdx && draggedIdx >= 0
 
-                                                // Reset z-index and opacity
-                                                trackDelegate.z = 0
+                                                // Reset opacity
                                                 trackDelegate.opacity = 1.0
 
                                                 if (isMoving) {
@@ -4333,6 +4413,67 @@ Item {
                         wrapMode: Text.WordWrap
                         visible: rightPane.currentAlbumTracks.length === 0 && !(root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist)
                         font.pixelSize: 14
+                    }
+                }
+
+                // Drag proxy for playlist track reordering - renders on top of clipped ListView
+                Rectangle {
+                    id: dragProxy
+                    width: trackListView.width  // Match track delegate width exactly
+                    height: 45
+                    x: 4  // ColumnLayout anchors.margins
+                    y: rightPane.dragProxyY
+                    z: 2000
+                    visible: rightPane.showDragProxy
+                    opacity: 0.9
+                    color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(1, 1, 1, 0.15)
+                    radius: 4
+                    border.width: 1
+                    border.color: Qt.rgba(1, 1, 1, 0.1)
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        spacing: 10
+
+                        // Drag handle icon
+                        Image {
+                            Layout.preferredWidth: 20
+                            Layout.preferredHeight: 20
+                            source: Theme.isDark ? "qrc:/resources/icons/list-drag-handle.svg" : "qrc:/resources/icons/list-drag-handle-dark.svg"
+                            sourceSize.width: 40
+                            sourceSize.height: 40
+                            opacity: 0.5
+                        }
+
+                        // Track title and artist
+                        Item {
+                            Layout.fillWidth: true
+                            implicitHeight: 20
+
+                            RowLayout {
+                                anchors.fill: parent
+                                spacing: 8
+
+                                Label {
+                                    text: rightPane.dragProxyTrackData ? (rightPane.dragProxyTrackData.title || "Unknown Track") : ""
+                                    color: Theme.primaryText
+                                    font.pixelSize: 13
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: false
+                                    Layout.preferredWidth: Math.min(implicitWidth, parent.width * 0.7)
+                                }
+
+                                Label {
+                                    text: rightPane.dragProxyTrackData ? (rightPane.dragProxyTrackData.artist || "Unknown Artist") : ""
+                                    color: Theme.tertiaryText
+                                    font.pixelSize: 13
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                    horizontalAlignment: Text.AlignRight
+                                }
+                            }
+                        }
                     }
                 }
             }
