@@ -3197,12 +3197,13 @@ Item {
                                                 color: Theme.primaryText
                                                 font.pixelSize: 13
                                                 elide: Text.ElideRight
-                                                Layout.fillWidth: false
-                                                Layout.preferredWidth: implicitWidth
-                                                Layout.maximumWidth: parent.width * 0.7 // Max 70% to leave room for artist
+                                                Layout.fillWidth: deleteButton.visible  // Fill when artist is hidden
+                                                Layout.preferredWidth: deleteButton.visible ? -1 : implicitWidth
+                                                Layout.maximumWidth: deleteButton.visible ? -1 : parent.width * 0.7 // Max 70% only when artist is shown
                                             }
                                             
                                             // Artist name - gets remaining space, truncated as needed
+                                            // Hidden when delete button is visible to avoid crowded layout
                                             Label {
                                                 text: trackData.artist || "Unknown Artist"
                                                 color: Theme.tertiaryText
@@ -3211,6 +3212,7 @@ Item {
                                                 Layout.fillWidth: true
                                                 Layout.alignment: Qt.AlignRight
                                                 horizontalAlignment: Text.AlignRight
+                                                visible: !deleteButton.visible
                                             }
                                         }
                                     }
