@@ -775,27 +775,27 @@ ListView {
             Item {
                 Layout.preferredWidth: 24
                 Layout.preferredHeight: 24
-                
+
                 Rectangle {
                     id: removeButtonBackground
                     anchors.fill: parent
                     radius: 4
                     color: removeButtonMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Qt.rgba(1, 1, 1, 0.08)
                     opacity: (queueItemMouseArea.containsMouse || removeButtonMouseArea.containsMouse) ? 1.0 : 0.0
-                    
+
                     Behavior on color {
                         ColorAnimation { duration: 150 }
                     }
-                    
+
                     Behavior on opacity {
                         NumberAnimation { duration: 150 }
                     }
-                    
+
                     Item {
                         anchors.centerIn: parent
                         width: 16
                         height: 16
-                        
+
                         Image {
                             id: closedLidIcon
                             anchors.fill: parent
@@ -803,12 +803,12 @@ ListView {
                             sourceSize.width: 32
                             sourceSize.height: 32
                             opacity: removeButtonMouseArea.containsMouse ? 0 : 1
-                            
+
                             Behavior on opacity {
                                 NumberAnimation { duration: 150 }
                             }
                         }
-                        
+
                         Image {
                             id: openLidIcon
                             anchors.fill: parent
@@ -816,43 +816,45 @@ ListView {
                             sourceSize.width: 32
                             sourceSize.height: 32
                             opacity: removeButtonMouseArea.containsMouse ? 1 : 0
-                            
+
                             Behavior on opacity {
                                 NumberAnimation { duration: 150 }
                             }
                         }
                     }
-                    
-                    MouseArea {
-                        id: removeButtonMouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            // Check if this track is selected and there are multiple selections
-                            if (root.selectedTrackIndices.length > 1 && root.selectedTrackIndices.indexOf(index) !== -1) {
-                                // Remove all selected tracks
-                                root.removeTracksRequested(root.selectedTrackIndices.slice())
-                                root.selectedTrackIndices = []
-                            } else {
-                                // Single track removal with animation
-                                queueItemDelegate.isRemoving = true
-                                queueItemDelegate.slideX = root.width
-                                
-                                // Delay actual removal until animation completes
-                                removalTimer.start()
-                            }
+                }
+
+                // MouseArea as direct child of Item to ensure full hit area
+                MouseArea {
+                    id: removeButtonMouseArea
+                    anchors.fill: parent
+                    z: 1  // Ensure MouseArea is above the Rectangle
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        // Check if this track is selected and there are multiple selections
+                        if (root.selectedTrackIndices.length > 1 && root.selectedTrackIndices.indexOf(index) !== -1) {
+                            // Remove all selected tracks
+                            root.removeTracksRequested(root.selectedTrackIndices.slice())
+                            root.selectedTrackIndices = []
+                        } else {
+                            // Single track removal with animation
+                            queueItemDelegate.isRemoving = true
+                            queueItemDelegate.slideX = root.width
+
+                            // Delay actual removal until animation completes
+                            removalTimer.start()
                         }
                     }
                 }
             }
         }
-        
+
         MouseArea {
             id: queueItemMouseArea
             anchors.fill: parent
             anchors.leftMargin: 38  // Leave space for the drag handle (20px icon + margins)
-            anchors.rightMargin: 24  // Leave space for the remove button
+            anchors.rightMargin: 32  // Leave space for the remove button (24px) + RowLayout margin (8px)
             hoverEnabled: true
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             
