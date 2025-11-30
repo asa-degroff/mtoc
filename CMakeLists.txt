@@ -23,10 +23,10 @@ pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
 
 # Set Qt policies to suppress warnings and define behavior (Qt 6.5+)
 if(Qt6_VERSION VERSION_GREATER_EQUAL "6.5.0")
-    qt_policy(SET QTP0001 OLD) # Keep qrc:/ as the base for module resources unless overridden by URI
+    qt_policy(SET QTP0001 NEW) # Use /qt/qml/ as default resource prefix
     # QTP0004 is only available in Qt 6.8+
     if(Qt6_VERSION VERSION_GREATER_EQUAL "6.8.0")
-        qt_policy(SET QTP0004 OLD) # Do not require qmldir for subdirs not acting as modules
+        qt_policy(SET QTP0004 NEW) # Generate qmldir for each subdir with QML files
     endif()
 endif()
 
@@ -102,6 +102,7 @@ target_link_libraries(mtoc_app
 qt_add_qml_module(mtoc
     URI mtoc
     VERSION 1.0
+    OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/mtoc"
     QML_FILES
         src/qml/Main.qml
         src/qml/Components/AlbumArtPopup.qml

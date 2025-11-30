@@ -584,7 +584,25 @@ Item {
             autoSelectCurrentTrack()
         }
     }
-    
+
+    // Navigate to new playlist when created from context menu
+    Connections {
+        target: PlaylistManager
+        function onPlaylistCreated(name) {
+            // Switch to playlists tab
+            root.currentTab = 1
+
+            // Wait for tab animation and playlist refresh, then select and flash
+            Qt.callLater(function() {
+                if (playlistView) {
+                    playlistView.selectAndFlashPlaylist(name)
+                    // Also emit the selection signal to load the playlist in the right pane
+                    playlistView.playlistSelected(name)
+                }
+            })
+        }
+    }
+
     // Function to build artist name to index mapping for O(1) lookups
     function updateArtistIndexMapping() {
         //console.log("updateArtistIndexMapping called")
@@ -2026,7 +2044,8 @@ Item {
                                     
                                     StyledMenu {
                                         id: albumContextMenu
-                                        
+                                        property var albumData: modelData
+
                                         StyledMenuItem {
                                             text: "Play"
                                             onTriggered: {
@@ -2053,6 +2072,51 @@ Item {
                                             text: "Play Last"
                                             onTriggered: {
                                                 MediaPlayer.playAlbumLast(modelData.albumArtist, modelData.title);
+                                            }
+                                        }
+
+                                        StyledMenu {
+                                            title: "Add to Playlist"
+
+                                            StyledMenuItem {
+                                                text: "New Playlist"
+                                                onTriggered: {
+                                                    var tracks = LibraryManager.getTracksForAlbumAsVariantList(albumContextMenu.albumData.albumArtist, albumContextMenu.albumData.title);
+                                                    PlaylistManager.savePlaylist(tracks, "");
+                                                }
+                                            }
+
+                                            StyledMenuSeparator {
+                                                visible: {
+                                                    for (var i = 0; i < PlaylistManager.playlists.length; i++) {
+                                                        if (!PlaylistManager.isSpecialPlaylist(PlaylistManager.playlists[i])) {
+                                                            return true;
+                                                        }
+                                                    }
+                                                    return false;
+                                                }
+                                                height: visible ? implicitHeight : 0
+                                            }
+
+                                            Repeater {
+                                                model: {
+                                                    var playlists = [];
+                                                    for (var i = 0; i < PlaylistManager.playlists.length && playlists.length < 10; i++) {
+                                                        var name = PlaylistManager.playlists[i];
+                                                        if (!PlaylistManager.isSpecialPlaylist(name)) {
+                                                            playlists.push(name);
+                                                        }
+                                                    }
+                                                    return playlists;
+                                                }
+
+                                                StyledMenuItem {
+                                                    text: modelData
+                                                    onTriggered: {
+                                                        var tracks = LibraryManager.getTracksForAlbumAsVariantList(albumContextMenu.albumData.albumArtist, albumContextMenu.albumData.title);
+                                                        PlaylistManager.appendToPlaylist(modelData, tracks);
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -2274,12 +2338,55 @@ Item {
                 property var currentAlbumTracks: []
                 property string albumTitleText: "No album selected"
 
+                // Drag proxy properties for playlist reordering
+                property var dragProxyTrackData: null
+                property real dragProxyY: 0
+                property real dragProxyX: 0
+                property bool showDragProxy: false
+
+                // Reset drag state when interrupted (focus loss, album change, etc.)
+                function resetDragState() {
+                    if (trackListView.isDragging || showDragProxy) {
+                        // Restore visibility of the dragged item
+                        if (trackListView.draggedTrackIndex >= 0) {
+                            var draggedColumn = trackListView.itemAtIndex(trackListView.draggedTrackIndex)
+                            if (draggedColumn) {
+                                var trackRect = draggedColumn.children[1]
+                                if (trackRect) {
+                                    trackRect.opacity = 1.0
+                                    trackRect.y = 0  // Reset to default position within column
+                                }
+                            }
+                        }
+                        showDragProxy = false
+                        trackListView.isDragging = false
+                        trackListView.draggedTrackIndex = -1
+                        trackListView.dropIndex = -1
+                        trackListView.dragScrollDirection = 0
+                        dragScrollAnimation.stop()
+                        dragScrollTimer.stop()
+                    }
+                }
+
+                // Reset drag state when window loses focus
+                Connections {
+                    target: root.Window.window
+                    function onActiveChanged() {
+                        if (!root.Window.window.active) {
+                            rightPane.resetDragState()
+                        }
+                    }
+                }
+
                 onCurrentAlbumTracksChanged: {
+                    // Reset any in-progress drag when album/playlist changes
+                    resetDragState()
                     if (trackListView) {
                         trackListView.currentIndex = -1
-                        
+
                         // If we're in playlist edit mode and tracks were just added, scroll to bottom
-                        if (root.playlistEditMode && root.editedPlaylistTracks.length > 0) {
+                        // But skip this during drag-drop reordering (isFinalizingDrop)
+                        if (root.playlistEditMode && root.editedPlaylistTracks.length > 0 && !trackListView.isFinalizingDrop) {
                             Qt.callLater(function() {
                                 var lastIndex = currentAlbumTracks.length - 1
                                 if (lastIndex >= 0) {
@@ -2656,13 +2763,172 @@ Item {
                         visible: (root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist) || rightPane.currentAlbumTracks.length > 0
                         spacing: 1
                         reuseItems: false
-                        cacheBuffer: 1200  // Increased cache without recycling
+                        cacheBuffer: 100000  // Keep all delegates instantiated to avoid recycling issues during drag
                         currentIndex: -1  // Start with no selection
                         
                         // Drag and drop state
                         property int draggedTrackIndex: -1
                         property int dropIndex: -1
-                        
+                        property bool isAnimatingDrop: false
+
+                        // Timer to complete drop animation and update model
+                        Timer {
+                            id: dropAnimationTimer
+                            interval: 210  // Slightly longer than animation duration (200ms)
+                            repeat: false
+                            property int draggedIdx: -1
+                            property int newIndex: -1
+                            property int originalY: 0
+                            onTriggered: {
+                                // Set finalizing flag to disable offset animations during model update
+                                trackListView.isFinalizingDrop = true
+
+                                // Clear drag state - offsets will snap to 0 instantly (no animation)
+                                trackListView.draggedTrackIndex = -1
+                                trackListView.dropIndex = -1
+                                trackListView.isAnimatingDrop = false
+
+                                // Clear selections to avoid stale highlights after reorder
+                                root.selectedTrackIndex = -1
+                                root.selectedTrackIndices = []
+
+                                // Save scroll position before model update (model change can reset it)
+                                var savedContentY = trackListView.contentY
+
+                                // Update model - delegates will be at correct positions with 0 offset
+                                var movedTrack = root.editedPlaylistTracks.splice(draggedIdx, 1)[0]
+                                root.editedPlaylistTracks.splice(newIndex, 0, movedTrack)
+                                rightPane.currentAlbumTracks = root.editedPlaylistTracks.slice()
+
+                                // Restore scroll position after model update
+                                trackListView.contentY = savedContentY
+
+                                // Clear finalizing flag after delegates have fully re-bound
+                                Qt.callLater(function() {
+                                    Qt.callLater(function() {
+                                        trackListView.isFinalizingDrop = false
+                                    })
+                                })
+                            }
+                        }
+
+                        // Flag to disable offset animations during model update
+                        property bool isFinalizingDrop: false
+
+                        // Auto-scroll during drag
+                        property bool isDragging: false
+                        property real draggedItemY: 0
+                        property real dragStartY: 0  // Viewport Y position where drag started
+                        property int dragScrollDirection: 0  // -1 = up, 0 = none, 1 = down
+                        property real dragStartContentY: 0  // contentY when drag started, to track scroll offset
+                        property real lastDragContentY: 0  // Track contentY changes during drag for item position adjustment
+                        property real autoScrollActivationDistance: 30  // Min distance from start before auto-scroll activates
+
+                        onContentYChanged: {
+                            if (isDragging && draggedTrackIndex >= 0) {
+                                var delta = contentY - lastDragContentY
+                                lastDragContentY = contentY
+
+                                // Adjust dragged item position to keep it under cursor (like QueueListView)
+                                if (delta !== 0) {
+                                    var draggedColumn = itemAtIndex(draggedTrackIndex)
+                                    if (draggedColumn) {
+                                        // Find trackDelegate (second child after disc number Item)
+                                        var trackRect = draggedColumn.children[1]
+                                        if (trackRect) {
+                                            trackRect.y += delta
+                                            // Update draggedItemY for auto-scroll calculation
+                                            draggedItemY = (draggedColumn.y + trackRect.y) - contentY
+
+                                            // Update drag proxy position
+                                            var listViewPos = trackListView.mapToItem(rightPane, 0, 0)
+                                            rightPane.dragProxyY = listViewPos.y + draggedItemY
+                                        }
+                                    }
+                                }
+
+                                // Restart auto-scroll timer if in edge zone and not already running
+                                var edgeThreshold = 60
+                                var inEdgeZone = draggedItemY < edgeThreshold || draggedItemY > height - edgeThreshold
+                                if (inEdgeZone && !dragScrollAnimation.running && !dragScrollTimer.running) {
+                                    dragScrollTimer.start()
+                                }
+                            }
+                        }
+
+                        // Smooth scroll animation for drag auto-scroll
+                        NumberAnimation {
+                            id: dragScrollAnimation
+                            target: trackListView
+                            property: "contentY"
+                            duration: 300
+                            easing.type: Easing.Linear
+
+                            onFinished: {
+                                // Continue scrolling if still in edge zone
+                                if (trackListView.isDragging && trackListView.dragScrollDirection !== 0) {
+                                    dragScrollTimer.restart()
+                                }
+                            }
+                        }
+
+                        Timer {
+                            id: dragScrollTimer
+                            interval: 16  // Single frame delay before next scroll segment
+                            repeat: false
+                            running: false
+
+                            property real edgeThreshold: 60  // Distance from edge where scrolling starts
+                            property real minScrollAmount: 30  // Slowest scroll (at threshold boundary)
+                            property real maxScrollAmount: 150  // Fastest scroll (at or past edge)
+
+                            onTriggered: {
+                                if (!trackListView.isDragging) return
+
+                                var dragY = trackListView.draggedItemY
+                                var viewHeight = trackListView.height
+                                var targetY = trackListView.contentY
+                                var scrollAmount = minScrollAmount
+                                var penetration = 0  // How far into the edge zone (0 to 1+)
+
+                                // Calculate distance moved from drag start
+                                var distanceFromStart = Math.abs(dragY - trackListView.dragStartY)
+
+                                // Check if near top edge
+                                if (dragY < edgeThreshold && trackListView.contentY > 0) {
+                                    // Only activate if moved enough from start position, or if we've already started scrolling
+                                    if (distanceFromStart < trackListView.autoScrollActivationDistance && trackListView.dragScrollDirection === 0) {
+                                        return
+                                    }
+                                    trackListView.dragScrollDirection = -1
+                                    // Calculate penetration: 0 at threshold, 1 at edge, >1 past edge
+                                    penetration = (edgeThreshold - dragY) / edgeThreshold
+                                    scrollAmount = minScrollAmount + (maxScrollAmount - minScrollAmount) * Math.min(penetration, 1.5)
+                                    targetY = Math.max(0, trackListView.contentY - scrollAmount)
+                                }
+                                // Check if near bottom edge
+                                else if (dragY > viewHeight - edgeThreshold &&
+                                         trackListView.contentY < trackListView.contentHeight - viewHeight) {
+                                    // Only activate if moved enough from start position, or if we've already started scrolling
+                                    if (distanceFromStart < trackListView.autoScrollActivationDistance && trackListView.dragScrollDirection === 0) {
+                                        return
+                                    }
+                                    trackListView.dragScrollDirection = 1
+                                    // Calculate penetration: 0 at threshold, 1 at edge, >1 past edge
+                                    penetration = (dragY - (viewHeight - edgeThreshold)) / edgeThreshold
+                                    scrollAmount = minScrollAmount + (maxScrollAmount - minScrollAmount) * Math.min(penetration, 1.5)
+                                    targetY = Math.min(trackListView.contentHeight - viewHeight, trackListView.contentY + scrollAmount)
+                                }
+                                else {
+                                    trackListView.dragScrollDirection = 0
+                                    return
+                                }
+
+                                dragScrollAnimation.to = targetY
+                                dragScrollAnimation.start()
+                            }
+                        }
+
                         // Smooth height animation synchronized with panel slide
                         Behavior on Layout.preferredHeight {
                             enabled: !root.trackInfoPanelAnimating
@@ -2711,7 +2977,10 @@ Item {
                         }
 
                         delegate: Column {
+                            id: delegateColumn
                             width: ListView.view.width
+                            clip: false  // Allow trackDelegate to be visible when dragged outside column bounds
+                            z: trackListView.draggedTrackIndex === index ? 1000 : 0  // Bring dragged item's column to front
                             
                             // Helper property to determine if using virtual model
                             property bool isVirtualModel: root.selectedAlbum && (root.selectedAlbum.isVirtualPlaylist === true)
@@ -2754,9 +3023,14 @@ Item {
                                 width: parent.width
                                 height: 45
                                 
-                                property bool isHovered: trackHoverArea.containsMouse
+                                property bool isHovered: trackHoverArea.containsMouse && !trackListView.isFinalizingDrop
                                 
                                 color: {
+                                    // During drop finalization, use default color (selection is cleared)
+                                    if (trackListView.isFinalizingDrop) {
+                                        return Theme.isDark ? Qt.rgba(1, 1, 1, 0.03) : Qt.rgba(1, 1, 1, 0.12) // Default
+                                    }
+
                                     if (root.selectedTrackIndices.indexOf(index) !== -1) {
                                         return Theme.selectedBackgroundMediumOpacity  // Selected track
                                     } else if (root.selectedTrackIndex === index) {
@@ -2776,13 +3050,24 @@ Item {
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     acceptedButtons: Qt.NoButton
+                                    // Don't set cursor here - let child MouseAreas handle it
                                 }
                                 
+                                // Drop animation for the dragged item
+                                Behavior on y {
+                                    enabled: trackListView.isAnimatingDrop && trackListView.draggedTrackIndex === index
+                                    NumberAnimation {
+                                        duration: 200
+                                        easing.type: Easing.InOutQuad
+                                    }
+                                }
+
                                 // Animated vertical offset for drag feedback
                                 transform: Translate {
                                     y: trackDelegate.verticalOffset
                                     Behavior on y {
-                                        enabled: root.playlistEditMode && trackListView.draggedTrackIndex !== -1
+                                        // Disable animation during finalization so offsets snap instantly
+                                        enabled: root.playlistEditMode && (trackListView.draggedTrackIndex !== -1 || trackListView.isAnimatingDrop) && !trackListView.isFinalizingDrop
                                         NumberAnimation {
                                             duration: 200
                                             easing.type: Easing.InOutQuad
@@ -2791,13 +3076,17 @@ Item {
                                 }
                                 
                                 property real verticalOffset: {
-                                    if (!root.playlistEditMode || trackListView.draggedTrackIndex === -1) return 0
-                                    
+                                    // During finalization, don't apply any offset - model is being updated
+                                    if (trackListView.isFinalizingDrop) return 0
+
+                                    // Keep offsets during drop animation until model updates
+                                    if (!root.playlistEditMode || (trackListView.draggedTrackIndex === -1 && !trackListView.isAnimatingDrop)) return 0
+
                                     var dragIdx = trackListView.draggedTrackIndex
                                     var dropIdx = trackListView.dropIndex
-                                    
+
                                     if (dragIdx === index || dropIdx === -1) return 0  // Don't offset the dragged item
-                                    
+
                                     if (dragIdx < dropIdx) {
                                         // Dragging down
                                         if (index > dragIdx && index <= dropIdx) return -trackDelegate.height - trackListView.spacing
@@ -2805,7 +3094,7 @@ Item {
                                         // Dragging up
                                         if (index >= dropIdx && index < dragIdx) return trackDelegate.height + trackListView.spacing
                                     }
-                                    
+
                                     return 0
                                 }
                                 
@@ -2817,10 +3106,25 @@ Item {
                                         var itemsMoved = Math.round(dragDistance / (height + trackListView.spacing))
                                         var potentialIndex = trackListView.draggedTrackIndex + itemsMoved
                                         potentialIndex = Math.max(0, Math.min(potentialIndex, trackListView.count - 1))
-                                        
+
                                         // Update drop index if it changed
                                         if (potentialIndex !== trackListView.dropIndex) {
                                             trackListView.dropIndex = potentialIndex
+                                        }
+
+                                        // Update position for auto-scroll (convert to viewport coordinates)
+                                        // trackDelegate.y is relative to parent Column, so add Column's content y
+                                        trackListView.draggedItemY = (delegateColumn.y + trackDelegate.y) - trackListView.contentY
+
+                                        // Update drag proxy position
+                                        var listViewPos = trackListView.mapToItem(rightPane, 0, 0)
+                                        rightPane.dragProxyY = listViewPos.y + trackListView.draggedItemY
+
+                                        // Start auto-scroll if in edge zone and not already scrolling
+                                        var edgeThreshold = 60
+                                        var inEdgeZone = trackListView.draggedItemY < edgeThreshold || trackListView.draggedItemY > trackListView.height - edgeThreshold
+                                        if (inEdgeZone && !dragScrollAnimation.running && !dragScrollTimer.running) {
+                                            dragScrollTimer.start()
                                         }
                                     }
                                 }
@@ -2832,72 +3136,88 @@ Item {
                                     anchors.margins: 8
                                     spacing: 10
 
-                                    // Drag handle (only in edit mode for playlists)
-                                    Image {
-                                        id: dragHandle
-                                        source: Theme.isDark ? "qrc:/resources/icons/list-drag-handle.svg" : "qrc:/resources/icons/list-drag-handle-dark.svg"
+                                    // Drag handle (only in edit mode for playlists) - Item wrapper for full-height hit area
+                                    Item {
                                         Layout.preferredWidth: 20
-                                        Layout.preferredHeight: 20
-                                        sourceSize.width: 40
-                                        sourceSize.height: 40
-                                        opacity: 0.5
+                                        Layout.fillHeight: true
                                         visible: root.playlistEditMode && root.selectedAlbum && root.selectedAlbum.isPlaylist && !PlaylistManager.isSpecialPlaylist(root.selectedAlbum.title) && !PlaylistManager.isSpecialPlaylist(root.selectedAlbum.title)
-                                        
+
+                                        Image {
+                                            id: dragHandle
+                                            anchors.centerIn: parent
+                                            source: Theme.isDark ? "qrc:/resources/icons/list-drag-handle.svg" : "qrc:/resources/icons/list-drag-handle-dark.svg"
+                                            width: 20
+                                            height: 20
+                                            sourceSize.width: 40
+                                            sourceSize.height: 40
+                                            opacity: 0.5
+                                        }
+
                                         MouseArea {
                                             id: dragArea
                                             anchors.fill: parent
                                             cursorShape: Qt.DragMoveCursor
-                                            
+
                                             drag.target: trackDelegate
                                             drag.axis: Drag.YAxis
-                                            
+
                                             property int originalY: 0
-                                            
+
                                             onPressed: {
                                                 trackListView.draggedTrackIndex = index
                                                 trackListView.dropIndex = index
                                                 originalY = trackDelegate.y
-                                                trackDelegate.z = 1000
-                                                trackDelegate.opacity = 0.8
+                                                trackDelegate.opacity = 0  // Hide the actual item, show proxy instead
+                                                trackListView.isDragging = true
+                                                trackListView.dragStartContentY = trackListView.contentY
+                                                trackListView.lastDragContentY = trackListView.contentY
+                                                // Record starting viewport position for auto-scroll activation
+                                                trackListView.dragStartY = (delegateColumn.y + trackDelegate.y) - trackListView.contentY
+
+                                                // Setup and show drag proxy
+                                                rightPane.dragProxyTrackData = delegateColumn.trackData
+                                                // Calculate proxy Y in rightPane coordinates
+                                                var listViewPos = trackListView.mapToItem(rightPane, 0, 0)
+                                                rightPane.dragProxyY = listViewPos.y + (delegateColumn.y + trackDelegate.y) - trackListView.contentY
+                                                rightPane.showDragProxy = true
                                             }
                                             
                                             onReleased: {
+                                                trackListView.isDragging = false
+                                                dragScrollAnimation.stop()
+                                                dragScrollTimer.stop()
+                                                trackListView.dragScrollDirection = 0
+
+                                                // Hide drag proxy
+                                                rightPane.showDragProxy = false
+
                                                 // Use the pre-calculated drop index
                                                 var newIndex = trackListView.dropIndex
                                                 var draggedIdx = trackListView.draggedTrackIndex
-                                                
+
                                                 // Keep track of whether we're actually moving
                                                 var isMoving = newIndex !== draggedIdx && draggedIdx >= 0
-                                                
-                                                // Reset visual properties
-                                                trackDelegate.z = 0
+
+                                                // Reset opacity
                                                 trackDelegate.opacity = 1.0
-                                                trackDelegate.y = dragArea.originalY
-                                                
-                                                // Reset drag state to remove all visual offsets
-                                                trackListView.draggedTrackIndex = -1
-                                                trackListView.dropIndex = -1
-                                                
-                                                // Perform the reorder after a brief delay to allow visual reset
+
                                                 if (isMoving) {
-                                                    // Save the current scroll position before the delayed call
-                                                    var savedContentY = trackListView.contentY
-                                                    var listView = trackListView
-                                                    
-                                                    // Use a timer to ensure visual updates complete first
-                                                    Qt.callLater(function() {
-                                                        // Save scroll position again right before model update
-                                                        var currentContentY = listView.contentY
-                                                        
-                                                        var movedTrack = root.editedPlaylistTracks.splice(draggedIdx, 1)[0]
-                                                        root.editedPlaylistTracks.splice(newIndex, 0, movedTrack)
-                                                        
-                                                        // Update the view
-                                                        rightPane.currentAlbumTracks = root.editedPlaylistTracks.slice()
-                                                        
-                                                        // Immediately restore scroll position (synchronously)
-                                                        listView.contentY = currentContentY
-                                                    })
+                                                    // Calculate the target slot position in content coordinates
+                                                    var targetContentY = newIndex * (trackDelegate.height + trackListView.spacing)
+                                                    // Convert to Column-relative coordinates for trackDelegate.y
+                                                    var targetY = targetContentY - delegateColumn.y
+
+                                                    // Start the drop animation
+                                                    trackListView.isAnimatingDrop = true
+                                                    dropAnimationTimer.draggedIdx = draggedIdx
+                                                    dropAnimationTimer.newIndex = newIndex
+                                                    dropAnimationTimer.start()
+                                                    trackDelegate.y = targetY
+                                                } else {
+                                                    // No move - reset to the item's correct slot position (0 within its Column)
+                                                    trackDelegate.y = 0
+                                                    trackListView.draggedTrackIndex = -1
+                                                    trackListView.dropIndex = -1
                                                 }
                                             }
                                         }
@@ -2941,12 +3261,13 @@ Item {
                                                 color: Theme.primaryText
                                                 font.pixelSize: 13
                                                 elide: Text.ElideRight
-                                                Layout.fillWidth: false
-                                                Layout.preferredWidth: implicitWidth
-                                                Layout.maximumWidth: parent.width * 0.7 // Max 70% to leave room for artist
+                                                Layout.fillWidth: deleteButton.visible  // Fill when artist is hidden
+                                                Layout.preferredWidth: deleteButton.visible ? -1 : implicitWidth
+                                                Layout.maximumWidth: deleteButton.visible ? -1 : parent.width * 0.7 // Max 70% only when artist is shown
                                             }
                                             
                                             // Artist name - gets remaining space, truncated as needed
+                                            // Hidden when delete button is visible to avoid crowded layout
                                             Label {
                                                 text: trackData.artist || "Unknown Artist"
                                                 color: Theme.tertiaryText
@@ -2955,6 +3276,7 @@ Item {
                                                 Layout.fillWidth: true
                                                 Layout.alignment: Qt.AlignRight
                                                 horizontalAlignment: Text.AlignRight
+                                                visible: !deleteButton.visible
                                             }
                                         }
                                     }
@@ -3057,9 +3379,10 @@ Item {
                                     id: trackMouseArea
                                     anchors.fill: parent
                                     hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
+                                    cursorShape: Qt.ArrowCursor
                                     acceptedButtons: Qt.LeftButton | Qt.RightButton
-                                    enabled: !root.playlistEditMode // Disable in edit mode to allow drag/delete
+                                    visible: !root.playlistEditMode // Hide completely in edit mode so drag handle cursor works
+                                    enabled: !root.playlistEditMode
                                     
                                     onClicked: function(mouse) {
                                         // Ensure the library pane has focus for keyboard navigation
@@ -3245,9 +3568,82 @@ Item {
                                                 root.showTrackInfoPanel = true;
                                             }
                                         }
+
+                                        StyledMenu {
+                                            title: root.selectedTrackIndices.length > 1 ?
+                                                   "Add " + root.selectedTrackIndices.length + " Tracks to Playlist" :
+                                                   "Add to Playlist"
+
+                                            // Helper function to collect selected tracks
+                                            function getSelectedTracks() {
+                                                var tracksToAdd = [];
+                                                if (root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist) {
+                                                    if (root.selectedTrackIndices.length > 1) {
+                                                        var indices = root.selectedTrackIndices.slice().sort(function(a, b) { return a - b; });
+                                                        for (var i = 0; i < indices.length; i++) {
+                                                            var track = root.selectedAlbum.virtualModel.getTrack(indices[i]);
+                                                            if (track) tracksToAdd.push(track);
+                                                        }
+                                                    } else {
+                                                        tracksToAdd.push(trackData);
+                                                    }
+                                                } else {
+                                                    if (root.selectedTrackIndices.length > 1) {
+                                                        var indices = root.selectedTrackIndices.slice().sort(function(a, b) { return a - b; });
+                                                        for (var i = 0; i < indices.length; i++) {
+                                                            tracksToAdd.push(rightPane.currentAlbumTracks[indices[i]]);
+                                                        }
+                                                    } else {
+                                                        tracksToAdd.push(trackData);
+                                                    }
+                                                }
+                                                return tracksToAdd;
+                                            }
+
+                                            StyledMenuItem {
+                                                text: "New Playlist"
+                                                onTriggered: {
+                                                    var tracksToAdd = parent.getSelectedTracks();
+                                                    PlaylistManager.savePlaylist(tracksToAdd, "");
+                                                }
+                                            }
+
+                                            StyledMenuSeparator {
+                                                visible: {
+                                                    for (var i = 0; i < PlaylistManager.playlists.length; i++) {
+                                                        if (!PlaylistManager.isSpecialPlaylist(PlaylistManager.playlists[i])) {
+                                                            return true;
+                                                        }
+                                                    }
+                                                    return false;
+                                                }
+                                                height: visible ? implicitHeight : 0
+                                            }
+
+                                            Repeater {
+                                                model: {
+                                                    var playlists = [];
+                                                    for (var i = 0; i < PlaylistManager.playlists.length && playlists.length < 10; i++) {
+                                                        var name = PlaylistManager.playlists[i];
+                                                        if (!PlaylistManager.isSpecialPlaylist(name)) {
+                                                            playlists.push(name);
+                                                        }
+                                                    }
+                                                    return playlists;
+                                                }
+
+                                                StyledMenuItem {
+                                                    text: modelData
+                                                    onTriggered: {
+                                                        var tracksToAdd = parent.parent.getSelectedTracks();
+                                                        PlaylistManager.appendToPlaylist(modelData, tracksToAdd);
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
-                                
+
                                 // Hover effect
                                 states: State {
                                     when: trackMouseArea.containsMouse && root.selectedTrackIndex !== index && root.selectedTrackIndices.indexOf(index) === -1
@@ -4169,6 +4565,67 @@ Item {
                         wrapMode: Text.WordWrap
                         visible: rightPane.currentAlbumTracks.length === 0 && !(root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist)
                         font.pixelSize: 14
+                    }
+                }
+
+                // Drag proxy for playlist track reordering - renders on top of clipped ListView
+                Rectangle {
+                    id: dragProxy
+                    width: trackListView.width  // Match track delegate width exactly
+                    height: 45
+                    x: 4  // ColumnLayout anchors.margins
+                    y: rightPane.dragProxyY
+                    z: 2000
+                    visible: rightPane.showDragProxy
+                    opacity: 0.9
+                    color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(1, 1, 1, 0.15)
+                    radius: 4
+                    border.width: 1
+                    border.color: Qt.rgba(1, 1, 1, 0.1)
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        spacing: 10
+
+                        // Drag handle icon
+                        Image {
+                            Layout.preferredWidth: 20
+                            Layout.preferredHeight: 20
+                            source: Theme.isDark ? "qrc:/resources/icons/list-drag-handle.svg" : "qrc:/resources/icons/list-drag-handle-dark.svg"
+                            sourceSize.width: 40
+                            sourceSize.height: 40
+                            opacity: 0.5
+                        }
+
+                        // Track title and artist
+                        Item {
+                            Layout.fillWidth: true
+                            implicitHeight: 20
+
+                            RowLayout {
+                                anchors.fill: parent
+                                spacing: 8
+
+                                Label {
+                                    text: rightPane.dragProxyTrackData ? (rightPane.dragProxyTrackData.title || "Unknown Track") : ""
+                                    color: Theme.primaryText
+                                    font.pixelSize: 13
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: false
+                                    Layout.preferredWidth: Math.min(implicitWidth, parent.width * 0.7)
+                                }
+
+                                Label {
+                                    text: rightPane.dragProxyTrackData ? (rightPane.dragProxyTrackData.artist || "Unknown Artist") : ""
+                                    color: Theme.tertiaryText
+                                    font.pixelSize: 13
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                    horizontalAlignment: Text.AlignRight
+                                }
+                            }
+                        }
                     }
                 }
             }

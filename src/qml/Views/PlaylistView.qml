@@ -7,10 +7,78 @@ import "../Components"
 Item {
     id: root
     focus: true
-    
+
     // Keyboard navigation state
     property int keyboardSelectedIndex: -1
-    
+
+    // Flash animation state
+    property int flashingPlaylistIndex: -1
+    property real flashOpacity: 0.0
+
+    // Internal ListModel for animated updates
+    ListModel {
+        id: playlistModel
+    }
+
+    // Sync ListModel with PlaylistManager.playlists using incremental updates
+    function syncPlaylistModel() {
+        var sourceList = PlaylistManager.playlists
+        var modelCount = playlistModel.count
+
+        // Build a map of current model items for quick lookup
+        var modelItems = {}
+        for (var i = 0; i < modelCount; i++) {
+            modelItems[playlistModel.get(i).name] = i
+        }
+
+        // Build a set of source items
+        var sourceSet = {}
+        for (var j = 0; j < sourceList.length; j++) {
+            sourceSet[sourceList[j]] = true
+        }
+
+        // Remove items that are no longer in source (iterate backwards to preserve indices)
+        for (var k = modelCount - 1; k >= 0; k--) {
+            var itemName = playlistModel.get(k).name
+            if (!sourceSet[itemName]) {
+                playlistModel.remove(k)
+            }
+        }
+
+        // Insert new items at correct positions
+        for (var m = 0; m < sourceList.length; m++) {
+            var name = sourceList[m]
+            var currentAtPos = m < playlistModel.count ? playlistModel.get(m).name : null
+
+            if (currentAtPos !== name) {
+                // Check if item exists elsewhere in model
+                var existingIndex = -1
+                for (var n = m + 1; n < playlistModel.count; n++) {
+                    if (playlistModel.get(n).name === name) {
+                        existingIndex = n
+                        break
+                    }
+                }
+
+                if (existingIndex >= 0) {
+                    // Move existing item to correct position
+                    playlistModel.move(existingIndex, m, 1)
+                } else {
+                    // Insert new item
+                    playlistModel.insert(m, { "name": name })
+                }
+            }
+        }
+    }
+
+    // Sync when playlists change
+    Connections {
+        target: PlaylistManager
+        function onPlaylistsChanged() {
+            syncPlaylistModel()
+        }
+    }
+
     signal playlistSelected(string playlistName)
     signal playlistDoubleClicked(string playlistName, var event)
     signal playlistPlayRequested(string playlistName)
@@ -60,6 +128,18 @@ Item {
         }
     }
     
+    // Function to select a playlist by name
+    function selectPlaylist(playlistName) {
+        var playlists = PlaylistManager.playlists
+        for (var i = 0; i < playlists.length; i++) {
+            if (playlists[i] === playlistName) {
+                keyboardSelectedIndex = i
+                ensureKeyboardSelectedVisible()
+                return
+            }
+        }
+    }
+
     // Function to ensure keyboard selected item is visible
     function ensureKeyboardSelectedVisible() {
         if (keyboardSelectedIndex < 0 || keyboardSelectedIndex >= playlistListView.count) {
@@ -104,14 +184,95 @@ Item {
         duration: 200
         easing.type: Easing.InOutQuad
     }
-    
+
+    // Flash animation for newly created playlists
+    SequentialAnimation {
+        id: flashAnimation
+
+        // First flash
+        NumberAnimation {
+            target: root
+            property: "flashOpacity"
+            from: 0.0
+            to: 1.0
+            duration: 150
+            easing.type: Easing.OutQuad
+        }
+        NumberAnimation {
+            target: root
+            property: "flashOpacity"
+            from: 1.0
+            to: 0.0
+            duration: 150
+            easing.type: Easing.InQuad
+        }
+
+        // Brief pause
+        PauseAnimation { duration: 100 }
+
+        // Second flash
+        NumberAnimation {
+            target: root
+            property: "flashOpacity"
+            from: 0.0
+            to: 1.0
+            duration: 150
+            easing.type: Easing.OutQuad
+        }
+        NumberAnimation {
+            target: root
+            property: "flashOpacity"
+            from: 1.0
+            to: 0.0
+            duration: 150
+            easing.type: Easing.InQuad
+        }
+
+        onFinished: {
+            root.flashingPlaylistIndex = -1
+        }
+    }
+
+    // Function to select a playlist and flash it
+    function selectAndFlashPlaylist(playlistName) {
+        var playlists = PlaylistManager.playlists
+        for (var i = 0; i < playlists.length; i++) {
+            if (playlists[i] === playlistName) {
+                keyboardSelectedIndex = i
+                flashingPlaylistIndex = i
+                ensureKeyboardSelectedVisible()
+                // Start flash after a brief delay to let navigation complete
+                Qt.callLater(function() {
+                    flashAnimation.start()
+                })
+                return
+            }
+        }
+    }
+
     ListView {
         id: playlistListView
         anchors.fill: parent
-        model: PlaylistManager.playlists
+        model: playlistModel
         spacing: 4
         clip: true
-        
+
+        // Animation for newly added items (slides in from top)
+        add: Transition {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200 }
+            NumberAnimation { property: "y"; from: -60; duration: 250; easing.type: Easing.OutQuad }
+        }
+
+        // Animation for removed items (fades out)
+        remove: Transition {
+            NumberAnimation { property: "opacity"; to: 0; duration: 200 }
+        }
+
+        // Animation for items displaced by add/remove (slide to new position)
+        displaced: Transition {
+            NumberAnimation { properties: "y"; duration: 250; easing.type: Easing.OutQuad }
+        }
+
         delegate: Rectangle {
             width: ListView.view.width - 12  // Account for scrollbar
             height: 60
@@ -127,11 +288,19 @@ Item {
             radius: 6
             border.width: 1
             border.color: index === root.keyboardSelectedIndex ? Theme.selectedBackground : Theme.isDark ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(0, 0, 0, 0.08)
-            
+
             Behavior on color {
                 ColorAnimation { duration: 150 }
             }
-            
+
+            // Flash highlight overlay
+            Rectangle {
+                anchors.fill: parent
+                radius: parent.radius
+                color: Theme.selectedBackground
+                opacity: index === root.flashingPlaylistIndex ? root.flashOpacity * 0.4 : 0
+            }
+
             RowLayout {
                 anchors.fill: parent
                 anchors.margins: 8
@@ -146,9 +315,9 @@ Item {
                     
                     Text {
                         anchors.centerIn: parent
-                        text: PlaylistManager.isSpecialPlaylist(modelData) ? "♫" : "♪"
+                        text: PlaylistManager.isSpecialPlaylist(model.name) ? "♫" : "♪"
                         font.pixelSize: 24
-                        color: PlaylistManager.isSpecialPlaylist(modelData) ? Theme.specialItemColor : Theme.tertiaryText
+                        color: PlaylistManager.isSpecialPlaylist(model.name) ? Theme.specialItemColor : Theme.tertiaryText
                     }
                 }
                 
@@ -158,7 +327,7 @@ Item {
                     spacing: 2
                     
                     Label {
-                        text: modelData
+                        text: model.name
                         color: Theme.primaryText
                         font.pixelSize: 14
                         font.weight: Font.DemiBold
@@ -173,7 +342,7 @@ Item {
                         
                         Label {
                             text: {
-                                var count = PlaylistManager.getPlaylistTrackCount(modelData)
+                                var count = PlaylistManager.getPlaylistTrackCount(model.name)
                                 return count + " track" + (count !== 1 ? "s" : "")
                             }
                             color: Theme.tertiaryText
@@ -188,7 +357,7 @@ Item {
                         
                         Label {
                             text: {
-                                var duration = PlaylistManager.getPlaylistDuration(modelData)
+                                var duration = PlaylistManager.getPlaylistDuration(model.name)
                                 return formatDuration(duration)
                             }
                             color: Theme.tertiaryText
@@ -199,11 +368,11 @@ Item {
                             text: "•"
                             color: Theme.tertiaryText
                             font.pixelSize: 11
-                            visible: !PlaylistManager.isSpecialPlaylist(modelData)
+                            visible: !PlaylistManager.isSpecialPlaylist(model.name)
                         }
                         
                         Label {
-                            text: PlaylistManager.getPlaylistModifiedDate(modelData)
+                            text: PlaylistManager.getPlaylistModifiedDate(model.name)
                             color: Theme.tertiaryText
                             font.pixelSize: 11
                         }
@@ -221,7 +390,7 @@ Item {
                         height: 28
                         radius: 4
                         color: renameMouseArea.containsMouse ? Qt.rgba(0, 0.5, 1, 0.2) : Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
-                        visible: (mouseArea.containsMouse || renameMouseArea.containsMouse || deleteMouseArea.containsMouse) && !PlaylistManager.isSpecialPlaylist(modelData)
+                        visible: (mouseArea.containsMouse || renameMouseArea.containsMouse || deleteMouseArea.containsMouse) && !PlaylistManager.isSpecialPlaylist(model.name)
                         
                         Image {
                             anchors.centerIn: parent
@@ -239,9 +408,9 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             propagateComposedEvents: false
                             onClicked: {
-                                console.log("Rename button clicked for playlist:", modelData)
-                                renamePopup.playlistName = modelData
-                                renamePopup.newPlaylistName = modelData
+                                console.log("Rename button clicked for playlist:", model.name)
+                                renamePopup.playlistName = model.name
+                                renamePopup.newPlaylistName = model.name
                                 renamePopup.visible = true
                                 mouse.accepted = true
                             }
@@ -254,7 +423,7 @@ Item {
                         height: 28
                         radius: 4
                         color: deleteMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
-                        visible: (mouseArea.containsMouse || renameMouseArea.containsMouse || deleteMouseArea.containsMouse) && !PlaylistManager.isSpecialPlaylist(modelData)
+                        visible: (mouseArea.containsMouse || renameMouseArea.containsMouse || deleteMouseArea.containsMouse) && !PlaylistManager.isSpecialPlaylist(model.name)
                         
                         Item {
                             anchors.centerIn: parent
@@ -295,8 +464,8 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             propagateComposedEvents: false
                             onClicked: {
-                                console.log("Delete button clicked for playlist:", modelData)
-                                deleteConfirmPopup.playlistName = modelData
+                                console.log("Delete button clicked for playlist:", model.name)
+                                deleteConfirmPopup.playlistName = model.name
                                 deleteConfirmPopup.visible = true
                                 mouse.accepted = true
                             }
@@ -312,7 +481,7 @@ Item {
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                 z: -1  // Put below other elements
                 
-                property string currentPlaylistName: modelData
+                property string currentPlaylistName: model.name
                 
                 onClicked: function(mouse) {
                     // Ensure the playlist view has focus for keyboard navigation
@@ -322,20 +491,20 @@ Item {
                         // Only handle clicks if not clicking on the action buttons area
                         if (mouse.x < width - 68) {  // Account for both rename and delete buttons
                             root.keyboardSelectedIndex = index
-                            root.playlistSelected(modelData)
+                            root.playlistSelected(model.name)
                         }
                     } else if (mouse.button === Qt.RightButton) {
                         // Show context menu
                         root.keyboardSelectedIndex = index
-                        playlistContextMenu.playlistName = modelData
-                        playlistContextMenu.isAllSongs = modelData === "All Songs"
+                        playlistContextMenu.playlistName = model.name
+                        playlistContextMenu.isAllSongs = model.name === "All Songs"
                         playlistContextMenu.popup()
                     }
                 }
                 onDoubleClicked: function(mouse) {
                     // Only handle double clicks if not clicking on the action buttons area
                     if (mouse.x < width - 68) {  // Account for both rename and delete buttons
-                        root.playlistDoubleClicked(modelData, mouse)
+                        root.playlistDoubleClicked(model.name, mouse)
                     }
                 }
             }
@@ -731,6 +900,7 @@ Item {
     }
     
     Component.onCompleted: {
+        syncPlaylistModel()
         PlaylistManager.refreshPlaylists()
     }
 }

@@ -116,8 +116,57 @@ Item {
                 }
             }
         }
+
+        StyledMenu {
+            title: "Add to Playlist"
+
+            StyledMenuItem {
+                text: "New Playlist"
+                onTriggered: {
+                    if (sharedAlbumContextMenu.currentAlbumData) {
+                        var tracks = LibraryManager.getTracksForAlbumAsVariantList(sharedAlbumContextMenu.currentAlbumData.albumArtist, sharedAlbumContextMenu.currentAlbumData.title);
+                        PlaylistManager.savePlaylist(tracks, "");
+                    }
+                }
+            }
+
+            StyledMenuSeparator {
+                visible: {
+                    for (var i = 0; i < PlaylistManager.playlists.length; i++) {
+                        if (!PlaylistManager.isSpecialPlaylist(PlaylistManager.playlists[i])) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+                height: visible ? implicitHeight : 0
+            }
+
+            Repeater {
+                model: {
+                    var playlists = [];
+                    for (var i = 0; i < PlaylistManager.playlists.length && playlists.length < 10; i++) {
+                        var name = PlaylistManager.playlists[i];
+                        if (!PlaylistManager.isSpecialPlaylist(name)) {
+                            playlists.push(name);
+                        }
+                    }
+                    return playlists;
+                }
+
+                StyledMenuItem {
+                    text: modelData
+                    onTriggered: {
+                        if (sharedAlbumContextMenu.currentAlbumData) {
+                            var tracks = LibraryManager.getTracksForAlbumAsVariantList(sharedAlbumContextMenu.currentAlbumData.albumArtist, sharedAlbumContextMenu.currentAlbumData.title);
+                            PlaylistManager.appendToPlaylist(modelData, tracks);
+                        }
+                    }
+                }
+            }
+        }
     }
-    
+
     // Pixel alignment helper functions
     function snapToPixel(value) {
         return Math.round(value)

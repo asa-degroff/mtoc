@@ -12,12 +12,19 @@ Item {
     property url albumArtUrl: ""
     property url thumbnailUrl: ""
     property var libraryPane: null
-    property bool queueVisible: false
+    property bool queueVisible: SettingsManager.nowPlayingQueueVisible
     property var uniqueAlbumCovers: []
     property bool showPlaylistSavedMessage: false
     property string savedPlaylistName: ""
-    property bool lyricsVisible: false
-    
+    property bool lyricsVisible: SettingsManager.nowPlayingLyricsVisible
+
+    onQueueVisibleChanged: {
+        SettingsManager.nowPlayingQueueVisible = queueVisible
+    }
+    onLyricsVisibleChanged: {
+        SettingsManager.nowPlayingLyricsVisible = lyricsVisible
+    }
+
     // Keyboard shortcut for undo
     Keys.onPressed: function(event) {
         if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Z) {

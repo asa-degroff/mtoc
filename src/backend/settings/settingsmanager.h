@@ -45,6 +45,8 @@ class SettingsManager : public QObject
     Q_PROPERTY(bool showCollabAlbumsUnderAllArtists READ showCollabAlbumsUnderAllArtists WRITE setShowCollabAlbumsUnderAllArtists NOTIFY showCollabAlbumsUnderAllArtistsChanged)
     Q_PROPERTY(bool useAlbumArtistDelimiters READ useAlbumArtistDelimiters WRITE setUseAlbumArtistDelimiters NOTIFY useAlbumArtistDelimitersChanged)
     Q_PROPERTY(QStringList albumArtistDelimiters READ albumArtistDelimiters WRITE setAlbumArtistDelimiters NOTIFY albumArtistDelimitersChanged)
+    Q_PROPERTY(bool nowPlayingQueueVisible READ nowPlayingQueueVisible WRITE setNowPlayingQueueVisible NOTIFY nowPlayingQueueVisibleChanged)
+    Q_PROPERTY(bool nowPlayingLyricsVisible READ nowPlayingLyricsVisible WRITE setNowPlayingLyricsVisible NOTIFY nowPlayingLyricsVisibleChanged)
 
 public:
     enum QueueAction {
@@ -122,6 +124,8 @@ public:
     bool showCollabAlbumsUnderAllArtists() const { return m_showCollabAlbumsUnderAllArtists; }
     bool useAlbumArtistDelimiters() const { return m_useAlbumArtistDelimiters; }
     QStringList albumArtistDelimiters() const { return m_albumArtistDelimiters; }
+    bool nowPlayingQueueVisible() const { return m_nowPlayingQueueVisible; }
+    bool nowPlayingLyricsVisible() const { return m_nowPlayingLyricsVisible; }
 
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -157,6 +161,8 @@ public:
     void setShowCollabAlbumsUnderAllArtists(bool enabled);
     void setUseAlbumArtistDelimiters(bool enabled);
     void setAlbumArtistDelimiters(const QStringList& delimiters);
+    void setNowPlayingQueueVisible(bool visible);
+    void setNowPlayingLyricsVisible(bool visible);
 
 protected:
     bool event(QEvent *event) override;
@@ -197,6 +203,8 @@ signals:
     void showCollabAlbumsUnderAllArtistsChanged(bool enabled);
     void useAlbumArtistDelimitersChanged(bool enabled);
     void albumArtistDelimitersChanged(const QStringList& delimiters);
+    void nowPlayingQueueVisibleChanged(bool visible);
+    void nowPlayingLyricsVisibleChanged(bool visible);
 
 private slots:
     void onColorSchemeChanged(Qt::ColorScheme scheme);
@@ -245,6 +253,8 @@ private:
     bool m_showCollabAlbumsUnderAllArtists;
     bool m_useAlbumArtistDelimiters;
     QStringList m_albumArtistDelimiters;
+    bool m_nowPlayingQueueVisible;
+    bool m_nowPlayingLyricsVisible;
 };
 
 #endif // SETTINGSMANAGER_H

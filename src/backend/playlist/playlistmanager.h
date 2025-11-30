@@ -46,6 +46,7 @@ public:
     Q_INVOKABLE bool deletePlaylist(const QString& name);
     Q_INVOKABLE bool renamePlaylist(const QString& oldName, const QString& newName);
     Q_INVOKABLE bool updatePlaylist(const QString& name, const QVariantList& tracks);
+    Q_INVOKABLE bool appendToPlaylist(const QString& name, const QVariantList& tracks);
     Q_INVOKABLE QVariantList getPlaylistTracks(const QString& name);
     Q_INVOKABLE int getPlaylistTrackCount(const QString& name);
     Q_INVOKABLE int getPlaylistDuration(const QString& name);
@@ -70,6 +71,7 @@ signals:
     void defaultPlaylistFolderChanged();
     void readyChanged(bool ready);
     void playlistSaved(const QString& name);
+    void playlistCreated(const QString& name);  // Emitted only when a new playlist is created
     void playlistDeleted(const QString& name);
     void playlistRenamed(const QString& oldName, const QString& newName);
     void error(const QString& message);
