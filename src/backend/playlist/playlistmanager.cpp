@@ -687,6 +687,27 @@ bool PlaylistManager::updatePlaylist(const QString& name, const QVariantList& tr
     return false;
 }
 
+bool PlaylistManager::appendToPlaylist(const QString& name, const QVariantList& tracks)
+{
+    if (name.isEmpty()) {
+        emit error("Playlist name cannot be empty");
+        return false;
+    }
+
+    if (tracks.isEmpty()) {
+        return true;  // Nothing to add, but not an error
+    }
+
+    // Load existing tracks
+    QVariantList existingTracks = loadPlaylist(name);
+
+    // Append new tracks
+    existingTracks.append(tracks);
+
+    // Save the updated playlist
+    return updatePlaylist(name, existingTracks);
+}
+
 QVariantList PlaylistManager::getPlaylistTracks(const QString& name)
 {
     return loadPlaylist(name);

@@ -46,6 +46,7 @@ public:
     Q_INVOKABLE bool deletePlaylist(const QString& name);
     Q_INVOKABLE bool renamePlaylist(const QString& oldName, const QString& newName);
     Q_INVOKABLE bool updatePlaylist(const QString& name, const QVariantList& tracks);
+    Q_INVOKABLE bool appendToPlaylist(const QString& name, const QVariantList& tracks);
     Q_INVOKABLE QVariantList getPlaylistTracks(const QString& name);
     Q_INVOKABLE int getPlaylistTrackCount(const QString& name);
     Q_INVOKABLE int getPlaylistDuration(const QString& name);

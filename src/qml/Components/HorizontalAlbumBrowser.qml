@@ -116,8 +116,49 @@ Item {
                 }
             }
         }
+
+        StyledMenu {
+            title: "Add to Playlist"
+
+            Repeater {
+                model: {
+                    var playlists = [];
+                    for (var i = 0; i < PlaylistManager.playlists.length && playlists.length < 10; i++) {
+                        var name = PlaylistManager.playlists[i];
+                        if (!PlaylistManager.isSpecialPlaylist(name)) {
+                            playlists.push(name);
+                        }
+                    }
+                    return playlists;
+                }
+
+                StyledMenuItem {
+                    text: modelData
+                    onTriggered: {
+                        if (sharedAlbumContextMenu.currentAlbumData) {
+                            var tracks = LibraryManager.getTracksForAlbumAsVariantList(sharedAlbumContextMenu.currentAlbumData.albumArtist, sharedAlbumContextMenu.currentAlbumData.title);
+                            PlaylistManager.appendToPlaylist(modelData, tracks);
+                        }
+                    }
+                }
+            }
+
+            StyledMenuItem {
+                text: "No playlists"
+                enabled: false
+                visible: {
+                    for (var i = 0; i < PlaylistManager.playlists.length; i++) {
+                        if (!PlaylistManager.isSpecialPlaylist(PlaylistManager.playlists[i])) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+                height: visible ? implicitHeight : 0
+            }
+        }
     }
-    
+
     // Pixel alignment helper functions
     function snapToPixel(value) {
         return Math.round(value)

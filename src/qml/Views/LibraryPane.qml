@@ -2026,7 +2026,8 @@ Item {
                                     
                                     StyledMenu {
                                         id: albumContextMenu
-                                        
+                                        property var albumData: modelData
+
                                         StyledMenuItem {
                                             text: "Play"
                                             onTriggered: {
@@ -2053,6 +2054,45 @@ Item {
                                             text: "Play Last"
                                             onTriggered: {
                                                 MediaPlayer.playAlbumLast(modelData.albumArtist, modelData.title);
+                                            }
+                                        }
+
+                                        StyledMenu {
+                                            title: "Add to Playlist"
+
+                                            Repeater {
+                                                model: {
+                                                    var playlists = [];
+                                                    for (var i = 0; i < PlaylistManager.playlists.length && playlists.length < 10; i++) {
+                                                        var name = PlaylistManager.playlists[i];
+                                                        if (!PlaylistManager.isSpecialPlaylist(name)) {
+                                                            playlists.push(name);
+                                                        }
+                                                    }
+                                                    return playlists;
+                                                }
+
+                                                StyledMenuItem {
+                                                    text: modelData
+                                                    onTriggered: {
+                                                        var tracks = LibraryManager.getTracksForAlbumAsVariantList(albumContextMenu.albumData.albumArtist, albumContextMenu.albumData.title);
+                                                        PlaylistManager.appendToPlaylist(modelData, tracks);
+                                                    }
+                                                }
+                                            }
+
+                                            StyledMenuItem {
+                                                text: "No playlists"
+                                                enabled: false
+                                                visible: {
+                                                    for (var i = 0; i < PlaylistManager.playlists.length; i++) {
+                                                        if (!PlaylistManager.isSpecialPlaylist(PlaylistManager.playlists[i])) {
+                                                            return false;
+                                                        }
+                                                    }
+                                                    return true;
+                                                }
+                                                height: visible ? implicitHeight : 0
                                             }
                                         }
                                     }
@@ -3504,9 +3544,70 @@ Item {
                                                 root.showTrackInfoPanel = true;
                                             }
                                         }
+
+                                        StyledMenu {
+                                            title: root.selectedTrackIndices.length > 1 ?
+                                                   "Add " + root.selectedTrackIndices.length + " Tracks to Playlist" :
+                                                   "Add to Playlist"
+
+                                            Repeater {
+                                                model: {
+                                                    var playlists = [];
+                                                    for (var i = 0; i < PlaylistManager.playlists.length && playlists.length < 10; i++) {
+                                                        var name = PlaylistManager.playlists[i];
+                                                        if (!PlaylistManager.isSpecialPlaylist(name)) {
+                                                            playlists.push(name);
+                                                        }
+                                                    }
+                                                    return playlists;
+                                                }
+
+                                                StyledMenuItem {
+                                                    text: modelData
+                                                    onTriggered: {
+                                                        var tracksToAdd = [];
+                                                        if (root.selectedAlbum && root.selectedAlbum.isVirtualPlaylist) {
+                                                            if (root.selectedTrackIndices.length > 1) {
+                                                                var indices = root.selectedTrackIndices.slice().sort(function(a, b) { return a - b; });
+                                                                for (var i = 0; i < indices.length; i++) {
+                                                                    var track = root.selectedAlbum.virtualModel.getTrack(indices[i]);
+                                                                    if (track) tracksToAdd.push(track);
+                                                                }
+                                                            } else {
+                                                                tracksToAdd.push(trackData);
+                                                            }
+                                                        } else {
+                                                            if (root.selectedTrackIndices.length > 1) {
+                                                                var indices = root.selectedTrackIndices.slice().sort(function(a, b) { return a - b; });
+                                                                for (var i = 0; i < indices.length; i++) {
+                                                                    tracksToAdd.push(rightPane.currentAlbumTracks[indices[i]]);
+                                                                }
+                                                            } else {
+                                                                tracksToAdd.push(trackData);
+                                                            }
+                                                        }
+                                                        PlaylistManager.appendToPlaylist(modelData, tracksToAdd);
+                                                    }
+                                                }
+                                            }
+
+                                            StyledMenuItem {
+                                                text: "No playlists"
+                                                enabled: false
+                                                visible: {
+                                                    for (var i = 0; i < PlaylistManager.playlists.length; i++) {
+                                                        if (!PlaylistManager.isSpecialPlaylist(PlaylistManager.playlists[i])) {
+                                                            return false;
+                                                        }
+                                                    }
+                                                    return true;
+                                                }
+                                                height: visible ? implicitHeight : 0
+                                            }
+                                        }
                                     }
                                 }
-                                
+
                                 // Hover effect
                                 states: State {
                                     when: trackMouseArea.containsMouse && root.selectedTrackIndex !== index && root.selectedTrackIndices.indexOf(index) === -1
