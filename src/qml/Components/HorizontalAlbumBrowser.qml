@@ -120,6 +120,28 @@ Item {
         StyledMenu {
             title: "Add to Playlist"
 
+            StyledMenuItem {
+                text: "New Playlist"
+                onTriggered: {
+                    if (sharedAlbumContextMenu.currentAlbumData) {
+                        var tracks = LibraryManager.getTracksForAlbumAsVariantList(sharedAlbumContextMenu.currentAlbumData.albumArtist, sharedAlbumContextMenu.currentAlbumData.title);
+                        PlaylistManager.savePlaylist(tracks, "");
+                    }
+                }
+            }
+
+            StyledMenuSeparator {
+                visible: {
+                    for (var i = 0; i < PlaylistManager.playlists.length; i++) {
+                        if (!PlaylistManager.isSpecialPlaylist(PlaylistManager.playlists[i])) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+                height: visible ? implicitHeight : 0
+            }
+
             Repeater {
                 model: {
                     var playlists = [];
@@ -141,20 +163,6 @@ Item {
                         }
                     }
                 }
-            }
-
-            StyledMenuItem {
-                text: "No playlists"
-                enabled: false
-                visible: {
-                    for (var i = 0; i < PlaylistManager.playlists.length; i++) {
-                        if (!PlaylistManager.isSpecialPlaylist(PlaylistManager.playlists[i])) {
-                            return false;
-                        }
-                    }
-                    return true;
-                }
-                height: visible ? implicitHeight : 0
             }
         }
     }
