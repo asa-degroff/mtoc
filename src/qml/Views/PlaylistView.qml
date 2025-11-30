@@ -15,6 +15,11 @@ Item {
     property int flashingPlaylistIndex: -1
     property real flashOpacity: 0.0
 
+    // Inline rename state
+    property int renamingPlaylistIndex: -1
+    property string renamingOriginalName: ""
+    property string renamingNewName: ""
+
     // Internal ListModel for animated updates
     ListModel {
         id: playlistModel
@@ -250,6 +255,45 @@ Item {
         }
     }
 
+    // Save inline rename
+    function saveRename() {
+        if (root.renamingPlaylistIndex < 0) return
+
+        var trimmedName = root.renamingNewName.trim()
+        var originalName = root.renamingOriginalName
+
+        // Validation
+        if (trimmedName.length === 0) {
+            cancelRename()
+            return
+        }
+        if (!/^[^<>:"/\\|?*]+$/.test(trimmedName)) {
+            cancelRename()
+            return
+        }
+        if (trimmedName !== originalName && PlaylistManager.playlists.indexOf(trimmedName) !== -1) {
+            cancelRename()
+            return
+        }
+
+        // Only rename if changed
+        if (trimmedName !== originalName) {
+            PlaylistManager.renamePlaylist(originalName, trimmedName)
+        }
+
+        // Reset state
+        root.renamingPlaylistIndex = -1
+        root.renamingOriginalName = ""
+        root.renamingNewName = ""
+    }
+
+    // Cancel inline rename
+    function cancelRename() {
+        root.renamingPlaylistIndex = -1
+        root.renamingOriginalName = ""
+        root.renamingNewName = ""
+    }
+
     ListView {
         id: playlistListView
         anchors.fill: parent
@@ -325,7 +369,8 @@ Item {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 2
-                    
+
+                    // Normal display label
                     Label {
                         text: model.name
                         color: Theme.primaryText
@@ -333,8 +378,59 @@ Item {
                         font.weight: Font.DemiBold
                         elide: Text.ElideRight
                         Layout.fillWidth: true
+                        visible: index !== root.renamingPlaylistIndex
                     }
-                    
+
+                    // Inline rename TextField
+                    TextField {
+                        id: inlineRenameField
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 28
+                        visible: index === root.renamingPlaylistIndex
+                        text: root.renamingNewName
+                        color: Theme.primaryText
+                        font.pixelSize: 14
+                        font.weight: Font.DemiBold
+                        selectByMouse: true
+                        selectionColor: Qt.rgba(0, 0.5, 1, 0.3)
+                        selectedTextColor: Theme.primaryText
+
+                        background: Rectangle {
+                            color: Theme.inputBackground
+                            border.width: 1
+                            border.color: inlineRenameField.activeFocus ? Theme.linkColor : Theme.borderColor
+                            radius: 4
+                        }
+
+                        onTextChanged: {
+                            if (index === root.renamingPlaylistIndex) {
+                                root.renamingNewName = text
+                            }
+                        }
+
+                        Keys.onReturnPressed: {
+                            root.saveRename()
+                        }
+
+                        Keys.onEscapePressed: {
+                            root.cancelRename()
+                        }
+
+                        onActiveFocusChanged: {
+                            if (!activeFocus && index === root.renamingPlaylistIndex) {
+                                // Save on focus loss (click outside)
+                                root.saveRename()
+                            }
+                        }
+
+                        onVisibleChanged: {
+                            if (visible) {
+                                forceActiveFocus()
+                                selectAll()
+                            }
+                        }
+                    }
+
                     Row {
                         spacing: 8
                         Layout.fillWidth: true
@@ -383,15 +479,44 @@ Item {
                 Row {
                     spacing: 4
                     z: 10  // Increase z-order to ensure it's above everything
-                    
-                    // Rename button
+
+                    // Save button (visible when renaming this item)
+                    Rectangle {
+                        width: 28
+                        height: 28
+                        radius: 4
+                        color: saveMouseArea.containsMouse ? Qt.rgba(0, 0.7, 0.3, 0.3) : Qt.rgba(0, 0.6, 0.2, 0.2)
+                        visible: index === root.renamingPlaylistIndex
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "\u2713"  // Checkmark
+                            font.pixelSize: 16
+                            font.weight: Font.Bold
+                            color: Theme.isDark ? "#60ff80" : "#208040"
+                        }
+
+                        MouseArea {
+                            id: saveMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            propagateComposedEvents: false
+                            onClicked: {
+                                root.saveRename()
+                                mouse.accepted = true
+                            }
+                        }
+                    }
+
+                    // Rename button (hidden when renaming this item)
                     Rectangle {
                         width: 28
                         height: 28
                         radius: 4
                         color: renameMouseArea.containsMouse ? Qt.rgba(0, 0.5, 1, 0.2) : Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
-                        visible: (mouseArea.containsMouse || renameMouseArea.containsMouse || deleteMouseArea.containsMouse) && !PlaylistManager.isSpecialPlaylist(model.name)
-                        
+                        visible: index !== root.renamingPlaylistIndex && (mouseArea.containsMouse || renameMouseArea.containsMouse || deleteMouseArea.containsMouse) && !PlaylistManager.isSpecialPlaylist(model.name)
+
                         Image {
                             anchors.centerIn: parent
                             width: 16
@@ -400,7 +525,7 @@ Item {
                             sourceSize.width: 32
                             sourceSize.height: 32
                         }
-                        
+
                         MouseArea {
                             id: renameMouseArea
                             anchors.fill: parent
@@ -408,10 +533,9 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             propagateComposedEvents: false
                             onClicked: {
-                                console.log("Rename button clicked for playlist:", model.name)
-                                renamePopup.playlistName = model.name
-                                renamePopup.newPlaylistName = model.name
-                                renamePopup.visible = true
+                                root.renamingPlaylistIndex = index
+                                root.renamingOriginalName = model.name
+                                root.renamingNewName = model.name
                                 mouse.accepted = true
                             }
                         }
@@ -562,218 +686,18 @@ Item {
         if (isNaN(seconds) || seconds < 0) {
             return "0:00"
         }
-        
+
         var hours = Math.floor(seconds / 3600)
         var minutes = Math.floor((seconds % 3600) / 60)
         var seconds = seconds % 60
-        
+
         if (hours > 0) {
             return hours + ":" + (minutes < 10 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds
         } else {
             return minutes + ":" + (seconds < 10 ? "0" : "") + seconds
         }
     }
-    
-    // Rename popup
-    Rectangle {
-        id: renamePopup
-        visible: false
-        anchors.fill: parent
-        color: Qt.rgba(0, 0, 0, 0.7)
-        
-        property string playlistName: ""
-        property string newPlaylistName: ""
-        
-        MouseArea {
-            anchors.fill: parent
-            onClicked: {
-                // Close popup if clicking outside
-                renamePopup.visible = false
-            }
-        }
-        
-        Rectangle {
-            anchors.centerIn: parent
-            width: 360
-            height: 180
-            radius: 8
-            color: Theme.isDark ? Qt.rgba(0.1, 0.1, 0.1, 0.95) : Qt.rgba(0.95, 0.95, 0.95, 0.95)
-            border.width: 1
-            border.color: Theme.borderColor
-            
-            MouseArea {
-                anchors.fill: parent
-                // Prevent clicks from propagating to the background
-            }
-            
-            Column {
-                anchors.fill: parent
-                anchors.margins: 20
-                spacing: 16
-                
-                Label {
-                    text: "Rename playlist"
-                    color: Theme.primaryText
-                    font.pixelSize: 16
-                    font.weight: Font.DemiBold
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-                
-                TextField {
-                    id: renameTextField
-                    width: parent.width
-                    text: renamePopup.newPlaylistName
-                    color: Theme.primaryText
-                    font.pixelSize: 14
-                    selectByMouse: true
-                    selectionColor: Qt.rgba(0, 0.5, 1, 0.3)
-                    selectedTextColor: Theme.primaryText
-                    placeholderText: "Enter new playlist name"
-                    placeholderTextColor: Theme.tertiaryText
-                    
-                    background: Rectangle {
-                        color: Theme.inputBackground
-                        border.width: 1
-                        border.color: renameTextField.activeFocus ? Theme.linkColor : Theme.borderColor
-                        radius: 4
-                    }
-                    
-                    onTextChanged: {
-                        renamePopup.newPlaylistName = text
-                    }
-                    
-                    Keys.onReturnPressed: {
-                        if (text.trim().length > 0) {
-                            renameButton.clicked()
-                        }
-                    }
-                    
-                    Keys.onEscapePressed: {
-                        renamePopup.visible = false
-                    }
-                    
-                    Component.onCompleted: {
-                        // Select all text when popup opens
-                        selectAll()
-                        forceActiveFocus()
-                    }
-                }
-                
-                Label {
-                    text: {
-                        var trimmedName = renamePopup.newPlaylistName.trim()
-                        if (trimmedName.length === 0) {
-                            return "Playlist name cannot be empty"
-                        } else if (trimmedName !== renamePopup.playlistName && PlaylistManager.playlists.indexOf(trimmedName) !== -1) {
-                            return "A playlist with this name already exists"
-                        } else if (!/^[^<>:"/\\|?*]+$/.test(trimmedName)) {
-                            return "Invalid characters in playlist name"
-                        }
-                        return ""
-                    }
-                    color: "#ff6060"
-                    font.pixelSize: 12
-                    visible: text.length > 0
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-                
-                Row {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: 12
-                    
-                    // Cancel button
-                    Rectangle {
-                        width: 100
-                        height: 36
-                        radius: 4
-                        color: cancelRenameMouseArea.containsMouse ? Theme.hoverBackground : Theme.isDark ? Qt.rgba(1, 1, 1, 0.1) : Qt.rgba(0, 0, 0, 0.1)
-                        
-                        Behavior on color {
-                            ColorAnimation { duration: 150 }
-                        }
-                        
-                        Label {
-                            anchors.centerIn: parent
-                            text: "Cancel"
-                            color: Theme.primaryText
-                            font.pixelSize: 13
-                        }
-                        
-                        MouseArea {
-                            id: cancelRenameMouseArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                renamePopup.visible = false
-                            }
-                        }
-                    }
-                    
-                    // Rename button
-                    Rectangle {
-                        id: renameButton
-                        width: 100
-                        height: 36
-                        radius: 4
-                        color: {
-                            var trimmedName = renamePopup.newPlaylistName.trim()
-                            var isValid = trimmedName.length > 0 && 
-                                         (trimmedName === renamePopup.playlistName || PlaylistManager.playlists.indexOf(trimmedName) === -1) &&
-                                         /^[^<>:"/\\|?*]+$/.test(trimmedName)
-                            
-                            if (!isValid) {
-                                return Qt.rgba(0.3, 0.3, 0.3, 0.3)
-                            }
-                            return confirmRenameMouseArea.containsMouse ? Qt.rgba(0, 0.6, 1, 0.8) : Qt.rgba(0, 0.5, 1, 0.6)
-                        }
-                        
-                        Behavior on color {
-                            ColorAnimation { duration: 150 }
-                        }
-                        
-                        Label {
-                            anchors.centerIn: parent
-                            text: "Rename"
-                            color: Theme.primaryText
-                            font.pixelSize: 13
-                            font.weight: Font.DemiBold
-                        }
-                        
-                        MouseArea {
-                            id: confirmRenameMouseArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: {
-                                var trimmedName = renamePopup.newPlaylistName.trim()
-                                var isValid = trimmedName.length > 0 && 
-                                             (trimmedName === renamePopup.playlistName || PlaylistManager.playlists.indexOf(trimmedName) === -1) &&
-                                             /^[^<>:"/\\|?*]+$/.test(trimmedName)
-                                return isValid ? Qt.PointingHandCursor : Qt.ForbiddenCursor
-                            }
-                            onClicked: {
-                                var trimmedName = renamePopup.newPlaylistName.trim()
-                                var isValid = trimmedName.length > 0 && 
-                                             (trimmedName === renamePopup.playlistName || PlaylistManager.playlists.indexOf(trimmedName) === -1) &&
-                                             /^[^<>:"/\\|?*]+$/.test(trimmedName)
-                                
-                                if (isValid && trimmedName !== renamePopup.playlistName) {
-                                    // Rename the playlist
-                                    if (PlaylistManager.renamePlaylist(renamePopup.playlistName, trimmedName)) {
-                                        console.log("Playlist renamed from", renamePopup.playlistName, "to", trimmedName)
-                                    } else {
-                                        console.error("Failed to rename playlist")
-                                    }
-                                }
-                                renamePopup.visible = false
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
+
     // Delete confirmation popup
     Rectangle {
         id: deleteConfirmPopup
