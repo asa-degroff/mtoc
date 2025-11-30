@@ -188,48 +188,51 @@ QString PlaylistManager::generatePlaylistName(const QVariantList& tracks) const
         QDateTime now = QDateTime::currentDateTime();
         return now.toString("yyyy-MM-dd_HH-mm-ss");
     }
-    
-    // Get the first track's title
-    QVariantMap firstTrack = tracks.first().toMap();
-    QString firstTitle = firstTrack.value("title").toString();
-    
-    if (firstTitle.isEmpty()) {
-        // Fallback to date-based name if no title
+
+    // Helper lambda to sanitize a title for use in filename
+    auto sanitizeTitle = [](const QString& title) -> QString {
+        QString sanitized = title;
+        sanitized.replace("/", "-");
+        sanitized.replace("\\", "-");
+        sanitized.replace(":", "-");
+        sanitized.replace("*", "-");
+        sanitized.replace("?", "-");
+        sanitized.replace("\"", "'");
+        sanitized.replace("<", "-");
+        sanitized.replace(">", "-");
+        sanitized.replace("|", "-");
+        sanitized.remove(QChar('\0'));
+        return sanitized.trimmed();
+    };
+
+    // Collect up to 3 track titles
+    QStringList titles;
+    int maxTitles = qMin(3, tracks.size());
+    for (int i = 0; i < maxTitles; i++) {
+        QVariantMap track = tracks.at(i).toMap();
+        QString title = track.value("title").toString();
+        if (!title.isEmpty()) {
+            titles.append(sanitizeTitle(title));
+        }
+    }
+
+    // Fallback to date-based name if no valid titles found
+    if (titles.isEmpty()) {
         QDateTime now = QDateTime::currentDateTime();
         return now.toString("yyyy-MM-dd_HH-mm-ss");
     }
-    
-    // Sanitize the title to remove characters not allowed in filenames
-    QString sanitizedTitle = firstTitle;
-    // Remove or replace problematic characters
-    sanitizedTitle.replace("/", "-");
-    sanitizedTitle.replace("\\", "-");
-    sanitizedTitle.replace(":", "-");
-    sanitizedTitle.replace("*", "-");
-    sanitizedTitle.replace("?", "-");
-    sanitizedTitle.replace("\"", "'");
-    sanitizedTitle.replace("<", "-");
-    sanitizedTitle.replace(">", "-");
-    sanitizedTitle.replace("|", "-");
-    sanitizedTitle.remove(QChar('\0')); // Remove null characters
-    
-    // Trim whitespace and limit length
-    sanitizedTitle = sanitizedTitle.trimmed();
-    if (sanitizedTitle.length() > 50) {
-        sanitizedTitle = sanitizedTitle.left(50).trimmed();
+
+    // Join titles with ", " and append "..." if there are more tracks
+    QString playlistName = titles.join(", ");
+    if (tracks.size() > titles.size()) {
+        playlistName += "...";
     }
-    
-    // Calculate number of additional tracks
-    int additionalTracks = tracks.size() - 1;
-    
-    // Generate the name
-    QString playlistName;
-    if (additionalTracks > 0) {
-        playlistName = QString("%1 +%2").arg(sanitizedTitle).arg(additionalTracks);
-    } else {
-        playlistName = sanitizedTitle;
+
+    // Limit total length to keep filename reasonable
+    if (playlistName.length() > 80) {
+        playlistName = playlistName.left(77).trimmed() + "...";
     }
-    
+
     return playlistName;
 }
 
