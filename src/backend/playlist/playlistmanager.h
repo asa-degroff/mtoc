@@ -71,6 +71,7 @@ signals:
     void defaultPlaylistFolderChanged();
     void readyChanged(bool ready);
     void playlistSaved(const QString& name);
+    void playlistCreated(const QString& name);  // Emitted only when a new playlist is created
     void playlistDeleted(const QString& name);
     void playlistRenamed(const QString& oldName, const QString& newName);
     void error(const QString& message);

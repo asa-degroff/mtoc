@@ -584,7 +584,25 @@ Item {
             autoSelectCurrentTrack()
         }
     }
-    
+
+    // Navigate to new playlist when created from context menu
+    Connections {
+        target: PlaylistManager
+        function onPlaylistCreated(name) {
+            // Switch to playlists tab
+            root.currentTab = 1
+
+            // Wait for tab animation and playlist refresh, then select and flash
+            Qt.callLater(function() {
+                if (playlistView) {
+                    playlistView.selectAndFlashPlaylist(name)
+                    // Also emit the selection signal to load the playlist in the right pane
+                    playlistView.playlistSelected(name)
+                }
+            })
+        }
+    }
+
     // Function to build artist name to index mapping for O(1) lookups
     function updateArtistIndexMapping() {
         //console.log("updateArtistIndexMapping called")

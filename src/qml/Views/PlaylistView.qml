@@ -7,10 +7,14 @@ import "../Components"
 Item {
     id: root
     focus: true
-    
+
     // Keyboard navigation state
     property int keyboardSelectedIndex: -1
-    
+
+    // Flash animation state
+    property int flashingPlaylistIndex: -1
+    property real flashOpacity: 0.0
+
     signal playlistSelected(string playlistName)
     signal playlistDoubleClicked(string playlistName, var event)
     signal playlistPlayRequested(string playlistName)
@@ -116,7 +120,72 @@ Item {
         duration: 200
         easing.type: Easing.InOutQuad
     }
-    
+
+    // Flash animation for newly created playlists
+    SequentialAnimation {
+        id: flashAnimation
+
+        // First flash
+        NumberAnimation {
+            target: root
+            property: "flashOpacity"
+            from: 0.0
+            to: 1.0
+            duration: 150
+            easing.type: Easing.OutQuad
+        }
+        NumberAnimation {
+            target: root
+            property: "flashOpacity"
+            from: 1.0
+            to: 0.0
+            duration: 150
+            easing.type: Easing.InQuad
+        }
+
+        // Brief pause
+        PauseAnimation { duration: 100 }
+
+        // Second flash
+        NumberAnimation {
+            target: root
+            property: "flashOpacity"
+            from: 0.0
+            to: 1.0
+            duration: 150
+            easing.type: Easing.OutQuad
+        }
+        NumberAnimation {
+            target: root
+            property: "flashOpacity"
+            from: 1.0
+            to: 0.0
+            duration: 150
+            easing.type: Easing.InQuad
+        }
+
+        onFinished: {
+            root.flashingPlaylistIndex = -1
+        }
+    }
+
+    // Function to select a playlist and flash it
+    function selectAndFlashPlaylist(playlistName) {
+        var playlists = PlaylistManager.playlists
+        for (var i = 0; i < playlists.length; i++) {
+            if (playlists[i] === playlistName) {
+                keyboardSelectedIndex = i
+                flashingPlaylistIndex = i
+                ensureKeyboardSelectedVisible()
+                // Start flash after a brief delay to let navigation complete
+                Qt.callLater(function() {
+                    flashAnimation.start()
+                })
+                return
+            }
+        }
+    }
+
     ListView {
         id: playlistListView
         anchors.fill: parent
@@ -139,11 +208,19 @@ Item {
             radius: 6
             border.width: 1
             border.color: index === root.keyboardSelectedIndex ? Theme.selectedBackground : Theme.isDark ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(0, 0, 0, 0.08)
-            
+
             Behavior on color {
                 ColorAnimation { duration: 150 }
             }
-            
+
+            // Flash highlight overlay
+            Rectangle {
+                anchors.fill: parent
+                radius: parent.radius
+                color: Theme.selectedBackground
+                opacity: index === root.flashingPlaylistIndex ? root.flashOpacity * 0.4 : 0
+            }
+
             RowLayout {
                 anchors.fill: parent
                 anchors.margins: 8

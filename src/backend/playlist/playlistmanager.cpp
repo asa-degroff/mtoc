@@ -264,9 +264,10 @@ bool PlaylistManager::savePlaylist(const QVariantList& tracks, const QString& na
     if (writeM3UFile(filepath, tracks)) {
         refreshPlaylists();
         emit playlistSaved(playlistName);
+        emit playlistCreated(playlistName);  // Signal that a new playlist was created
         return true;
     }
-    
+
     return false;
 }
 
