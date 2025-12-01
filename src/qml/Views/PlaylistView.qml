@@ -499,12 +499,13 @@ Item {
                         }
 
                         // Save checkmark (rename mode)
-                        Text {
+                        Image {
                             anchors.centerIn: parent
-                            text: "\u2713"
-                            font.pixelSize: 16
-                            font.weight: Font.Bold
-                            color: Theme.isDark ? "#60ff80" : "#208040"
+                            width: 16
+                            height: 16
+                            source: Theme.isDark ? "qrc:/resources/icons/confirm.svg" : "qrc:/resources/icons/confirm-dark.svg"
+                            sourceSize.width: 32
+                            sourceSize.height: 32
                             visible: parent.parent.isRenaming
                         }
 
