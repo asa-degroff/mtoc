@@ -396,7 +396,7 @@ Item {
                         selectedTextColor: Theme.primaryText
 
                         background: Rectangle {
-                            color: Theme.inputBackground
+                            color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.06)
                             border.width: 1
                             border.color: inlineRenameField.activeFocus ? Theme.linkColor : Theme.borderColor
                             radius: 4
@@ -475,25 +475,48 @@ Item {
                     }
                 }
                 
-                // Actions
+                // Actions - consistent 2-button layout
                 Row {
                     spacing: 4
                     z: 10  // Increase z-order to ensure it's above everything
 
-                    // Save button (visible when renaming this item)
+                    // Determine if buttons should be shown
+                    property bool isRenaming: index === root.renamingPlaylistIndex
+                    property bool showButtons: isRenaming || ((mouseArea.containsMouse || renameMouseArea.containsMouse || deleteMouseArea.containsMouse || cancelMouseArea.containsMouse || saveMouseArea.containsMouse) && !PlaylistManager.isSpecialPlaylist(model.name))
+
+                    // First button: Save (when renaming) or Rename (normal)
                     Rectangle {
                         width: 28
                         height: 28
                         radius: 4
-                        color: saveMouseArea.containsMouse ? Qt.rgba(0, 0.7, 0.3, 0.3) : Qt.rgba(0, 0.6, 0.2, 0.2)
-                        visible: index === root.renamingPlaylistIndex
+                        visible: parent.showButtons
+                        color: {
+                            if (parent.isRenaming) {
+                                return saveMouseArea.containsMouse ? Qt.rgba(0, 0.7, 0.3, 0.3) : Qt.rgba(0, 0.6, 0.2, 0.2)
+                            } else {
+                                return renameMouseArea.containsMouse ? Qt.rgba(0, 0.5, 1, 0.2) : Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
+                            }
+                        }
 
+                        // Save checkmark (rename mode)
                         Text {
                             anchors.centerIn: parent
-                            text: "\u2713"  // Checkmark
+                            text: "\u2713"
                             font.pixelSize: 16
                             font.weight: Font.Bold
                             color: Theme.isDark ? "#60ff80" : "#208040"
+                            visible: parent.parent.isRenaming
+                        }
+
+                        // Rename icon (normal mode)
+                        Image {
+                            anchors.centerIn: parent
+                            width: 16
+                            height: 16
+                            source: Theme.isDark ? "qrc:/resources/icons/text-input.svg" : "qrc:/resources/icons/text-input-dark.svg"
+                            sourceSize.width: 32
+                            sourceSize.height: 32
+                            visible: !parent.parent.isRenaming
                         }
 
                         MouseArea {
@@ -502,28 +525,8 @@ Item {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             propagateComposedEvents: false
-                            onClicked: {
-                                root.saveRename()
-                                mouse.accepted = true
-                            }
-                        }
-                    }
-
-                    // Rename button (hidden when renaming this item)
-                    Rectangle {
-                        width: 28
-                        height: 28
-                        radius: 4
-                        color: renameMouseArea.containsMouse ? Qt.rgba(0, 0.5, 1, 0.2) : Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
-                        visible: index !== root.renamingPlaylistIndex && (mouseArea.containsMouse || renameMouseArea.containsMouse || deleteMouseArea.containsMouse) && !PlaylistManager.isSpecialPlaylist(model.name)
-
-                        Image {
-                            anchors.centerIn: parent
-                            width: 16
-                            height: 16
-                            source: Theme.isDark ? "qrc:/resources/icons/text-input.svg" : "qrc:/resources/icons/text-input-dark.svg"
-                            sourceSize.width: 32
-                            sourceSize.height: 32
+                            visible: parent.parent.isRenaming
+                            onClicked: root.saveRename()
                         }
 
                         MouseArea {
@@ -532,28 +535,47 @@ Item {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             propagateComposedEvents: false
+                            visible: !parent.parent.isRenaming
                             onClicked: {
                                 root.renamingPlaylistIndex = index
                                 root.renamingOriginalName = model.name
                                 root.renamingNewName = model.name
-                                mouse.accepted = true
                             }
                         }
                     }
-                    
-                    // Delete button
+
+                    // Second button: Cancel (when renaming) or Delete (normal)
                     Rectangle {
                         width: 28
                         height: 28
                         radius: 4
-                        color: deleteMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
-                        visible: (mouseArea.containsMouse || renameMouseArea.containsMouse || deleteMouseArea.containsMouse) && !PlaylistManager.isSpecialPlaylist(model.name)
-                        
+                        visible: parent.showButtons
+                        color: {
+                            if (parent.isRenaming) {
+                                return cancelMouseArea.containsMouse ? Qt.rgba(1, 0.5, 0, 0.3) : Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
+                            } else {
+                                return deleteMouseArea.containsMouse ? Qt.rgba(1, 0, 0, 0.2) : Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05)
+                            }
+                        }
+
+                        // Cancel icon (rename mode)
+                        Image {
+                            anchors.centerIn: parent
+                            width: 16
+                            height: 16
+                            source: Theme.isDark ? "qrc:/resources/icons/cancel.svg" : "qrc:/resources/icons/cancel-dark.svg"
+                            sourceSize.width: 32
+                            sourceSize.height: 32
+                            visible: parent.parent.isRenaming
+                        }
+
+                        // Delete icon (normal mode)
                         Item {
                             anchors.centerIn: parent
                             width: 16
                             height: 16
-                            
+                            visible: !parent.parent.isRenaming
+
                             Image {
                                 id: closedLidIcon
                                 anchors.fill: parent
@@ -561,12 +583,12 @@ Item {
                                 sourceSize.width: 32
                                 sourceSize.height: 32
                                 opacity: deleteMouseArea.containsMouse ? 0 : 1
-                                
+
                                 Behavior on opacity {
                                     NumberAnimation { duration: 150 }
                                 }
                             }
-                            
+
                             Image {
                                 id: openLidIcon
                                 anchors.fill: parent
@@ -574,24 +596,33 @@ Item {
                                 sourceSize.width: 32
                                 sourceSize.height: 32
                                 opacity: deleteMouseArea.containsMouse ? 1 : 0
-                                
+
                                 Behavior on opacity {
                                     NumberAnimation { duration: 150 }
                                 }
                             }
                         }
-                        
+
+                        MouseArea {
+                            id: cancelMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            propagateComposedEvents: false
+                            visible: parent.parent.isRenaming
+                            onClicked: root.cancelRename()
+                        }
+
                         MouseArea {
                             id: deleteMouseArea
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             propagateComposedEvents: false
+                            visible: !parent.parent.isRenaming
                             onClicked: {
-                                console.log("Delete button clicked for playlist:", model.name)
                                 deleteConfirmPopup.playlistName = model.name
                                 deleteConfirmPopup.visible = true
-                                mouse.accepted = true
                             }
                         }
                     }
