@@ -435,7 +435,12 @@ Item {
                         onVisibleChanged: {
                             if (visible) {
                                 forceActiveFocus()
-                                selectAll()
+                                // Use Qt.callLater to ensure text is fully set before selecting
+                                Qt.callLater(function() {
+                                    if (inlineRenameField.visible) {
+                                        inlineRenameField.selectAll()
+                                    }
+                                })
                             }
                         }
                     }
