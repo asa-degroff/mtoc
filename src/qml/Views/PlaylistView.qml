@@ -694,7 +694,16 @@ Item {
                 root.playlistPlayRequested(playlistContextMenu.playlistName)
             }
         }
-        
+
+        MenuItem {
+            text: "Shuffle"
+            onTriggered: {
+                // Enable shuffle mode before playing
+                MediaPlayer.shuffleEnabled = true
+                root.playlistPlayRequested(playlistContextMenu.playlistName)
+            }
+        }
+
         MenuItem {
             text: "Play Next"
             visible: !playlistContextMenu.isAllSongs  // Hide for "All Songs"

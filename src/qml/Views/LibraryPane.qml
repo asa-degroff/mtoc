@@ -2050,17 +2050,35 @@ Item {
                                             text: "Play"
                                             onTriggered: {
                                                 var globalPos = artistAlbumMouseArea.parent.mapToGlobal(artistAlbumMouseArea.width / 2, artistAlbumMouseArea.height / 2);
-                                                
+
                                                 // If shuffle is enabled, start with a random track instead of the first
                                                 var startIndex = 0;
                                                 if (MediaPlayer.shuffleEnabled && modelData.trackCount > 0) {
                                                     startIndex = Math.floor(Math.random() * modelData.trackCount);
                                                 }
-                                                
+
                                                 root.playAlbumWithQueueCheck(modelData.albumArtist, modelData.title, startIndex, globalPos.x, globalPos.y);
                                             }
                                         }
-                                        
+
+                                        StyledMenuItem {
+                                            text: "Shuffle"
+                                            onTriggered: {
+                                                var globalPos = artistAlbumMouseArea.parent.mapToGlobal(artistAlbumMouseArea.width / 2, artistAlbumMouseArea.height / 2);
+
+                                                // Enable shuffle mode
+                                                MediaPlayer.shuffleEnabled = true
+
+                                                // Start with a random track
+                                                var startIndex = 0;
+                                                if (modelData.trackCount > 0) {
+                                                    startIndex = Math.floor(Math.random() * modelData.trackCount);
+                                                }
+
+                                                root.playAlbumWithQueueCheck(modelData.albumArtist, modelData.title, startIndex, globalPos.x, globalPos.y);
+                                            }
+                                        }
+
                                         StyledMenuItem {
                                             text: "Play Next"
                                             onTriggered: {

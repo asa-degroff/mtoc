@@ -69,7 +69,7 @@ Item {
                     if (MediaPlayer && MediaPlayer.shuffleEnabled && albumData.trackCount > 0) {
                         startIndex = Math.floor(Math.random() * albumData.trackCount);
                     }
-                    
+
                     // Check if we should show the dialog
                     if (SettingsManager && MediaPlayer && SettingsManager.queueActionDefault === SettingsManager.Ask && MediaPlayer.isQueueModified) {
                         // Show dialog for "Ask every time" setting when queue is modified
@@ -98,7 +98,51 @@ Item {
                 }
             }
         }
-        
+
+        StyledMenuItem {
+            text: "Shuffle"
+            onTriggered: {
+                if (sharedAlbumContextMenu.currentAlbumData) {
+                    var albumData = sharedAlbumContextMenu.currentAlbumData
+                    // Enable shuffle mode
+                    if (MediaPlayer) {
+                        MediaPlayer.shuffleEnabled = true
+                    }
+                    // Start with a random track
+                    var startIndex = 0;
+                    if (MediaPlayer && albumData.trackCount > 0) {
+                        startIndex = Math.floor(Math.random() * albumData.trackCount);
+                    }
+
+                    // Check if we should show the dialog
+                    if (SettingsManager && MediaPlayer && SettingsManager.queueActionDefault === SettingsManager.Ask && MediaPlayer.isQueueModified) {
+                        // Show dialog for "Ask every time" setting when queue is modified
+                        queueActionDialog.albumArtist = albumData.albumArtist
+                        queueActionDialog.albumTitle = albumData.title
+                        queueActionDialog.startIndex = startIndex
+                        queueActionDialog.open()
+                    } else if (SettingsManager && MediaPlayer) {
+                        // Apply the configured action
+                        switch (SettingsManager.queueActionDefault) {
+                            case SettingsManager.Replace:
+                                MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, startIndex);
+                                break;
+                            case SettingsManager.Insert:
+                                MediaPlayer.playAlbumNext(albumData.albumArtist, albumData.title);
+                                break;
+                            case SettingsManager.Append:
+                                MediaPlayer.playAlbumLast(albumData.albumArtist, albumData.title);
+                                break;
+                            case SettingsManager.Ask:
+                                // If Ask but queue not modified, default to replace
+                                MediaPlayer.playAlbumByName(albumData.albumArtist, albumData.title, startIndex);
+                                break;
+                        }
+                    }
+                }
+            }
+        }
+
         StyledMenuItem {
             text: "Play Next"
             onTriggered: {
