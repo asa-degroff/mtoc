@@ -23,6 +23,6 @@ MenuItem {
         anchors.rightMargin: 2
         implicitHeight: 32
         radius: 4
-        color: menuItem.hovered ? Theme.hoverBackground : "transparent"
+        color: menuItem.hovered ? Theme.selectedBackgroundMediumOpacity : "transparent"
     }
 }

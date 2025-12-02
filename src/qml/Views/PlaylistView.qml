@@ -688,14 +688,14 @@ Item {
         property string playlistName: ""
         property bool isAllSongs: false
         
-        MenuItem {
+        StyledMenuItem {
             text: "Play"
             onTriggered: {
                 root.playlistPlayRequested(playlistContextMenu.playlistName)
             }
         }
 
-        MenuItem {
+        StyledMenuItem {
             text: "Shuffle"
             onTriggered: {
                 // Enable shuffle mode before playing
@@ -704,7 +704,7 @@ Item {
             }
         }
 
-        MenuItem {
+        StyledMenuItem {
             text: "Play Next"
             visible: !playlistContextMenu.isAllSongs  // Hide for "All Songs"
             height: visible ? implicitHeight : 0
@@ -713,7 +713,7 @@ Item {
             }
         }
         
-        MenuItem {
+        StyledMenuItem {
             text: "Play Last"
             visible: !playlistContextMenu.isAllSongs  // Hide for "All Songs"
             height: visible ? implicitHeight : 0
