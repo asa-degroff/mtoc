@@ -595,7 +595,8 @@ Item {
             // Wait for tab animation and playlist refresh, then select and flash
             Qt.callLater(function() {
                 if (playlistView) {
-                    playlistView.selectAndFlashPlaylist(name)
+                    // Pass true to activate title editing for the new playlist
+                    playlistView.selectAndFlashPlaylist(name, true)
                     // Also emit the selection signal to load the playlist in the right pane
                     playlistView.playlistSelected(name)
                 }

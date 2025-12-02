@@ -239,13 +239,22 @@ Item {
     }
 
     // Function to select a playlist and flash it
-    function selectAndFlashPlaylist(playlistName) {
+    // If activateEditing is true, also enter rename mode for immediate title editing
+    function selectAndFlashPlaylist(playlistName, activateEditing) {
         var playlists = PlaylistManager.playlists
         for (var i = 0; i < playlists.length; i++) {
             if (playlists[i] === playlistName) {
                 keyboardSelectedIndex = i
                 flashingPlaylistIndex = i
                 ensureKeyboardSelectedVisible()
+
+                // Activate editing mode if requested (e.g., for newly created playlists)
+                if (activateEditing) {
+                    root.renamingPlaylistIndex = i
+                    root.renamingOriginalName = playlistName
+                    root.renamingNewName = playlistName
+                }
+
                 // Start flash after a brief delay to let navigation complete
                 Qt.callLater(function() {
                     flashAnimation.start()
