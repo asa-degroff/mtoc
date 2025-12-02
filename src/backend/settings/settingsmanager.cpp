@@ -95,6 +95,15 @@ void SettingsManager::setShuffleEnabled(bool enabled)
     }
 }
 
+void SettingsManager::setAutoDisableShuffle(bool enabled)
+{
+    if (m_autoDisableShuffle != enabled) {
+        m_autoDisableShuffle = enabled;
+        emit autoDisableShuffleChanged(enabled);
+        saveSettings();
+    }
+}
+
 void SettingsManager::setLibraryActiveTab(int tab)
 {
     if (m_libraryActiveTab != tab) {
@@ -399,6 +408,7 @@ void SettingsManager::loadSettings()
     m_restorePlaybackPosition = m_settings.value("restorePosition", true).toBool();
     m_repeatEnabled = m_settings.value("repeatEnabled", false).toBool();
     m_shuffleEnabled = m_settings.value("shuffleEnabled", false).toBool();
+    m_autoDisableShuffle = m_settings.value("autoDisableShuffle", false).toBool();
     m_settings.endGroup();
     
     m_settings.beginGroup("ReplayGain");
@@ -470,6 +480,7 @@ void SettingsManager::saveSettings()
     m_settings.setValue("restorePosition", m_restorePlaybackPosition);
     m_settings.setValue("repeatEnabled", m_repeatEnabled);
     m_settings.setValue("shuffleEnabled", m_shuffleEnabled);
+    m_settings.setValue("autoDisableShuffle", m_autoDisableShuffle);
     m_settings.endGroup();
     
     m_settings.beginGroup("ReplayGain");

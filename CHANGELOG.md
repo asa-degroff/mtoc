@@ -5,6 +5,7 @@
 - New context menu option to play an entire artist discography
 - Shuffle option in album, artist, and playlist context menu
 - Creating a new playlist now reveals it in the list and enables immediate renaming
+- New option to auto-disable shuffle after queue replacement
 
 # 2.4.2
 ### Split artist navigation links, fix for external-only album art

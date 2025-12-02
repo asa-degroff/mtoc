@@ -292,15 +292,19 @@ void MediaPlayer::setShuffleEnabled(bool enabled)
 {
     if (m_shuffleEnabled != enabled) {
         m_shuffleEnabled = enabled;
-        
+
         if (enabled) {
             generateShuffleOrder();
+            // Mark that shuffle was just enabled - used by auto-disable feature
+            // to avoid disabling shuffle immediately after user selects "Shuffle" from context menu
+            m_shuffleJustEnabled = true;
         } else {
             // Clear shuffle state
             m_shuffleOrder.clear();
             m_shuffleIndex = -1;
+            m_shuffleJustEnabled = false;
         }
-        
+
         emit shuffleEnabledChanged(enabled);
         emit playbackQueueChanged(); // Update hasNext status
         saveState();
@@ -1324,7 +1328,18 @@ void MediaPlayer::undoClearQueue()
 
 void MediaPlayer::playAlbumByName(const QString& artist, const QString& title, int startIndex)
 {
-    qDebug() << "MediaPlayer::playAlbumByName called with artist:" << artist << "title:" << title << "startIndex:" << startIndex;
+    // Check if shuffle was just enabled (e.g., user selected "Shuffle" from context menu)
+    // If so, don't auto-disable it after this queue replacement
+    bool shuffleJustEnabled = m_shuffleJustEnabled;
+    m_shuffleJustEnabled = false;  // Clear the flag
+
+    // Auto-disable shuffle BEFORE building queue if setting is enabled
+    // This ensures we start from track 0 (not a random track) when shuffle is auto-disabled
+    // Note: QML may have passed a random startIndex, so we reset it to 0 when auto-disabling
+    if (m_settingsManager && m_settingsManager->autoDisableShuffle() && m_shuffleEnabled && !shuffleJustEnabled) {
+        setShuffleEnabled(false);
+        startIndex = 0;  // Reset to first track since we're disabling shuffle
+    }
 
     if (!m_libraryManager) {
         qWarning() << "LibraryManager not set on MediaPlayer";
@@ -1416,7 +1431,18 @@ void MediaPlayer::playAlbumByName(const QString& artist, const QString& title, i
 void MediaPlayer::playPlaylist(const QString& playlistName, int startIndex)
 {
     qDebug() << "MediaPlayer::playPlaylist called with playlist:" << playlistName << "startIndex:" << startIndex;
-    
+
+    // Check if shuffle was just enabled (e.g., user selected "Shuffle" from context menu)
+    bool shuffleJustEnabled = m_shuffleJustEnabled;
+    m_shuffleJustEnabled = false;  // Clear the flag
+
+    // Auto-disable shuffle BEFORE building queue if setting is enabled
+    // This ensures we start from track 0 (not a random track) when shuffle is auto-disabled
+    if (m_settingsManager && m_settingsManager->autoDisableShuffle() && m_shuffleEnabled && !shuffleJustEnabled) {
+        setShuffleEnabled(false);
+        startIndex = 0;  // Reset to first track since we're disabling shuffle
+    }
+
     // Clear any restoration state to prevent old positions from being applied
     clearRestorationState();
     clearSavedPosition();
@@ -3014,7 +3040,17 @@ void MediaPlayer::playVirtualPlaylist()
         qWarning() << "[MediaPlayer::playVirtualPlaylist] No virtual playlist loaded or empty";
         return;
     }
-    
+
+    // Check if shuffle was just enabled (e.g., user selected "Shuffle" from context menu)
+    bool shuffleJustEnabled = m_shuffleJustEnabled;
+    m_shuffleJustEnabled = false;  // Clear the flag
+
+    // Auto-disable shuffle BEFORE determining first track if setting is enabled
+    // This ensures we start from track 0 (not a random track) when shuffle is auto-disabled
+    if (m_settingsManager && m_settingsManager->autoDisableShuffle() && m_shuffleEnabled && !shuffleJustEnabled) {
+        setShuffleEnabled(false);
+    }
+
     int firstTrack = 0;
     if (m_shuffleEnabled) {
         // With shuffle enabled, play the first track in shuffle order
@@ -3024,13 +3060,13 @@ void MediaPlayer::playVirtualPlaylist()
     } else {
         qDebug() << "[MediaPlayer::playVirtualPlaylist] Starting sequential playback";
     }
-    
+
     // Update current index and play
     m_virtualCurrentIndex = firstTrack;
-    
+
     // Preload tracks around the starting position
     preloadVirtualTracks(firstTrack);
-    
+
     // Try to get or create the track - this will trigger loading if needed
     Mtoc::Track* track = getOrCreateTrackFromVirtual(firstTrack);
     if (track) {
@@ -3041,12 +3077,12 @@ void MediaPlayer::playVirtualPlaylist()
         // Track loading failed or is pending
         qDebug() << "[MediaPlayer::playVirtualPlaylist] Track not loaded yet at index" << firstTrack << ", waiting for load";
         m_waitingForVirtualTrack = true;
-        
+
         // Disconnect any existing connection to prevent leaks
         if (m_virtualTrackLoadConnection) {
             disconnect(m_virtualTrackLoadConnection);
         }
-        
+
         // Set up a connection to retry when tracks are loaded
         m_virtualTrackLoadConnection = connect(m_virtualPlaylist, &Mtoc::VirtualPlaylist::rangeLoaded, this,
                 [this, firstTrack](int startIdx, int endIdx) {
@@ -3054,7 +3090,7 @@ void MediaPlayer::playVirtualPlaylist()
                         // Disconnect to avoid multiple attempts
                         disconnect(m_virtualTrackLoadConnection);
                         m_virtualTrackLoadConnection = QMetaObject::Connection();
-                        
+
                         // Try again now that the track should be loaded
                         Mtoc::Track* track = getOrCreateTrackFromVirtual(firstTrack);
                         if (track) {
@@ -3067,7 +3103,7 @@ void MediaPlayer::playVirtualPlaylist()
                         }
                     }
                 }, Qt::QueuedConnection);
-        
+
         // Ensure the track gets loaded
         m_virtualPlaylist->ensureLoaded(firstTrack);
     }

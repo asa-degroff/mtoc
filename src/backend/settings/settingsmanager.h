@@ -15,6 +15,7 @@ class SettingsManager : public QObject
     Q_PROPERTY(bool restorePlaybackPosition READ restorePlaybackPosition WRITE setRestorePlaybackPosition NOTIFY restorePlaybackPositionChanged)
     Q_PROPERTY(bool repeatEnabled READ repeatEnabled WRITE setRepeatEnabled NOTIFY repeatEnabledChanged)
     Q_PROPERTY(bool shuffleEnabled READ shuffleEnabled WRITE setShuffleEnabled NOTIFY shuffleEnabledChanged)
+    Q_PROPERTY(bool autoDisableShuffle READ autoDisableShuffle WRITE setAutoDisableShuffle NOTIFY autoDisableShuffleChanged)
     Q_PROPERTY(int libraryActiveTab READ libraryActiveTab WRITE setLibraryActiveTab NOTIFY libraryActiveTabChanged)
     Q_PROPERTY(QString lastSelectedAlbumId READ lastSelectedAlbumId WRITE setLastSelectedAlbumId NOTIFY lastSelectedAlbumIdChanged)
     Q_PROPERTY(QString lastSelectedPlaylistName READ lastSelectedPlaylistName WRITE setLastSelectedPlaylistName NOTIFY lastSelectedPlaylistNameChanged)
@@ -94,6 +95,7 @@ public:
     bool restorePlaybackPosition() const { return m_restorePlaybackPosition; }
     bool repeatEnabled() const { return m_repeatEnabled; }
     bool shuffleEnabled() const { return m_shuffleEnabled; }
+    bool autoDisableShuffle() const { return m_autoDisableShuffle; }
     int libraryActiveTab() const { return m_libraryActiveTab; }
     QString lastSelectedAlbumId() const { return m_lastSelectedAlbumId; }
     QString lastSelectedPlaylistName() const { return m_lastSelectedPlaylistName; }
@@ -133,6 +135,7 @@ public:
     void setRestorePlaybackPosition(bool restore);
     void setRepeatEnabled(bool enabled);
     void setShuffleEnabled(bool enabled);
+    void setAutoDisableShuffle(bool enabled);
     void setLibraryActiveTab(int tab);
     void setLastSelectedAlbumId(const QString& albumId);
     void setLastSelectedPlaylistName(const QString& playlistName);
@@ -173,6 +176,7 @@ signals:
     void restorePlaybackPositionChanged(bool restore);
     void repeatEnabledChanged(bool enabled);
     void shuffleEnabledChanged(bool enabled);
+    void autoDisableShuffleChanged(bool enabled);
     void libraryActiveTabChanged(int tab);
     void lastSelectedAlbumIdChanged(const QString& albumId);
     void lastSelectedPlaylistNameChanged(const QString& playlistName);
@@ -225,6 +229,7 @@ private:
     bool m_restorePlaybackPosition;
     bool m_repeatEnabled;
     bool m_shuffleEnabled;
+    bool m_autoDisableShuffle;
     int m_libraryActiveTab;
     QString m_lastSelectedAlbumId;
     QString m_lastSelectedPlaylistName;
