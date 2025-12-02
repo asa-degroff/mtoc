@@ -602,6 +602,17 @@ Item {
                 }
             })
         }
+        function onPlaylistRenamed(oldName, newName) {
+            // Sync the right pane title if the renamed playlist is currently selected
+            if (root.selectedAlbum && root.selectedAlbum.isPlaylist && root.selectedAlbum.title === oldName) {
+                root.selectedAlbum.title = newName
+                rightPane.albumTitleText = "Playlist - " + newName
+                // Also update editing state if in edit mode
+                if (root.playlistEditMode) {
+                    root.editingPlaylistName = newName
+                }
+            }
+        }
     }
 
     // Function to build artist name to index mapping for O(1) lookups

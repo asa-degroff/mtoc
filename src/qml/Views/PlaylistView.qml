@@ -19,6 +19,7 @@ Item {
     property int renamingPlaylistIndex: -1
     property string renamingOriginalName: ""
     property string renamingNewName: ""
+    property bool suppressAddAnimation: false  // Suppress slide-in animation during rename
 
     // Internal ListModel for animated updates
     ListModel {
@@ -81,6 +82,22 @@ Item {
         target: PlaylistManager
         function onPlaylistsChanged() {
             syncPlaylistModel()
+        }
+        function onPlaylistRenamed(oldName, newName) {
+            // Suppress the add animation during rename (applies to all rename sources)
+            root.suppressAddAnimation = true
+            Qt.callLater(function() {
+                root.suppressAddAnimation = false
+            })
+
+            // Update keyboard selection to track the renamed playlist
+            var playlists = PlaylistManager.playlists
+            for (var i = 0; i < playlists.length; i++) {
+                if (playlists[i] === newName) {
+                    root.keyboardSelectedIndex = i
+                    break
+                }
+            }
         }
     }
 
@@ -312,6 +329,7 @@ Item {
 
         // Animation for newly added items (slides in from top)
         add: Transition {
+            enabled: !root.suppressAddAnimation
             NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200 }
             NumberAnimation { property: "y"; from: -60; duration: 250; easing.type: Easing.OutQuad }
         }
