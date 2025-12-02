@@ -1668,32 +1668,86 @@ Item {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                
-                                onClicked: {
-                                    // Ensure the library pane has focus for keyboard navigation
-                                    root.forceActiveFocus();
-                                    
-                                    // Update navigation state to artist mode
-                                    root.navigationMode = "artist";
-                                    root.selectedArtistIndex = index;
-                                    root.selectedArtistName = artistData.name;
-                                    
-                                    // Toggle expansion state
-                                    var currentState = root.expandedArtists[artistData.name] || false;
-                                    var newExpandedState = !currentState;
-                                    
-                                    // Update state synchronously
-                                    var updatedExpanded = Object.assign({}, root.expandedArtists);
-                                    if (newExpandedState) {
-                                        updatedExpanded[artistData.name] = true;
-                                        root.cancelArtistCleanup(artistData.name);
-                                    } else {
-                                        delete updatedExpanded[artistData.name];
-                                        root.scheduleArtistCleanup(artistData.name);
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+                                onClicked: function(mouse) {
+                                    if (mouse.button === Qt.LeftButton) {
+                                        // Ensure the library pane has focus for keyboard navigation
+                                        root.forceActiveFocus();
+
+                                        // Update navigation state to artist mode
+                                        root.navigationMode = "artist";
+                                        root.selectedArtistIndex = index;
+                                        root.selectedArtistName = artistData.name;
+
+                                        // Toggle expansion state
+                                        var currentState = root.expandedArtists[artistData.name] || false;
+                                        var newExpandedState = !currentState;
+
+                                        // Update state synchronously
+                                        var updatedExpanded = Object.assign({}, root.expandedArtists);
+                                        if (newExpandedState) {
+                                            updatedExpanded[artistData.name] = true;
+                                            root.cancelArtistCleanup(artistData.name);
+                                        } else {
+                                            delete updatedExpanded[artistData.name];
+                                            root.scheduleArtistCleanup(artistData.name);
+                                        }
+                                        root.expandedArtists = updatedExpanded;
+
+                                        artistsListView.currentIndex = index; // Optional: select on expand
+                                    } else if (mouse.button === Qt.RightButton) {
+                                        artistContextMenu.popup();
                                     }
-                                    root.expandedArtists = updatedExpanded;
-                                    
-                                    artistsListView.currentIndex = index; // Optional: select on expand
+                                }
+                            }
+
+                            StyledMenu {
+                                id: artistContextMenu
+
+                                StyledMenuItem {
+                                    text: "Play All"
+                                    onTriggered: {
+                                        var albums = LibraryManager.getAlbumsForArtist(artistData.name);
+                                        if (albums.length > 0) {
+                                            // Play the first album, then queue the rest
+                                            var firstAlbum = albums[0];
+                                            var startIndex = 0;
+                                            if (MediaPlayer.shuffleEnabled && firstAlbum.trackCount > 0) {
+                                                startIndex = Math.floor(Math.random() * firstAlbum.trackCount);
+                                            }
+                                            MediaPlayer.playAlbumByName(firstAlbum.albumArtist, firstAlbum.title, startIndex);
+
+                                            // Add remaining albums to the queue
+                                            for (var i = 1; i < albums.length; i++) {
+                                                MediaPlayer.playAlbumLast(albums[i].albumArtist, albums[i].title);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                StyledMenuItem {
+                                    text: "Shuffle All"
+                                    onTriggered: {
+                                        // Enable shuffle mode
+                                        MediaPlayer.shuffleEnabled = true;
+
+                                        var albums = LibraryManager.getAlbumsForArtist(artistData.name);
+                                        if (albums.length > 0) {
+                                            // Play the first album with a random start, then queue the rest
+                                            var firstAlbum = albums[0];
+                                            var startIndex = 0;
+                                            if (firstAlbum.trackCount > 0) {
+                                                startIndex = Math.floor(Math.random() * firstAlbum.trackCount);
+                                            }
+                                            MediaPlayer.playAlbumByName(firstAlbum.albumArtist, firstAlbum.title, startIndex);
+
+                                            // Add remaining albums to the queue
+                                            for (var i = 1; i < albums.length; i++) {
+                                                MediaPlayer.playAlbumLast(albums[i].albumArtist, albums[i].title);
+                                            }
+                                        }
+                                    }
                                 }
                             }
                             
