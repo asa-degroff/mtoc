@@ -386,7 +386,11 @@ Item {
                     
                     Text {
                         anchors.centerIn: parent
-                        text: PlaylistManager.isSpecialPlaylist(model.name) ? "♫" : "♪"
+                        text: {
+                            if (model.name === "All Songs") return "♫"
+                            if (model.name === "Favorites") return "♥"
+                            return "♪"
+                        }
                         font.pixelSize: 24
                         color: PlaylistManager.isSpecialPlaylist(model.name) ? Theme.specialItemColor : Theme.tertiaryText
                     }

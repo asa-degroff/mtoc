@@ -27,6 +27,7 @@
 #include "albumartmanager.h"
 #include "../playlist/VirtualPlaylist.h"
 #include "../playlist/VirtualPlaylistModel.h"
+#include "favoritesmanager.h"
 
 namespace Mtoc {
 
@@ -50,6 +51,7 @@ class LibraryManager : public QObject
     Q_PROPERTY(QString rebuildProgressText READ rebuildProgressText NOTIFY rebuildProgressTextChanged)
     Q_PROPERTY(bool autoRefreshOnStartup READ autoRefreshOnStartup WRITE setAutoRefreshOnStartup NOTIFY autoRefreshOnStartupChanged)
     Q_PROPERTY(bool watchFileChanges READ watchFileChanges WRITE setWatchFileChanges NOTIFY watchFileChangesChanged)
+    Q_PROPERTY(int favoriteCount READ favoriteCount NOTIFY favoriteCountChanged)
 
 public:
     explicit LibraryManager(QObject *parent = nullptr);
@@ -73,6 +75,7 @@ public:
     QString rebuildProgressText() const;
     bool autoRefreshOnStartup() const;
     bool watchFileChanges() const;
+    int favoriteCount() const;
 
     // Property setters
     void setMusicFolders(const QStringList &folders);
@@ -116,7 +119,11 @@ public:
     
     // Virtual playlist support
     Q_INVOKABLE VirtualPlaylistModel* getAllSongsPlaylist();
+    Q_INVOKABLE VirtualPlaylistModel* getFavoritesPlaylist();
     Q_INVOKABLE bool isTrackInLibrary(const QString &filePath) const;
+
+    // Favorites support
+    FavoritesManager* favoritesManager() const { return m_favoritesManager; }
 
     // Artist parsing utility
     Q_INVOKABLE QVariantList parseAndMatchTrackArtists(const QString &trackArtist, const QStringList &albumArtists) const;
@@ -159,6 +166,7 @@ signals:
     void watchFileChangesChanged();
     void trackLyricsUpdated(QString filePath, QString lyrics);  // Emitted when track lyrics are updated
     void aboutToInvalidateLibrary();  // Emitted BEFORE clearing virtual playlists during library updates
+    void favoriteCountChanged();
 
 private slots:
     void onScanFinished();
@@ -211,6 +219,11 @@ private:
     // Virtual playlist support
     VirtualPlaylist* m_allSongsPlaylist = nullptr;
     VirtualPlaylistModel* m_allSongsPlaylistModel = nullptr;
+    VirtualPlaylist* m_favoritesPlaylist = nullptr;
+    VirtualPlaylistModel* m_favoritesPlaylistModel = nullptr;
+
+    // Favorites manager
+    FavoritesManager* m_favoritesManager = nullptr;
     
     // Models for UI
     TrackModel *m_allTracksModel;

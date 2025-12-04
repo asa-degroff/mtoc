@@ -52,6 +52,8 @@ set(PROJECT_SOURCES
         src/backend/library/albummodel.cpp
         src/backend/library/trackmodel.h
         src/backend/library/trackmodel.cpp
+        src/backend/library/favoritesmanager.h
+        src/backend/library/favoritesmanager.cpp
         src/backend/database/databasemanager.h
         src/backend/database/databasemanager.cpp
         src/backend/playback/audioengine.h

@@ -2,6 +2,7 @@
 #include "backend/library/track.h"
 #include "backend/library/album.h"
 #include "backend/library/librarymanager.h"
+#include "backend/library/favoritesmanager.h"
 #include "backend/settings/settingsmanager.h"
 #include "backend/database/databasemanager.h"
 #include "backend/playlist/VirtualPlaylistModel.h"
@@ -108,6 +109,19 @@ void MediaPlayer::setLibraryManager(Mtoc::LibraryManager* manager)
                 emit currentTrackLyricsChanged();
             }
         });
+
+        // Listen for favorite status changes
+        // When a track's favorite status changes, update the current track if needed
+        if (m_libraryManager->favoritesManager()) {
+            connect(m_libraryManager->favoritesManager(), &Mtoc::FavoritesManager::favoriteChanged,
+                    this, [this](int trackId, bool isFavorite) {
+                // Check if the changed track is the currently playing track
+                if (m_currentTrack && m_currentTrack->id() == trackId) {
+                    qDebug() << "MediaPlayer: Favorite status changed for current track, updating to:" << isFavorite;
+                    m_currentTrack->setIsFavorite(isFavorite);
+                }
+            });
+        }
 
         // Listen for library invalidation signal (before VirtualPlaylist is cleared)
         // This prevents crashes when library updates while playing from VirtualPlaylist

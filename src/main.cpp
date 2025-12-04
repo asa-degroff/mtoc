@@ -27,6 +27,7 @@
 #include "backend/system/mprismanager.h"
 #include "backend/settings/settingsmanager.h"
 #include "backend/playlist/playlistmanager.h"
+#include "backend/library/favoritesmanager.h"
 
 // Message handler to show only QML console.log messages
 void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
@@ -221,7 +222,12 @@ int main(int argc, char *argv[])
     qDebug() << "Main: Registering LibraryManager with QML...";
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "LibraryManager", libraryManager);
     qDebug() << "Main: LibraryManager registered";
-    
+
+    // Register FavoritesManager singleton (owned by LibraryManager)
+    qDebug() << "Main: Registering FavoritesManager...";
+    qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "FavoritesManager", libraryManager->favoritesManager());
+    qDebug() << "Main: FavoritesManager registered";
+
     // MetadataExtractor might not need to be a singleton since it's used by LibraryManager
     Mtoc::MetadataExtractor *metadataExtractor = new Mtoc::MetadataExtractor(&engine);
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MetadataExtractor", metadataExtractor);

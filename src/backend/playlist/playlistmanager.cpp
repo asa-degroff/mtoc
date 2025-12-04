@@ -27,7 +27,7 @@ PlaylistManager::PlaylistManager(QObject *parent)
     : QObject(parent)
 {
     // Initialize special playlists
-    m_specialPlaylists << "All Songs";
+    m_specialPlaylists << "All Songs" << "Favorites";
 }
 
 PlaylistManager::~PlaylistManager()
@@ -723,7 +723,10 @@ int PlaylistManager::getPlaylistTrackCount(const QString& name)
     if (name == "All Songs" && m_libraryManager) {
         return m_libraryManager->trackCount();
     }
-    
+    if (name == "Favorites" && m_libraryManager) {
+        return m_libraryManager->favoriteCount();
+    }
+
     QVariantList tracks = loadPlaylist(name);
     qDebug() << "PlaylistManager: Track count for playlist" << name << ":" << tracks.size();
     return tracks.size();
@@ -737,6 +740,13 @@ int PlaylistManager::getPlaylistDuration(const QString& name)
         auto db = m_libraryManager->databaseManager();
         if (db) {
             return db->getTotalDuration();
+        }
+    }
+    if (name == "Favorites" && m_libraryManager) {
+        // Get favorites total duration from database
+        auto db = m_libraryManager->databaseManager();
+        if (db) {
+            return db->getFavoritesTotalDuration();
         }
     }
     

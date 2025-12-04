@@ -12,6 +12,7 @@ namespace Mtoc {
 class Track : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(int id READ id WRITE setId NOTIFY idChanged)
     Q_PROPERTY(QString title READ title WRITE setTitle NOTIFY titleChanged)
     Q_PROPERTY(QString artist READ artist WRITE setArtist NOTIFY artistChanged)
     Q_PROPERTY(QString albumArtist READ albumArtist WRITE setAlbumArtist NOTIFY albumArtistChanged)
@@ -25,12 +26,14 @@ class Track : public QObject
     Q_PROPERTY(QUrl fileUrl READ fileUrl WRITE setFileUrl NOTIFY fileUrlChanged)
     Q_PROPERTY(QString filePath READ filePath NOTIFY filePathChanged)
     Q_PROPERTY(QString lyrics READ lyrics WRITE setLyrics NOTIFY lyricsChanged)
+    Q_PROPERTY(bool isFavorite READ isFavorite WRITE setIsFavorite NOTIFY isFavoriteChanged)
 
 public:
     explicit Track(QObject *parent = nullptr);
     explicit Track(const QUrl &fileUrl, QObject *parent = nullptr);
     
     // Property getters
+    int id() const;
     QString title() const;
     QString artist() const;
     QString albumArtist() const;
@@ -44,8 +47,10 @@ public:
     QUrl fileUrl() const;
     QString filePath() const;
     QString lyrics() const;
+    bool isFavorite() const;
     
     // Property setters
+    void setId(int id);
     void setTitle(const QString &title);
     void setArtist(const QString &artist);
     void setAlbumArtist(const QString &albumArtist);
@@ -57,6 +62,7 @@ public:
     void setDuration(int duration);
     void setFileUrl(const QUrl &url);
     void setLyrics(const QString &lyrics);
+    void setIsFavorite(bool favorite);
     
     // Additional methods
     Q_INVOKABLE QString formattedDuration() const; // Returns MM:SS format
@@ -66,6 +72,7 @@ public:
     static Track* fromMetadata(const QVariantMap &metadata, QObject *parent = nullptr);
     
 signals:
+    void idChanged();
     void titleChanged();
     void artistChanged();
     void albumArtistChanged();
@@ -78,8 +85,10 @@ signals:
     void fileUrlChanged();
     void filePathChanged();
     void lyricsChanged();
+    void isFavoriteChanged();
     
 private:
+    int m_id = 0;
     QString m_title;
     QString m_artist;
     QString m_albumArtist;
@@ -91,6 +100,7 @@ private:
     int m_duration = 0; // in seconds
     QUrl m_fileUrl;
     QString m_lyrics;
+    bool m_isFavorite = false;
 
     // Cache for parsed album artists
     mutable QStringList m_cachedAlbumArtists;

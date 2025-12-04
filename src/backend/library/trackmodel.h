@@ -27,7 +27,9 @@ public:
         DurationFormattedRole,
         FileUrlRole,
         FilePathRole,
-        TrackObjectRole // For accessing the full Track object
+        TrackObjectRole, // For accessing the full Track object
+        IdRole,
+        IsFavoriteRole
     };
     Q_ENUM(TrackRoles)
 

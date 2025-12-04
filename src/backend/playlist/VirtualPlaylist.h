@@ -24,6 +24,8 @@ public:
     // Configuration
     void setBufferSize(int size) { m_bufferSize = size; }
     int bufferSize() const { return m_bufferSize; }
+    void setFavoritesOnly(bool favoritesOnly) { m_favoritesOnly = favoritesOnly; }
+    bool isFavoritesOnly() const { return m_favoritesOnly; }
     
     // Playlist operations
     void loadAllTracks();
@@ -82,6 +84,7 @@ private:
     // Buffer configuration
     int m_bufferSize = 50;  // Number of tracks to load at once
     int m_preloadRadius = 10; // Number of tracks to preload around current
+    bool m_favoritesOnly = false;  // If true, only load favorite tracks
     
     // Loaded ranges tracking
     struct LoadedRange {

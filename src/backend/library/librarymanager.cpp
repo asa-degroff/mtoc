@@ -134,6 +134,11 @@ LibraryManager::LibraryManager(QObject *parent)
     // Setup file watcher
     setupFileWatcher();
 
+    // Initialize favorites manager
+    m_favoritesManager = new FavoritesManager(m_databaseManager, this);
+    connect(m_favoritesManager, &FavoritesManager::countChanged,
+            this, &LibraryManager::favoriteCountChanged);
+
     // Perform auto-refresh if enabled
     if (m_autoRefreshOnStartup && !m_musicFolders.isEmpty()) {
         qDebug() << "Auto-refresh on startup enabled, scheduling refresh";
@@ -1052,6 +1057,22 @@ void LibraryManager::onScanFinished()
         m_allSongsPlaylist->clear();
         // Reload tracks asynchronously with updated library data
         m_allSongsPlaylist->loadAllTracks();
+    }
+
+    // Clear and reload favorites playlist if it exists
+    if (m_favoritesPlaylist) {
+        qDebug() << "Clearing FavoritesPlaylist to release old track data";
+        m_favoritesPlaylist->clear();
+    }
+
+    // Restore favorites from backup database after scan
+    if (m_favoritesManager) {
+        qDebug() << "Restoring favorites from backup after scan";
+        m_favoritesManager->restoreFromBackup();
+        // Reload favorites playlist with restored data
+        if (m_favoritesPlaylist) {
+            m_favoritesPlaylist->loadAllTracks();
+        }
     }
 
     // Clear track cache to release stale Track objects
@@ -2608,12 +2629,35 @@ VirtualPlaylistModel* LibraryManager::getAllSongsPlaylist()
         m_allSongsPlaylist = new VirtualPlaylist(m_databaseManager, this);
         m_allSongsPlaylistModel = new VirtualPlaylistModel(this);
         m_allSongsPlaylistModel->setVirtualPlaylist(m_allSongsPlaylist);
-        
+
         // Start loading tracks asynchronously
         m_allSongsPlaylist->loadAllTracks();
     }
-    
+
     return m_allSongsPlaylistModel;
+}
+
+VirtualPlaylistModel* LibraryManager::getFavoritesPlaylist()
+{
+    if (!m_favoritesPlaylistModel) {
+        // Create favorites playlist on first access
+        // Note: VirtualPlaylist needs to be extended to support favorites-only mode
+        // For now, we use a custom query approach
+        m_favoritesPlaylist = new VirtualPlaylist(m_databaseManager, this);
+        m_favoritesPlaylist->setFavoritesOnly(true);  // Enable favorites-only mode
+        m_favoritesPlaylistModel = new VirtualPlaylistModel(this);
+        m_favoritesPlaylistModel->setVirtualPlaylist(m_favoritesPlaylist);
+
+        // Start loading favorite tracks asynchronously
+        m_favoritesPlaylist->loadAllTracks();
+    }
+
+    return m_favoritesPlaylistModel;
+}
+
+int LibraryManager::favoriteCount() const
+{
+    return m_databaseManager->getFavoriteTrackCount();
 }
 
 bool LibraryManager::isTrackInLibrary(const QString &filePath) const
