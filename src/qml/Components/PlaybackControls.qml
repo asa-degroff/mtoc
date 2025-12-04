@@ -269,7 +269,7 @@ Item {
                     addShadow: true
                     enableTint: root.isFavorite
                     tintColor: Theme.systemAccentColor
-                    tintAmount: 0.5
+                    tintAmount: 0.7
                     onClicked: root.favoriteToggled()
 
                     Behavior on x {
