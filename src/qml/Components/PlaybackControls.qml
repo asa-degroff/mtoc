@@ -50,6 +50,9 @@ Item {
         property bool isPressed: false
         property bool isHovered: false
         property bool addShadow: false
+        property bool enableTint: false
+        property color tintColor: "transparent"
+        property real tintAmount: 0.8
         signal clicked()
         
         scale: isPressed ? 0.9 : (isHovered ? 1.1 : 1.0)
@@ -69,15 +72,17 @@ Item {
             antialiasing: false
             fillMode: Image.PreserveAspectFit
             
-            // Drop shadow for better contrast in light mode
-            layer.enabled: buttonRoot.addShadow && !Theme.isDark
+            // Drop shadow for better contrast in light mode, and optional color tint
+            layer.enabled: (buttonRoot.addShadow && !Theme.isDark) || buttonRoot.enableTint
             layer.effect: MultiEffect {
-                shadowEnabled: true
+                shadowEnabled: buttonRoot.addShadow && !Theme.isDark
                 shadowHorizontalOffset: 0
                 shadowVerticalOffset: 1
                 shadowBlur: 0.3
                 shadowColor: "#000000"
                 shadowOpacity: 0.5
+                colorization: buttonRoot.enableTint ? buttonRoot.tintAmount : 0.0
+                colorizationColor: buttonRoot.tintColor
             }
         }
         
@@ -262,6 +267,9 @@ Item {
                     iconPressedSource: "qrc:/resources/icons/heart-pressed.svg"
                     opacity: root.isFavorite ? 1.0 : 0.6
                     addShadow: true
+                    enableTint: root.isFavorite
+                    tintColor: Theme.systemAccentColor
+                    tintAmount: 0.5
                     onClicked: root.favoriteToggled()
 
                     Behavior on x {
