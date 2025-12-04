@@ -347,6 +347,10 @@ Item {
         delegate: Rectangle {
             width: ListView.view.width - 12  // Account for scrollbar
             height: 60
+
+            // Property to force re-evaluation of count/duration when favorites change
+            property int _favoriteCount: LibraryManager.favoriteCount
+
             color: {
                 if (index === root.keyboardSelectedIndex) {
                     return Theme.selectedBackgroundVeryLowOpacity  // Keyboard selected
@@ -474,21 +478,25 @@ Item {
                         
                         Label {
                             text: {
+                                // Reference _favoriteCount to trigger re-evaluation when favorites change
+                                var _ = _favoriteCount
                                 var count = PlaylistManager.getPlaylistTrackCount(model.name)
                                 return count + " track" + (count !== 1 ? "s" : "")
                             }
                             color: Theme.tertiaryText
                             font.pixelSize: 11
                         }
-                        
+
                         Label {
                             text: "•"
                             color: Theme.tertiaryText
                             font.pixelSize: 11
                         }
-                        
+
                         Label {
                             text: {
+                                // Reference _favoriteCount to trigger re-evaluation when favorites change
+                                var _ = _favoriteCount
                                 var duration = PlaylistManager.getPlaylistDuration(model.name)
                                 return formatDuration(duration)
                             }

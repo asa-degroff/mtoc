@@ -2347,8 +2347,8 @@ Item {
                             }
                             
                             onPlaylistPlayRequested: function(playlistName) {
-                                var isVirtual = playlistName === "All Songs"
-                                
+                                var isVirtual = playlistName === "All Songs" || playlistName === "Favorites"
+
                                 // Calculate start index based on shuffle mode
                                 var startIndex = 0
                                 if (MediaPlayer.shuffleEnabled) {
@@ -2357,26 +2357,30 @@ Item {
                                         // For All Songs, get count from the virtual playlist
                                         var allSongsModel = LibraryManager.getAllSongsPlaylist()
                                         trackCount = allSongsModel ? allSongsModel.rowCount() : 0
+                                    } else if (isVirtual && playlistName === "Favorites") {
+                                        // For Favorites, get count from the virtual playlist
+                                        var favoritesModel = LibraryManager.getFavoritesPlaylist()
+                                        trackCount = favoritesModel ? favoritesModel.rowCount() : 0
                                     } else {
                                         // For regular playlists, get count from PlaylistManager
                                         trackCount = PlaylistManager.getPlaylistTrackCount(playlistName)
                                     }
-                                    
+
                                     if (trackCount > 0) {
                                         startIndex = Math.floor(Math.random() * trackCount)
                                     }
                                 }
-                                
+
                                 playPlaylistWithQueueCheck(playlistName, isVirtual, startIndex)
                             }
-                            
+
                             onPlaylistPlayNextRequested: function(playlistName) {
-                                var isVirtual = playlistName === "All Songs"
+                                var isVirtual = playlistName === "All Songs" || playlistName === "Favorites"
                                 playPlaylistNext(playlistName, isVirtual)
                             }
                             
                             onPlaylistPlayLastRequested: function(playlistName) {
-                                var isVirtual = playlistName === "All Songs"
+                                var isVirtual = playlistName === "All Songs" || playlistName === "Favorites"
                                 playPlaylistLast(playlistName, isVirtual)
                             }
                             
@@ -6164,6 +6168,19 @@ Item {
                 // Start playing respecting shuffle mode
                 MediaPlayer.playVirtualPlaylist()
             }
+        } else if (isVirtualPlaylist && playlistName === "Favorites") {
+            // Get the favorites virtual playlist model
+            var favoritesModel = LibraryManager.getFavoritesPlaylist()
+            // Clear queue and load virtual playlist
+            MediaPlayer.clearQueue()
+            MediaPlayer.loadVirtualPlaylist(favoritesModel)
+            // For virtual playlist, handle start index differently
+            if (startIndex !== undefined && startIndex > 0) {
+                MediaPlayer.playTrackAt(startIndex)
+            } else {
+                // Start playing respecting shuffle mode
+                MediaPlayer.playVirtualPlaylist()
+            }
         } else {
             // Play regular playlist using the new C++ method
             // If startIndex is not provided, check shuffle mode
@@ -6177,7 +6194,7 @@ Item {
                     }
                 }
             }
-            
+
             // Use the new playPlaylist method which handles queue state properly
             MediaPlayer.playPlaylist(playlistName, startIndex)
         }
@@ -6187,15 +6204,21 @@ Item {
         if (isVirtualPlaylist && playlistName === "All Songs") {
             var allSongsModel = LibraryManager.getAllSongsPlaylist()
             MediaPlayer.loadVirtualPlaylistNext(allSongsModel)
+        } else if (isVirtualPlaylist && playlistName === "Favorites") {
+            var favoritesModel = LibraryManager.getFavoritesPlaylist()
+            MediaPlayer.loadVirtualPlaylistNext(favoritesModel)
         } else {
             MediaPlayer.playPlaylistNext(playlistName)
         }
     }
-    
+
     function playPlaylistLast(playlistName, isVirtualPlaylist) {
         if (isVirtualPlaylist && playlistName === "All Songs") {
             var allSongsModel = LibraryManager.getAllSongsPlaylist()
             MediaPlayer.loadVirtualPlaylistLast(allSongsModel)
+        } else if (isVirtualPlaylist && playlistName === "Favorites") {
+            var favoritesModel = LibraryManager.getFavoritesPlaylist()
+            MediaPlayer.loadVirtualPlaylistLast(favoritesModel)
         } else {
             MediaPlayer.playPlaylistLast(playlistName)
         }
