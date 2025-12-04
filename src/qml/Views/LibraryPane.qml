@@ -565,7 +565,7 @@ Item {
             artistAlbumIndexCache = {}
             currentTrackIndexMap = {}
             currentTrackFilePathMap = {}
-            
+
             // Restore scroll position if this is the initial library load
             // Check if we haven't restored yet and have artists
             if (LibraryManager.artistModel && LibraryManager.artistModel.length > 0) {
@@ -575,8 +575,18 @@ Item {
                 }
             }
         }
+        function onFavoriteCountChanged() {
+            // If Favorites playlist is currently displayed, reload immediately
+            // Otherwise, lazy reload is already set via markNeedsReload() in C++
+            if (root.selectedAlbum &&
+                root.selectedAlbum.isVirtualPlaylist &&
+                root.selectedAlbum.title === "Favorites" &&
+                root.selectedAlbum.virtualModel) {
+                root.selectedAlbum.virtualModel.reloadPlaylist()
+            }
+        }
     }
-    
+
     // Auto-select currently playing track
     Connections {
         target: MediaPlayer
