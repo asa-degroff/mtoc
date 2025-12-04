@@ -233,6 +233,7 @@ Item {
             
             // Favorite, Lyrics and Queue button container
             Item {
+                id: rightButtonContainer
                 Layout.preferredWidth: 94
                 Layout.preferredHeight: 31
                 Layout.alignment: Qt.AlignVCenter
@@ -246,13 +247,17 @@ Item {
                 // Width for 2 buttons (when no lyrics)
                 property real twoButtonsWidth: 2 * buttonSize + buttonSpacing // 60px
 
+                // Calculate absolute start positions for both states
+                property real threeButtonStart: (width - totalButtonsWidth) / 2
+                property real twoButtonStart: (width - twoButtonsWidth) / 2
+
                 // Favorite button (leftmost)
                 IconButton {
                     id: favoriteButton
-                    width: parent.buttonSize
-                    height: parent.buttonSize
+                    width: rightButtonContainer.buttonSize
+                    height: rightButtonContainer.buttonSize
                     anchors.verticalCenter: parent.verticalCenter
-                    x: parent.hasLyrics ? (parent.width - parent.totalButtonsWidth) / 2 : (parent.width - parent.twoButtonsWidth) / 2
+                    x: rightButtonContainer.hasLyrics ? rightButtonContainer.threeButtonStart : rightButtonContainer.twoButtonStart
                     iconSource: root.isFavorite ? "qrc:/resources/icons/heart-normal.svg" : "qrc:/resources/icons/heart-outline.svg"
                     iconPressedSource: "qrc:/resources/icons/heart-pressed.svg"
                     opacity: root.isFavorite ? 1.0 : 0.6
@@ -271,29 +276,32 @@ Item {
                 // Lyrics button (middle, only visible when track has lyrics)
                 IconButton {
                     id: lyricsButton
-                    width: parent.buttonSize
-                    height: parent.buttonSize
+                    width: rightButtonContainer.buttonSize
+                    height: rightButtonContainer.buttonSize
                     anchors.verticalCenter: parent.verticalCenter
-                    x: favoriteButton.x + parent.buttonSize + parent.buttonSpacing
-                    visible: parent.hasLyrics
-                    opacity: (root.lyricsVisible ? 1.0 : 0.6) * (visible ? 1.0 : 0.0)
+                    // Absolute position: always in the middle slot
+                    x: rightButtonContainer.threeButtonStart + rightButtonContainer.buttonSize + rightButtonContainer.buttonSpacing
+                    visible: opacity > 0
+                    opacity: rightButtonContainer.hasLyrics ? (root.lyricsVisible ? 1.0 : 0.6) : 0.0
                     iconSource: "qrc:/resources/icons/lyrics-icon.svg"
                     addShadow: true
                     onClicked: root.lyricsToggled()
 
                     Behavior on opacity {
-                        NumberAnimation { duration: 200 }
+                        NumberAnimation { duration: 200; easing.type: Easing.InOutCubic }
                     }
                 }
 
                 // Queue button (rightmost)
                 IconButton {
                     id: queueButton
-                    width: parent.buttonSize
-                    height: parent.buttonSize
+                    width: rightButtonContainer.buttonSize
+                    height: rightButtonContainer.buttonSize
                     anchors.verticalCenter: parent.verticalCenter
-                    // When lyrics visible: after lyrics button; when no lyrics: directly after favorite button
-                    x: parent.hasLyrics ? (lyricsButton.x + parent.buttonSize + parent.buttonSpacing) : (favoriteButton.x + parent.buttonSize + parent.buttonSpacing)
+                    // Absolute position calculated from hasLyrics state directly
+                    x: rightButtonContainer.hasLyrics
+                        ? (rightButtonContainer.threeButtonStart + 2 * (rightButtonContainer.buttonSize + rightButtonContainer.buttonSpacing))
+                        : (rightButtonContainer.twoButtonStart + rightButtonContainer.buttonSize + rightButtonContainer.buttonSpacing)
                     iconSource: "qrc:/resources/icons/queue.svg"
                     opacity: root.queueVisible ? 1.0 : 0.6
                     addShadow: true
