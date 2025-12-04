@@ -65,7 +65,10 @@ public:
     
     // Playback support
     Q_INVOKABLE QVariantList getTracksForPlayback(int startIndex, int count) const;
-    
+
+    // Safe reload (wraps clear/load in beginResetModel/endResetModel)
+    Q_INVOKABLE void reloadPlaylist();
+
 signals:
     void countChanged();
     void loadingChanged();

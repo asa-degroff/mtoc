@@ -136,8 +136,15 @@ LibraryManager::LibraryManager(QObject *parent)
 
     // Initialize favorites manager
     m_favoritesManager = new FavoritesManager(m_databaseManager, this);
-    connect(m_favoritesManager, &FavoritesManager::countChanged,
-            this, &LibraryManager::favoriteCountChanged);
+    connect(m_favoritesManager, &FavoritesManager::countChanged, this, [this]() {
+        // Safely reload favorites playlist model if it exists
+        // Using reloadPlaylist() ensures proper beginResetModel/endResetModel
+        // to avoid segfaults when the view is actively displaying the list
+        if (m_favoritesPlaylistModel) {
+            m_favoritesPlaylistModel->reloadPlaylist();
+        }
+        emit favoriteCountChanged();
+    });
 
     // Perform auto-refresh if enabled
     if (m_autoRefreshOnStartup && !m_musicFolders.isEmpty()) {
