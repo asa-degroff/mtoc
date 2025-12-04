@@ -2245,7 +2245,7 @@ Item {
                             }
                             
                             // Default reduced opacity
-                            opacity: scrollBarMouseArea.containsMouse || artistScrollBar.pressed ? 1.0 : 0.3
+                            opacity: scrollBarMouseArea.containsMouse || artistScrollBar.hovered || artistScrollBar.pressed ? 1.0 : 0.3
                             
                             // Smooth opacity transition
                             Behavior on opacity {
@@ -2276,7 +2276,7 @@ Item {
                             anchors.right: parent.right
                             anchors.top: parent.top
                             anchors.bottom: parent.bottom
-                            width: 50  // Wide detection area for proximity
+                            width: 20  // Wide detection area for proximity
                             hoverEnabled: true
                             acceptedButtons: Qt.NoButton  // Just for hover detection
                         }
