@@ -2361,9 +2361,35 @@ bool DatabaseManager::isTrackFavorite(int trackId)
 QVariantList DatabaseManager::getFavoriteTracks()
 {
     QVariantList tracks;
-    if (!m_db.isOpen()) return tracks;
 
-    QSqlQuery query(m_db);
+    // Thread-safe database access (same pattern as getAllTracks)
+    bool isMainThread = (QThread::currentThread() == this->thread());
+    QSqlDatabase db;
+    QString connectionName;
+
+    if (isMainThread) {
+        QMutexLocker locker(&m_databaseMutex);
+        if (!m_db.isOpen()) {
+            qWarning() << "[DatabaseManager::getFavoriteTracks] Database is not open!";
+            return tracks;
+        }
+        db = m_db;
+    } else {
+        // Create a thread-specific connection for background threads
+        connectionName = QString("MtocThread_%1").arg(quintptr(QThread::currentThreadId()));
+        if (QSqlDatabase::contains(connectionName)) {
+            db = QSqlDatabase::database(connectionName);
+        } else {
+            db = createThreadConnection(connectionName);
+        }
+
+        if (!db.isOpen()) {
+            qWarning() << "[DatabaseManager::getFavoriteTracks] Failed to open thread database!";
+            return tracks;
+        }
+    }
+
+    QSqlQuery query(db);
     // Return favorite tracks ordered by when they were favorited (addition order)
     query.prepare(
         "SELECT t.id, t.file_path, t.title, a.name as artist, "

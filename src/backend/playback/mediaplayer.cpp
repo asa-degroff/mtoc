@@ -2228,7 +2228,7 @@ void MediaPlayer::saveState()
     QVariantMap virtualPlaylistInfo;
     if (m_isVirtualPlaylist && m_virtualPlaylist) {
         virtualPlaylistInfo["isVirtualPlaylist"] = true;
-        virtualPlaylistInfo["virtualPlaylistType"] = "AllSongs";
+        virtualPlaylistInfo["virtualPlaylistType"] = m_virtualPlaylistName;
         virtualPlaylistInfo["virtualTrackIndex"] = m_virtualCurrentIndex;
         virtualPlaylistInfo["virtualShuffleIndex"] = m_virtualShuffleIndex;
         virtualPlaylistInfo["shuffleEnabled"] = m_shuffleEnabled;
@@ -2376,16 +2376,23 @@ void MediaPlayer::restoreState()
     emit savedPositionChanged(m_savedPosition);
     
     try {
-        // Check if we're restoring from a virtual playlist
-        if (isVirtualPlaylist && virtualPlaylistType == "AllSongs") {
-            qDebug() << "MediaPlayer::restoreState - Restoring virtual playlist state";
-            
-            // Get the All Songs playlist
-            Mtoc::VirtualPlaylistModel* allSongsModel = m_libraryManager->getAllSongsPlaylist();
-            if (allSongsModel && allSongsModel->virtualPlaylist()) {
+        // Check if we're restoring from a virtual playlist (All Songs or Favorites)
+        if (isVirtualPlaylist && (virtualPlaylistType == "All Songs" || virtualPlaylistType == "Favorites" || virtualPlaylistType == "AllSongs")) {
+            qDebug() << "MediaPlayer::restoreState - Restoring virtual playlist state:" << virtualPlaylistType;
+
+            // Get the appropriate virtual playlist model
+            Mtoc::VirtualPlaylistModel* virtualModel = nullptr;
+            if (virtualPlaylistType == "Favorites") {
+                virtualModel = m_libraryManager->getFavoritesPlaylist();
+            } else {
+                // Default to All Songs (handles "All Songs", "AllSongs", and any legacy values)
+                virtualModel = m_libraryManager->getAllSongsPlaylist();
+            }
+
+            if (virtualModel && virtualModel->virtualPlaylist()) {
                 // Clear current state and load virtual playlist
                 clearQueue();
-                loadVirtualPlaylist(allSongsModel);
+                loadVirtualPlaylist(virtualModel);
                 
                 // Restore shuffle state if it was enabled
                 if (savedShuffleEnabled) {
@@ -2439,7 +2446,7 @@ void MediaPlayer::restoreState()
                 
                 return; // Don't continue to other restoration paths
             } else {
-                qWarning() << "MediaPlayer::restoreState - Failed to get All Songs playlist";
+                qWarning() << "MediaPlayer::restoreState - Failed to get virtual playlist:" << virtualPlaylistType;
                 // Fall through to regular restoration
             }
         }
@@ -3033,10 +3040,13 @@ void MediaPlayer::loadVirtualPlaylist(Mtoc::VirtualPlaylistModel* model)
     m_isVirtualPlaylist = true;
     m_virtualCurrentIndex = -1;
     m_virtualShuffleIndex = -1;
-    
-    // Set the virtual playlist name - for now, we know it's "All Songs"
-    // In the future, this could be passed as a parameter or stored in the model
-    m_virtualPlaylistName = "All Songs";
+
+    // Detect which virtual playlist this is by comparing with LibraryManager's models
+    if (m_libraryManager && model == m_libraryManager->getFavoritesPlaylist()) {
+        m_virtualPlaylistName = "Favorites";
+    } else {
+        m_virtualPlaylistName = "All Songs";
+    }
     emit virtualPlaylistNameChanged(m_virtualPlaylistName);
     
     // Generate shuffle order if needed
