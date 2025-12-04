@@ -69,6 +69,10 @@ public:
     // Safe reload (wraps clear/load in beginResetModel/endResetModel)
     Q_INVOKABLE void reloadPlaylist();
 
+    // Lazy reload support - mark as needing refresh without immediate reload
+    void markNeedsReload();
+    void reloadIfNeeded();
+
 signals:
     void countChanged();
     void loadingChanged();
@@ -89,6 +93,7 @@ private:
     VirtualPlaylist* m_playlist = nullptr;
     mutable int m_lastFetchIndex = 0;
     int m_fetchBatchSize = 50;
+    bool m_needsReload = false;
 };
 
 } // namespace Mtoc

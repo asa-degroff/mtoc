@@ -311,4 +311,17 @@ void VirtualPlaylistModel::reloadPlaylist()
     emit totalDurationChanged();
 }
 
+void VirtualPlaylistModel::markNeedsReload()
+{
+    m_needsReload = true;
+}
+
+void VirtualPlaylistModel::reloadIfNeeded()
+{
+    if (m_needsReload && m_playlist) {
+        m_needsReload = false;
+        reloadPlaylist();
+    }
+}
+
 } // namespace Mtoc

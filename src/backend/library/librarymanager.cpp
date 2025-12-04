@@ -137,11 +137,11 @@ LibraryManager::LibraryManager(QObject *parent)
     // Initialize favorites manager
     m_favoritesManager = new FavoritesManager(m_databaseManager, this);
     connect(m_favoritesManager, &FavoritesManager::countChanged, this, [this]() {
-        // Safely reload favorites playlist model if it exists
-        // Using reloadPlaylist() ensures proper beginResetModel/endResetModel
-        // to avoid segfaults when the view is actively displaying the list
+        // Mark favorites playlist as needing reload instead of reloading immediately
+        // This avoids crashes when the model isn't currently displayed in QML
+        // The actual reload happens when getFavoritesPlaylist() is called
         if (m_favoritesPlaylistModel) {
-            m_favoritesPlaylistModel->reloadPlaylist();
+            m_favoritesPlaylistModel->markNeedsReload();
         }
         emit favoriteCountChanged();
     });
@@ -2657,6 +2657,9 @@ VirtualPlaylistModel* LibraryManager::getFavoritesPlaylist()
 
         // Start loading favorite tracks asynchronously
         m_favoritesPlaylist->loadAllTracks();
+    } else {
+        // Reload if marked dirty (favorites changed while not displayed)
+        m_favoritesPlaylistModel->reloadIfNeeded();
     }
 
     return m_favoritesPlaylistModel;
