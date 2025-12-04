@@ -84,5 +84,8 @@
     <file>resources/icons/maximize-dark.svg</file>
     <file>resources/icons/confirm.svg</file>
     <file>resources/icons/confirm-dark.svg</file>
+    <file>resources/icons/heart-outline.svg</file>
+    <file>resources/icons/heart-normal.svg</file>
+    <file>resources/icons/heart-pressed.svg</file>
   </qresource>
 </RCC>

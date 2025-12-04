@@ -703,10 +703,12 @@ Item {
         PlaybackControls {
             Layout.fillWidth: true
             Layout.preferredHeight: 80
-            
+
             queueVisible: root.queueVisible
             lyricsVisible: root.lyricsVisible
-            
+            // TODO: Wire up isFavorite to backend when favorites feature is implemented
+            // isFavorite: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.isFavorite : false
+
             onPlayPauseClicked: MediaPlayer.togglePlayPause()
             onPreviousClicked: MediaPlayer.previous()
             onNextClicked: MediaPlayer.next()
@@ -732,6 +734,10 @@ Item {
             }
             onShuffleToggled: {
                 MediaPlayer.shuffleEnabled = !MediaPlayer.shuffleEnabled
+            }
+            onFavoriteToggled: {
+                // TODO: Implement favorites functionality
+                console.log("Favorite toggled for track:", MediaPlayer.currentTrack ? MediaPlayer.currentTrack.title : "none")
             }
         }
         
