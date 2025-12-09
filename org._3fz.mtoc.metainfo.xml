@@ -68,6 +68,21 @@
 
   <releases>
 
+    <release version="2.5" date="2025-12-09">
+      <description>
+        <p>Favorites, expanded options for playlist creation and editing, improved drag-and-drop list editing, new shuffle options</p>
+        <ul>
+          <li>Added a toggleable favorite button and dynamic favorites playlist</li>
+          <li>Albums and tracks can now be added to a new or existing playlist through the right-click context menus in the library</li>
+          <li>Drag-and-drop list reordering in the queue and playlist editor has been rewritten with auto-scroll and improved stability</li>
+          <li>New context menu option to play an entire artist discography</li>
+          <li>Shuffle option in album, artist, and playlist context menu</li>
+          <li>Creating a new playlist now reveals it in the list and enables immediate renaming</li>
+          <li>New option to auto-disable shuffle after queue replacement</li>
+        </ul>
+      </description>
+    </release>
+
     <release version="2.4.2" date="2025-11-17">
       <description>
         <p>Split artist navigation links, fix for external-only album art</p>

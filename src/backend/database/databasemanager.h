@@ -34,6 +34,14 @@ public:
     QVariantList getTracksByAlbumAndArtist(const QString& albumTitle, const QString& albumArtistName);
     QVariantList getAllTracks(int limit = -1, int offset = 0);
     int getTrackCount();
+
+    // Favorites operations
+    bool setTrackFavorite(int trackId, bool favorite);
+    bool isTrackFavorite(int trackId);
+    QVariantList getFavoriteTracks();
+    int getFavoriteTrackCount();
+    qint64 getFavoritesTotalDuration();
+    int findTrackByMetadata(const QString& artist, const QString& album, const QString& title, int trackNumber);
     
     // Album operations
     int insertOrGetAlbum(const QString& albumName, int albumArtistId, int albumYear = 0);

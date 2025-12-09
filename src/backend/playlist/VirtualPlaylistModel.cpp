@@ -292,8 +292,36 @@ void VirtualPlaylistModel::disconnectPlaylistSignals()
     if (!m_playlist) {
         return;
     }
-    
+
     disconnect(m_playlist, nullptr, this, nullptr);
+}
+
+void VirtualPlaylistModel::reloadPlaylist()
+{
+    if (!m_playlist) {
+        return;
+    }
+
+    beginResetModel();
+    m_playlist->clear();
+    m_playlist->loadAllTracks();
+    endResetModel();
+
+    emit countChanged();
+    emit totalDurationChanged();
+}
+
+void VirtualPlaylistModel::markNeedsReload()
+{
+    m_needsReload = true;
+}
+
+void VirtualPlaylistModel::reloadIfNeeded()
+{
+    if (m_needsReload && m_playlist) {
+        m_needsReload = false;
+        reloadPlaylist();
+    }
 }
 
 } // namespace Mtoc

@@ -208,6 +208,7 @@ private:
     // Repeat and shuffle
     bool m_repeatEnabled = false;
     bool m_shuffleEnabled = false;
+    bool m_shuffleJustEnabled = false;  // Track if shuffle was just enabled (for auto-disable feature)
     QList<int> m_shuffleOrder;  // Randomized indices
     int m_shuffleIndex = -1;     // Current position in shuffle order
     

@@ -565,7 +565,7 @@ Item {
             artistAlbumIndexCache = {}
             currentTrackIndexMap = {}
             currentTrackFilePathMap = {}
-            
+
             // Restore scroll position if this is the initial library load
             // Check if we haven't restored yet and have artists
             if (LibraryManager.artistModel && LibraryManager.artistModel.length > 0) {
@@ -575,8 +575,18 @@ Item {
                 }
             }
         }
+        function onFavoriteCountChanged() {
+            // If Favorites playlist is currently displayed, reload immediately
+            // Otherwise, lazy reload is already set via markNeedsReload() in C++
+            if (root.selectedAlbum &&
+                root.selectedAlbum.isVirtualPlaylist &&
+                root.selectedAlbum.title === "Favorites" &&
+                root.selectedAlbum.virtualModel) {
+                root.selectedAlbum.virtualModel.reloadPlaylist()
+            }
+        }
     }
-    
+
     // Auto-select currently playing track
     Connections {
         target: MediaPlayer
@@ -595,11 +605,23 @@ Item {
             // Wait for tab animation and playlist refresh, then select and flash
             Qt.callLater(function() {
                 if (playlistView) {
-                    playlistView.selectAndFlashPlaylist(name)
+                    // Pass true to activate title editing for the new playlist
+                    playlistView.selectAndFlashPlaylist(name, true)
                     // Also emit the selection signal to load the playlist in the right pane
                     playlistView.playlistSelected(name)
                 }
             })
+        }
+        function onPlaylistRenamed(oldName, newName) {
+            // Sync the right pane title if the renamed playlist is currently selected
+            if (root.selectedAlbum && root.selectedAlbum.isPlaylist && root.selectedAlbum.title === oldName) {
+                root.selectedAlbum.title = newName
+                rightPane.albumTitleText = "Playlist - " + newName
+                // Also update editing state if in edit mode
+                if (root.playlistEditMode) {
+                    root.editingPlaylistName = newName
+                }
+            }
         }
     }
 
@@ -1513,7 +1535,7 @@ Item {
                             spacing: 2
                             interactive: !root.isScrollBarDragging  // Disable ListView interaction during scroll bar drag
                             reuseItems: false  // Disabled to maintain consistent scroll positions
-                            cacheBuffer: 1200  // Increase cache for smoother scrolling without recycling
+                            cacheBuffer: 200  // Increase cache for smoother scrolling without recycling
                             
                             // Save scroll position when scrolling
                             onContentYChanged: {
@@ -1668,32 +1690,86 @@ Item {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                
-                                onClicked: {
-                                    // Ensure the library pane has focus for keyboard navigation
-                                    root.forceActiveFocus();
-                                    
-                                    // Update navigation state to artist mode
-                                    root.navigationMode = "artist";
-                                    root.selectedArtistIndex = index;
-                                    root.selectedArtistName = artistData.name;
-                                    
-                                    // Toggle expansion state
-                                    var currentState = root.expandedArtists[artistData.name] || false;
-                                    var newExpandedState = !currentState;
-                                    
-                                    // Update state synchronously
-                                    var updatedExpanded = Object.assign({}, root.expandedArtists);
-                                    if (newExpandedState) {
-                                        updatedExpanded[artistData.name] = true;
-                                        root.cancelArtistCleanup(artistData.name);
-                                    } else {
-                                        delete updatedExpanded[artistData.name];
-                                        root.scheduleArtistCleanup(artistData.name);
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+                                onClicked: function(mouse) {
+                                    if (mouse.button === Qt.LeftButton) {
+                                        // Ensure the library pane has focus for keyboard navigation
+                                        root.forceActiveFocus();
+
+                                        // Update navigation state to artist mode
+                                        root.navigationMode = "artist";
+                                        root.selectedArtistIndex = index;
+                                        root.selectedArtistName = artistData.name;
+
+                                        // Toggle expansion state
+                                        var currentState = root.expandedArtists[artistData.name] || false;
+                                        var newExpandedState = !currentState;
+
+                                        // Update state synchronously
+                                        var updatedExpanded = Object.assign({}, root.expandedArtists);
+                                        if (newExpandedState) {
+                                            updatedExpanded[artistData.name] = true;
+                                            root.cancelArtistCleanup(artistData.name);
+                                        } else {
+                                            delete updatedExpanded[artistData.name];
+                                            root.scheduleArtistCleanup(artistData.name);
+                                        }
+                                        root.expandedArtists = updatedExpanded;
+
+                                        artistsListView.currentIndex = index; // Optional: select on expand
+                                    } else if (mouse.button === Qt.RightButton) {
+                                        artistContextMenu.popup();
                                     }
-                                    root.expandedArtists = updatedExpanded;
-                                    
-                                    artistsListView.currentIndex = index; // Optional: select on expand
+                                }
+                            }
+
+                            StyledMenu {
+                                id: artistContextMenu
+
+                                StyledMenuItem {
+                                    text: "Play All"
+                                    onTriggered: {
+                                        var albums = LibraryManager.getAlbumsForArtist(artistData.name);
+                                        if (albums.length > 0) {
+                                            // Play the first album, then queue the rest
+                                            var firstAlbum = albums[0];
+                                            var startIndex = 0;
+                                            if (MediaPlayer.shuffleEnabled && firstAlbum.trackCount > 0) {
+                                                startIndex = Math.floor(Math.random() * firstAlbum.trackCount);
+                                            }
+                                            MediaPlayer.playAlbumByName(firstAlbum.albumArtist, firstAlbum.title, startIndex);
+
+                                            // Add remaining albums to the queue
+                                            for (var i = 1; i < albums.length; i++) {
+                                                MediaPlayer.playAlbumLast(albums[i].albumArtist, albums[i].title);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                StyledMenuItem {
+                                    text: "Shuffle All"
+                                    onTriggered: {
+                                        // Enable shuffle mode
+                                        MediaPlayer.shuffleEnabled = true;
+
+                                        var albums = LibraryManager.getAlbumsForArtist(artistData.name);
+                                        if (albums.length > 0) {
+                                            // Play the first album with a random start, then queue the rest
+                                            var firstAlbum = albums[0];
+                                            var startIndex = 0;
+                                            if (firstAlbum.trackCount > 0) {
+                                                startIndex = Math.floor(Math.random() * firstAlbum.trackCount);
+                                            }
+                                            MediaPlayer.playAlbumByName(firstAlbum.albumArtist, firstAlbum.title, startIndex);
+
+                                            // Add remaining albums to the queue
+                                            for (var i = 1; i < albums.length; i++) {
+                                                MediaPlayer.playAlbumLast(albums[i].albumArtist, albums[i].title);
+                                            }
+                                        }
+                                    }
                                 }
                             }
                             
@@ -2050,17 +2126,35 @@ Item {
                                             text: "Play"
                                             onTriggered: {
                                                 var globalPos = artistAlbumMouseArea.parent.mapToGlobal(artistAlbumMouseArea.width / 2, artistAlbumMouseArea.height / 2);
-                                                
+
                                                 // If shuffle is enabled, start with a random track instead of the first
                                                 var startIndex = 0;
                                                 if (MediaPlayer.shuffleEnabled && modelData.trackCount > 0) {
                                                     startIndex = Math.floor(Math.random() * modelData.trackCount);
                                                 }
-                                                
+
                                                 root.playAlbumWithQueueCheck(modelData.albumArtist, modelData.title, startIndex, globalPos.x, globalPos.y);
                                             }
                                         }
-                                        
+
+                                        StyledMenuItem {
+                                            text: "Shuffle"
+                                            onTriggered: {
+                                                var globalPos = artistAlbumMouseArea.parent.mapToGlobal(artistAlbumMouseArea.width / 2, artistAlbumMouseArea.height / 2);
+
+                                                // Enable shuffle mode
+                                                MediaPlayer.shuffleEnabled = true
+
+                                                // Start with a random track
+                                                var startIndex = 0;
+                                                if (modelData.trackCount > 0) {
+                                                    startIndex = Math.floor(Math.random() * modelData.trackCount);
+                                                }
+
+                                                root.playAlbumWithQueueCheck(modelData.albumArtist, modelData.title, startIndex, globalPos.x, globalPos.y);
+                                            }
+                                        }
+
                                         StyledMenuItem {
                                             text: "Play Next"
                                             onTriggered: {
@@ -2151,7 +2245,7 @@ Item {
                             }
                             
                             // Default reduced opacity
-                            opacity: scrollBarMouseArea.containsMouse || artistScrollBar.pressed ? 1.0 : 0.3
+                            opacity: scrollBarMouseArea.containsMouse || artistScrollBar.hovered || artistScrollBar.pressed ? 1.0 : 0.3
                             
                             // Smooth opacity transition
                             Behavior on opacity {
@@ -2182,7 +2276,7 @@ Item {
                             anchors.right: parent.right
                             anchors.top: parent.top
                             anchors.bottom: parent.bottom
-                            width: 50  // Wide detection area for proximity
+                            width: 20  // Wide detection area for proximity
                             hoverEnabled: true
                             acceptedButtons: Qt.NoButton  // Just for hover detection
                         }
@@ -2211,6 +2305,20 @@ Item {
                                     // For virtual playlists, we don't load all tracks immediately
                                     rightPane.currentAlbumTracks = []
                                     rightPane.albumTitleText = "All Songs - " + allSongsModel.count + " tracks"
+                                } else if (playlistName === "Favorites") {
+                                    // Get the favorites virtual playlist model
+                                    var favoritesModel = LibraryManager.getFavoritesPlaylist()
+                                    root.selectedAlbum = {
+                                        title: playlistName,
+                                        albumArtist: "Library",
+                                        hasArt: false,
+                                        isPlaylist: true,
+                                        isVirtualPlaylist: true,
+                                        virtualModel: favoritesModel
+                                    }
+                                    // For virtual playlists, we don't load all tracks immediately
+                                    rightPane.currentAlbumTracks = []
+                                    rightPane.albumTitleText = "Favorites - " + favoritesModel.count + " tracks"
                                 } else {
                                     // Load and display regular playlist tracks
                                     var tracks = PlaylistManager.loadPlaylist(playlistName)
@@ -2230,17 +2338,17 @@ Item {
                             }
                             
                             onPlaylistDoubleClicked: function(playlistName, event) {
-                                var isVirtual = playlistName === "All Songs"
+                                var isVirtual = playlistName === "All Songs" || playlistName === "Favorites"
                                 var mouseX = event ? event.x : undefined
                                 var mouseY = event ? event.y : undefined
-                                
+
                                 // Map local coordinates to window coordinates if event is provided
                                 if (event && playlistView) {
                                     var globalPos = playlistView.mapToItem(root, mouseX, mouseY)
                                     mouseX = globalPos.x
                                     mouseY = globalPos.y
                                 }
-                                
+
                                 // Calculate start index based on shuffle mode
                                 var startIndex = 0
                                 if (MediaPlayer.shuffleEnabled) {
@@ -2249,22 +2357,26 @@ Item {
                                         // For All Songs, get count from the virtual playlist
                                         var allSongsModel = LibraryManager.getAllSongsPlaylist()
                                         trackCount = allSongsModel ? allSongsModel.rowCount() : 0
+                                    } else if (isVirtual && playlistName === "Favorites") {
+                                        // For Favorites, get count from the virtual playlist
+                                        var favoritesModel = LibraryManager.getFavoritesPlaylist()
+                                        trackCount = favoritesModel ? favoritesModel.rowCount() : 0
                                     } else {
                                         // For regular playlists, get count from PlaylistManager
                                         trackCount = PlaylistManager.getPlaylistTrackCount(playlistName)
                                     }
-                                    
+
                                     if (trackCount > 0) {
                                         startIndex = Math.floor(Math.random() * trackCount)
                                     }
                                 }
-                                
+
                                 playPlaylistWithQueueCheck(playlistName, isVirtual, startIndex, mouseX, mouseY)
                             }
                             
                             onPlaylistPlayRequested: function(playlistName) {
-                                var isVirtual = playlistName === "All Songs"
-                                
+                                var isVirtual = playlistName === "All Songs" || playlistName === "Favorites"
+
                                 // Calculate start index based on shuffle mode
                                 var startIndex = 0
                                 if (MediaPlayer.shuffleEnabled) {
@@ -2273,26 +2385,30 @@ Item {
                                         // For All Songs, get count from the virtual playlist
                                         var allSongsModel = LibraryManager.getAllSongsPlaylist()
                                         trackCount = allSongsModel ? allSongsModel.rowCount() : 0
+                                    } else if (isVirtual && playlistName === "Favorites") {
+                                        // For Favorites, get count from the virtual playlist
+                                        var favoritesModel = LibraryManager.getFavoritesPlaylist()
+                                        trackCount = favoritesModel ? favoritesModel.rowCount() : 0
                                     } else {
                                         // For regular playlists, get count from PlaylistManager
                                         trackCount = PlaylistManager.getPlaylistTrackCount(playlistName)
                                     }
-                                    
+
                                     if (trackCount > 0) {
                                         startIndex = Math.floor(Math.random() * trackCount)
                                     }
                                 }
-                                
+
                                 playPlaylistWithQueueCheck(playlistName, isVirtual, startIndex)
                             }
-                            
+
                             onPlaylistPlayNextRequested: function(playlistName) {
-                                var isVirtual = playlistName === "All Songs"
+                                var isVirtual = playlistName === "All Songs" || playlistName === "Favorites"
                                 playPlaylistNext(playlistName, isVirtual)
                             }
                             
                             onPlaylistPlayLastRequested: function(playlistName) {
-                                var isVirtual = playlistName === "All Songs"
+                                var isVirtual = playlistName === "All Songs" || playlistName === "Favorites"
                                 playPlaylistLast(playlistName, isVirtual)
                             }
                             
@@ -5995,13 +6111,13 @@ Item {
     }
     
     function playPlaylistWithQueueCheck(playlistName, isVirtualPlaylist, startIndex, mouseX, mouseY) {
-        // Special handling for "All Songs" playlist
-        var isAllSongs = isVirtualPlaylist && playlistName === "All Songs"
-        
+        // Special handling for "All Songs" and "Favorites" virtual playlists
+        var isSpecialPlaylist = isVirtualPlaylist && (playlistName === "All Songs" || playlistName === "Favorites")
+
         // Check if we should show the dialog
         var shouldShowDialog = false
-        
-        if (isAllSongs) {
+
+        if (isSpecialPlaylist) {
             // For All Songs, show dialog if queue is modified AND (Ask is selected OR Play Next/Last is selected)
             shouldShowDialog = MediaPlayer.isQueueModified && 
                               (SettingsManager.queueActionDefault === SettingsManager.Ask ||
@@ -6043,8 +6159,8 @@ Item {
             // Apply the configured action
             var effectiveAction = SettingsManager.queueActionDefault
             
-            // For All Songs, if Play Next/Last is selected, fall back to Replace
-            if (isAllSongs && (effectiveAction === SettingsManager.Insert || effectiveAction === SettingsManager.Append)) {
+            // For virtual playlists, if Play Next/Last is selected, fall back to Replace
+            if (isSpecialPlaylist && (effectiveAction === SettingsManager.Insert || effectiveAction === SettingsManager.Append)) {
                 effectiveAction = SettingsManager.Replace
             }
             
@@ -6080,6 +6196,19 @@ Item {
                 // Start playing respecting shuffle mode
                 MediaPlayer.playVirtualPlaylist()
             }
+        } else if (isVirtualPlaylist && playlistName === "Favorites") {
+            // Get the favorites virtual playlist model
+            var favoritesModel = LibraryManager.getFavoritesPlaylist()
+            // Clear queue and load virtual playlist
+            MediaPlayer.clearQueue()
+            MediaPlayer.loadVirtualPlaylist(favoritesModel)
+            // For virtual playlist, handle start index differently
+            if (startIndex !== undefined && startIndex > 0) {
+                MediaPlayer.playTrackAt(startIndex)
+            } else {
+                // Start playing respecting shuffle mode
+                MediaPlayer.playVirtualPlaylist()
+            }
         } else {
             // Play regular playlist using the new C++ method
             // If startIndex is not provided, check shuffle mode
@@ -6093,7 +6222,7 @@ Item {
                     }
                 }
             }
-            
+
             // Use the new playPlaylist method which handles queue state properly
             MediaPlayer.playPlaylist(playlistName, startIndex)
         }
@@ -6103,15 +6232,21 @@ Item {
         if (isVirtualPlaylist && playlistName === "All Songs") {
             var allSongsModel = LibraryManager.getAllSongsPlaylist()
             MediaPlayer.loadVirtualPlaylistNext(allSongsModel)
+        } else if (isVirtualPlaylist && playlistName === "Favorites") {
+            var favoritesModel = LibraryManager.getFavoritesPlaylist()
+            MediaPlayer.loadVirtualPlaylistNext(favoritesModel)
         } else {
             MediaPlayer.playPlaylistNext(playlistName)
         }
     }
-    
+
     function playPlaylistLast(playlistName, isVirtualPlaylist) {
         if (isVirtualPlaylist && playlistName === "All Songs") {
             var allSongsModel = LibraryManager.getAllSongsPlaylist()
             MediaPlayer.loadVirtualPlaylistLast(allSongsModel)
+        } else if (isVirtualPlaylist && playlistName === "Favorites") {
+            var favoritesModel = LibraryManager.getFavoritesPlaylist()
+            MediaPlayer.loadVirtualPlaylistLast(favoritesModel)
         } else {
             MediaPlayer.playPlaylistLast(playlistName)
         }

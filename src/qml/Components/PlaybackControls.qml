@@ -22,11 +22,13 @@ Item {
     signal lyricsToggled()
     signal repeatToggled()
     signal shuffleToggled()
-    
+    signal favoriteToggled()
+
     property bool queueVisible: false
     property bool lyricsVisible: false
     property bool repeatEnabled: MediaPlayer.repeatEnabled
     property bool shuffleEnabled: MediaPlayer.shuffleEnabled
+    property bool isFavorite: false
     
     function formatTime(milliseconds) {
         if (isNaN(milliseconds) || milliseconds < 0) {
@@ -48,6 +50,9 @@ Item {
         property bool isPressed: false
         property bool isHovered: false
         property bool addShadow: false
+        property bool enableTint: false
+        property color tintColor: "transparent"
+        property real tintAmount: 0.8
         signal clicked()
         
         scale: isPressed ? 0.9 : (isHovered ? 1.1 : 1.0)
@@ -67,15 +72,17 @@ Item {
             antialiasing: false
             fillMode: Image.PreserveAspectFit
             
-            // Drop shadow for better contrast in light mode
-            layer.enabled: buttonRoot.addShadow && !Theme.isDark
+            // Drop shadow for better contrast in light mode, and optional color tint
+            layer.enabled: (buttonRoot.addShadow && !Theme.isDark) || buttonRoot.enableTint
             layer.effect: MultiEffect {
-                shadowEnabled: true
+                shadowEnabled: buttonRoot.addShadow && !Theme.isDark
                 shadowHorizontalOffset: 0
                 shadowVerticalOffset: 1
                 shadowBlur: 0.3
                 shadowColor: "#000000"
                 shadowOpacity: 0.5
+                colorization: buttonRoot.enableTint ? buttonRoot.tintAmount : 0.0
+                colorizationColor: buttonRoot.tintColor
             }
         }
         
@@ -104,7 +111,7 @@ Item {
             
             // Repeat/Shuffle pill container
             Rectangle {
-                Layout.preferredWidth: 75
+                Layout.preferredWidth: 94
                 Layout.preferredHeight: 31
                 Layout.alignment: Qt.AlignVCenter
                 radius: 25
@@ -229,23 +236,41 @@ Item {
             
             Item { Layout.fillWidth: true }
             
-            // Queue and Lyrics button container
+            // Favorite, Lyrics and Queue button container
             Item {
-                Layout.preferredWidth: 75
+                id: rightButtonContainer
+                Layout.preferredWidth: 94
                 Layout.preferredHeight: 31
                 Layout.alignment: Qt.AlignVCenter
 
-                // Queue button
+                // Favorite and queue are always shown, lyrics is conditional
+                // Always reserve space for 3 buttons to keep play/pause centered
+                property real buttonSpacing: 8
+                property real buttonSize: 26
+                property real totalButtonsWidth: 3 * buttonSize + 2 * buttonSpacing // 94px total
+                property bool hasLyrics: MediaPlayer.hasCurrentTrackLyrics
+                // Width for 2 buttons (when no lyrics)
+                property real twoButtonsWidth: 2 * buttonSize + buttonSpacing // 60px
+
+                // Calculate absolute start positions for both states
+                property real threeButtonStart: (width - totalButtonsWidth) / 2
+                property real twoButtonStart: (width - twoButtonsWidth) / 2
+
+                // Favorite button (leftmost)
                 IconButton {
-                    id: queueButton
-                    width: 30
-                    height: 30
+                    id: favoriteButton
+                    width: rightButtonContainer.buttonSize
+                    height: rightButtonContainer.buttonSize
                     anchors.verticalCenter: parent.verticalCenter
-                    x: MediaPlayer.hasCurrentTrackLyrics ? 0 : (parent.width - width) / 2
-                    iconSource: "qrc:/resources/icons/queue.svg"
-                    opacity: root.queueVisible ? 1.0 : 0.6
+                    x: rightButtonContainer.hasLyrics ? rightButtonContainer.threeButtonStart : rightButtonContainer.twoButtonStart
+                    iconSource: root.isFavorite ? "qrc:/resources/icons/heart-normal.svg" : "qrc:/resources/icons/heart-outline.svg"
+                    iconPressedSource: "qrc:/resources/icons/heart-pressed.svg"
+                    opacity: root.isFavorite ? 1.0 : 0.6
                     addShadow: true
-                    onClicked: root.queueToggled()
+                    enableTint: root.isFavorite
+                    tintColor: Theme.systemAccentColor
+                    tintAmount: 0.7
+                    onClicked: root.favoriteToggled()
 
                     Behavior on x {
                         NumberAnimation { duration: 200; easing.type: Easing.InOutCubic }
@@ -256,18 +281,43 @@ Item {
                     }
                 }
 
-                // Lyrics button
+                // Lyrics button (middle, only visible when track has lyrics)
                 IconButton {
                     id: lyricsButton
-                    width: 30
-                    height: 30
+                    width: rightButtonContainer.buttonSize
+                    height: rightButtonContainer.buttonSize
                     anchors.verticalCenter: parent.verticalCenter
-                    anchors.right: parent.right
-                    visible: MediaPlayer.hasCurrentTrackLyrics
-                    opacity: (root.lyricsVisible ? 1.0 : 0.6) * (visible ? 1.0 : 0.0)
+                    // Absolute position: always in the middle slot
+                    x: rightButtonContainer.threeButtonStart + rightButtonContainer.buttonSize + rightButtonContainer.buttonSpacing
+                    visible: opacity > 0
+                    opacity: rightButtonContainer.hasLyrics ? (root.lyricsVisible ? 1.0 : 0.6) : 0.0
                     iconSource: "qrc:/resources/icons/lyrics-icon.svg"
                     addShadow: true
                     onClicked: root.lyricsToggled()
+
+                    Behavior on opacity {
+                        NumberAnimation { duration: 200; easing.type: Easing.InOutCubic }
+                    }
+                }
+
+                // Queue button (rightmost)
+                IconButton {
+                    id: queueButton
+                    width: rightButtonContainer.buttonSize
+                    height: rightButtonContainer.buttonSize
+                    anchors.verticalCenter: parent.verticalCenter
+                    // Absolute position calculated from hasLyrics state directly
+                    x: rightButtonContainer.hasLyrics
+                        ? (rightButtonContainer.threeButtonStart + 2 * (rightButtonContainer.buttonSize + rightButtonContainer.buttonSpacing))
+                        : (rightButtonContainer.twoButtonStart + rightButtonContainer.buttonSize + rightButtonContainer.buttonSpacing)
+                    iconSource: "qrc:/resources/icons/queue.svg"
+                    opacity: root.queueVisible ? 1.0 : 0.6
+                    addShadow: true
+                    onClicked: root.queueToggled()
+
+                    Behavior on x {
+                        NumberAnimation { duration: 200; easing.type: Easing.InOutCubic }
+                    }
 
                     Behavior on opacity {
                         NumberAnimation { duration: 200 }

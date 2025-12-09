@@ -2,6 +2,7 @@
 #include "backend/library/track.h"
 #include "backend/library/album.h"
 #include "backend/library/librarymanager.h"
+#include "backend/library/favoritesmanager.h"
 #include "backend/settings/settingsmanager.h"
 #include "backend/database/databasemanager.h"
 #include "backend/playlist/VirtualPlaylistModel.h"
@@ -108,6 +109,19 @@ void MediaPlayer::setLibraryManager(Mtoc::LibraryManager* manager)
                 emit currentTrackLyricsChanged();
             }
         });
+
+        // Listen for favorite status changes
+        // When a track's favorite status changes, update the current track if needed
+        if (m_libraryManager->favoritesManager()) {
+            connect(m_libraryManager->favoritesManager(), &Mtoc::FavoritesManager::favoriteChanged,
+                    this, [this](int trackId, bool isFavorite) {
+                // Check if the changed track is the currently playing track
+                if (m_currentTrack && m_currentTrack->id() == trackId) {
+                    qDebug() << "MediaPlayer: Favorite status changed for current track, updating to:" << isFavorite;
+                    m_currentTrack->setIsFavorite(isFavorite);
+                }
+            });
+        }
 
         // Listen for library invalidation signal (before VirtualPlaylist is cleared)
         // This prevents crashes when library updates while playing from VirtualPlaylist
@@ -292,15 +306,19 @@ void MediaPlayer::setShuffleEnabled(bool enabled)
 {
     if (m_shuffleEnabled != enabled) {
         m_shuffleEnabled = enabled;
-        
+
         if (enabled) {
             generateShuffleOrder();
+            // Mark that shuffle was just enabled - used by auto-disable feature
+            // to avoid disabling shuffle immediately after user selects "Shuffle" from context menu
+            m_shuffleJustEnabled = true;
         } else {
             // Clear shuffle state
             m_shuffleOrder.clear();
             m_shuffleIndex = -1;
+            m_shuffleJustEnabled = false;
         }
-        
+
         emit shuffleEnabledChanged(enabled);
         emit playbackQueueChanged(); // Update hasNext status
         saveState();
@@ -1324,7 +1342,18 @@ void MediaPlayer::undoClearQueue()
 
 void MediaPlayer::playAlbumByName(const QString& artist, const QString& title, int startIndex)
 {
-    qDebug() << "MediaPlayer::playAlbumByName called with artist:" << artist << "title:" << title << "startIndex:" << startIndex;
+    // Check if shuffle was just enabled (e.g., user selected "Shuffle" from context menu)
+    // If so, don't auto-disable it after this queue replacement
+    bool shuffleJustEnabled = m_shuffleJustEnabled;
+    m_shuffleJustEnabled = false;  // Clear the flag
+
+    // Auto-disable shuffle BEFORE building queue if setting is enabled
+    // This ensures we start from track 0 (not a random track) when shuffle is auto-disabled
+    // Note: QML may have passed a random startIndex, so we reset it to 0 when auto-disabling
+    if (m_settingsManager && m_settingsManager->autoDisableShuffle() && m_shuffleEnabled && !shuffleJustEnabled) {
+        setShuffleEnabled(false);
+        startIndex = 0;  // Reset to first track since we're disabling shuffle
+    }
 
     if (!m_libraryManager) {
         qWarning() << "LibraryManager not set on MediaPlayer";
@@ -1416,7 +1445,18 @@ void MediaPlayer::playAlbumByName(const QString& artist, const QString& title, i
 void MediaPlayer::playPlaylist(const QString& playlistName, int startIndex)
 {
     qDebug() << "MediaPlayer::playPlaylist called with playlist:" << playlistName << "startIndex:" << startIndex;
-    
+
+    // Check if shuffle was just enabled (e.g., user selected "Shuffle" from context menu)
+    bool shuffleJustEnabled = m_shuffleJustEnabled;
+    m_shuffleJustEnabled = false;  // Clear the flag
+
+    // Auto-disable shuffle BEFORE building queue if setting is enabled
+    // This ensures we start from track 0 (not a random track) when shuffle is auto-disabled
+    if (m_settingsManager && m_settingsManager->autoDisableShuffle() && m_shuffleEnabled && !shuffleJustEnabled) {
+        setShuffleEnabled(false);
+        startIndex = 0;  // Reset to first track since we're disabling shuffle
+    }
+
     // Clear any restoration state to prevent old positions from being applied
     clearRestorationState();
     clearSavedPosition();
@@ -2188,7 +2228,7 @@ void MediaPlayer::saveState()
     QVariantMap virtualPlaylistInfo;
     if (m_isVirtualPlaylist && m_virtualPlaylist) {
         virtualPlaylistInfo["isVirtualPlaylist"] = true;
-        virtualPlaylistInfo["virtualPlaylistType"] = "AllSongs";
+        virtualPlaylistInfo["virtualPlaylistType"] = m_virtualPlaylistName;
         virtualPlaylistInfo["virtualTrackIndex"] = m_virtualCurrentIndex;
         virtualPlaylistInfo["virtualShuffleIndex"] = m_virtualShuffleIndex;
         virtualPlaylistInfo["shuffleEnabled"] = m_shuffleEnabled;
@@ -2336,16 +2376,23 @@ void MediaPlayer::restoreState()
     emit savedPositionChanged(m_savedPosition);
     
     try {
-        // Check if we're restoring from a virtual playlist
-        if (isVirtualPlaylist && virtualPlaylistType == "AllSongs") {
-            qDebug() << "MediaPlayer::restoreState - Restoring virtual playlist state";
-            
-            // Get the All Songs playlist
-            Mtoc::VirtualPlaylistModel* allSongsModel = m_libraryManager->getAllSongsPlaylist();
-            if (allSongsModel && allSongsModel->virtualPlaylist()) {
+        // Check if we're restoring from a virtual playlist (All Songs or Favorites)
+        if (isVirtualPlaylist && (virtualPlaylistType == "All Songs" || virtualPlaylistType == "Favorites" || virtualPlaylistType == "AllSongs")) {
+            qDebug() << "MediaPlayer::restoreState - Restoring virtual playlist state:" << virtualPlaylistType;
+
+            // Get the appropriate virtual playlist model
+            Mtoc::VirtualPlaylistModel* virtualModel = nullptr;
+            if (virtualPlaylistType == "Favorites") {
+                virtualModel = m_libraryManager->getFavoritesPlaylist();
+            } else {
+                // Default to All Songs (handles "All Songs", "AllSongs", and any legacy values)
+                virtualModel = m_libraryManager->getAllSongsPlaylist();
+            }
+
+            if (virtualModel && virtualModel->virtualPlaylist()) {
                 // Clear current state and load virtual playlist
                 clearQueue();
-                loadVirtualPlaylist(allSongsModel);
+                loadVirtualPlaylist(virtualModel);
                 
                 // Restore shuffle state if it was enabled
                 if (savedShuffleEnabled) {
@@ -2399,7 +2446,7 @@ void MediaPlayer::restoreState()
                 
                 return; // Don't continue to other restoration paths
             } else {
-                qWarning() << "MediaPlayer::restoreState - Failed to get All Songs playlist";
+                qWarning() << "MediaPlayer::restoreState - Failed to get virtual playlist:" << virtualPlaylistType;
                 // Fall through to regular restoration
             }
         }
@@ -2993,10 +3040,13 @@ void MediaPlayer::loadVirtualPlaylist(Mtoc::VirtualPlaylistModel* model)
     m_isVirtualPlaylist = true;
     m_virtualCurrentIndex = -1;
     m_virtualShuffleIndex = -1;
-    
-    // Set the virtual playlist name - for now, we know it's "All Songs"
-    // In the future, this could be passed as a parameter or stored in the model
-    m_virtualPlaylistName = "All Songs";
+
+    // Detect which virtual playlist this is by comparing with LibraryManager's models
+    if (m_libraryManager && model == m_libraryManager->getFavoritesPlaylist()) {
+        m_virtualPlaylistName = "Favorites";
+    } else {
+        m_virtualPlaylistName = "All Songs";
+    }
     emit virtualPlaylistNameChanged(m_virtualPlaylistName);
     
     // Generate shuffle order if needed
@@ -3014,7 +3064,17 @@ void MediaPlayer::playVirtualPlaylist()
         qWarning() << "[MediaPlayer::playVirtualPlaylist] No virtual playlist loaded or empty";
         return;
     }
-    
+
+    // Check if shuffle was just enabled (e.g., user selected "Shuffle" from context menu)
+    bool shuffleJustEnabled = m_shuffleJustEnabled;
+    m_shuffleJustEnabled = false;  // Clear the flag
+
+    // Auto-disable shuffle BEFORE determining first track if setting is enabled
+    // This ensures we start from track 0 (not a random track) when shuffle is auto-disabled
+    if (m_settingsManager && m_settingsManager->autoDisableShuffle() && m_shuffleEnabled && !shuffleJustEnabled) {
+        setShuffleEnabled(false);
+    }
+
     int firstTrack = 0;
     if (m_shuffleEnabled) {
         // With shuffle enabled, play the first track in shuffle order
@@ -3024,13 +3084,13 @@ void MediaPlayer::playVirtualPlaylist()
     } else {
         qDebug() << "[MediaPlayer::playVirtualPlaylist] Starting sequential playback";
     }
-    
+
     // Update current index and play
     m_virtualCurrentIndex = firstTrack;
-    
+
     // Preload tracks around the starting position
     preloadVirtualTracks(firstTrack);
-    
+
     // Try to get or create the track - this will trigger loading if needed
     Mtoc::Track* track = getOrCreateTrackFromVirtual(firstTrack);
     if (track) {
@@ -3041,12 +3101,12 @@ void MediaPlayer::playVirtualPlaylist()
         // Track loading failed or is pending
         qDebug() << "[MediaPlayer::playVirtualPlaylist] Track not loaded yet at index" << firstTrack << ", waiting for load";
         m_waitingForVirtualTrack = true;
-        
+
         // Disconnect any existing connection to prevent leaks
         if (m_virtualTrackLoadConnection) {
             disconnect(m_virtualTrackLoadConnection);
         }
-        
+
         // Set up a connection to retry when tracks are loaded
         m_virtualTrackLoadConnection = connect(m_virtualPlaylist, &Mtoc::VirtualPlaylist::rangeLoaded, this,
                 [this, firstTrack](int startIdx, int endIdx) {
@@ -3054,7 +3114,7 @@ void MediaPlayer::playVirtualPlaylist()
                         // Disconnect to avoid multiple attempts
                         disconnect(m_virtualTrackLoadConnection);
                         m_virtualTrackLoadConnection = QMetaObject::Connection();
-                        
+
                         // Try again now that the track should be loaded
                         Mtoc::Track* track = getOrCreateTrackFromVirtual(firstTrack);
                         if (track) {
@@ -3067,7 +3127,7 @@ void MediaPlayer::playVirtualPlaylist()
                         }
                     }
                 }, Qt::QueuedConnection);
-        
+
         // Ensure the track gets loaded
         m_virtualPlaylist->ensureLoaded(firstTrack);
     }

@@ -15,6 +15,11 @@ Track::Track(const QUrl &fileUrl, QObject *parent)
 }
 
 // Property getters
+int Track::id() const
+{
+    return m_id;
+}
+
 QString Track::title() const
 {
     return m_title;
@@ -112,7 +117,19 @@ QString Track::lyrics() const
     return m_lyrics;
 }
 
+bool Track::isFavorite() const
+{
+    return m_isFavorite;
+}
+
 // Property setters
+void Track::setId(int id)
+{
+    if (m_id != id) {
+        m_id = id;
+        emit idChanged();
+    }
+}
 void Track::setTitle(const QString &title)
 {
     if (m_title != title) {
@@ -203,6 +220,14 @@ void Track::setLyrics(const QString &lyrics)
     }
 }
 
+void Track::setIsFavorite(bool favorite)
+{
+    if (m_isFavorite != favorite) {
+        m_isFavorite = favorite;
+        emit isFavoriteChanged();
+    }
+}
+
 // Additional methods
 QString Track::formattedDuration() const
 {
@@ -260,7 +285,13 @@ Track* Track::fromMetadata(const QVariantMap &metadata, QObject *parent)
 
     if (metadata.contains("lyrics"))
         track->setLyrics(metadata.value("lyrics").toString());
-    
+
+    if (metadata.contains("id"))
+        track->setId(metadata.value("id").toInt());
+
+    if (metadata.contains("isFavorite"))
+        track->setIsFavorite(metadata.value("isFavorite").toBool());
+
     return track;
 }
 

@@ -32,12 +32,12 @@ void VirtualPlaylist::loadAllTracks()
         qDebug() << "[VirtualPlaylist] Already loading, skipping request";
         return;
     }
-    
+
     m_isLoading = true;
     emit loadingStarted();
-    
-    // Get total count first
-    m_totalTrackCount = m_dbManager->getTrackCount();
+
+    // Get total count first (favorites or all tracks)
+    m_totalTrackCount = m_favoritesOnly ? m_dbManager->getFavoriteTrackCount() : m_dbManager->getTrackCount();
     
     if (m_totalTrackCount == 0) {
         m_isLoading = false;
@@ -349,12 +349,26 @@ void VirtualPlaylist::loadRange(int startIndex, int count)
     }
     
     // Load tracks in background
-    m_loadFuture = QtConcurrent::run([this, startIndex, count]() {
+    bool favoritesOnly = m_favoritesOnly;  // Capture for lambda
+    m_loadFuture = QtConcurrent::run([this, startIndex, count, favoritesOnly]() {
         // Store thread ID for cleanup
         QString connectionName = QString("MtocThread_%1").arg(quintptr(QThread::currentThreadId()));
 
         try {
-            QVariantList tracks = m_dbManager->getAllTracks(count, startIndex);
+            // Get tracks based on mode (favorites or all)
+            QVariantList tracks;
+            if (favoritesOnly) {
+                // For favorites, we load all at once since count is expected to be manageable
+                // The getFavoriteTracks() returns them in favorited order
+                QVariantList allFavorites = m_dbManager->getFavoriteTracks();
+                // Extract the requested range
+                int endIndex = qMin(startIndex + count, allFavorites.size());
+                for (int i = startIndex; i < endIndex; ++i) {
+                    tracks.append(allFavorites[i]);
+                }
+            } else {
+                tracks = m_dbManager->getAllTracks(count, startIndex);
+            }
 
             if (tracks.isEmpty()) {
                 qWarning() << "[VirtualPlaylist] Failed to load tracks at range" << startIndex << "count" << count;

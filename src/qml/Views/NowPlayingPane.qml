@@ -703,10 +703,11 @@ Item {
         PlaybackControls {
             Layout.fillWidth: true
             Layout.preferredHeight: 80
-            
+
             queueVisible: root.queueVisible
             lyricsVisible: root.lyricsVisible
-            
+            isFavorite: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.isFavorite : false
+
             onPlayPauseClicked: MediaPlayer.togglePlayPause()
             onPreviousClicked: MediaPlayer.previous()
             onNextClicked: MediaPlayer.next()
@@ -732,6 +733,11 @@ Item {
             }
             onShuffleToggled: {
                 MediaPlayer.shuffleEnabled = !MediaPlayer.shuffleEnabled
+            }
+            onFavoriteToggled: {
+                if (MediaPlayer.currentTrack) {
+                    FavoritesManager.toggleFavorite(MediaPlayer.currentTrack.id)
+                }
             }
         }
         

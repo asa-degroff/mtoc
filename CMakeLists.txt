@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(mtoc VERSION 2.4.2 LANGUAGES CXX)
+project(mtoc VERSION 2.5 LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -52,6 +52,8 @@ set(PROJECT_SOURCES
         src/backend/library/albummodel.cpp
         src/backend/library/trackmodel.h
         src/backend/library/trackmodel.cpp
+        src/backend/library/favoritesmanager.h
+        src/backend/library/favoritesmanager.cpp
         src/backend/database/databasemanager.h
         src/backend/database/databasemanager.cpp
         src/backend/playback/audioengine.h

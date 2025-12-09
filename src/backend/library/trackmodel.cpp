@@ -51,6 +51,10 @@ QVariant TrackModel::data(const QModelIndex &index, int role) const
         return track->filePath();
     case TrackObjectRole:
         return QVariant::fromValue(track);
+    case IdRole:
+        return track->id();
+    case IsFavoriteRole:
+        return track->isFavorite();
     }
 
     return QVariant();
@@ -72,6 +76,8 @@ QHash<int, QByteArray> TrackModel::roleNames() const
     roles[FileUrlRole] = "fileUrl";
     roles[FilePathRole] = "filePath";
     roles[TrackObjectRole] = "trackObject";
+    roles[IdRole] = "trackId";
+    roles[IsFavoriteRole] = "isFavorite";
     return roles;
 }
 

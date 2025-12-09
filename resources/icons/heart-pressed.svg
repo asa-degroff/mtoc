@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+  <defs>
+    <linearGradient id="heartGlassGradientPressed" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#d0d0d0;stop-opacity:0.9" />
+      <stop offset="30%" style="stop-color:#c0c0c0;stop-opacity:0.8" />
+      <stop offset="50%" style="stop-color:#b0b0b0;stop-opacity:0.7" />
+      <stop offset="70%" style="stop-color:#a0a0a0;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#909090;stop-opacity:0.9" />
+    </linearGradient>
+    
+    <!-- Inner shadow for pressed state -->
+    <radialGradient id="heartInnerShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#000000;stop-opacity:0" />
+      <stop offset="70%" style="stop-color:#000000;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#000000;stop-opacity:0.3" />
+    </radialGradient>
+    
+    <filter id="heartDropShadowPressed" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="0.5"/>
+      <feOffset dx="0" dy="0.5" result="offsetblur"/>
+      <feFlood flood-color="#000000" flood-opacity="0.2"/>
+      <feComposite in2="offsetblur" operator="in"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Heart Shape - Pressed -->
+  <path d="M10 4.72C8.33 2.77 5.56 2.25 3.47 4.03C1.38 5.81 1.09 8.79 2.73 10.9C4.09 12.65 8.22 16.35 9.57 17.55C9.72 17.68 9.8 17.75 9.89 17.77C9.96 17.8 10.04 17.8 10.11 17.77C10.2 17.75 10.28 17.68 10.43 17.55C11.78 16.35 15.91 12.65 17.27 10.9C18.91 8.79 18.65 5.79 16.53 4.03C14.41 2.27 11.67 2.77 10 4.72Z"
+        fill="url(#heartGlassGradientPressed)" 
+        stroke="#909090" 
+        stroke-width="0.5"
+        filter="url(#heartDropShadowPressed)"/>
+  
+  <!-- Inner shadow overlay -->
+  <path d="M10 4.72C8.33 2.77 5.56 2.25 3.47 4.03C1.38 5.81 1.09 8.79 2.73 10.9C4.09 12.65 8.22 16.35 9.57 17.55C9.72 17.68 9.8 17.75 9.89 17.77C9.96 17.8 10.04 17.8 10.11 17.77C10.2 17.75 10.28 17.68 10.43 17.55C11.78 16.35 15.91 12.65 17.27 10.9C18.91 8.79 18.65 5.79 16.53 4.03C14.41 2.27 11.67 2.77 10 4.72Z"
+        fill="url(#heartInnerShadow)" 
+        opacity="0.4"/>
+</svg>
