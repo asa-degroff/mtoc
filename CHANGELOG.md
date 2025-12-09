@@ -1,5 +1,6 @@
 # 2.5
-### Expanded options for playlist creation and editing, improved drag-and-drop list editing, new shuffle options 
+### Favorites, expanded options for playlist creation and editing, improved drag-and-drop list editing, new shuffle options 
+- Added a toggleable favorite button and dynamic favorites playlist
 - Albums and tracks can now be added to a new or existing playlist through the right-click context menus in the library
 - Drag-and-drop list reordering in the queue and playlist editor has been rewritten with auto-scroll and improved stability
 - New context menu option to play an entire artist discography
