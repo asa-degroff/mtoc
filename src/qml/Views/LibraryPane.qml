@@ -1535,7 +1535,7 @@ Item {
                             spacing: 2
                             interactive: !root.isScrollBarDragging  // Disable ListView interaction during scroll bar drag
                             reuseItems: false  // Disabled to maintain consistent scroll positions
-                            cacheBuffer: 1200  // Increase cache for smoother scrolling without recycling
+                            cacheBuffer: 200  // Increase cache for smoother scrolling without recycling
                             
                             // Save scroll position when scrolling
                             onContentYChanged: {
