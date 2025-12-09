@@ -188,19 +188,19 @@ Item {
                             Layout.preferredHeight: 8
                         }
 
-                        // Multi-artist album support section
+                        // Favorites section
                         Item {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: multiArtistSection.height
+                            Layout.preferredHeight: favoritesSection.height
 
                             ColumnLayout {
-                                id: multiArtistSection
+                                id: favoritesSection
                                 width: parent.width - 64
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 spacing: 12
 
                                 Label {
-                                    text: "Multi-Artist Album Support"
+                                    text: "Favorites"
                                     font.pixelSize: 16
                                     font.bold: true
                                     color: Theme.primaryText
@@ -208,7 +208,7 @@ Item {
 
                                 Label {
                                     Layout.fillWidth: true
-                                    text: "• Albums with multiple album artists can now appear under each artist in the library\n• Multi-line album artist tags are parsed separately\n• Single-line album artist tags can be split with configurable delimiters\n• Customize this behavior in the settings window to match your tagging style"
+                                    text: "• Added a toggleable favorite button and dynamic favorites playlist\n• Mark your favorite tracks and access them instantly from the playlists tab"
                                     wrapMode: Text.WordWrap
                                     font.pixelSize: 14
                                     color: Theme.secondaryText
@@ -217,19 +217,19 @@ Item {
                             }
                         }
 
-                        // Track in window title section
+                        // Playlist creation section
                         Item {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: windowTitleSection.height
+                            Layout.preferredHeight: playlistSection.height
 
                             ColumnLayout {
-                                id: windowTitleSection
+                                id: playlistSection
                                 width: parent.width - 64
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 spacing: 12
 
                                 Label {
-                                    text: "Track in Window Title"
+                                    text: "Expanded Playlist Options"
                                     font.pixelSize: 16
                                     font.bold: true
                                     color: Theme.primaryText
@@ -237,7 +237,7 @@ Item {
 
                                 Label {
                                     Layout.fillWidth: true
-                                    text: "• The title and artist for the current track are now shown in the window title"
+                                    text: "• Albums and tracks can now be added to a new or existing playlist through the right-click context menus in the library\n• Creating a new playlist now reveals it in the list and enables immediate renaming"
                                     wrapMode: Text.WordWrap
                                     font.pixelSize: 14
                                     color: Theme.secondaryText
@@ -246,19 +246,19 @@ Item {
                             }
                         }
 
-                        // Performance improvements section
+                        // Drag-and-drop section
                         Item {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: performanceSection.height
+                            Layout.preferredHeight: dragDropSection.height
 
                             ColumnLayout {
-                                id: performanceSection
+                                id: dragDropSection
                                 width: parent.width - 64
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 spacing: 12
 
                                 Label {
-                                    text: "Performance Improvements"
+                                    text: "Improved Drag-and-Drop"
                                     font.pixelSize: 16
                                     font.bold: true
                                     color: Theme.primaryText
@@ -266,7 +266,36 @@ Item {
 
                                 Label {
                                     Layout.fillWidth: true
-                                    text: "• Reduced memory usage during library scanning\n• Improved scanning speed and efficiency\n• Better memory management for album art processing"
+                                    text: "• Drag-and-drop list reordering in the queue and playlist editor has been rewritten with auto-scroll and improved stability"
+                                    wrapMode: Text.WordWrap
+                                    font.pixelSize: 14
+                                    color: Theme.secondaryText
+                                    lineHeight: 1.4
+                                }
+                            }
+                        }
+
+                        // Shuffle options section
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: shuffleSection.height
+
+                            ColumnLayout {
+                                id: shuffleSection
+                                width: parent.width - 64
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                spacing: 12
+
+                                Label {
+                                    text: "New Shuffle Options"
+                                    font.pixelSize: 16
+                                    font.bold: true
+                                    color: Theme.primaryText
+                                }
+
+                                Label {
+                                    Layout.fillWidth: true
+                                    text: "• New context menu option to play an entire artist discography\n• Shuffle option in album, artist, and playlist context menus\n• New option to auto-disable shuffle after queue replacement"
                                     wrapMode: Text.WordWrap
                                     font.pixelSize: 14
                                     color: Theme.secondaryText

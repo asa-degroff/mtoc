@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(mtoc VERSION 2.4.2 LANGUAGES CXX)
+project(mtoc VERSION 2.5 LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
