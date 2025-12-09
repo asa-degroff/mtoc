@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.4.2
+Version:        2.5
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,96 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Tue Dec 09 2025 Asa DeGroff <asa@3fz.org> 2.5-1
+- bump version to 2.5 and update changelog (asa@3fz.org)
+- update changelog with favorites feature (asa@3fz.org)
+- reduce cacheBuffer in library pane (asa@3fz.org)
+- fixed scroll bar hover effect in artists list to extend over scroll bar
+  itself (asa@3fz.org)
+- thread-safe database access (asa@3fz.org)
+- enable immediate reload on favorites change when favorites list is visible
+  (asa@3fz.org)
+- lazy reload favorites playlist to prevent race conditions (asa@3fz.org)
+- heart icon styling: fixed drop shadow crop and tweaked tint opacity
+  (asa@3fz.org)
+- use system accent color for filled heart (asa@3fz.org)
+- reloadPlaylist method in virtual playlist model for memory safe playlist
+  updates (asa@3fz.org)
+- favorites playlist tracks display, click handlers (asa@3fz.org)
+- auto-update track count for favorites list (asa@3fz.org)
+- Favorites Implementaion   Summary: (asa@3fz.org)
+- refactor button positioning to enable fluid animation upon show/hide lyrics
+  button (asa@3fz.org)
+- add favorites button, svg icons, adjust button layout to accomodate favorites
+  (asa@3fz.org)
+- new option to auto-disable shuffle after queue replacement (asa@3fz.org)
+- update changelog (asa@3fz.org)
+- sync playlist title between components upon edit in either, surpress new
+  playlist animation upon playlist rename (asa@3fz.org)
+- select playlist title text upon entering editor (asa@3fz.org)
+- activate playlist title editing upon playlist creation (asa@3fz.org)
+- use styled menu in playlist context menu, update styled menu items to use
+  accent color (asa@3fz.org)
+- add context menu for artists in artist list with Play All and Shuffle All
+  options (asa@3fz.org)
+- add Shuffle option to context menu for albums and playlists (asa@3fz.org)
+- add checkmark icon and use it for playlist renaming confirmation
+  (asa@3fz.org)
+- button layout consistency for playlist renaming (asa@3fz.org)
+- refactor playlist renaming: remove popup in favor on inline title editor
+  (asa@3fz.org)
+- default playlist title now features the first three track titles
+  (asa@3fz.org)
+- refactor playlist view with intermediate ListModel that syncs incrementally
+  with playlist manager, add animations for add/delete playlists (asa@3fz.org)
+- navigate to and highlight new playlist upon creation from context menu
+  (asa@3fz.org)
+- option for playlist creation from context menu (asa@3fz.org)
+- feat: "add to playlist" submenu in track and album context menu (asa@3fz.org)
+- save contentY before model update upon queue item deletion to stabilize list
+  position (asa@3fz.org)
+- don't auto-scroll upon queue item deletion (asa@3fz.org)
+- stabilized queue deletion animation (asa@3fz.org)
+- ensure delete button on queue list item has full hit area (asa@3fz.org)
+- hidden artist and wider title when hovering track in playlist editor
+  (asa@3fz.org)
+- use arrow cursor in track list, use drag handle cursor for drag handle
+  (asa@3fz.org)
+- fix: reset drag state on focus loss in queue list (asa@3fz.org)
+- fix: also reset visibility of reordered item after regaining focus
+  (asa@3fz.org)
+- new drag and drop implementation with drag proxy for playlist editor
+  (asa@3fz.org)
+- minimum drag distance for auto-scroll start (asa@3fz.org)
+- feat: adjustable auto-scroll velocity depending on cursor position
+  (asa@3fz.org)
+- cleanup unused delegate recycling code in queue list (asa@3fz.org)
+- scrolling queue list fixes, dragged item position compensation (asa@3fz.org)
+- skip auto-scroll upon list change during playlist reordering, fix targetY
+  calculation to account for column structure (asa@3fz.org)
+- fix Y-position calculation for dragging playlist items (asa@3fz.org)
+- refactored playlist editor (asa@3fz.org)
+- feat: add auto-scroll during drag and drop queue reordering and refactor
+  animations to work with list scrolling (asa@3fz.org)
+- feat: state persistence for queue and lyrics visibility status in now playing
+  pane (asa@3fz.org)
+- increase height of drag handle on draggable list items to full height
+  (asa@3fz.org)
+- add selectPlaylist function for selecting playlists by name in playlist view
+  (asa@3fz.org)
+- clear selction highlights after reordering tracks in playlist editor
+  (asa@3fz.org)
+- fix for now playing track and selection highlight colors snapping upon list
+  reorder (asa@3fz.org)
+- fix: disable hover effect during drop finalization in QueueListView and
+  LibraryPane to eliminate hover effect snapping upon list reordering
+  (asa@3fz.org)
+- fix: improve drag-and-drop animation for track reordering in QueueListView
+  and LibraryPane to eliminate the visual snap effect (asa@3fz.org)
+- update Qt policies for resource prefix and qmldir generation; set output
+  directory for QML module (asa@3fz.org)
+- update screenshot for readme (asa@3fz.org)
+
 * Mon Nov 17 2025 Asa DeGroff <asa@3fz.org> 2.4.2-1
 - version bump to 2.4.2 and update changelog with new features (asa@3fz.org)
 - feat: enhance multi-artist navigation link support in the compact now playing
