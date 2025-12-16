@@ -1,3 +1,7 @@
+# 2.5.1
+### Bug fix for quit behavior with system tray disabled
+- This patch fixes a bug where Flatpak build of mtoc would incorrectly remain open after closing the main window even with the "minimize to system tray on close" option disabled.
+
 # 2.5
 ### Favorites, expanded options for playlist creation and editing, improved drag-and-drop list editing, new shuffle options 
 - Added a toggleable favorite button and dynamic favorites playlist

@@ -68,6 +68,15 @@
 
   <releases>
 
+    <release version="2.5.1" date="2025-12-15">
+      <description>
+        <p>Bug fix for quit behavior with system tray disabled</p>
+        <ul>
+          <li>This patch fixes a bug where Flatpak build of mtoc would incorrectly remain open after closing the main window even with the "minimize to system tray on close" option disabled.</li>
+        </ul>
+      </description>
+    </release>
+
     <release version="2.5" date="2025-12-09">
       <description>
         <p>Favorites, expanded options for playlist creation and editing, improved drag-and-drop list editing, new shuffle options</p>
