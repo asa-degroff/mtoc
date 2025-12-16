@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.5
+Version:        2.5.1
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,11 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Mon Dec 15 2025 Asa DeGroff <asa@3fz.org> 2.5.1-1
+- version bump and changelog (asa@3fz.org)
+- ensure application quits properly on close to fix Flatpak build issues
+  (asa@3fz.org)
+
 * Tue Dec 09 2025 Asa DeGroff <asa@3fz.org> 2.5-1
 - bump version to 2.5 and update changelog (asa@3fz.org)
 - update changelog with favorites feature (asa@3fz.org)
