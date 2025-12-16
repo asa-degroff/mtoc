@@ -49,6 +49,10 @@ ApplicationWindow {
         if (MediaPlayer) {
             MediaPlayer.saveState();
         }
+
+        // Explicitly quit the application to ensure it exits even when a system
+        // tray icon is present (fixes Flatpak builds where tray keeps app alive)
+        Qt.quit();
     }
 
     // Property to hold the current track metadata
