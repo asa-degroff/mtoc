@@ -20,6 +20,7 @@ Item {
     property string renamingOriginalName: ""
     property string renamingNewName: ""
     property bool suppressAddAnimation: false  // Suppress slide-in animation during rename
+    property bool renameFieldHasFocus: false  // Track if rename TextField has focus
 
     // Internal ListModel for animated updates
     ListModel {
@@ -452,6 +453,7 @@ Item {
                         }
 
                         onActiveFocusChanged: {
+                            root.renameFieldHasFocus = activeFocus
                             if (!activeFocus && index === root.renamingPlaylistIndex) {
                                 // Save on focus loss (click outside)
                                 root.saveRename()

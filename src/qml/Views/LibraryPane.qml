@@ -35,6 +35,13 @@ Item {
     }
     
     property var selectedAlbum: null
+
+    // Track if any text input in this pane has focus (for global keyboard shortcuts)
+    property bool hasTextInputFocus: searchBar.hasFocus ||
+                                     trackSelectorSearchBar.hasFocus ||
+                                     (titleLoader.item && titleLoader.item.activeFocus) ||
+                                     playlistView.renameFieldHasFocus
+
     property var expandedArtists: ({})  // Object to store expansion state by artist name
     onExpandedArtistsChanged: {
         // Save expanded state with debouncing
