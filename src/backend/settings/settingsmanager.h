@@ -48,6 +48,7 @@ class SettingsManager : public QObject
     Q_PROPERTY(QStringList albumArtistDelimiters READ albumArtistDelimiters WRITE setAlbumArtistDelimiters NOTIFY albumArtistDelimitersChanged)
     Q_PROPERTY(bool nowPlayingQueueVisible READ nowPlayingQueueVisible WRITE setNowPlayingQueueVisible NOTIFY nowPlayingQueueVisibleChanged)
     Q_PROPERTY(bool nowPlayingLyricsVisible READ nowPlayingLyricsVisible WRITE setNowPlayingLyricsVisible NOTIFY nowPlayingLyricsVisibleChanged)
+    Q_PROPERTY(bool playlistsEnabled READ playlistsEnabled WRITE setPlaylistsEnabled NOTIFY playlistsEnabledChanged)
 
 public:
     enum QueueAction {
@@ -128,6 +129,7 @@ public:
     QStringList albumArtistDelimiters() const { return m_albumArtistDelimiters; }
     bool nowPlayingQueueVisible() const { return m_nowPlayingQueueVisible; }
     bool nowPlayingLyricsVisible() const { return m_nowPlayingLyricsVisible; }
+    bool playlistsEnabled() const { return m_playlistsEnabled; }
 
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -166,6 +168,7 @@ public:
     void setAlbumArtistDelimiters(const QStringList& delimiters);
     void setNowPlayingQueueVisible(bool visible);
     void setNowPlayingLyricsVisible(bool visible);
+    void setPlaylistsEnabled(bool enabled);
 
 protected:
     bool event(QEvent *event) override;
@@ -209,6 +212,7 @@ signals:
     void albumArtistDelimitersChanged(const QStringList& delimiters);
     void nowPlayingQueueVisibleChanged(bool visible);
     void nowPlayingLyricsVisibleChanged(bool visible);
+    void playlistsEnabledChanged(bool enabled);
 
 private slots:
     void onColorSchemeChanged(Qt::ColorScheme scheme);
@@ -260,6 +264,7 @@ private:
     QStringList m_albumArtistDelimiters;
     bool m_nowPlayingQueueVisible;
     bool m_nowPlayingLyricsVisible;
+    bool m_playlistsEnabled;
 };
 
 #endif // SETTINGSMANAGER_H

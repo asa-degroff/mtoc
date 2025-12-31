@@ -163,6 +163,8 @@ Item {
 
         StyledMenu {
             title: "Add to Playlist"
+            enabled: SettingsManager.playlistsEnabled
+            height: SettingsManager.playlistsEnabled ? implicitHeight : 0
 
             StyledMenuItem {
                 text: "New Playlist"

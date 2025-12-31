@@ -2,6 +2,7 @@
 #include "backend/library/librarymanager.h"
 #include "backend/library/track.h"
 #include "backend/playback/mediaplayer.h"
+#include "backend/settings/settingsmanager.h"
 #include <QDir>
 #include <QFile>
 #include <QTextStream>
@@ -56,7 +57,14 @@ void PlaylistManager::initialize()
         qWarning() << "PlaylistManager: Cannot initialize without LibraryManager";
         return;
     }
-    
+
+    // Skip full initialization if playlists are disabled
+    if (m_settingsManager && !m_settingsManager->playlistsEnabled()) {
+        qDebug() << "PlaylistManager: Playlists disabled, skipping initialization";
+        setReady(true);  // Still mark as ready so the app doesn't wait
+        return;
+    }
+
     loadPlaylistFoldersConfig();
     ensurePlaylistsDirectory();
     refreshPlaylists();
@@ -66,7 +74,13 @@ void PlaylistManager::initialize()
 void PlaylistManager::ensurePlaylistsDirectory()
 {
     if (!m_libraryManager) return;
-    
+
+    // Skip directory creation if playlists are disabled
+    if (m_settingsManager && !m_settingsManager->playlistsEnabled()) {
+        qDebug() << "PlaylistManager: Playlists disabled, skipping directory creation";
+        return;
+    }
+
     // If no playlist folders are configured, set up the default
     if (m_playlistFolders.isEmpty()) {
         QStringList musicFolders = m_libraryManager->musicFolders();
