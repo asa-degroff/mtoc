@@ -92,6 +92,7 @@ Item {
             if (!enabled && root.currentTab === 1) {
                 // Switch to Artists tab when playlists are disabled
                 root.currentTab = 0
+                SettingsManager.libraryActiveTab = 0  // Explicitly save to persist across restart
                 resetNavigation()
             }
         }
