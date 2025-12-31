@@ -1349,7 +1349,8 @@ Item {
                         // Search bar at 60% width
                         SearchBar {
                             id: searchBar
-                            Layout.preferredWidth: parent.width * 0.58
+                            Layout.preferredWidth: root.playlistsEnabled ? parent.width * 0.58 : parent.width
+                            Layout.fillWidth: !root.playlistsEnabled  // Fill width when playlists disabled
                             placeholderText: "Search library..."
                             z: 1
                         
