@@ -75,14 +75,15 @@ Item {
     property bool pendingExpandCollapseState: false  // State to apply after debounce
     property var albumContainerHeightCache: ({})  // Cache for pre-calculated album container heights
     
+    // Playlists feature toggle
+    property bool playlistsEnabled: SettingsManager.playlistsEnabled
+
     // Tab state - bind to SettingsManager to maintain state across layout changes
-    property int currentTab: SettingsManager.libraryActiveTab  // 0 = Artists, 1 = Playlists
+    // Force Artists tab (0) if playlists are disabled and saved tab was Playlists (1)
+    property int currentTab: (!playlistsEnabled && SettingsManager.libraryActiveTab === 1) ? 0 : SettingsManager.libraryActiveTab
     onCurrentTabChanged: {
         SettingsManager.libraryActiveTab = currentTab
     }
-
-    // Playlists feature toggle
-    property bool playlistsEnabled: SettingsManager.playlistsEnabled
 
     // Handle playlists being disabled while on Playlists tab
     Connections {
