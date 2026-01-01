@@ -144,14 +144,18 @@ ListView {
         border.color: Qt.rgba(1, 1, 1, 0.04)
 
         RowLayout {
-            anchors.fill: parent
-            anchors.margins: 8
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.leftMargin: 8
+            anchors.rightMargin: 8
             spacing: 10
 
             // Track info column
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 2
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 1
 
                 // Track title
                 Label {
@@ -178,6 +182,7 @@ ListView {
                 color: root.forceLightText ? "#808080" : Theme.secondaryText
                 font.pixelSize: 11
                 Layout.preferredWidth: 80
+                Layout.alignment: Qt.AlignVCenter
                 horizontalAlignment: Text.AlignRight
             }
         }

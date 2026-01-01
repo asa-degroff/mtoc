@@ -111,34 +111,19 @@ Item {
             Layout.rightMargin: 0
             spacing: Math.max(12, parent.width * 0.02)  // Dynamic spacing: 2% of width, min 12px
             
-            // History button
-            Rectangle {
-                Layout.preferredWidth: 31
-                Layout.preferredHeight: 31
+            // History button (simple icon, no container)
+            IconButton {
+                id: historyButton
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 26
                 Layout.alignment: Qt.AlignVCenter
-                radius: 15
-                color: root.historyVisible ? (Theme.isDark ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(0, 0, 0, 0.2)) :
-                       (Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05))
-                border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(0, 0, 0, 0.2)
-                border.width: 1
+                iconSource: "qrc:/resources/icons/history.svg"
+                opacity: root.historyVisible ? 1.0 : 0.6
+                addShadow: true
+                onClicked: root.historyToggled()
 
-                Behavior on color {
-                    ColorAnimation { duration: 200 }
-                }
-
-                IconButton {
-                    id: historyButton
-                    anchors.centerIn: parent
-                    width: 18
-                    height: 18
-                    iconSource: "qrc:/resources/icons/history.svg"
-                    opacity: root.historyVisible ? 1.0 : 0.6
-                    addShadow: true
-                    onClicked: root.historyToggled()
-
-                    Behavior on opacity {
-                        NumberAnimation { duration: 200 }
-                    }
+                Behavior on opacity {
+                    NumberAnimation { duration: 200 }
                 }
             }
 
@@ -268,7 +253,13 @@ Item {
             }
             
             Item { Layout.fillWidth: true }
-            
+
+            // Balance spacer to match history button width on left side
+            Item {
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 1
+            }
+
             // Favorite, Lyrics and Queue button container
             Item {
                 id: rightButtonContainer
