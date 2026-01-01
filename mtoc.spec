@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.5.1
+Version:        2.5.2
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,18 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Wed Dec 31 2025 Asa DeGroff <asa@3fz.org> 2.5.2-1
+- reword changelog (asa@3fz.org)
+- version bump and changelog (asa@3fz.org)
+- search bar takes entire column width when playlists are disabled
+  (asa@3fz.org)
+- immediately save setting afer switching to artists tab when playlists are
+  disabled (asa@3fz.org)
+- force artists tab on intialization if playlists is disabled (asa@3fz.org)
+- added playlist toggle, hide playlists tab and do not create playlists
+  directory when disabled (asa@3fz.org)
+- add spacebar shortcut for play/pause (asa@3fz.org)
+
 * Mon Dec 15 2025 Asa DeGroff <asa@3fz.org> 2.5.1-1
 - version bump and changelog (asa@3fz.org)
 - ensure application quits properly on close to fix Flatpak build issues
