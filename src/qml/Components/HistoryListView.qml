@@ -213,81 +213,29 @@ ListView {
         }
 
         // Context menu
-        Menu {
+        StyledMenu {
             id: contextMenu
 
-            background: Rectangle {
-                implicitWidth: 200
-                color: Theme.isDark ? "#2b2b2b" : "#f5f5f5"
-                border.color: Theme.borderColor
-                radius: 6
-            }
-
-            MenuItem {
+            StyledMenuItem {
                 text: "Play"
                 onTriggered: root.trackClicked(modelData)
-
-                background: Rectangle {
-                    color: parent.highlighted ? Theme.selectedBackground : "transparent"
-                    radius: 4
-                }
-                contentItem: Text {
-                    text: parent.text
-                    color: Theme.primaryText
-                    font.pixelSize: 13
-                }
             }
 
-            MenuItem {
+            StyledMenuItem {
                 text: "Add to Queue"
                 onTriggered: root.addToQueueRequested(modelData.track_id)
-
-                background: Rectangle {
-                    color: parent.highlighted ? Theme.selectedBackground : "transparent"
-                    radius: 4
-                }
-                contentItem: Text {
-                    text: parent.text
-                    color: Theme.primaryText
-                    font.pixelSize: 13
-                }
             }
 
-            MenuSeparator {
-                contentItem: Rectangle {
-                    implicitHeight: 1
-                    color: Theme.borderColor
-                }
-            }
+            StyledMenuSeparator { }
 
-            MenuItem {
+            StyledMenuItem {
                 text: "Go to Album"
                 onTriggered: root.goToAlbumRequested(modelData.album_name, modelData.artist_name)
-
-                background: Rectangle {
-                    color: parent.highlighted ? Theme.selectedBackground : "transparent"
-                    radius: 4
-                }
-                contentItem: Text {
-                    text: parent.text
-                    color: Theme.primaryText
-                    font.pixelSize: 13
-                }
             }
 
-            MenuItem {
+            StyledMenuItem {
                 text: "Go to Artist"
                 onTriggered: root.goToArtistRequested(modelData.artist_name)
-
-                background: Rectangle {
-                    color: parent.highlighted ? Theme.selectedBackground : "transparent"
-                    radius: 4
-                }
-                contentItem: Text {
-                    text: parent.text
-                    color: Theme.primaryText
-                    font.pixelSize: 13
-                }
             }
         }
 
