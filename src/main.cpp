@@ -28,6 +28,7 @@
 #include "backend/settings/settingsmanager.h"
 #include "backend/playlist/playlistmanager.h"
 #include "backend/library/favoritesmanager.h"
+#include "backend/scrobble/scrobblemanager.h"
 
 // Message handler to show only QML console.log messages
 void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
@@ -275,7 +276,16 @@ int main(int argc, char *argv[])
     playlistManager->setMediaPlayer(mediaPlayer);
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "PlaylistManager", playlistManager);
     qDebug() << "Main: PlaylistManager registered";
-    
+
+    // Create and register ScrobbleManager for listen tracking
+    qDebug() << "Main: Creating ScrobbleManager...";
+    ScrobbleManager *scrobbleManager = new ScrobbleManager(&engine);
+    scrobbleManager->setMediaPlayer(mediaPlayer);
+    scrobbleManager->setDatabaseManager(libraryManager->databaseManager());
+    scrobbleManager->setSettingsManager(settingsManager);
+    qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "ScrobbleManager", scrobbleManager);
+    qDebug() << "Main: ScrobbleManager registered";
+
     // Create and initialize MPRIS manager for system media control integration
     qDebug() << "Main: Creating MPRIS manager...";
     MprisManager *mprisManager = new MprisManager(mediaPlayer);

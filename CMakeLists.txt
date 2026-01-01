@@ -69,6 +69,8 @@ set(PROJECT_SOURCES
         src/backend/playlist/VirtualPlaylistModel.cpp
         src/backend/settings/settingsmanager.h
         src/backend/settings/settingsmanager.cpp
+        src/backend/scrobble/scrobblemanager.h
+        src/backend/scrobble/scrobblemanager.cpp
         src/backend/system/mprismanager.h
         src/backend/system/mprismanager.cpp
         src/backend/utility/metadataextractor.h

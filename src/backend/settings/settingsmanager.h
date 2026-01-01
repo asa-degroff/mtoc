@@ -49,6 +49,7 @@ class SettingsManager : public QObject
     Q_PROPERTY(bool nowPlayingQueueVisible READ nowPlayingQueueVisible WRITE setNowPlayingQueueVisible NOTIFY nowPlayingQueueVisibleChanged)
     Q_PROPERTY(bool nowPlayingLyricsVisible READ nowPlayingLyricsVisible WRITE setNowPlayingLyricsVisible NOTIFY nowPlayingLyricsVisibleChanged)
     Q_PROPERTY(bool playlistsEnabled READ playlistsEnabled WRITE setPlaylistsEnabled NOTIFY playlistsEnabledChanged)
+    Q_PROPERTY(bool scrobblingEnabled READ scrobblingEnabled WRITE setScrobblingEnabled NOTIFY scrobblingEnabledChanged)
 
 public:
     enum QueueAction {
@@ -130,6 +131,7 @@ public:
     bool nowPlayingQueueVisible() const { return m_nowPlayingQueueVisible; }
     bool nowPlayingLyricsVisible() const { return m_nowPlayingLyricsVisible; }
     bool playlistsEnabled() const { return m_playlistsEnabled; }
+    bool scrobblingEnabled() const { return m_scrobblingEnabled; }
 
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -169,6 +171,7 @@ public:
     void setNowPlayingQueueVisible(bool visible);
     void setNowPlayingLyricsVisible(bool visible);
     void setPlaylistsEnabled(bool enabled);
+    void setScrobblingEnabled(bool enabled);
 
 protected:
     bool event(QEvent *event) override;
@@ -213,6 +216,7 @@ signals:
     void nowPlayingQueueVisibleChanged(bool visible);
     void nowPlayingLyricsVisibleChanged(bool visible);
     void playlistsEnabledChanged(bool enabled);
+    void scrobblingEnabledChanged(bool enabled);
 
 private slots:
     void onColorSchemeChanged(Qt::ColorScheme scheme);
@@ -265,6 +269,7 @@ private:
     bool m_nowPlayingQueueVisible;
     bool m_nowPlayingLyricsVisible;
     bool m_playlistsEnabled;
+    bool m_scrobblingEnabled;
 };
 
 #endif // SETTINGSMANAGER_H

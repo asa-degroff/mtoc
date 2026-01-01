@@ -391,6 +391,52 @@ bool DatabaseManager::applyMigrations(int currentVersion)
         qDebug() << "Migration 4 completed: favorites columns added";
     }
 
+    // Migration 5: Add listens table for scrobbling support
+    if (currentVersion < 5) {
+        qDebug() << "Applying migration 5: Creating listens table for scrobbling";
+
+        if (!query.exec(
+            "CREATE TABLE IF NOT EXISTS listens ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "track_id INTEGER,"
+            "track_name TEXT NOT NULL,"
+            "artist_name TEXT NOT NULL,"
+            "album_name TEXT,"
+            "duration_seconds INTEGER,"
+            "listened_at INTEGER NOT NULL,"
+            "listen_duration INTEGER,"
+            "recording_mbid TEXT,"
+            "artist_mbid TEXT,"
+            "release_mbid TEXT,"
+            "isrc TEXT,"
+            "listenbrainz_submitted INTEGER DEFAULT 0,"
+            "listenbrainz_submitted_at INTEGER,"
+            "tealfm_submitted INTEGER DEFAULT 0,"
+            "tealfm_submitted_at INTEGER,"
+            "submission_attempts INTEGER DEFAULT 0,"
+            "last_error TEXT,"
+            "FOREIGN KEY (track_id) REFERENCES tracks(id) ON DELETE SET NULL"
+            ")")) {
+            logError("Create listens table", query);
+            return false;
+        }
+
+        // Create indexes for efficient queries
+        query.exec("CREATE INDEX IF NOT EXISTS idx_listens_listened_at ON listens(listened_at DESC)");
+        query.exec("CREATE INDEX IF NOT EXISTS idx_listens_pending ON listens(listenbrainz_submitted, tealfm_submitted)");
+        query.exec("CREATE INDEX IF NOT EXISTS idx_listens_track_id ON listens(track_id)");
+
+        // Record migration
+        query.prepare("INSERT INTO schema_version (version) VALUES (:version)");
+        query.bindValue(":version", 5);
+        if (!query.exec()) {
+            logError("Record migration 5", query);
+            return false;
+        }
+
+        qDebug() << "Migration 5 completed: listens table created";
+    }
+
     return true;
 }
 
@@ -2491,6 +2537,229 @@ int DatabaseManager::findTrackByMetadata(const QString& artist, const QString& a
     }
 
     return -1;
+}
+
+// ============================================================================
+// Listen operations (for scrobbling)
+// ============================================================================
+
+int DatabaseManager::insertListen(const QVariantMap& listenData)
+{
+    if (!m_db.isOpen()) {
+        qWarning() << "[DatabaseManager::insertListen] Database is not open!";
+        return -1;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(
+        "INSERT INTO listens ("
+        "track_id, track_name, artist_name, album_name, duration_seconds, "
+        "listened_at, listen_duration, recording_mbid, artist_mbid, release_mbid, isrc"
+        ") VALUES ("
+        ":track_id, :track_name, :artist_name, :album_name, :duration_seconds, "
+        ":listened_at, :listen_duration, :recording_mbid, :artist_mbid, :release_mbid, :isrc"
+        ")"
+    );
+
+    query.bindValue(":track_id", listenData.value("track_id", QVariant()));
+    query.bindValue(":track_name", listenData.value("track_name"));
+    query.bindValue(":artist_name", listenData.value("artist_name"));
+    query.bindValue(":album_name", listenData.value("album_name", QVariant()));
+    query.bindValue(":duration_seconds", listenData.value("duration_seconds", QVariant()));
+    query.bindValue(":listened_at", listenData.value("listened_at"));
+    query.bindValue(":listen_duration", listenData.value("listen_duration", QVariant()));
+    query.bindValue(":recording_mbid", listenData.value("recording_mbid", QVariant()));
+    query.bindValue(":artist_mbid", listenData.value("artist_mbid", QVariant()));
+    query.bindValue(":release_mbid", listenData.value("release_mbid", QVariant()));
+    query.bindValue(":isrc", listenData.value("isrc", QVariant()));
+
+    if (query.exec()) {
+        int listenId = query.lastInsertId().toInt();
+        qDebug() << "[DatabaseManager::insertListen] Recorded listen:"
+                 << listenData.value("track_name").toString()
+                 << "by" << listenData.value("artist_name").toString()
+                 << "(id:" << listenId << ")";
+        return listenId;
+    }
+
+    logError("Insert listen", query);
+    return -1;
+}
+
+QVariantList DatabaseManager::getRecentListens(int limit, int offset)
+{
+    QVariantList listens;
+    if (!m_db.isOpen()) return listens;
+
+    QSqlQuery query(m_db);
+    query.prepare(
+        "SELECT id, track_id, track_name, artist_name, album_name, "
+        "duration_seconds, listened_at, listen_duration, "
+        "listenbrainz_submitted, tealfm_submitted "
+        "FROM listens ORDER BY listened_at DESC LIMIT :limit OFFSET :offset"
+    );
+    query.bindValue(":limit", limit);
+    query.bindValue(":offset", offset);
+
+    if (query.exec()) {
+        while (query.next()) {
+            QVariantMap listen;
+            listen["id"] = query.value("id");
+            listen["track_id"] = query.value("track_id");
+            listen["track_name"] = query.value("track_name");
+            listen["artist_name"] = query.value("artist_name");
+            listen["album_name"] = query.value("album_name");
+            listen["duration_seconds"] = query.value("duration_seconds");
+            listen["listened_at"] = query.value("listened_at");
+            listen["listen_duration"] = query.value("listen_duration");
+            listen["listenbrainz_submitted"] = query.value("listenbrainz_submitted").toBool();
+            listen["tealfm_submitted"] = query.value("tealfm_submitted").toBool();
+            listens.append(listen);
+        }
+    } else {
+        logError("Get recent listens", query);
+    }
+
+    return listens;
+}
+
+QVariantList DatabaseManager::getPendingListens(const QString& service)
+{
+    QVariantList listens;
+    if (!m_db.isOpen()) return listens;
+
+    QString column;
+    if (service == "listenbrainz") {
+        column = "listenbrainz_submitted";
+    } else if (service == "tealfm") {
+        column = "tealfm_submitted";
+    } else {
+        qWarning() << "[DatabaseManager::getPendingListens] Unknown service:" << service;
+        return listens;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(QString(
+        "SELECT id, track_id, track_name, artist_name, album_name, "
+        "duration_seconds, listened_at, listen_duration, "
+        "recording_mbid, artist_mbid, release_mbid, isrc, "
+        "submission_attempts, last_error "
+        "FROM listens WHERE %1 = 0 ORDER BY listened_at ASC"
+    ).arg(column));
+
+    if (query.exec()) {
+        while (query.next()) {
+            QVariantMap listen;
+            listen["id"] = query.value("id");
+            listen["track_id"] = query.value("track_id");
+            listen["track_name"] = query.value("track_name");
+            listen["artist_name"] = query.value("artist_name");
+            listen["album_name"] = query.value("album_name");
+            listen["duration_seconds"] = query.value("duration_seconds");
+            listen["listened_at"] = query.value("listened_at");
+            listen["listen_duration"] = query.value("listen_duration");
+            listen["recording_mbid"] = query.value("recording_mbid");
+            listen["artist_mbid"] = query.value("artist_mbid");
+            listen["release_mbid"] = query.value("release_mbid");
+            listen["isrc"] = query.value("isrc");
+            listen["submission_attempts"] = query.value("submission_attempts");
+            listen["last_error"] = query.value("last_error");
+            listens.append(listen);
+        }
+    } else {
+        logError("Get pending listens", query);
+    }
+
+    return listens;
+}
+
+bool DatabaseManager::markListenSubmitted(int listenId, const QString& service)
+{
+    if (!m_db.isOpen()) return false;
+
+    QString column, timestampColumn;
+    if (service == "listenbrainz") {
+        column = "listenbrainz_submitted";
+        timestampColumn = "listenbrainz_submitted_at";
+    } else if (service == "tealfm") {
+        column = "tealfm_submitted";
+        timestampColumn = "tealfm_submitted_at";
+    } else {
+        qWarning() << "[DatabaseManager::markListenSubmitted] Unknown service:" << service;
+        return false;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(QString(
+        "UPDATE listens SET %1 = 1, %2 = :timestamp WHERE id = :id"
+    ).arg(column, timestampColumn));
+    query.bindValue(":timestamp", QDateTime::currentSecsSinceEpoch());
+    query.bindValue(":id", listenId);
+
+    if (query.exec()) {
+        qDebug() << "[DatabaseManager::markListenSubmitted] Marked listen" << listenId << "as submitted to" << service;
+        return true;
+    }
+
+    logError("Mark listen submitted", query);
+    return false;
+}
+
+bool DatabaseManager::updateListenError(int listenId, const QString& error)
+{
+    if (!m_db.isOpen()) return false;
+
+    QSqlQuery query(m_db);
+    query.prepare(
+        "UPDATE listens SET submission_attempts = submission_attempts + 1, "
+        "last_error = :error WHERE id = :id"
+    );
+    query.bindValue(":error", error);
+    query.bindValue(":id", listenId);
+
+    if (query.exec()) {
+        return true;
+    }
+
+    logError("Update listen error", query);
+    return false;
+}
+
+int DatabaseManager::getListenCount()
+{
+    if (!m_db.isOpen()) return 0;
+
+    QSqlQuery query(m_db);
+    query.exec("SELECT COUNT(*) FROM listens");
+
+    if (query.next()) {
+        return query.value(0).toInt();
+    }
+
+    return 0;
+}
+
+int DatabaseManager::getPendingListenCount(const QString& service)
+{
+    if (!m_db.isOpen()) return 0;
+
+    QString column;
+    if (service == "listenbrainz") {
+        column = "listenbrainz_submitted";
+    } else if (service == "tealfm") {
+        column = "tealfm_submitted";
+    } else {
+        return 0;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(QString("SELECT COUNT(*) FROM listens WHERE %1 = 0").arg(column));
+
+    if (query.exec() && query.next()) {
+        return query.value(0).toInt();
+    }
+
+    return 0;
 }
 
 void DatabaseManager::logError(const QString& operation, const QSqlQuery& query)

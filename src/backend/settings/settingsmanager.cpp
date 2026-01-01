@@ -30,6 +30,7 @@ SettingsManager::SettingsManager(QObject *parent)
     , m_nowPlayingQueueVisible(false)
     , m_nowPlayingLyricsVisible(false)
     , m_playlistsEnabled(true)  // Default to enabled for backward compatibility
+    , m_scrobblingEnabled(true)  // Default to enabled
 {
     loadSettings();
     setupSystemThemeDetection();
@@ -397,6 +398,15 @@ void SettingsManager::setPlaylistsEnabled(bool enabled)
     }
 }
 
+void SettingsManager::setScrobblingEnabled(bool enabled)
+{
+    if (m_scrobblingEnabled != enabled) {
+        m_scrobblingEnabled = enabled;
+        emit scrobblingEnabledChanged(enabled);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -468,6 +478,7 @@ void SettingsManager::loadSettings()
 
     m_settings.beginGroup("Features");
     m_playlistsEnabled = m_settings.value("playlistsEnabled", true).toBool();
+    m_scrobblingEnabled = m_settings.value("scrobblingEnabled", true).toBool();
     m_settings.endGroup();
 
     qDebug() << "SettingsManager: Loaded settings - Queue action:" << m_queueActionDefault
@@ -544,6 +555,7 @@ void SettingsManager::saveSettings()
 
     m_settings.beginGroup("Features");
     m_settings.setValue("playlistsEnabled", m_playlistsEnabled);
+    m_settings.setValue("scrobblingEnabled", m_scrobblingEnabled);
     m_settings.endGroup();
 
     m_settings.sync();
