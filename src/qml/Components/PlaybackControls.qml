@@ -99,18 +99,22 @@ Item {
         }
     }
     
+    // Detect narrow width for compact layout
+    property bool isNarrow: width < 480
+
     ColumnLayout {
         anchors.fill: parent
         spacing: Math.max(8, parent.height * 0.1)  // Dynamic spacing: 10% of height, min 8px
-        
+
         // Playback buttons
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.leftMargin: 0
             Layout.rightMargin: 0
-            spacing: Math.max(12, parent.width * 0.02)  // Dynamic spacing: 2% of width, min 12px
-            
+            // Reduced minimum spacing at narrow widths
+            spacing: root.isNarrow ? Math.max(4, parent.width * 0.01) : Math.max(12, parent.width * 0.02)
+
             // History button (simple icon, no container)
             IconButton {
                 id: historyButton
@@ -221,30 +225,30 @@ Item {
             
             IconButton {
                 id: previousButton
-                Layout.preferredWidth: 60
-                Layout.preferredHeight: 60
+                Layout.preferredWidth: root.isNarrow ? 50 : 60
+                Layout.preferredHeight: root.isNarrow ? 50 : 60
                 iconSource: "qrc:/resources/icons/previous-button-normal.svg"
                 iconPressedSource: "qrc:/resources/icons/previous-button-pressed.svg"
                 onClicked: root.previousClicked()
             }
-            
+
             IconButton {
                 id: playPauseButton
-                Layout.preferredWidth: 80
-                Layout.preferredHeight: 80
-                iconSource: MediaPlayer.state === MediaPlayer.PlayingState ? 
-                    "qrc:/resources/icons/pause-button-normal.svg" : 
+                Layout.preferredWidth: root.isNarrow ? 65 : 80
+                Layout.preferredHeight: root.isNarrow ? 65 : 80
+                iconSource: MediaPlayer.state === MediaPlayer.PlayingState ?
+                    "qrc:/resources/icons/pause-button-normal.svg" :
                     "qrc:/resources/icons/play-button-normal.svg"
-                iconPressedSource: MediaPlayer.state === MediaPlayer.PlayingState ? 
-                    "qrc:/resources/icons/pause-button-pressed.svg" : 
+                iconPressedSource: MediaPlayer.state === MediaPlayer.PlayingState ?
+                    "qrc:/resources/icons/pause-button-pressed.svg" :
                     "qrc:/resources/icons/play-button-pressed.svg"
                 onClicked: root.playPauseClicked()
             }
-            
+
             IconButton {
                 id: nextButton
-                Layout.preferredWidth: 60
-                Layout.preferredHeight: 60
+                Layout.preferredWidth: root.isNarrow ? 50 : 60
+                Layout.preferredHeight: root.isNarrow ? 50 : 60
                 enabled: MediaPlayer.hasNext
                 opacity: enabled ? 1.0 : 0.3
                 iconSource: "qrc:/resources/icons/skip-button-normal.svg"
@@ -254,10 +258,11 @@ Item {
             
             Item { Layout.fillWidth: true }
 
-            // Balance spacer to match history button width on left side
+            // Balance spacer to match history button width on left side (hidden at narrow widths)
             Item {
-                Layout.preferredWidth: 26
+                Layout.preferredWidth: root.isNarrow ? 0 : 26
                 Layout.preferredHeight: 1
+                visible: !root.isNarrow
             }
 
             // Favorite, Lyrics and Queue button container
