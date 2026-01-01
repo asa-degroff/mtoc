@@ -1194,6 +1194,96 @@ ApplicationWindow {
                         Item { Layout.fillWidth: true }
                     }
 
+                    // Playlists toggle
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 10
+                        spacing: 4
+
+                        CheckBox {
+                            id: playlistsToggle
+                            text: "Enable playlists"
+                            checked: SettingsManager.playlistsEnabled
+
+                            onToggled: {
+                                SettingsManager.playlistsEnabled = checked
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                font.pixelSize: 14
+                                color: Theme.secondaryText
+                                verticalAlignment: Text.AlignVCenter
+                                leftPadding: parent.indicator.width + parent.spacing
+                            }
+
+                            indicator: Rectangle {
+                                implicitWidth: 20
+                                implicitHeight: 20
+                                x: parent.leftPadding
+                                y: parent.height / 2 - height / 2
+                                radius: 3
+                                color: parent.checked ? Theme.selectedBackground : Theme.inputBackground
+                                border.color: parent.checked ? Theme.linkColor : Theme.borderColor
+
+                                Canvas {
+                                    anchors.fill: parent
+                                    anchors.margins: 4
+                                    visible: parent.parent.checked
+
+                                    onPaint: {
+                                        var ctx = getContext("2d")
+                                        ctx.reset()
+                                        ctx.strokeStyle = "white"
+                                        ctx.lineWidth = 2
+                                        ctx.lineCap = "round"
+                                        ctx.lineJoin = "round"
+                                        ctx.beginPath()
+                                        ctx.moveTo(width * 0.2, height * 0.5)
+                                        ctx.lineTo(width * 0.45, height * 0.75)
+                                        ctx.lineTo(width * 0.8, height * 0.25)
+                                        ctx.stroke()
+                                    }
+                                }
+                            }
+                        }
+
+                        Image {
+                            source: Theme.isDark ? "qrc:/resources/icons/info.svg" : "qrc:/resources/icons/info-dark.svg"
+                            Layout.preferredWidth: 16
+                            Layout.preferredHeight: 16
+                            sourceSize.width: 16
+                            sourceSize.height: 16
+
+                            MouseArea {
+                                anchors.centerIn: parent
+                                width: 24
+                                height: 24
+                                hoverEnabled: true
+
+                                ToolTip {
+                                    id: playlistsTooltip
+                                    visible: parent.containsMouse
+                                    text: "When disabled, the Playlists tab and related features are hidden.\nThe playlists directory will not be created."
+                                    delay: 200
+                                    timeout: 8000
+                                    background: Rectangle {
+                                        color: Theme.isDark ? "#2b2b2b" : "#f0f0f0"
+                                        border.color: Theme.borderColor
+                                        radius: 4
+                                    }
+                                    contentItem: Text {
+                                        text: playlistsTooltip.text
+                                        font.pixelSize: 12
+                                        color: Theme.primaryText
+                                    }
+                                }
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+                    }
+
                     // Delimiter toggle
                     RowLayout {
                         Layout.fillWidth: true
@@ -2062,7 +2152,7 @@ ApplicationWindow {
                     }
                     
                     Label {
-                        text: "Version 2.5.1"
+                        text: "Version 2.5.2"
                         font.pixelSize: 12
                         color: Theme.tertiaryText
                     }

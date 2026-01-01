@@ -68,6 +68,16 @@
 
   <releases>
 
+    <release version="2.5.2" date="2025-12-31">
+      <description>
+        <p>Spacebar shortcut and playlists toggle</p>
+        <ul>
+          <li>Added spacebar as a keyboard shortcut for play/pause</li>
+          <li>Added the option to disable the playlists feature, hiding the Playlists tab and related UI elements and preventing playlist directory creation</li>
+        </ul>
+      </description>
+    </release>
+
     <release version="2.5.1" date="2025-12-15">
       <description>
         <p>Bug fix for quit behavior with system tray disabled</p>

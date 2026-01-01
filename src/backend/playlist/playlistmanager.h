@@ -13,6 +13,7 @@ class LibraryManager;
 }
 
 class MediaPlayer;
+class SettingsManager;
 
 class PlaylistManager : public QObject
 {
@@ -38,6 +39,7 @@ public:
     
     void setLibraryManager(Mtoc::LibraryManager* manager);
     void setMediaPlayer(MediaPlayer* player) { m_mediaPlayer = player; }
+    void setSettingsManager(SettingsManager* manager) { m_settingsManager = manager; }
     
     // Playlist operations
     Q_INVOKABLE bool savePlaylist(const QVariantList& tracks, const QString& name = QString());
@@ -94,6 +96,7 @@ private:
     static PlaylistManager* s_instance;
     Mtoc::LibraryManager* m_libraryManager = nullptr;
     MediaPlayer* m_mediaPlayer = nullptr;
+    SettingsManager* m_settingsManager = nullptr;
     QStringList m_playlists;
     QStringList m_specialPlaylists;
     QString m_playlistsDirectory;  // Legacy single directory

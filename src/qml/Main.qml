@@ -502,5 +502,12 @@ ApplicationWindow {
             }
         }
     }
-    
+
+    // Global keyboard shortcut for play/pause
+    Shortcut {
+        sequence: " "
+        enabled: !(libraryPaneWide.hasTextInputFocus || libraryPaneCompact.hasTextInputFocus)
+        onActivated: MediaPlayer.togglePlayPause()
+    }
+
 }

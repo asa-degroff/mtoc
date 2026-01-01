@@ -270,6 +270,7 @@ int main(int argc, char *argv[])
     qDebug() << "Main: Creating PlaylistManager...";
     PlaylistManager *playlistManager = PlaylistManager::instance();
     playlistManager->setParent(&engine);  // Parent to engine for cleanup
+    playlistManager->setSettingsManager(settingsManager);  // Must be set before setLibraryManager (which triggers initialize)
     playlistManager->setLibraryManager(libraryManager);
     playlistManager->setMediaPlayer(mediaPlayer);
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "PlaylistManager", playlistManager);

@@ -29,6 +29,7 @@ SettingsManager::SettingsManager(QObject *parent)
     , m_albumArtistDelimiters({";", "|"})  // Default delimiters: semicolon and pipe (whitespace-insensitive)
     , m_nowPlayingQueueVisible(false)
     , m_nowPlayingLyricsVisible(false)
+    , m_playlistsEnabled(true)  // Default to enabled for backward compatibility
 {
     loadSettings();
     setupSystemThemeDetection();
@@ -387,6 +388,15 @@ void SettingsManager::setNowPlayingLyricsVisible(bool visible)
     }
 }
 
+void SettingsManager::setPlaylistsEnabled(bool enabled)
+{
+    if (m_playlistsEnabled != enabled) {
+        m_playlistsEnabled = enabled;
+        emit playlistsEnabledChanged(enabled);
+        saveSettings();
+    }
+}
+
 void SettingsManager::loadSettings()
 {
     m_settings.beginGroup("QueueBehavior");
@@ -454,6 +464,10 @@ void SettingsManager::loadSettings()
     m_settings.beginGroup("NowPlayingPane");
     m_nowPlayingQueueVisible = m_settings.value("queueVisible", false).toBool();
     m_nowPlayingLyricsVisible = m_settings.value("lyricsVisible", false).toBool();
+    m_settings.endGroup();
+
+    m_settings.beginGroup("Features");
+    m_playlistsEnabled = m_settings.value("playlistsEnabled", true).toBool();
     m_settings.endGroup();
 
     qDebug() << "SettingsManager: Loaded settings - Queue action:" << m_queueActionDefault
@@ -526,6 +540,10 @@ void SettingsManager::saveSettings()
     m_settings.beginGroup("NowPlayingPane");
     m_settings.setValue("queueVisible", m_nowPlayingQueueVisible);
     m_settings.setValue("lyricsVisible", m_nowPlayingLyricsVisible);
+    m_settings.endGroup();
+
+    m_settings.beginGroup("Features");
+    m_settings.setValue("playlistsEnabled", m_playlistsEnabled);
     m_settings.endGroup();
 
     m_settings.sync();

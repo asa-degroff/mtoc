@@ -35,6 +35,13 @@ Item {
     }
     
     property var selectedAlbum: null
+
+    // Track if any text input in this pane has focus (for global keyboard shortcuts)
+    property bool hasTextInputFocus: searchBar.hasFocus ||
+                                     trackSelectorSearchBar.hasFocus ||
+                                     (titleLoader.item && titleLoader.item.activeFocus) ||
+                                     playlistView.renameFieldHasFocus
+
     property var expandedArtists: ({})  // Object to store expansion state by artist name
     onExpandedArtistsChanged: {
         // Save expanded state with debouncing
@@ -68,12 +75,29 @@ Item {
     property bool pendingExpandCollapseState: false  // State to apply after debounce
     property var albumContainerHeightCache: ({})  // Cache for pre-calculated album container heights
     
+    // Playlists feature toggle
+    property bool playlistsEnabled: SettingsManager.playlistsEnabled
+
     // Tab state - bind to SettingsManager to maintain state across layout changes
-    property int currentTab: SettingsManager.libraryActiveTab  // 0 = Artists, 1 = Playlists
+    // Force Artists tab (0) if playlists are disabled and saved tab was Playlists (1)
+    property int currentTab: (!playlistsEnabled && SettingsManager.libraryActiveTab === 1) ? 0 : SettingsManager.libraryActiveTab
     onCurrentTabChanged: {
         SettingsManager.libraryActiveTab = currentTab
     }
-    
+
+    // Handle playlists being disabled while on Playlists tab
+    Connections {
+        target: SettingsManager
+        function onPlaylistsEnabledChanged(enabled) {
+            if (!enabled && root.currentTab === 1) {
+                // Switch to Artists tab when playlists are disabled
+                root.currentTab = 0
+                SettingsManager.libraryActiveTab = 0  // Explicitly save to persist across restart
+                resetNavigation()
+            }
+        }
+    }
+
     // Playlist editing state
     property bool playlistEditMode: false
     property var editedPlaylistTracks: []
@@ -1325,7 +1349,8 @@ Item {
                         // Search bar at 60% width
                         SearchBar {
                             id: searchBar
-                            Layout.preferredWidth: parent.width * 0.58
+                            Layout.preferredWidth: root.playlistsEnabled ? parent.width * 0.58 : parent.width
+                            Layout.fillWidth: !root.playlistsEnabled  // Fill width when playlists disabled
                             placeholderText: "Search library..."
                             z: 1
                         
@@ -1367,10 +1392,11 @@ Item {
                         }
                     }
                         
-                        // Tab selector - custom implementation
+                        // Tab selector - custom implementation (hidden when playlists disabled)
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
+                            visible: root.playlistsEnabled  // Hide when playlists are disabled
                             color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.03) : Qt.rgba(1, 1, 1, 0.15)
                             radius: 4
                             border.width: 1
@@ -2171,6 +2197,8 @@ Item {
 
                                         StyledMenu {
                                             title: "Add to Playlist"
+                                            enabled: root.playlistsEnabled
+                                            height: root.playlistsEnabled ? implicitHeight : 0
 
                                             StyledMenuItem {
                                                 text: "New Playlist"
@@ -3689,6 +3717,8 @@ Item {
                                             title: root.selectedTrackIndices.length > 1 ?
                                                    "Add " + root.selectedTrackIndices.length + " Tracks to Playlist" :
                                                    "Add to Playlist"
+                                            enabled: root.playlistsEnabled
+                                            height: root.playlistsEnabled ? implicitHeight : 0
 
                                             // Helper function to collect selected tracks
                                             function getSelectedTracks() {
