@@ -139,6 +139,28 @@ QVariantList ScrobbleManager::getRecentListens(int limit)
     return m_dbManager->getRecentListens(limit, 0);
 }
 
+QVariantList ScrobbleManager::getValidRecentListens(int limit)
+{
+    if (!m_dbManager) return QVariantList();
+    return m_dbManager->getValidRecentListens(limit);
+}
+
+void ScrobbleManager::clearHistory()
+{
+    if (!m_dbManager) {
+        qWarning() << "[ScrobbleManager] Cannot clear history: no database manager";
+        return;
+    }
+
+    if (m_dbManager->clearListens()) {
+        emit historyCleared();
+        emit totalListensChanged(0);
+        emit pendingListenBrainzChanged(0);
+        emit pendingTealFmChanged(0);
+        qDebug() << "[ScrobbleManager] History cleared";
+    }
+}
+
 void ScrobbleManager::onTrackChanged(Mtoc::Track* track)
 {
     // If we had a previous track that was playing, check if we need to scrobble it

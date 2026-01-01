@@ -1595,6 +1595,38 @@ void MediaPlayer::clearUndoQueue()
     }
 }
 
+void MediaPlayer::playTrackById(int trackId)
+{
+    if (!m_libraryManager || !m_libraryManager->databaseManager()) {
+        qWarning() << "[MediaPlayer::playTrackById] No library/database manager";
+        return;
+    }
+
+    QVariantMap trackData = m_libraryManager->databaseManager()->getTrack(trackId);
+    if (trackData.isEmpty()) {
+        qWarning() << "[MediaPlayer::playTrackById] Track not found:" << trackId;
+        return;
+    }
+
+    playTrackFromData(trackData);
+}
+
+void MediaPlayer::enqueueTrackById(int trackId)
+{
+    if (!m_libraryManager || !m_libraryManager->databaseManager()) {
+        qWarning() << "[MediaPlayer::enqueueTrackById] No library/database manager";
+        return;
+    }
+
+    QVariantMap trackData = m_libraryManager->databaseManager()->getTrack(trackId);
+    if (trackData.isEmpty()) {
+        qWarning() << "[MediaPlayer::enqueueTrackById] Track not found:" << trackId;
+        return;
+    }
+
+    playTrackLast(trackData);
+}
+
 void MediaPlayer::playTrackNext(const QVariant& trackData)
 {
     // Clear undo queue when adding new items

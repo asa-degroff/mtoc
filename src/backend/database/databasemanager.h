@@ -107,11 +107,13 @@ public:
     // Listen operations (for scrobbling)
     int insertListen(const QVariantMap& listenData);
     QVariantList getRecentListens(int limit = 50, int offset = 0);
+    QVariantList getValidRecentListens(int limit = 50);  // Filters out deleted tracks
     QVariantList getPendingListens(const QString& service);
     bool markListenSubmitted(int listenId, const QString& service);
     bool updateListenError(int listenId, const QString& error);
     int getListenCount();
     int getPendingListenCount(const QString& service);
+    bool clearListens();  // Delete all listen history
 
 signals:
     void databaseError(const QString& error);

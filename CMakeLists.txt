@@ -119,6 +119,9 @@ qt_add_qml_module(mtoc
         src/qml/Components/QueueActionDialog.qml
         src/qml/Components/QueueListView.qml
         src/qml/Components/QueuePopup.qml
+        src/qml/Components/HistoryHeader.qml
+        src/qml/Components/HistoryListView.qml
+        src/qml/Components/HistoryPopup.qml
         src/qml/Components/ResizeHandler.qml
         src/qml/Components/SearchBar.qml
         src/qml/Components/StyledMenu.qml

@@ -13,7 +13,9 @@ Item {
     property url thumbnailUrl: ""
     property var libraryPane: null
     property bool queueVisible: SettingsManager.nowPlayingQueueVisible
+    property bool historyVisible: SettingsManager.nowPlayingHistoryVisible
     property var uniqueAlbumCovers: []
+    property var historyModel: []
     property bool showPlaylistSavedMessage: false
     property string savedPlaylistName: ""
     property bool lyricsVisible: SettingsManager.nowPlayingLyricsVisible
@@ -21,8 +23,31 @@ Item {
     onQueueVisibleChanged: {
         SettingsManager.nowPlayingQueueVisible = queueVisible
     }
+    onHistoryVisibleChanged: {
+        SettingsManager.nowPlayingHistoryVisible = historyVisible
+        if (historyVisible) {
+            refreshHistoryModel()
+        }
+    }
     onLyricsVisibleChanged: {
         SettingsManager.nowPlayingLyricsVisible = lyricsVisible
+    }
+
+    function refreshHistoryModel() {
+        historyModel = ScrobbleManager.getValidRecentListens(100)
+    }
+
+    // Refresh history when a new listen is recorded
+    Connections {
+        target: ScrobbleManager
+        function onListenRecorded() {
+            if (root.historyVisible) {
+                root.refreshHistoryModel()
+            }
+        }
+        function onHistoryCleared() {
+            root.historyModel = []
+        }
     }
 
     // Keyboard shortcut for undo
@@ -216,20 +241,104 @@ Item {
                 // Use manual positioning instead of RowLayout to avoid layout jumps
                 Item {
                     anchors.fill: parent
-                    
+
+                    // History container (slides in from left)
+                    Item {
+                        id: historyContainer
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: historyVisible ? parent.width * 0.7 - 16 : 0
+                        opacity: historyVisible ? 1.0 : 0.0
+                        visible: opacity > 0 || width > 1
+                        clip: true
+
+                        Behavior on width {
+                            NumberAnimation {
+                                duration: 300
+                                easing.type: Easing.InOutCubic
+                            }
+                        }
+
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: 300
+                                easing.type: Easing.InOutCubic
+                            }
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            color: Qt.rgba(0, 0, 0, 0.3)
+                            radius: 8
+                            border.width: 1
+                            border.color: Qt.rgba(1, 1, 1, 0.1)
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: 12
+                                spacing: 8
+
+                                HistoryHeader {
+                                    Layout.fillWidth: true
+                                    historyCount: historyListView.count
+                                    forceLightText: true
+                                    showCloseButton: false
+
+                                    onClearHistoryRequested: {
+                                        ScrobbleManager.clearHistory()
+                                    }
+                                }
+
+                                HistoryListView {
+                                    id: historyListView
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    historyModel: root.historyModel
+                                    forceLightText: true
+
+                                    onTrackClicked: function(historyItem) {
+                                        if (historyItem.track_id > 0) {
+                                            MediaPlayer.playTrackById(historyItem.track_id)
+                                        }
+                                    }
+
+                                    onGoToAlbumRequested: function(albumName, artistName) {
+                                        if (libraryPane && albumName && artistName) {
+                                            libraryPane.jumpToAlbum(artistName, albumName)
+                                        }
+                                    }
+
+                                    onGoToArtistRequested: function(artistName) {
+                                        if (libraryPane && artistName) {
+                                            libraryPane.jumpToArtist(artistName)
+                                        }
+                                    }
+
+                                    onAddToQueueRequested: function(trackId) {
+                                        MediaPlayer.enqueueTrackById(trackId)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Album art container
                     Item {
                         id: albumArtContainer
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
-                        width: queueVisible ? parent.width * 0.24 : parent.width * 0.9
-                        
+                        // Width: 24% when either panel is visible, 90% when centered
+                        width: (queueVisible || historyVisible) ? parent.width * 0.24 : parent.width * 0.9
+
                         // Calculate target width for proper x position calculation
-                        property real targetWidth: queueVisible ? parent.width * 0.24 : parent.width * 0.9
-                        
-                        // Position based on queue visibility - centered when hidden, left-aligned when visible
-                        // Use targetWidth instead of current width to ensure smooth simultaneous animation
-                        x: queueVisible ? 0 : (parent.width - targetWidth) / 2
+                        property real targetWidth: (queueVisible || historyVisible) ? parent.width * 0.24 : parent.width * 0.9
+
+                        // Position based on panel visibility:
+                        // - Queue visible: left at 0
+                        // - History visible: right aligned
+                        // - Neither: centered
+                        x: queueVisible ? 0 : (historyVisible ? parent.width - targetWidth : (parent.width - targetWidth) / 2)
                         
                         Behavior on width {
                             NumberAnimation { 
@@ -251,8 +360,8 @@ Item {
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: parent.width
                             height: parent.height
-                            spacing: queueVisible ? 10 : 0
-                            opacity: (queueVisible && uniqueAlbumCovers.length > 0) ? 1.0 : 0.0
+                            spacing: (queueVisible || historyVisible) ? 10 : 0
+                            opacity: ((queueVisible || historyVisible) && uniqueAlbumCovers.length > 0) ? 1.0 : 0.0
                             visible: opacity > 0
                             
                             Behavior on spacing {
@@ -316,6 +425,7 @@ Item {
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
                                             root.queueVisible = false
+                                            root.historyVisible = false
                                         }
                                     }
                                 }
@@ -332,7 +442,7 @@ Item {
                             source: albumArtUrl
                             fillMode: Image.PreserveAspectFit
                             cache: true
-                            opacity: (!queueVisible || uniqueAlbumCovers.length === 0) ? 1.0 : 0.0
+                            opacity: ((!queueVisible && !historyVisible) || uniqueAlbumCovers.length === 0) ? 1.0 : 0.0
                             visible: opacity > 0
                             
                             Behavior on opacity {
@@ -706,6 +816,7 @@ Item {
 
             queueVisible: root.queueVisible
             lyricsVisible: root.lyricsVisible
+            historyVisible: root.historyVisible
             isFavorite: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.isFavorite : false
 
             onPlayPauseClicked: MediaPlayer.togglePlayPause()
@@ -715,16 +826,26 @@ Item {
                 MediaPlayer.seek(position)
             }
             onQueueToggled: {
-                // Auto-hide lyrics when showing queue
-                if (!root.queueVisible && root.lyricsVisible) {
-                    root.lyricsVisible = false
+                // Auto-hide lyrics and history when showing queue
+                if (!root.queueVisible) {
+                    if (root.lyricsVisible) root.lyricsVisible = false
+                    if (root.historyVisible) root.historyVisible = false
                 }
                 root.queueVisible = !root.queueVisible
             }
+            onHistoryToggled: {
+                // Auto-hide queue and lyrics when showing history
+                if (!root.historyVisible) {
+                    if (root.queueVisible) root.queueVisible = false
+                    if (root.lyricsVisible) root.lyricsVisible = false
+                }
+                root.historyVisible = !root.historyVisible
+            }
             onLyricsToggled: {
-                // Auto-hide queue when showing lyrics
-                if (!root.lyricsVisible && root.queueVisible) {
-                    root.queueVisible = false
+                // Auto-hide queue and history when showing lyrics
+                if (!root.lyricsVisible) {
+                    if (root.queueVisible) root.queueVisible = false
+                    if (root.historyVisible) root.historyVisible = false
                 }
                 root.lyricsVisible = !root.lyricsVisible
             }

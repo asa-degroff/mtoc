@@ -46,8 +46,11 @@ public:
     // Manual operations
     Q_INVOKABLE void scrobbleNow();
     Q_INVOKABLE QVariantList getRecentListens(int limit = 50);
+    Q_INVOKABLE QVariantList getValidRecentListens(int limit = 50);
+    Q_INVOKABLE void clearHistory();
 
 signals:
+    void historyCleared();
     void enabledChanged(bool enabled);
     void totalListensChanged(int count);
     void pendingListenBrainzChanged(int count);

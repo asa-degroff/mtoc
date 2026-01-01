@@ -2762,6 +2762,56 @@ int DatabaseManager::getPendingListenCount(const QString& service)
     return 0;
 }
 
+QVariantList DatabaseManager::getValidRecentListens(int limit)
+{
+    QVariantList listens;
+    if (!m_db.isOpen()) return listens;
+
+    // Join with tracks table to only return listens where track still exists
+    QSqlQuery query(m_db);
+    query.prepare(
+        "SELECT l.id, l.track_id, l.track_name, l.artist_name, l.album_name, "
+        "l.duration_seconds, l.listened_at, l.listen_duration "
+        "FROM listens l "
+        "INNER JOIN tracks t ON l.track_id = t.id "
+        "ORDER BY l.listened_at DESC LIMIT :limit"
+    );
+    query.bindValue(":limit", limit);
+
+    if (query.exec()) {
+        while (query.next()) {
+            QVariantMap listen;
+            listen["id"] = query.value("id");
+            listen["track_id"] = query.value("track_id");
+            listen["track_name"] = query.value("track_name");
+            listen["artist_name"] = query.value("artist_name");
+            listen["album_name"] = query.value("album_name");
+            listen["duration_seconds"] = query.value("duration_seconds");
+            listen["listened_at"] = query.value("listened_at");
+            listen["listen_duration"] = query.value("listen_duration");
+            listens.append(listen);
+        }
+    } else {
+        logError("Get valid recent listens", query);
+    }
+
+    return listens;
+}
+
+bool DatabaseManager::clearListens()
+{
+    if (!m_db.isOpen()) return false;
+
+    QSqlQuery query(m_db);
+    if (query.exec("DELETE FROM listens")) {
+        qDebug() << "[DatabaseManager::clearListens] Cleared all listen history";
+        return true;
+    }
+
+    logError("Clear listens", query);
+    return false;
+}
+
 void DatabaseManager::logError(const QString& operation, const QSqlQuery& query)
 {
     QString error = QString("Database error in %1: %2").arg(operation, query.lastError().text());

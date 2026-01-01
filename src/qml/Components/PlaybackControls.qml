@@ -20,12 +20,14 @@ Item {
     signal seekRequested(real position)
     signal queueToggled()
     signal lyricsToggled()
+    signal historyToggled()
     signal repeatToggled()
     signal shuffleToggled()
     signal favoriteToggled()
 
     property bool queueVisible: false
     property bool lyricsVisible: false
+    property bool historyVisible: false
     property bool repeatEnabled: MediaPlayer.repeatEnabled
     property bool shuffleEnabled: MediaPlayer.shuffleEnabled
     property bool isFavorite: false
@@ -109,6 +111,37 @@ Item {
             Layout.rightMargin: 0
             spacing: Math.max(12, parent.width * 0.02)  // Dynamic spacing: 2% of width, min 12px
             
+            // History button
+            Rectangle {
+                Layout.preferredWidth: 31
+                Layout.preferredHeight: 31
+                Layout.alignment: Qt.AlignVCenter
+                radius: 15
+                color: root.historyVisible ? (Theme.isDark ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(0, 0, 0, 0.2)) :
+                       (Theme.isDark ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.05))
+                border.color: Theme.isDark ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(0, 0, 0, 0.2)
+                border.width: 1
+
+                Behavior on color {
+                    ColorAnimation { duration: 200 }
+                }
+
+                IconButton {
+                    id: historyButton
+                    anchors.centerIn: parent
+                    width: 18
+                    height: 18
+                    iconSource: "qrc:/resources/icons/history.svg"
+                    opacity: root.historyVisible ? 1.0 : 0.6
+                    addShadow: true
+                    onClicked: root.historyToggled()
+
+                    Behavior on opacity {
+                        NumberAnimation { duration: 200 }
+                    }
+                }
+            }
+
             // Repeat/Shuffle pill container
             Rectangle {
                 Layout.preferredWidth: 94
