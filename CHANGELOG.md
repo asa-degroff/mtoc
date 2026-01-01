@@ -1,3 +1,8 @@
+# 2.5.2
+### Keyboard shortcuts and playlists toggle
+- Added spacebar as a keyboard shortcut for play/pause
+- Added the option to disable the playlists feature, hiding the Playlists tab and related UI elements and preventing playlist directory creation
+
 # 2.5.1
 ### Bug fix for quit behavior with system tray disabled
 - This patch fixes a bug where Flatpak build of mtoc would incorrectly remain open after closing the main window even with the "minimize to system tray on close" option disabled.
