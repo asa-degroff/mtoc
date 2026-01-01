@@ -1,5 +1,5 @@
 # 2.5.2
-### Keyboard shortcuts and playlists toggle
+### Spacebar shortcut and playlists toggle
 - Added spacebar as a keyboard shortcut for play/pause
 - Added the option to disable the playlists feature, hiding the Playlists tab and related UI elements and preventing playlist directory creation
 
