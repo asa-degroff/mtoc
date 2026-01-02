@@ -14,7 +14,7 @@ ListView {
     // Keyboard navigation state
     property int keyboardSelectedIndex: -1
 
-    signal trackClicked(var historyItem)
+    signal trackClicked(var historyItem, int clickedIndex)
     signal goToAlbumRequested(string albumName, string artistName)
     signal goToArtistRequested(string artistName)
     signal addToQueueRequested(int trackId)
@@ -38,7 +38,7 @@ ListView {
             event.accepted = true
         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             if (keyboardSelectedIndex >= 0 && keyboardSelectedIndex < count) {
-                trackClicked(historyModel[keyboardSelectedIndex])
+                trackClicked(historyModel[keyboardSelectedIndex], keyboardSelectedIndex)
             }
             event.accepted = true
         } else if (event.key === Qt.Key_Escape) {
@@ -198,7 +198,7 @@ ListView {
                 if (mouse.button === Qt.LeftButton) {
                     root.keyboardSelectedIndex = index
                     if (SettingsManager.singleClickToPlay) {
-                        root.trackClicked(modelData)
+                        root.trackClicked(modelData, index)
                     }
                 } else if (mouse.button === Qt.RightButton) {
                     contextMenu.popup()
@@ -207,7 +207,7 @@ ListView {
 
             onDoubleClicked: function(mouse) {
                 if (!SettingsManager.singleClickToPlay && mouse.button === Qt.LeftButton) {
-                    root.trackClicked(modelData)
+                    root.trackClicked(modelData, index)
                 }
             }
         }
@@ -218,7 +218,7 @@ ListView {
 
             StyledMenuItem {
                 text: "Play"
-                onTriggered: root.trackClicked(modelData)
+                onTriggered: root.trackClicked(modelData, index)
             }
 
             StyledMenuItem {

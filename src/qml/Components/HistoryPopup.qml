@@ -11,7 +11,7 @@ Item {
     property bool isOpen: false
 
     signal closed()
-    signal playTrack(var historyItem)
+    signal playTrack(var historyItem, int clickedIndex)
     signal goToAlbum(string albumName, string artistName)
     signal goToArtist(string artistName)
     signal addToQueue(int trackId)
@@ -164,8 +164,8 @@ Item {
                 focus: true
                 historyModel: root.historyModel
 
-                onTrackClicked: function(historyItem) {
-                    root.playTrack(historyItem)
+                onTrackClicked: function(historyItem, clickedIndex) {
+                    root.playTrack(historyItem, clickedIndex)
                 }
 
                 onGoToAlbumRequested: function(albumName, artistName) {

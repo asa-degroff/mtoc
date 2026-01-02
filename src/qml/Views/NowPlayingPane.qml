@@ -297,9 +297,22 @@ Item {
                                     historyModel: root.historyModel
                                     forceLightText: true
 
-                                    onTrackClicked: function(historyItem) {
-                                        if (historyItem.track_id > 0) {
-                                            MediaPlayer.playTrackById(historyItem.track_id)
+                                    onTrackClicked: function(historyItem, clickedIndex) {
+                                        // Build list of track IDs from clicked position through history
+                                        // Limit to 50 tracks to avoid enqueueing an absurdly large amount
+                                        var trackIds = []
+                                        var limit = 50
+                                        var endIndex = Math.min(clickedIndex + limit, root.historyModel.length)
+
+                                        for (var i = clickedIndex; i < endIndex; i++) {
+                                            var item = root.historyModel[i]
+                                            if (item && item.track_id > 0) {
+                                                trackIds.push(item.track_id)
+                                            }
+                                        }
+
+                                        if (trackIds.length > 0) {
+                                            MediaPlayer.playTracksById(trackIds)
                                         }
                                     }
 

@@ -105,6 +105,7 @@ public slots:
     Q_INVOKABLE void playTrackFromData(const QVariant& trackData);
     Q_INVOKABLE void playTrackById(int trackId);
     Q_INVOKABLE void enqueueTrackById(int trackId);
+    Q_INVOKABLE void playTracksById(const QVariantList& trackIds);
     Q_INVOKABLE void playTrackNext(const QVariant& trackData);
     Q_INVOKABLE void playTrackLast(const QVariant& trackData);
     Q_INVOKABLE void playAlbumNext(const QString& artist, const QString& title);

@@ -1627,6 +1627,91 @@ void MediaPlayer::enqueueTrackById(int trackId)
     playTrackLast(trackData);
 }
 
+void MediaPlayer::playTracksById(const QVariantList& trackIds)
+{
+    if (trackIds.isEmpty()) {
+        qWarning() << "[MediaPlayer::playTracksById] Empty track ID list";
+        return;
+    }
+
+    if (!m_libraryManager || !m_libraryManager->databaseManager()) {
+        qWarning() << "[MediaPlayer::playTracksById] No library/database manager";
+        return;
+    }
+
+    // Clear any restoration state
+    clearRestorationState();
+    clearSavedPosition();
+
+    // Clear current queue
+    clearQueue();
+
+    // Look up each track and add to queue
+    int loadedCount = 0;
+    for (const QVariant& idVariant : trackIds) {
+        int trackId = idVariant.toInt();
+        QVariantMap trackData = m_libraryManager->databaseManager()->getTrack(trackId);
+
+        if (trackData.isEmpty()) {
+            qDebug() << "[MediaPlayer::playTracksById] Track not found, skipping:" << trackId;
+            continue;
+        }
+
+        QString filePath = trackData.value("filePath").toString();
+        if (filePath.isEmpty()) {
+            qDebug() << "[MediaPlayer::playTracksById] Empty filePath for track:" << trackId;
+            continue;
+        }
+
+        // Create a new Track object from the data
+        Mtoc::Track* track = new Mtoc::Track(this);
+        track->setId(trackData.value("id").toInt());
+        track->setTitle(trackData.value("title").toString());
+        track->setArtist(trackData.value("artist").toString());
+        track->setAlbum(trackData.value("album").toString());
+        track->setAlbumArtist(trackData.value("albumArtist").toString());
+        track->setTrackNumber(trackData.value("trackNumber").toInt());
+        track->setDuration(trackData.value("duration").toInt());
+        track->setFileUrl(QUrl::fromLocalFile(filePath));
+
+        m_playbackQueue.append(track);
+        loadedCount++;
+    }
+
+    if (m_playbackQueue.isEmpty()) {
+        qWarning() << "[MediaPlayer::playTracksById] No valid tracks found";
+        return;
+    }
+
+    qDebug() << "[MediaPlayer::playTracksById] Loaded" << loadedCount << "tracks from history";
+
+    // Set up queue tracking
+    m_currentQueueIndex = 0;
+    setQueueModified(true);
+
+    // Clear any playlist/album context since this is from history
+    m_currentPlaylistName.clear();
+    m_queueSourceAlbumName.clear();
+    m_queueSourceAlbumArtist.clear();
+    m_isVirtualPlaylist = false;
+    m_virtualPlaylistName.clear();
+
+    // Generate shuffle order if enabled
+    if (m_shuffleEnabled) {
+        generateShuffleOrder(true);  // Put current track first
+        m_shuffleIndex = 0;
+    }
+
+    emit playbackQueueChanged();
+    emit currentPlaylistNameChanged(QString());
+    emit queueSourceAlbumNameChanged(QString());
+    emit queueSourceAlbumArtistChanged(QString());
+    emit virtualPlaylistNameChanged(QString());
+
+    // Play the first track
+    playTrack(m_playbackQueue.first());
+}
+
 void MediaPlayer::playTrackNext(const QVariant& trackData)
 {
     // Clear undo queue when adding new items
