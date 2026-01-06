@@ -163,9 +163,6 @@ void ScrobbleManager::clearHistory()
 
 void ScrobbleManager::onTrackChanged(Mtoc::Track* track)
 {
-    // If we had a previous track that was playing, check if we need to scrobble it
-    // (This handles the case where user skips to next track before threshold)
-
     // Reset state for new track
     resetTrackState();
 
@@ -177,14 +174,19 @@ void ScrobbleManager::onTrackChanged(Mtoc::Track* track)
     m_currentTrack = track;
     m_trackStartTime = QDateTime::currentSecsSinceEpoch();
 
-    // Calculate scrobble threshold based on track duration
+    // Calculate scrobble threshold based on track duration (for future online scrobbling)
     qint64 durationMs = track->duration() * 1000; // Track stores duration in seconds
     m_scrobbleThreshold = calculateThreshold(durationMs);
 
     qDebug() << "[ScrobbleManager] New track:" << track->title()
              << "by" << track->artist()
-             << "- duration:" << durationMs << "ms"
-             << "- threshold:" << m_scrobbleThreshold << "ms";
+             << "- duration:" << durationMs << "ms";
+
+    // Record to local history immediately when playback starts
+    // (Future online scrobbling will use the threshold-based approach)
+    if (m_enabled) {
+        recordListen();
+    }
 
     emit scrobbleProgressChanged(0.0f);
 }
@@ -273,12 +275,8 @@ void ScrobbleManager::recordListen()
         return;
     }
 
-    // Check minimum duration (don't scrobble very short tracks)
-    qint64 durationMs = m_currentTrack->duration() * 1000;
-    if (durationMs < MIN_TRACK_DURATION_MS) {
-        qDebug() << "[ScrobbleManager] Track too short to scrobble:" << durationMs << "ms";
-        return;
-    }
+    // For local playback history, record any playback regardless of duration
+    // (Future online scrobbling may re-introduce minimum duration checks)
 
     QVariantMap listenData;
     listenData["track_id"] = m_currentTrack->id();
