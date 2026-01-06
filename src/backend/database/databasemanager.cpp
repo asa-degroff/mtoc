@@ -58,14 +58,28 @@ bool DatabaseManager::initializeDatabase(const QString& dbPath)
     // Enable foreign keys
     QSqlQuery query(m_db);
     query.exec("PRAGMA foreign_keys = ON");
-    
-    // Optimize SQLite for better performance
+
+    // Crash resilience settings
     query.exec("PRAGMA journal_mode = WAL");
-    query.exec("PRAGMA synchronous = NORMAL");
+    query.exec("PRAGMA synchronous = NORMAL");  // Good balance of safety and performance
+    query.exec("PRAGMA busy_timeout = 5000");   // Wait up to 5 seconds if database is locked
+
+    // Performance optimizations
     query.exec("PRAGMA cache_size = -64000"); // 64MB cache
     query.exec("PRAGMA temp_store = MEMORY");
     query.exec("PRAGMA mmap_size = 268435456"); // 256MB memory-mapped I/O
     query.exec("PRAGMA page_size = 4096"); // 4KB page size
+
+    // Check database integrity on startup
+    query.exec("PRAGMA quick_check");
+    if (query.next()) {
+        QString result = query.value(0).toString();
+        if (result != "ok") {
+            qCritical() << "Database integrity check failed:" << result;
+            emit databaseError("Database integrity check failed: " + result);
+            // Continue anyway - let the user decide what to do
+        }
+    }
     
     if (!createTables()) {
         return false;
@@ -88,6 +102,16 @@ void DatabaseManager::close()
 {
     if (m_db.isOpen()) {
         qDebug() << "DatabaseManager: Closing database...";
+
+        // Checkpoint WAL to ensure all data is written to main database file
+        // This prevents data loss if the WAL file gets corrupted or deleted
+        QSqlQuery query(m_db);
+        if (query.exec("PRAGMA wal_checkpoint(TRUNCATE)")) {
+            qDebug() << "DatabaseManager: WAL checkpoint completed";
+        } else {
+            qWarning() << "DatabaseManager: WAL checkpoint failed:" << query.lastError().text();
+        }
+
         m_db.close();
     }
     
@@ -2140,11 +2164,12 @@ QSqlDatabase DatabaseManager::createThreadConnection(const QString& connectionNa
     query.exec("PRAGMA foreign_keys = ON");
     query.exec("PRAGMA journal_mode = WAL");
     query.exec("PRAGMA synchronous = NORMAL");
+    query.exec("PRAGMA busy_timeout = 5000");  // Wait up to 5 seconds if database is locked
     query.exec("PRAGMA cache_size = -64000");
     query.exec("PRAGMA temp_store = MEMORY");
     query.exec("PRAGMA mmap_size = 268435456");
     query.exec("PRAGMA page_size = 4096");
-    
+
     // Force WAL checkpoint to ensure this connection sees all committed data
     query.exec("PRAGMA wal_checkpoint(TRUNCATE)");
     
