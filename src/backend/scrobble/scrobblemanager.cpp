@@ -280,7 +280,9 @@ void ScrobbleManager::recordListen()
     // (Future online scrobbling may re-introduce minimum duration checks)
 
     QVariantMap listenData;
-    listenData["track_id"] = m_currentTrack->id();
+    // Use NULL for track_id if it's 0 (track not in database) to satisfy foreign key constraint
+    int trackId = m_currentTrack->id();
+    listenData["track_id"] = (trackId > 0) ? QVariant(trackId) : QVariant();
     listenData["track_name"] = m_currentTrack->title();
     listenData["artist_name"] = m_currentTrack->artist();
     listenData["album_name"] = m_currentTrack->album();
