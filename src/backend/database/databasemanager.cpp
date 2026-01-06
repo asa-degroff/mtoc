@@ -2545,6 +2545,8 @@ int DatabaseManager::findTrackByMetadata(const QString& artist, const QString& a
 
 int DatabaseManager::insertListen(const QVariantMap& listenData)
 {
+    QMutexLocker locker(&m_databaseMutex);
+
     if (!m_db.isOpen()) {
         qWarning() << "[DatabaseManager::insertListen] Database is not open!";
         return -1;
@@ -2588,6 +2590,8 @@ int DatabaseManager::insertListen(const QVariantMap& listenData)
 
 QVariantList DatabaseManager::getRecentListens(int limit, int offset)
 {
+    QMutexLocker locker(&m_databaseMutex);
+
     QVariantList listens;
     if (!m_db.isOpen()) return listens;
 
@@ -2625,6 +2629,8 @@ QVariantList DatabaseManager::getRecentListens(int limit, int offset)
 
 QVariantList DatabaseManager::getPendingListens(const QString& service)
 {
+    QMutexLocker locker(&m_databaseMutex);
+
     QVariantList listens;
     if (!m_db.isOpen()) return listens;
 
@@ -2675,6 +2681,8 @@ QVariantList DatabaseManager::getPendingListens(const QString& service)
 
 bool DatabaseManager::markListenSubmitted(int listenId, const QString& service)
 {
+    QMutexLocker locker(&m_databaseMutex);
+
     if (!m_db.isOpen()) return false;
 
     QString column, timestampColumn;
@@ -2707,6 +2715,8 @@ bool DatabaseManager::markListenSubmitted(int listenId, const QString& service)
 
 bool DatabaseManager::updateListenError(int listenId, const QString& error)
 {
+    QMutexLocker locker(&m_databaseMutex);
+
     if (!m_db.isOpen()) return false;
 
     QSqlQuery query(m_db);
@@ -2727,6 +2737,8 @@ bool DatabaseManager::updateListenError(int listenId, const QString& error)
 
 int DatabaseManager::getListenCount()
 {
+    QMutexLocker locker(&m_databaseMutex);
+
     if (!m_db.isOpen()) return 0;
 
     QSqlQuery query(m_db);
@@ -2741,6 +2753,8 @@ int DatabaseManager::getListenCount()
 
 int DatabaseManager::getPendingListenCount(const QString& service)
 {
+    QMutexLocker locker(&m_databaseMutex);
+
     if (!m_db.isOpen()) return 0;
 
     QString column;
@@ -2764,6 +2778,8 @@ int DatabaseManager::getPendingListenCount(const QString& service)
 
 QVariantList DatabaseManager::getValidRecentListens(int limit)
 {
+    QMutexLocker locker(&m_databaseMutex);
+
     QVariantList listens;
     if (!m_db.isOpen()) return listens;
 
@@ -2800,6 +2816,8 @@ QVariantList DatabaseManager::getValidRecentListens(int limit)
 
 bool DatabaseManager::clearListens()
 {
+    QMutexLocker locker(&m_databaseMutex);
+
     if (!m_db.isOpen()) return false;
 
     QSqlQuery query(m_db);
