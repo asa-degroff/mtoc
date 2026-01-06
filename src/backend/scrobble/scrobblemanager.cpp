@@ -183,8 +183,9 @@ void ScrobbleManager::onTrackChanged(Mtoc::Track* track)
              << "- duration:" << durationMs << "ms";
 
     // Record to local history immediately when playback starts
+    // Skip if restoring state from previous session (track was already recorded)
     // (Future online scrobbling will use the threshold-based approach)
-    if (m_enabled) {
+    if (m_enabled && m_mediaPlayer && !m_mediaPlayer->isRestoringState()) {
         recordListen();
     }
 
