@@ -564,6 +564,60 @@ Item {
                         }
                         }
                     }
+
+                    // Left invisible hitbox (opens history)
+                    // Extends from pane edge to actual visible album art edge
+                    MouseArea {
+                        id: historyHitbox
+                        property real layoutMargin: Math.max(32, root.height * 0.04)
+                        // Calculate actual image width (square album art with PreserveAspectFit)
+                        property real actualImageWidth: Math.min(albumArtContainer.width, albumArtContainer.height)
+                        property real imagePadding: (albumArtContainer.width - actualImageWidth) / 2
+                        property real actualImageLeft: albumArtContainer.x + imagePadding
+
+                        x: -layoutMargin
+                        y: 0
+                        width: actualImageLeft + layoutMargin
+                        height: parent.height
+                        visible: !historyVisible && width > 10  // Hide when history is open or area is too small
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+
+                        onEntered: playbackControls.externalHistoryHover = true
+                        onExited: playbackControls.externalHistoryHover = false
+                        onClicked: {
+                            if (root.queueVisible) root.queueVisible = false
+                            if (root.lyricsVisible) root.lyricsVisible = false
+                            root.historyVisible = true
+                        }
+                    }
+
+                    // Right invisible hitbox (opens queue)
+                    // Extends from actual visible album art edge to pane edge
+                    MouseArea {
+                        id: queueHitbox
+                        property real layoutMargin: Math.max(16, root.height * 0.04)
+                        // Calculate actual image width (square album art with PreserveAspectFit)
+                        property real actualImageWidth: Math.min(albumArtContainer.width, albumArtContainer.height)
+                        property real imagePadding: (albumArtContainer.width - actualImageWidth) / 2
+                        property real actualImageRight: albumArtContainer.x + albumArtContainer.width - imagePadding
+
+                        x: actualImageRight
+                        y: 0
+                        width: parent.width - actualImageRight + layoutMargin
+                        height: parent.height
+                        visible: !queueVisible && width > 10  // Hide when queue is open or area is too small
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+
+                        onEntered: playbackControls.externalQueueHover = true
+                        onExited: playbackControls.externalQueueHover = false
+                        onClicked: {
+                            if (root.historyVisible) root.historyVisible = false
+                            if (root.lyricsVisible) root.lyricsVisible = false
+                            root.queueVisible = true
+                        }
+                    }
                 }
             }
 
@@ -824,6 +878,7 @@ Item {
         
         // Playback controls
         PlaybackControls {
+            id: playbackControls
             Layout.fillWidth: true
             Layout.preferredHeight: 80
 

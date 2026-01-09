@@ -31,6 +31,10 @@ Item {
     property bool repeatEnabled: MediaPlayer.repeatEnabled
     property bool shuffleEnabled: MediaPlayer.shuffleEnabled
     property bool isFavorite: false
+
+    // External hover control (for extended hitboxes in NowPlayingPane)
+    property bool externalHistoryHover: false
+    property bool externalQueueHover: false
     
     function formatTime(milliseconds) {
         if (isNaN(milliseconds) || milliseconds < 0) {
@@ -51,16 +55,17 @@ Item {
         property string iconPressedSource: ""
         property bool isPressed: false
         property bool isHovered: false
+        property bool externalHover: false  // External hover trigger (for extended hitboxes)
         property bool addShadow: false
         property bool enableTint: false
         property color tintColor: "transparent"
         property real tintAmount: 0.8
         signal clicked()
-        
-        scale: isPressed ? 0.9 : (isHovered ? 1.1 : 1.0)
-        
+
+        scale: isPressed ? 0.9 : ((isHovered || externalHover) ? 1.1 : 1.0)
+
         Behavior on scale {
-            enabled: buttonRoot.isHovered || buttonRoot.isPressed
+            enabled: buttonRoot.isHovered || buttonRoot.isPressed || buttonRoot.externalHover
             NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
         }
         
@@ -124,6 +129,7 @@ Item {
                 iconSource: "qrc:/resources/icons/history.svg"
                 opacity: root.historyVisible ? 1.0 : 0.6
                 addShadow: true
+                externalHover: root.externalHistoryHover
                 onClicked: root.historyToggled()
 
                 Behavior on opacity {
@@ -342,6 +348,7 @@ Item {
                     iconSource: "qrc:/resources/icons/queue.svg"
                     opacity: root.queueVisible ? 1.0 : 0.6
                     addShadow: true
+                    externalHover: root.externalQueueHover
                     onClicked: root.queueToggled()
 
                     Behavior on x {
