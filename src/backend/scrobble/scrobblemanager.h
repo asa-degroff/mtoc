@@ -17,11 +17,15 @@ class ScrobbleManager : public QObject
 {
     Q_OBJECT
 
+    // Local playback history properties
     Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY enabledChanged)
     Q_PROPERTY(int totalListens READ totalListens NOTIFY totalListensChanged)
+    Q_PROPERTY(bool currentTrackScrobbled READ currentTrackScrobbled NOTIFY currentTrackScrobbledChanged)
+
+    // Online scrobbling properties - stubbed until online scrobbling is implemented
+    // These return 0/0.0 but are kept for API compatibility
     Q_PROPERTY(int pendingListenBrainz READ pendingListenBrainz NOTIFY pendingListenBrainzChanged)
     Q_PROPERTY(int pendingTealFm READ pendingTealFm NOTIFY pendingTealFmChanged)
-    Q_PROPERTY(bool currentTrackScrobbled READ currentTrackScrobbled NOTIFY currentTrackScrobbledChanged)
     Q_PROPERTY(float scrobbleProgress READ scrobbleProgress NOTIFY scrobbleProgressChanged)
 
 public:
@@ -37,11 +41,12 @@ public:
     void setEnabled(bool enabled);
 
     int totalListens() const;
-    int pendingListenBrainz() const;
-    int pendingTealFm() const;
-
     bool currentTrackScrobbled() const;
-    float scrobbleProgress() const;
+
+    // Online scrobbling - stubbed (always return 0)
+    int pendingListenBrainz() const { return 0; }
+    int pendingTealFm() const { return 0; }
+    float scrobbleProgress() const { return 0.0f; }
 
     // Manual operations
     Q_INVOKABLE void scrobbleNow();
@@ -53,12 +58,13 @@ signals:
     void historyCleared();
     void enabledChanged(bool enabled);
     void totalListensChanged(int count);
+    void currentTrackScrobbledChanged(bool scrobbled);
+    void listenRecorded(const QString& trackName, const QString& artistName);
+
+    // Online scrobbling signals - kept for API compatibility
     void pendingListenBrainzChanged(int count);
     void pendingTealFmChanged(int count);
-    void currentTrackScrobbledChanged(bool scrobbled);
     void scrobbleProgressChanged(float progress);
-
-    void listenRecorded(const QString& trackName, const QString& artistName);
     void scrobbleThresholdReached();
 
 private slots:
@@ -68,11 +74,13 @@ private slots:
 
 private:
     void resetTrackState();
-    void checkScrobbleThreshold();
     void recordListen();
-    qint64 calculateThreshold(qint64 durationMs) const;
     void loadSettings();
     void saveSettings();
+
+    // Online scrobbling - commented out until implemented
+    // void checkScrobbleThreshold();
+    // qint64 calculateThreshold(qint64 durationMs) const;
 
     MediaPlayer* m_mediaPlayer = nullptr;
     DatabaseManager* m_dbManager = nullptr;
@@ -80,18 +88,18 @@ private:
 
     bool m_enabled = true;
 
-    // Current track state
+    // Current track state (local history)
     QPointer<Track> m_currentTrack;
     qint64 m_trackStartTime = 0;
-    qint64 m_accumulatedTime = 0;
-    qint64 m_lastPosition = 0;
-    qint64 m_scrobbleThreshold = 0;
-    bool m_currentTrackScrobbled = false;      // True after local history recorded
-    bool m_thresholdSignalEmitted = false;     // True after scrobbleThresholdReached emitted
+    bool m_currentTrackScrobbled = false;
     bool m_isPlaying = false;
 
-    // Seek detection tolerance (3 seconds)
-    static constexpr qint64 SEEK_THRESHOLD_MS = 3000;
+    // Online scrobbling state - commented out until implemented
+    // qint64 m_accumulatedTime = 0;
+    // qint64 m_lastPosition = 0;
+    // qint64 m_scrobbleThreshold = 0;
+    // bool m_thresholdSignalEmitted = false;
+    // static constexpr qint64 SEEK_THRESHOLD_MS = 3000;
 };
 
 } // namespace Mtoc

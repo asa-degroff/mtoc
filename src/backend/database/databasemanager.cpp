@@ -2652,6 +2652,10 @@ QVariantList DatabaseManager::getRecentListens(int limit, int offset)
     return listens;
 }
 
+// ============================================================================
+// Online scrobbling operations - commented out until online scrobbling is implemented
+// ============================================================================
+/*
 QVariantList DatabaseManager::getPendingListens(const QString& service)
 {
     QMutexLocker locker(&m_databaseMutex);
@@ -2764,22 +2768,6 @@ bool DatabaseManager::updateListenError(int listenId, const QString& error)
     return false;
 }
 
-int DatabaseManager::getListenCount()
-{
-    QMutexLocker locker(&m_databaseMutex);
-
-    if (!m_db.isOpen()) return 0;
-
-    QSqlQuery query(m_db);
-    query.exec("SELECT COUNT(*) FROM listens");
-
-    if (query.next()) {
-        return query.value(0).toInt();
-    }
-
-    return 0;
-}
-
 int DatabaseManager::getPendingListenCount(const QString& service)
 {
     QMutexLocker locker(&m_databaseMutex);
@@ -2797,6 +2785,24 @@ int DatabaseManager::getPendingListenCount(const QString& service)
     }
 
     if (query.exec() && query.next()) {
+        return query.value(0).toInt();
+    }
+
+    return 0;
+}
+*/
+// ============================================================================
+
+int DatabaseManager::getListenCount()
+{
+    QMutexLocker locker(&m_databaseMutex);
+
+    if (!m_db.isOpen()) return 0;
+
+    QSqlQuery query(m_db);
+    query.exec("SELECT COUNT(*) FROM listens");
+
+    if (query.next()) {
         return query.value(0).toInt();
     }
 

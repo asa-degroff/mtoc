@@ -30,10 +30,12 @@ void ScrobbleManager::setMediaPlayer(MediaPlayer* player)
     if (m_mediaPlayer) {
         connect(m_mediaPlayer, &MediaPlayer::currentTrackChanged,
                 this, &ScrobbleManager::onTrackChanged);
-        connect(m_mediaPlayer, &MediaPlayer::positionChanged,
-                this, &ScrobbleManager::onPositionChanged);
         connect(m_mediaPlayer, &MediaPlayer::stateChanged,
                 this, &ScrobbleManager::onStateChanged);
+
+        // Online scrobbling - position tracking commented out until implemented
+        // connect(m_mediaPlayer, &MediaPlayer::positionChanged,
+        //         this, &ScrobbleManager::onPositionChanged);
 
         qDebug() << "[ScrobbleManager] Connected to MediaPlayer";
     }
@@ -102,27 +104,9 @@ int ScrobbleManager::totalListens() const
     return m_dbManager->getListenCount();
 }
 
-int ScrobbleManager::pendingListenBrainz() const
-{
-    if (!m_dbManager) return 0;
-    return m_dbManager->getPendingListenCount("listenbrainz");
-}
-
-int ScrobbleManager::pendingTealFm() const
-{
-    if (!m_dbManager) return 0;
-    return m_dbManager->getPendingListenCount("tealfm");
-}
-
 bool ScrobbleManager::currentTrackScrobbled() const
 {
     return m_currentTrackScrobbled;
-}
-
-float ScrobbleManager::scrobbleProgress() const
-{
-    if (m_scrobbleThreshold <= 0) return 0.0f;
-    return qMin(static_cast<float>(m_accumulatedTime) / m_scrobbleThreshold, 1.0f);
 }
 
 void ScrobbleManager::scrobbleNow()
@@ -157,8 +141,6 @@ void ScrobbleManager::clearHistory()
     if (m_dbManager->clearListens()) {
         emit historyCleared();
         emit totalListensChanged(0);
-        emit pendingListenBrainzChanged(0);
-        emit pendingTealFmChanged(0);
         qDebug() << "[ScrobbleManager] History cleared";
     }
 }
@@ -176,15 +158,8 @@ void ScrobbleManager::onTrackChanged(Track* track)
     m_currentTrack = track;
     m_trackStartTime = QDateTime::currentSecsSinceEpoch();
 
-    // Calculate scrobble threshold for online services (ListenBrainz/Last.fm require
-    // listening to half the track or 4 minutes, whichever is less, before it "counts")
-    qint64 durationMs = track->duration() * 1000;
-    m_scrobbleThreshold = calculateThreshold(durationMs);
-
     qDebug() << "[ScrobbleManager] New track:" << track->title()
-             << "by" << track->artist()
-             << "- duration:" << durationMs << "ms"
-             << "- scrobble threshold:" << m_scrobbleThreshold << "ms";
+             << "by" << track->artist();
 
     // LOCAL HISTORY: Record immediately when playback starts.
     // This gives users a complete history of what they played, even if they skip tracks.
@@ -192,44 +167,16 @@ void ScrobbleManager::onTrackChanged(Track* track)
     if (m_enabled && m_mediaPlayer && !m_mediaPlayer->isRestoringState()) {
         recordListen();
     }
-
-    emit scrobbleProgressChanged(0.0f);
 }
 
 void ScrobbleManager::onPositionChanged(qint64 position)
 {
-    // Continue tracking position even after local history is recorded.
-    // This accumulated time data is used for:
-    // 1. The scrobbleProgress property (UI progress indicator)
-    // 2. Future online scrobbling threshold detection
-    if (!m_enabled || !m_isPlaying || !m_currentTrack) {
-        return;
-    }
-
-    // Detect seeks by checking if position jumped significantly
-    qint64 expectedPosition = m_lastPosition + 100; // Approximate update interval
-    qint64 positionDelta = qAbs(position - expectedPosition);
-
-    if (m_lastPosition > 0 && positionDelta > SEEK_THRESHOLD_MS) {
-        // User seeked - don't count this time jump
-        qDebug() << "[ScrobbleManager] Seek detected: expected" << expectedPosition
-                 << "got" << position << "(delta:" << positionDelta << "ms)";
-    } else if (m_lastPosition > 0) {
-        // Normal playback - accumulate the time difference
-        qint64 timeDelta = position - m_lastPosition;
-        if (timeDelta > 0 && timeDelta < SEEK_THRESHOLD_MS) {
-            m_accumulatedTime += timeDelta;
-        }
-    }
-
-    m_lastPosition = position;
-
-    // Update progress toward scrobble threshold
-    float progress = scrobbleProgress();
-    emit scrobbleProgressChanged(progress);
-
-    // Check if we've reached the online scrobble threshold
-    checkScrobbleThreshold();
+    Q_UNUSED(position);
+    // Online scrobbling - position tracking commented out until implemented
+    // This was used to:
+    // 1. Track accumulated listen time for scrobble threshold
+    // 2. Report scrobbleProgress to UI
+    // 3. Emit scrobbleThresholdReached when threshold met
 }
 
 void ScrobbleManager::onStateChanged(int state)
@@ -240,11 +187,8 @@ void ScrobbleManager::onStateChanged(int state)
     m_isPlaying = (playerState == MediaPlayer::PlayingState);
 
     if (wasPlaying && !m_isPlaying) {
-        // Paused or stopped - we keep the accumulated time
-        qDebug() << "[ScrobbleManager] Playback paused/stopped - accumulated:"
-                 << m_accumulatedTime << "ms";
+        qDebug() << "[ScrobbleManager] Playback paused/stopped";
     } else if (!wasPlaying && m_isPlaying) {
-        // Resumed playback
         qDebug() << "[ScrobbleManager] Playback resumed";
     }
 }
@@ -253,10 +197,6 @@ void ScrobbleManager::resetTrackState()
 {
     m_currentTrack = nullptr;
     m_trackStartTime = 0;
-    m_accumulatedTime = 0;
-    m_lastPosition = 0;
-    m_scrobbleThreshold = 0;
-    m_thresholdSignalEmitted = false;
 
     if (m_currentTrackScrobbled) {
         m_currentTrackScrobbled = false;
@@ -264,6 +204,43 @@ void ScrobbleManager::resetTrackState()
     }
 }
 
+void ScrobbleManager::recordListen()
+{
+    if (!m_currentTrack || !m_dbManager) {
+        qWarning() << "[ScrobbleManager] Cannot record listen: missing track or database";
+        return;
+    }
+
+    // For local playback history, record any playback regardless of duration
+
+    QVariantMap listenData;
+    // Use NULL for track_id if it's 0 (track not in database) to satisfy foreign key constraint
+    int trackId = m_currentTrack->id();
+    listenData["track_id"] = (trackId > 0) ? QVariant(trackId) : QVariant();
+    listenData["track_name"] = m_currentTrack->title();
+    listenData["artist_name"] = m_currentTrack->artist();
+    listenData["album_name"] = m_currentTrack->album();
+    listenData["duration_seconds"] = m_currentTrack->duration();
+    listenData["listened_at"] = m_trackStartTime;
+    listenData["listen_duration"] = 0; // Not tracking duration for local history
+
+    int listenId = m_dbManager->insertListen(listenData);
+
+    if (listenId > 0) {
+        m_currentTrackScrobbled = true;
+        emit currentTrackScrobbledChanged(true);
+        emit listenRecorded(m_currentTrack->title(), m_currentTrack->artist());
+        emit totalListensChanged(m_dbManager->getListenCount());
+
+        qDebug() << "[ScrobbleManager] Listen recorded:" << m_currentTrack->title()
+                 << "by" << m_currentTrack->artist();
+    }
+}
+
+// ============================================================================
+// Online scrobbling - commented out until implemented
+// ============================================================================
+/*
 void ScrobbleManager::checkScrobbleThreshold()
 {
     // ONLINE SCROBBLING: Check if we've reached the scrobble threshold.
@@ -283,43 +260,6 @@ void ScrobbleManager::checkScrobbleThreshold()
     }
 }
 
-void ScrobbleManager::recordListen()
-{
-    if (!m_currentTrack || !m_dbManager) {
-        qWarning() << "[ScrobbleManager] Cannot record listen: missing track or database";
-        return;
-    }
-
-    // For local playback history, record any playback regardless of duration
-    // (Future online scrobbling may re-introduce minimum duration checks)
-
-    QVariantMap listenData;
-    // Use NULL for track_id if it's 0 (track not in database) to satisfy foreign key constraint
-    int trackId = m_currentTrack->id();
-    listenData["track_id"] = (trackId > 0) ? QVariant(trackId) : QVariant();
-    listenData["track_name"] = m_currentTrack->title();
-    listenData["artist_name"] = m_currentTrack->artist();
-    listenData["album_name"] = m_currentTrack->album();
-    listenData["duration_seconds"] = m_currentTrack->duration();
-    listenData["listened_at"] = m_trackStartTime;
-    listenData["listen_duration"] = m_accumulatedTime / 1000; // Convert to seconds
-
-    int listenId = m_dbManager->insertListen(listenData);
-
-    if (listenId > 0) {
-        m_currentTrackScrobbled = true;
-        emit currentTrackScrobbledChanged(true);
-        emit listenRecorded(m_currentTrack->title(), m_currentTrack->artist());
-        emit totalListensChanged(m_dbManager->getListenCount());
-        emit pendingListenBrainzChanged(pendingListenBrainz());
-        emit pendingTealFmChanged(pendingTealFm());
-
-        qDebug() << "[ScrobbleManager] Listen recorded:" << m_currentTrack->title()
-                 << "by" << m_currentTrack->artist()
-                 << "(listened" << (m_accumulatedTime / 1000) << "seconds)";
-    }
-}
-
 qint64 ScrobbleManager::calculateThreshold(qint64 durationMs) const
 {
     // ListenBrainz rule: half the track or 4 minutes, whichever is LOWER
@@ -330,5 +270,7 @@ qint64 ScrobbleManager::calculateThreshold(qint64 durationMs) const
 
     return qMin(halfTrack, fourMinutesMs);
 }
+*/
+// ============================================================================
 
 } // namespace Mtoc
