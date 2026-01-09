@@ -182,8 +182,9 @@ ListView {
                 color: root.forceLightText ? "#808080" : Theme.secondaryText
                 font.pixelSize: 11
                 Layout.preferredWidth: 80
-                Layout.alignment: Qt.AlignVCenter
+                Layout.fillHeight: true
                 horizontalAlignment: Text.AlignRight
+                verticalAlignment: Text.AlignVCenter
             }
         }
 
