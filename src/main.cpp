@@ -279,7 +279,7 @@ int main(int argc, char *argv[])
 
     // Create and register ScrobbleManager for listen tracking
     qDebug() << "Main: Creating ScrobbleManager...";
-    ScrobbleManager *scrobbleManager = new ScrobbleManager(&engine);
+    Mtoc::ScrobbleManager *scrobbleManager = new Mtoc::ScrobbleManager(&engine);
     scrobbleManager->setMediaPlayer(mediaPlayer);
     scrobbleManager->setDatabaseManager(libraryManager->databaseManager());
     scrobbleManager->setSettingsManager(settingsManager);

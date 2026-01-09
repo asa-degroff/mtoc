@@ -5,13 +5,13 @@
 #include <QPointer>
 #include <QDateTime>
 
-namespace Mtoc {
-class Track;
-class DatabaseManager;
-}
-
 class MediaPlayer;
 class SettingsManager;
+
+namespace Mtoc {
+
+class Track;
+class DatabaseManager;
 
 class ScrobbleManager : public QObject
 {
@@ -29,7 +29,7 @@ public:
     ~ScrobbleManager();
 
     void setMediaPlayer(MediaPlayer* player);
-    void setDatabaseManager(Mtoc::DatabaseManager* dbManager);
+    void setDatabaseManager(DatabaseManager* dbManager);
     void setSettingsManager(SettingsManager* settingsManager);
 
     // Properties
@@ -62,7 +62,7 @@ signals:
     void scrobbleThresholdReached();
 
 private slots:
-    void onTrackChanged(Mtoc::Track* track);
+    void onTrackChanged(Track* track);
     void onPositionChanged(qint64 position);
     void onStateChanged(int state);
 
@@ -75,13 +75,13 @@ private:
     void saveSettings();
 
     MediaPlayer* m_mediaPlayer = nullptr;
-    Mtoc::DatabaseManager* m_dbManager = nullptr;
+    DatabaseManager* m_dbManager = nullptr;
     SettingsManager* m_settingsManager = nullptr;
 
     bool m_enabled = true;
 
     // Current track state
-    QPointer<Mtoc::Track> m_currentTrack;
+    QPointer<Track> m_currentTrack;
     qint64 m_trackStartTime = 0;
     qint64 m_accumulatedTime = 0;
     qint64 m_lastPosition = 0;
@@ -93,5 +93,7 @@ private:
     // Seek detection tolerance (3 seconds)
     static constexpr qint64 SEEK_THRESHOLD_MS = 3000;
 };
+
+} // namespace Mtoc
 
 #endif // SCROBBLEMANAGER_H

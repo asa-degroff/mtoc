@@ -7,6 +7,8 @@
 #include "backend/database/databasemanager.h"
 #include "backend/settings/settingsmanager.h"
 
+namespace Mtoc {
+
 ScrobbleManager::ScrobbleManager(QObject *parent)
     : QObject(parent)
 {
@@ -37,7 +39,7 @@ void ScrobbleManager::setMediaPlayer(MediaPlayer* player)
     }
 }
 
-void ScrobbleManager::setDatabaseManager(Mtoc::DatabaseManager* dbManager)
+void ScrobbleManager::setDatabaseManager(DatabaseManager* dbManager)
 {
     m_dbManager = dbManager;
 }
@@ -161,7 +163,7 @@ void ScrobbleManager::clearHistory()
     }
 }
 
-void ScrobbleManager::onTrackChanged(Mtoc::Track* track)
+void ScrobbleManager::onTrackChanged(Track* track)
 {
     // Reset state for new track
     resetTrackState();
@@ -328,3 +330,5 @@ qint64 ScrobbleManager::calculateThreshold(qint64 durationMs) const
 
     return qMin(halfTrack, fourMinutesMs);
 }
+
+} // namespace Mtoc
