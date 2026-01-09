@@ -86,14 +86,12 @@ private:
     qint64 m_accumulatedTime = 0;
     qint64 m_lastPosition = 0;
     qint64 m_scrobbleThreshold = 0;
-    bool m_currentTrackScrobbled = false;
+    bool m_currentTrackScrobbled = false;      // True after local history recorded
+    bool m_thresholdSignalEmitted = false;     // True after scrobbleThresholdReached emitted
     bool m_isPlaying = false;
 
     // Seek detection tolerance (3 seconds)
     static constexpr qint64 SEEK_THRESHOLD_MS = 3000;
-
-    // Minimum track duration to scrobble (30 seconds)
-    static constexpr qint64 MIN_TRACK_DURATION_MS = 30000;
 };
 
 #endif // SCROBBLEMANAGER_H

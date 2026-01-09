@@ -174,17 +174,19 @@ void ScrobbleManager::onTrackChanged(Mtoc::Track* track)
     m_currentTrack = track;
     m_trackStartTime = QDateTime::currentSecsSinceEpoch();
 
-    // Calculate scrobble threshold based on track duration (for future online scrobbling)
-    qint64 durationMs = track->duration() * 1000; // Track stores duration in seconds
+    // Calculate scrobble threshold for online services (ListenBrainz/Last.fm require
+    // listening to half the track or 4 minutes, whichever is less, before it "counts")
+    qint64 durationMs = track->duration() * 1000;
     m_scrobbleThreshold = calculateThreshold(durationMs);
 
     qDebug() << "[ScrobbleManager] New track:" << track->title()
              << "by" << track->artist()
-             << "- duration:" << durationMs << "ms";
+             << "- duration:" << durationMs << "ms"
+             << "- scrobble threshold:" << m_scrobbleThreshold << "ms";
 
-    // Record to local history immediately when playback starts
-    // Skip if restoring state from previous session (track was already recorded)
-    // (Future online scrobbling will use the threshold-based approach)
+    // LOCAL HISTORY: Record immediately when playback starts.
+    // This gives users a complete history of what they played, even if they skip tracks.
+    // Skip if restoring state from previous session (track was already recorded).
     if (m_enabled && m_mediaPlayer && !m_mediaPlayer->isRestoringState()) {
         recordListen();
     }
@@ -194,7 +196,11 @@ void ScrobbleManager::onTrackChanged(Mtoc::Track* track)
 
 void ScrobbleManager::onPositionChanged(qint64 position)
 {
-    if (!m_enabled || !m_isPlaying || !m_currentTrack || m_currentTrackScrobbled) {
+    // Continue tracking position even after local history is recorded.
+    // This accumulated time data is used for:
+    // 1. The scrobbleProgress property (UI progress indicator)
+    // 2. Future online scrobbling threshold detection
+    if (!m_enabled || !m_isPlaying || !m_currentTrack) {
         return;
     }
 
@@ -216,11 +222,11 @@ void ScrobbleManager::onPositionChanged(qint64 position)
 
     m_lastPosition = position;
 
-    // Update progress
+    // Update progress toward scrobble threshold
     float progress = scrobbleProgress();
     emit scrobbleProgressChanged(progress);
 
-    // Check if we've reached the threshold
+    // Check if we've reached the online scrobble threshold
     checkScrobbleThreshold();
 }
 
@@ -248,6 +254,7 @@ void ScrobbleManager::resetTrackState()
     m_accumulatedTime = 0;
     m_lastPosition = 0;
     m_scrobbleThreshold = 0;
+    m_thresholdSignalEmitted = false;
 
     if (m_currentTrackScrobbled) {
         m_currentTrackScrobbled = false;
@@ -257,15 +264,20 @@ void ScrobbleManager::resetTrackState()
 
 void ScrobbleManager::checkScrobbleThreshold()
 {
-    if (m_currentTrackScrobbled || !m_currentTrack || m_scrobbleThreshold <= 0) {
+    // ONLINE SCROBBLING: Check if we've reached the scrobble threshold.
+    // Online services (ListenBrainz, Last.fm) require listening to a minimum duration
+    // before a play "counts" as a scrobble. This emits a signal when threshold is reached.
+    // Note: Local history is recorded immediately in onTrackChanged() - this is separate.
+
+    if (m_thresholdSignalEmitted || !m_currentTrack || m_scrobbleThreshold <= 0) {
         return;
     }
 
     if (m_accumulatedTime >= m_scrobbleThreshold) {
+        m_thresholdSignalEmitted = true;
         qDebug() << "[ScrobbleManager] Scrobble threshold reached:"
                  << m_accumulatedTime << ">=" << m_scrobbleThreshold << "ms";
         emit scrobbleThresholdReached();
-        recordListen();
     }
 }
 
