@@ -547,7 +547,7 @@ ListView {
                 if (index === postMoveIndex) {
                     return Theme.selectedBackgroundMediumOpacity  // Currently playing
                 }
-                return Qt.rgba(1, 1, 1, 0.02)  // Default
+                return root.forceLightText ? Theme.overlayDefaultBackground : "transparent"  // Default
             }
 
             // During removal animation, use post-removal indices for stable highlights
@@ -557,7 +557,7 @@ ListView {
                 if (postRemovalIndex === postRemovalPlayingIndex && postRemovalIndex !== -1) {
                     return Theme.selectedBackgroundMediumOpacity  // Currently playing
                 }
-                return Qt.rgba(1, 1, 1, 0.02)  // Default (suppress hover during animation)
+                return root.forceLightText ? Theme.overlayDefaultBackground : "transparent"  // Default (suppress hover during animation)
             }
 
             if (root.selectedTrackIndices.indexOf(index) !== -1) {
@@ -567,14 +567,14 @@ ListView {
             } else if (index === root.currentPlayingIndex) {
                 return Theme.selectedBackgroundMediumOpacity  // Currently playing
             } else if (queueItemMouseArea.containsMouse) {
-                return Qt.rgba(1, 1, 1, 0.04)  // Hover
+                return root.forceLightText ? Theme.overlayHoverBackground : Theme.hoverBackground  // Hover
             } else {
-                return Qt.rgba(1, 1, 1, 0.02)  // Default
+                return root.forceLightText ? Theme.overlayDefaultBackground : "transparent"  // Default
             }
         }
         radius: 4
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.04)
+        border.color: root.forceLightText ? Theme.overlayBorderColor : Theme.edgeLineColor
         clip: true
         
         
@@ -769,7 +769,7 @@ ListView {
             // Track title
             Label {
                 text: modelData.title || "Unknown Track"
-                color: root.forceLightText ? "#ffffff" : Theme.primaryText
+                color: root.forceLightText ? Theme.overlayPrimaryText : Theme.primaryText
                 font.pixelSize: 13
                 elide: Text.ElideRight
                 Layout.fillWidth: true
@@ -793,7 +793,7 @@ ListView {
             // Duration (fixed width)
             Label {
                 text: modelData.duration ? formatDuration(modelData.duration) : "0:00"
-                color: root.forceLightText ? "#aaaaaa" : Theme.secondaryText
+                color: root.forceLightText ? Theme.overlaySecondaryText : Theme.secondaryText
                 font.pixelSize: 12
                 Layout.preferredWidth: 45
                 horizontalAlignment: Text.AlignRight
@@ -984,7 +984,7 @@ ListView {
                 return "Queue is empty"
             }
         }
-        color: "#666666"
+        color: root.forceLightText ? Theme.overlayTertiaryText : Theme.tertiaryText
         font.pixelSize: 14
         visible: root.count === 0
     }
