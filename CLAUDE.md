@@ -2,6 +2,16 @@
 
 This document provides comprehensive guidance for AI assistants working with the mtoc codebase.
 
+## Quality Standards for AI-Assisted Contributions
+
+**Excellence over speed**: LLM assistance should be a quality multiplier. Use time savings to polish beyond what humans alone might do—better edge case handling, clearer code, more thorough testing.
+
+**Correctness over convenience**: Handle edge cases properly. Don't take shortcuts that leave latent bugs. If a user's library has unusual metadata, mtoc should handle it gracefully.
+
+**Pragmatic incrementalism**: Avoid over-engineering. Evolve designs incrementally rather than building elaborate abstractions upfront. Document trade-offs when making design decisions.
+
+---
+
 ## Project Overview
 
 **mtoc** (music table of contents) is a visually-rich music player and library browser for Linux that emphasizes smooth, continuous browsing experiences with album artwork at the forefront.
@@ -194,6 +204,21 @@ Image { source: "image://albumart/artist/album/thumbnail" }
 4. **Theme Usage**: Access `Theme` singleton for colors, fonts, spacing
 5. **Styling**: Use Theme.qml for centralized theme management
 
+### Error Handling
+
+**User-facing errors**: Use clear, actionable messages. "Cannot read file: permission denied" is better than "File error".
+
+**Logging**: Use `qDebug()` for development info, `qWarning()` for recoverable issues, `qCritical()` for serious problems. Never log sensitive paths in Flatpak contexts.
+
+**Graceful degradation**: If album art extraction fails, show placeholder—don't crash. If a track has missing metadata, display what we have.
+
+### Documentation & Comments
+
+- Explain "why" not just "what"—the code shows what, comments should explain intent
+- Use sentence case for comments (capitalize first word, period at end)
+- Only add comments where logic isn't self-evident from the code
+- Keep comments up to date—outdated comments are worse than none
+
 ### Performance Best Practices
 
 1. **Caching Strategy**:
@@ -292,14 +317,36 @@ sudo cmake --build . --target install
 
 - **Main branch**: `main` (or `master`)
 - **Feature branches**: Use descriptive names
-- **Commit messages**: Follow conventional commit format, focus on "why" not "what"
 - **Versioning**: Semantic versioning (MAJOR.MINOR.PATCH)
 - **Changelog**: Update CHANGELOG.md for all user-facing changes
 - **Release process**: Uses Tito for RPM packaging (`.tito/` directory)
 
+**Commit message format**: `[component] brief description`
+
+Examples:
+- `[librarymanager] add support for disc number metadata`
+- `[qml] fix album art loading in compact mode`
+- `[audioengine] improve gapless transition reliability`
+- `[meta] update dependencies and bump version`
+
+Use `[meta]` for cross-cutting changes (CI, docs, version bumps).
+
+**Commit quality**:
+- Keep commits atomic—one logical change per commit
+- Maintain bisect-able history for debugging regressions
+- Separate formatting/style changes from functional changes
+- Test that the build works at each commit, not just at the end
+- Focus on "why" not "what" in commit messages
+
 ### Testing
 
 **Note**: No automated test suite currently exists. Testing is manual.
+
+**CRITICAL**: Before marking work complete, manually verify:
+1. The app builds without warnings: `cmake --build build 2>&1 | grep -i warning`
+2. The app launches and basic playback works
+3. The specific feature/fix works as intended
+4. No obvious regressions in related functionality
 
 **Manual Testing Checklist**:
 - Library scanning with various audio formats (MP3, FLAC, OGG, M4A, Opus)
@@ -594,5 +641,28 @@ Always test:
 
 ---
 
-*Last Updated: 2025-12-31*
+## Quick Reference
+
+**Build & Run**:
+```bash
+cmake -B build && cmake --build build    # Build
+./build/mtoc_app                          # Run
+```
+
+**Common Files**:
+- Entry point: `src/main.cpp`
+- Theming: `src/qml/Theme.qml`
+- Main window: `src/qml/Main.qml`
+- Playback: `src/backend/playback/mediaplayer.cpp`
+- Database: `src/backend/database/databasemanager.cpp`
+
+**Git**:
+```bash
+git log --oneline -10                     # Recent commits
+git diff main...HEAD                      # Changes on branch
+```
+
+---
+
+*Last Updated: 2026-01-08*
 *mtoc Version: 2.5.2*
