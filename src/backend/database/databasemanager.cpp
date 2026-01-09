@@ -2659,24 +2659,28 @@ QVariantList DatabaseManager::getPendingListens(const QString& service)
     QVariantList listens;
     if (!m_db.isOpen()) return listens;
 
-    QString column;
+    // Use explicit queries for each service to avoid SQL string formatting
+    QSqlQuery query(m_db);
     if (service == "listenbrainz") {
-        column = "listenbrainz_submitted";
+        query.prepare(
+            "SELECT id, track_id, track_name, artist_name, album_name, "
+            "duration_seconds, listened_at, listen_duration, "
+            "recording_mbid, artist_mbid, release_mbid, isrc, "
+            "submission_attempts, last_error "
+            "FROM listens WHERE listenbrainz_submitted = 0 ORDER BY listened_at ASC"
+        );
     } else if (service == "tealfm") {
-        column = "tealfm_submitted";
+        query.prepare(
+            "SELECT id, track_id, track_name, artist_name, album_name, "
+            "duration_seconds, listened_at, listen_duration, "
+            "recording_mbid, artist_mbid, release_mbid, isrc, "
+            "submission_attempts, last_error "
+            "FROM listens WHERE tealfm_submitted = 0 ORDER BY listened_at ASC"
+        );
     } else {
         qWarning() << "[DatabaseManager::getPendingListens] Unknown service:" << service;
         return listens;
     }
-
-    QSqlQuery query(m_db);
-    query.prepare(QString(
-        "SELECT id, track_id, track_name, artist_name, album_name, "
-        "duration_seconds, listened_at, listen_duration, "
-        "recording_mbid, artist_mbid, release_mbid, isrc, "
-        "submission_attempts, last_error "
-        "FROM listens WHERE %1 = 0 ORDER BY listened_at ASC"
-    ).arg(column));
 
     if (query.exec()) {
         while (query.next()) {
@@ -2710,22 +2714,22 @@ bool DatabaseManager::markListenSubmitted(int listenId, const QString& service)
 
     if (!m_db.isOpen()) return false;
 
-    QString column, timestampColumn;
+    // Use explicit queries for each service to avoid SQL string formatting
+    QSqlQuery query(m_db);
     if (service == "listenbrainz") {
-        column = "listenbrainz_submitted";
-        timestampColumn = "listenbrainz_submitted_at";
+        query.prepare(
+            "UPDATE listens SET listenbrainz_submitted = 1, "
+            "listenbrainz_submitted_at = :timestamp WHERE id = :id"
+        );
     } else if (service == "tealfm") {
-        column = "tealfm_submitted";
-        timestampColumn = "tealfm_submitted_at";
+        query.prepare(
+            "UPDATE listens SET tealfm_submitted = 1, "
+            "tealfm_submitted_at = :timestamp WHERE id = :id"
+        );
     } else {
         qWarning() << "[DatabaseManager::markListenSubmitted] Unknown service:" << service;
         return false;
     }
-
-    QSqlQuery query(m_db);
-    query.prepare(QString(
-        "UPDATE listens SET %1 = 1, %2 = :timestamp WHERE id = :id"
-    ).arg(column, timestampColumn));
     query.bindValue(":timestamp", QDateTime::currentSecsSinceEpoch());
     query.bindValue(":id", listenId);
 
@@ -2782,17 +2786,15 @@ int DatabaseManager::getPendingListenCount(const QString& service)
 
     if (!m_db.isOpen()) return 0;
 
-    QString column;
+    // Use explicit queries for each service to avoid SQL string formatting
+    QSqlQuery query(m_db);
     if (service == "listenbrainz") {
-        column = "listenbrainz_submitted";
+        query.prepare("SELECT COUNT(*) FROM listens WHERE listenbrainz_submitted = 0");
     } else if (service == "tealfm") {
-        column = "tealfm_submitted";
+        query.prepare("SELECT COUNT(*) FROM listens WHERE tealfm_submitted = 0");
     } else {
         return 0;
     }
-
-    QSqlQuery query(m_db);
-    query.prepare(QString("SELECT COUNT(*) FROM listens WHERE %1 = 0").arg(column));
 
     if (query.exec() && query.next()) {
         return query.value(0).toInt();
