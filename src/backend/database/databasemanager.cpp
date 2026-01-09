@@ -419,6 +419,14 @@ bool DatabaseManager::applyMigrations(int currentVersion)
     if (currentVersion < 5) {
         qDebug() << "Applying migration 5: Creating listens table for scrobbling";
 
+        // Wrap migration in transaction for atomicity
+        if (!m_db.transaction()) {
+            qCritical() << "Failed to start transaction for migration 5";
+            return false;
+        }
+
+        bool migrationSuccess = true;
+
         if (!query.exec(
             "CREATE TABLE IF NOT EXISTS listens ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -442,23 +450,45 @@ bool DatabaseManager::applyMigrations(int currentVersion)
             "FOREIGN KEY (track_id) REFERENCES tracks(id) ON DELETE SET NULL"
             ")")) {
             logError("Create listens table", query);
-            return false;
+            migrationSuccess = false;
         }
 
         // Create indexes for efficient queries
-        query.exec("CREATE INDEX IF NOT EXISTS idx_listens_listened_at ON listens(listened_at DESC)");
-        query.exec("CREATE INDEX IF NOT EXISTS idx_listens_pending ON listens(listenbrainz_submitted, tealfm_submitted)");
-        query.exec("CREATE INDEX IF NOT EXISTS idx_listens_track_id ON listens(track_id)");
-
-        // Record migration
-        query.prepare("INSERT INTO schema_version (version) VALUES (:version)");
-        query.bindValue(":version", 5);
-        if (!query.exec()) {
-            logError("Record migration 5", query);
-            return false;
+        if (migrationSuccess) {
+            migrationSuccess = query.exec("CREATE INDEX IF NOT EXISTS idx_listens_listened_at ON listens(listened_at DESC)");
+            if (!migrationSuccess) logError("Create idx_listens_listened_at", query);
+        }
+        if (migrationSuccess) {
+            migrationSuccess = query.exec("CREATE INDEX IF NOT EXISTS idx_listens_pending ON listens(listenbrainz_submitted, tealfm_submitted)");
+            if (!migrationSuccess) logError("Create idx_listens_pending", query);
+        }
+        if (migrationSuccess) {
+            migrationSuccess = query.exec("CREATE INDEX IF NOT EXISTS idx_listens_track_id ON listens(track_id)");
+            if (!migrationSuccess) logError("Create idx_listens_track_id", query);
         }
 
-        qDebug() << "Migration 5 completed: listens table created";
+        // Record migration
+        if (migrationSuccess) {
+            query.prepare("INSERT INTO schema_version (version) VALUES (:version)");
+            query.bindValue(":version", 5);
+            if (!query.exec()) {
+                logError("Record migration 5", query);
+                migrationSuccess = false;
+            }
+        }
+
+        if (migrationSuccess) {
+            if (!m_db.commit()) {
+                qCritical() << "Failed to commit migration 5";
+                m_db.rollback();
+                return false;
+            }
+            qDebug() << "Migration 5 completed: listens table created";
+        } else {
+            qCritical() << "Migration 5 failed, rolling back";
+            m_db.rollback();
+            return false;
+        }
     }
 
     return true;
