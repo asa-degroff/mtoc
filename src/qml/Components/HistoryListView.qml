@@ -138,14 +138,14 @@ ListView {
             if (index === root.keyboardSelectedIndex) {
                 return Theme.selectedBackgroundLowOpacity
             } else if (historyItemMouseArea.containsMouse) {
-                return Qt.rgba(1, 1, 1, 0.04)
+                return root.forceLightText ? Theme.overlayHoverBackground : Theme.hoverBackground
             } else {
-                return Qt.rgba(1, 1, 1, 0.02)
+                return root.forceLightText ? Theme.overlayDefaultBackground : "transparent"
             }
         }
         radius: 4
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.04)
+        border.color: root.forceLightText ? Theme.overlayBorderColor : Theme.edgeLineColor
 
         // Reduce opacity for unavailable tracks
         opacity: trackAvailable ? 1.0 : 0.5
@@ -167,7 +167,7 @@ ListView {
                 // Track title
                 Label {
                     text: modelData.track_name || "Unknown Track"
-                    color: root.forceLightText ? "#ffffff" : Theme.primaryText
+                    color: root.forceLightText ? Theme.overlayPrimaryText : Theme.primaryText
                     font.pixelSize: 13
                     font.strikeout: !historyItemDelegate.trackAvailable
                     elide: Text.ElideRight
@@ -183,7 +183,7 @@ ListView {
                         }
                         return artist
                     }
-                    color: root.forceLightText ? "#aaaaaa" : Theme.secondaryText
+                    color: root.forceLightText ? Theme.overlaySecondaryText : Theme.secondaryText
                     font.pixelSize: 11
                     elide: Text.ElideRight
                     Layout.fillWidth: true
@@ -193,7 +193,7 @@ ListView {
             // Timestamp
             Label {
                 text: formatRelativeTime(modelData.listened_at)
-                color: root.forceLightText ? "#808080" : Theme.secondaryText
+                color: root.forceLightText ? Theme.overlayTertiaryText : Theme.secondaryText
                 font.pixelSize: 11
                 Layout.preferredWidth: 80
                 Layout.fillHeight: true
@@ -267,7 +267,7 @@ ListView {
     Label {
         anchors.centerIn: parent
         text: "No playback history yet"
-        color: "#666666"
+        color: root.forceLightText ? Theme.overlayTertiaryText : Theme.tertiaryText
         font.pixelSize: 14
         visible: root.count === 0
     }
