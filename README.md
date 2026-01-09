@@ -203,6 +203,6 @@ This project is licensed under the GPL v3 License - see the LICENSE file for det
 
 Project Link: [https://github.com/asa-degroff/mtoc](https://github.com/asa-degroff/mtoc)
 
-Official Website: [mtoc.3fz.org](https://mtoc.3fz.org)
+Official Website: [mtoc.app](https://mtoc.app)
 
-email: asa@3fz.org
+Lead developer: Asa DeGroff, asa@3fz.org
