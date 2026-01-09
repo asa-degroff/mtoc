@@ -299,6 +299,7 @@ Item {
 
                                     onTrackClicked: function(historyItem, clickedIndex) {
                                         // Build list of track IDs from clicked position through history
+                                        // Only include tracks that are still available in the library
                                         // Limit to 50 tracks to avoid enqueueing an absurdly large amount
                                         var trackIds = []
                                         var limit = 50
@@ -306,7 +307,7 @@ Item {
 
                                         for (var i = clickedIndex; i < endIndex; i++) {
                                             var item = root.historyModel[i]
-                                            if (item && item.track_id > 0) {
+                                            if (item && item.track_id > 0 && item.track_available !== false) {
                                                 trackIds.push(item.track_id)
                                             }
                                         }

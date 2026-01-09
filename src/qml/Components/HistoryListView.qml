@@ -130,6 +130,10 @@ ListView {
         id: historyItemDelegate
         width: root.width
         height: 45
+
+        // Track is available if track_available flag is true (track still exists in library)
+        property bool trackAvailable: modelData.track_available !== false
+
         color: {
             if (index === root.keyboardSelectedIndex) {
                 return Theme.selectedBackgroundLowOpacity
@@ -142,6 +146,9 @@ ListView {
         radius: 4
         border.width: 1
         border.color: Qt.rgba(1, 1, 1, 0.04)
+
+        // Reduce opacity for unavailable tracks
+        opacity: trackAvailable ? 1.0 : 0.5
 
         RowLayout {
             anchors.left: parent.left
@@ -162,13 +169,20 @@ ListView {
                     text: modelData.track_name || "Unknown Track"
                     color: root.forceLightText ? "#ffffff" : Theme.primaryText
                     font.pixelSize: 13
+                    font.strikeout: !historyItemDelegate.trackAvailable
                     elide: Text.ElideRight
                     Layout.fillWidth: true
                 }
 
                 // Artist name
                 Label {
-                    text: modelData.artist_name || "Unknown Artist"
+                    text: {
+                        var artist = modelData.artist_name || "Unknown Artist"
+                        if (!historyItemDelegate.trackAvailable) {
+                            return artist + " (unavailable)"
+                        }
+                        return artist
+                    }
                     color: root.forceLightText ? "#aaaaaa" : Theme.secondaryText
                     font.pixelSize: 11
                     elide: Text.ElideRight
@@ -198,7 +212,7 @@ ListView {
                 root.forceActiveFocus()
                 if (mouse.button === Qt.LeftButton) {
                     root.keyboardSelectedIndex = index
-                    if (SettingsManager.singleClickToPlay) {
+                    if (SettingsManager.singleClickToPlay && historyItemDelegate.trackAvailable) {
                         root.trackClicked(modelData, index)
                     }
                 } else if (mouse.button === Qt.RightButton) {
@@ -207,7 +221,7 @@ ListView {
             }
 
             onDoubleClicked: function(mouse) {
-                if (!SettingsManager.singleClickToPlay && mouse.button === Qt.LeftButton) {
+                if (!SettingsManager.singleClickToPlay && mouse.button === Qt.LeftButton && historyItemDelegate.trackAvailable) {
                     root.trackClicked(modelData, index)
                 }
             }
@@ -219,11 +233,13 @@ ListView {
 
             StyledMenuItem {
                 text: "Play"
+                enabled: historyItemDelegate.trackAvailable
                 onTriggered: root.trackClicked(modelData, index)
             }
 
             StyledMenuItem {
                 text: "Add to Queue"
+                enabled: historyItemDelegate.trackAvailable
                 onTriggered: root.addToQueueRequested(modelData.track_id)
             }
 

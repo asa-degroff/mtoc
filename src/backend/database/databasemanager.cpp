@@ -2808,13 +2808,15 @@ QVariantList DatabaseManager::getValidRecentListens(int limit)
     QVariantList listens;
     if (!m_db.isOpen()) return listens;
 
-    // Join with tracks table to only return listens where track still exists
+    // Use LEFT JOIN to include all listens, with a flag for whether track still exists
+    // This preserves history even when tracks are deleted from the library
     QSqlQuery query(m_db);
     query.prepare(
         "SELECT l.id, l.track_id, l.track_name, l.artist_name, l.album_name, "
-        "l.duration_seconds, l.listened_at, l.listen_duration "
+        "l.duration_seconds, l.listened_at, l.listen_duration, "
+        "(l.track_id IS NOT NULL AND t.id IS NOT NULL) as track_available "
         "FROM listens l "
-        "INNER JOIN tracks t ON l.track_id = t.id "
+        "LEFT JOIN tracks t ON l.track_id = t.id "
         "ORDER BY l.listened_at DESC LIMIT :limit"
     );
     query.bindValue(":limit", limit);
@@ -2830,10 +2832,11 @@ QVariantList DatabaseManager::getValidRecentListens(int limit)
             listen["duration_seconds"] = query.value("duration_seconds");
             listen["listened_at"] = query.value("listened_at");
             listen["listen_duration"] = query.value("listen_duration");
+            listen["track_available"] = query.value("track_available").toBool();
             listens.append(listen);
         }
     } else {
-        logError("Get valid recent listens", query);
+        logError("Get recent listens with availability", query);
     }
 
     return listens;
