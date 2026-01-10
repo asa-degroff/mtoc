@@ -120,12 +120,13 @@ Item {
             // Reduced minimum spacing at narrow widths
             spacing: root.isNarrow ? Math.max(4, parent.width * 0.01) : Math.max(12, parent.width * 0.02)
 
-            // History button (simple icon, no container)
+            // History button (simple icon, no container) - only visible when history is enabled
             IconButton {
                 id: historyButton
                 Layout.preferredWidth: 26
                 Layout.preferredHeight: 26
                 Layout.alignment: Qt.AlignVCenter
+                visible: SettingsManager.scrobblingEnabled
                 iconSource: "qrc:/resources/icons/history.svg"
                 opacity: root.historyVisible ? 1.0 : 0.6
                 addShadow: true
@@ -264,11 +265,11 @@ Item {
             
             Item { Layout.fillWidth: true }
 
-            // Balance spacer to match history button width on left side (hidden at narrow widths)
+            // Balance spacer to match history button width on left side (hidden at narrow widths or when history disabled)
             Item {
                 Layout.preferredWidth: root.isNarrow ? 0 : 26
                 Layout.preferredHeight: 1
-                visible: !root.isNarrow
+                visible: !root.isNarrow && SettingsManager.scrobblingEnabled
             }
 
             // Favorite, Lyrics and Queue button container

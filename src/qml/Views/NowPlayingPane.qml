@@ -580,7 +580,7 @@ Item {
                         y: 0
                         width: actualImageLeft + layoutMargin
                         height: parent.height
-                        visible: !historyVisible && width > 10  // Hide when history is open or area is too small
+                        visible: SettingsManager.scrobblingEnabled && !historyVisible && width > 10  // Hide when history disabled, open, or area too small
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
 
