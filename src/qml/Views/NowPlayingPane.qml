@@ -15,6 +15,8 @@ Item {
     property bool queueVisible: SettingsManager.nowPlayingQueueVisible
     property bool historyVisible: SettingsManager.nowPlayingHistoryVisible
     property var uniqueAlbumCovers: []
+    property var uniqueHistoryAlbumCovers: []
+    property var displayedAlbumCovers: []  // Latches to last shown covers during fade-out
     property var historyModel: []
     property bool showPlaylistSavedMessage: false
     property string savedPlaylistName: ""
@@ -22,11 +24,15 @@ Item {
 
     onQueueVisibleChanged: {
         SettingsManager.nowPlayingQueueVisible = queueVisible
+        if (queueVisible) {
+            displayedAlbumCovers = uniqueAlbumCovers
+        }
     }
     onHistoryVisibleChanged: {
         SettingsManager.nowPlayingHistoryVisible = historyVisible
         if (historyVisible) {
             refreshHistoryModel()
+            displayedAlbumCovers = uniqueHistoryAlbumCovers
         }
     }
     onLyricsVisibleChanged: {
@@ -35,6 +41,7 @@ Item {
 
     function refreshHistoryModel() {
         historyModel = ScrobbleManager.getValidRecentListens(100)
+        updateUniqueHistoryAlbumCovers()
     }
 
     // Refresh history when a new listen is recorded
@@ -44,9 +51,11 @@ Item {
             if (root.historyVisible) {
                 root.refreshHistoryModel()
             }
+            root.updateUniqueHistoryAlbumCovers()
         }
         function onHistoryCleared() {
             root.historyModel = []
+            root.uniqueHistoryAlbumCovers = []
         }
     }
 
@@ -68,7 +77,16 @@ Item {
         id: albumCoverUpdateTimer
         interval: 300
         repeat: false
-        onTriggered: updateUniqueAlbumCovers()
+        onTriggered: {
+            updateUniqueAlbumCovers()
+            updateUniqueHistoryAlbumCovers()
+            // Update displayed covers if a panel is currently visible
+            if (queueVisible) {
+                displayedAlbumCovers = uniqueAlbumCovers
+            } else if (historyVisible) {
+                displayedAlbumCovers = uniqueHistoryAlbumCovers
+            }
+        }
     }
     
     // Timer to hide playlist saved message
@@ -133,7 +151,45 @@ Item {
         
         uniqueAlbumCovers = covers
     }
-    
+
+    // Get up to 3 unique album covers: current album + 2 from history
+    function updateUniqueHistoryAlbumCovers() {
+        var covers = []
+        var seenAlbums = new Set()
+
+        // First, add the current playing track's album
+        if (MediaPlayer.currentTrack && MediaPlayer.currentTrack.albumArtist && MediaPlayer.currentTrack.album) {
+            var currentKey = MediaPlayer.currentTrack.albumArtist + "||" + MediaPlayer.currentTrack.album
+            covers.push({
+                albumArtist: MediaPlayer.currentTrack.albumArtist,
+                album: MediaPlayer.currentTrack.album,
+                isCurrent: true
+            })
+            seenAlbums.add(currentKey)
+        }
+
+        // Then go through history to find previous unique albums
+        for (var i = 0; i < historyModel.length && covers.length < 3; i++) {
+            var item = historyModel[i]
+            // Use albumArtist from backend, fall back to artist_name for legacy records
+            var albumArtist = item.albumArtist || item.artist_name
+            var album = item.album_name
+            if (albumArtist && album) {
+                var albumKey = albumArtist + "||" + album
+                if (!seenAlbums.has(albumKey)) {
+                    covers.push({
+                        albumArtist: albumArtist,
+                        album: album,
+                        isCurrent: false
+                    })
+                    seenAlbums.add(albumKey)
+                }
+            }
+        }
+
+        uniqueHistoryAlbumCovers = covers
+    }
+
     function formatQueueDuration(totalSeconds) {
         if (isNaN(totalSeconds) || totalSeconds < 0) {
             return "0:00"
@@ -368,14 +424,18 @@ Item {
                             }
                         }
                         
-                        // Column to show multiple album covers when queue is visible
+                        // Column to show multiple album covers when queue or history is visible
                         Column {
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: parent.width
                             height: parent.height
                             spacing: (queueVisible || historyVisible) ? 10 : 0
-                            opacity: ((queueVisible || historyVisible) && uniqueAlbumCovers.length > 0) ? 1.0 : 0.0
+                            opacity: {
+                                if (queueVisible && uniqueAlbumCovers.length > 0) return 1.0
+                                if (historyVisible && uniqueHistoryAlbumCovers.length > 0) return 1.0
+                                return 0.0
+                            }
                             visible: opacity > 0
                             
                             Behavior on spacing {
@@ -393,11 +453,11 @@ Item {
                             }
                             
                             Repeater {
-                                model: uniqueAlbumCovers
-                                
+                                model: displayedAlbumCovers
+
                                 Image {
                                     width: parent.width
-                                    height: (parent.height - (parent.spacing * (uniqueAlbumCovers.length - 1))) / uniqueAlbumCovers.length
+                                    height: (parent.height - (parent.spacing * (displayedAlbumCovers.length - 1))) / displayedAlbumCovers.length
                                     source: {
                                         if (modelData.albumArtist && modelData.album) {
                                             var encodedArtist = encodeURIComponent(modelData.albumArtist)

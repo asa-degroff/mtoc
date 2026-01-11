@@ -2848,13 +2848,17 @@ QVariantList DatabaseManager::getValidRecentListens(int limit)
 
     // Use LEFT JOIN to include all listens, with a flag for whether track still exists
     // This preserves history even when tracks are deleted from the library
+    // Also fetch album artist for album art display
     QSqlQuery query(m_db);
     query.prepare(
         "SELECT l.id, l.track_id, l.track_name, l.artist_name, l.album_name, "
         "l.duration_seconds, l.listened_at, l.listen_duration, "
-        "(l.track_id IS NOT NULL AND t.id IS NOT NULL) as track_available "
+        "(l.track_id IS NOT NULL AND t.id IS NOT NULL) as track_available, "
+        "aa.name as album_artist "
         "FROM listens l "
         "LEFT JOIN tracks t ON l.track_id = t.id "
+        "LEFT JOIN albums alb ON t.album_id = alb.id "
+        "LEFT JOIN album_artists aa ON alb.album_artist_id = aa.id "
         "ORDER BY l.listened_at DESC LIMIT :limit"
     );
     query.bindValue(":limit", limit);
@@ -2871,6 +2875,7 @@ QVariantList DatabaseManager::getValidRecentListens(int limit)
             listen["listened_at"] = query.value("listened_at");
             listen["listen_duration"] = query.value("listen_duration");
             listen["track_available"] = query.value("track_available").toBool();
+            listen["albumArtist"] = query.value("album_artist");
             listens.append(listen);
         }
     } else {
