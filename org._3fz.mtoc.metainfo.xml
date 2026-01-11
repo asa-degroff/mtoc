@@ -68,6 +68,18 @@
 
   <releases>
 
+    <release version="2.6" date="2026-01-11">
+      <description>
+        <p>Playback History</p>
+        <ul>
+          <li>Your plays are now recorded to a history list</li>
+          <li>Use history to quickly access recently played tracks</li>
+          <li>In addition to the buttons, click to the left and right of the album art to open the history and queue, respectively</li>
+          <li>History can be enabled or disabled in settings</li>
+        </ul>
+      </description>
+    </release>
+
     <release version="2.5.2" date="2025-12-31">
       <description>
         <p>Spacebar shortcut and playlists toggle</p>

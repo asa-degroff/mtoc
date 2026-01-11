@@ -664,5 +664,5 @@ git diff main...HEAD                      # Changes on branch
 
 ---
 
-*Last Updated: 2026-01-08*
-*mtoc Version: 2.5.2*
+*Last Updated: 2026-01-11*
+*mtoc Version: 2.6*

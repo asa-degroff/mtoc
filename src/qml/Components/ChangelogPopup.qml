@@ -188,19 +188,19 @@ Item {
                             Layout.preferredHeight: 8
                         }
 
-                        // Favorites section
+                        // Playback History section
                         Item {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: favoritesSection.height
+                            Layout.preferredHeight: historySection.height
 
                             ColumnLayout {
-                                id: favoritesSection
+                                id: historySection
                                 width: parent.width - 64
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 spacing: 12
 
                                 Label {
-                                    text: "Favorites"
+                                    text: "Playback History"
                                     font.pixelSize: 16
                                     font.bold: true
                                     color: Theme.primaryText
@@ -208,94 +208,7 @@ Item {
 
                                 Label {
                                     Layout.fillWidth: true
-                                    text: "• Added a toggleable favorite button and dynamic favorites playlist\n• Mark your favorite tracks and access them instantly from the playlists tab"
-                                    wrapMode: Text.WordWrap
-                                    font.pixelSize: 14
-                                    color: Theme.secondaryText
-                                    lineHeight: 1.4
-                                }
-                            }
-                        }
-
-                        // Playlist creation section
-                        Item {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: playlistSection.height
-
-                            ColumnLayout {
-                                id: playlistSection
-                                width: parent.width - 64
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                spacing: 12
-
-                                Label {
-                                    text: "Expanded Playlist Options"
-                                    font.pixelSize: 16
-                                    font.bold: true
-                                    color: Theme.primaryText
-                                }
-
-                                Label {
-                                    Layout.fillWidth: true
-                                    text: "• Albums and tracks can now be added to a new or existing playlist through the right-click context menus in the library\n• Creating a new playlist now reveals it in the list and enables immediate renaming"
-                                    wrapMode: Text.WordWrap
-                                    font.pixelSize: 14
-                                    color: Theme.secondaryText
-                                    lineHeight: 1.4
-                                }
-                            }
-                        }
-
-                        // Drag-and-drop section
-                        Item {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: dragDropSection.height
-
-                            ColumnLayout {
-                                id: dragDropSection
-                                width: parent.width - 64
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                spacing: 12
-
-                                Label {
-                                    text: "Improved Drag-and-Drop"
-                                    font.pixelSize: 16
-                                    font.bold: true
-                                    color: Theme.primaryText
-                                }
-
-                                Label {
-                                    Layout.fillWidth: true
-                                    text: "• Drag-and-drop list reordering in the queue and playlist editor has been rewritten with auto-scroll and improved stability"
-                                    wrapMode: Text.WordWrap
-                                    font.pixelSize: 14
-                                    color: Theme.secondaryText
-                                    lineHeight: 1.4
-                                }
-                            }
-                        }
-
-                        // Shuffle options section
-                        Item {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: shuffleSection.height
-
-                            ColumnLayout {
-                                id: shuffleSection
-                                width: parent.width - 64
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                spacing: 12
-
-                                Label {
-                                    text: "New Shuffle Options"
-                                    font.pixelSize: 16
-                                    font.bold: true
-                                    color: Theme.primaryText
-                                }
-
-                                Label {
-                                    Layout.fillWidth: true
-                                    text: "• New context menu option to play an entire artist discography\n• Shuffle option in album, artist, and playlist context menus\n• New option to auto-disable shuffle after queue replacement"
+                                    text: "• Your plays are now recorded to a history list\n• Use history to quickly access recently played tracks\n• In addition to the buttons, click to the left and right of the album art to open the history and queue, respectively\n• History can be enabled or disabled in settings"
                                     wrapMode: Text.WordWrap
                                     font.pixelSize: 14
                                     color: Theme.secondaryText
