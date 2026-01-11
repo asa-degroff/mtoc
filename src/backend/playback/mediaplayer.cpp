@@ -1664,15 +1664,7 @@ void MediaPlayer::playTracksById(const QVariantList& trackIds)
         }
 
         // Create a new Track object from the data
-        Mtoc::Track* track = new Mtoc::Track(this);
-        track->setId(trackData.value("id").toInt());
-        track->setTitle(trackData.value("title").toString());
-        track->setArtist(trackData.value("artist").toString());
-        track->setAlbum(trackData.value("album").toString());
-        track->setAlbumArtist(trackData.value("albumArtist").toString());
-        track->setTrackNumber(trackData.value("trackNumber").toInt());
-        track->setDuration(trackData.value("duration").toInt());
-        track->setFileUrl(QUrl::fromLocalFile(filePath));
+        Mtoc::Track* track = Mtoc::Track::fromMetadata(trackData, this);
 
         m_playbackQueue.append(track);
         loadedCount++;
