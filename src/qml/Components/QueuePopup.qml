@@ -160,6 +160,7 @@ Item {
                 id: queueListView
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.margins: 8
                 focus: true
                 
                 onTrackDoubleClicked: function(index) {
