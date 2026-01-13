@@ -2386,6 +2386,8 @@ void MediaPlayer::saveState()
                 trackMap["albumArtist"] = track->albumArtist();
                 trackMap["trackNumber"] = track->trackNumber();
                 trackMap["duration"] = track->duration();
+                trackMap["lyrics"] = track->lyrics();
+                trackMap["isFavorite"] = track->isFavorite();
                 queueData.append(trackMap);
             }
         }
