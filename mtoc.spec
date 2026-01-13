@@ -1,5 +1,5 @@
 Name:           mtoc
-Version:        2.5.2
+Version:        2.6
 Release:        1%{?dist}
 Summary:        Music player and library browsing application
 
@@ -53,6 +53,61 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
 %{_datadir}/metainfo/org._3fz.mtoc.metainfo.xml
 
 %changelog
+* Mon Jan 12 2026 Asa DeGroff <asa@3fz.org> 2.6-1
+- commented out history track count label for poor usefulness (asa@3fz.org)
+- fixed light mode history icon in compact now playing bar (asa@3fz.org)
+- margins in queue popup (asa@3fz.org)
+- changelog popup text (asa@3fz.org)
+- bugfix: persist lyrics and isFavorite for modified queues (asa@3fz.org)
+- bugfix: save track ids for tracks played from playlist or modified queue and
+  persist ids to support history list playback after restart (asa@3fz.org)
+- most recent 3 historical album art are displayed in history list view
+  (asa@3fz.org)
+- version bump and chagelog (asa@3fz.org)
+- replace manual track creation in playTracksById with a call to
+  Track::fromMetadata(). this correctly adds all metadata including lyrics and
+  favorites when playing tracks from history. (asa@3fz.org)
+- history is toggleable (asa@3fz.org)
+- use overlay color palette for queue list (asa@3fz.org)
+- add centralized color definitions to theme and tweaked colors for better
+  contrast in history list view (asa@3fz.org)
+- wrapped database migration in a transaction (asa@3fz.org)
+- cleanup: comment out online features that are not ready for full
+  implementation (asa@3fz.org)
+- use explicit queries for online services to avoid sql string formatting
+  (asa@3fz.org)
+- versionless Qt imports in history popup (asa@3fz.org)
+- move scrobble manager into mtoc namespace (asa@3fz.org)
+- fixed confusing dual recording logic for local history, fix early return for
+  onPositionChanged (asa@3fz.org)
+- fix for broken history on track deletion (asa@3fz.org)
+- updated documentation for claude (asa@3fz.org)
+- added clickable areas to the left and right of the album art in now playing
+  pane for opening the history and queue (asa@3fz.org)
+- fixed vertical alignment for timestamp in playback history (asa@3fz.org)
+- update website in readme (asa@3fz.org)
+- database integrity improvements: 5 second busy timeout is database is locked,
+  quick integrity check on startup, WAL checkpoint on close (asa@3fz.org)
+- Use NULL for track_id if it's 0 (track not in database) to satisfy foreign
+  key constraint (asa@3fz.org)
+- database mutex locker for listen operations (asa@3fz.org)
+- do not create duplicate playback history after restarting and resuming
+  (asa@3fz.org)
+- any duration counts as a play for local history (asa@3fz.org)
+- add id, lyrics, and isFavorite to trackMap when building track object from
+  playlist (asa@3fz.org)
+- add playTracksById to enable enqueuing history, enable playing from history
+  (asa@3fz.org)
+- use styled menu components for context menu in history list (asa@3fz.org)
+- playback controls readjust for narrow widths (asa@3fz.org)
+- layout adjustments (asa@3fz.org)
+- playback history: GUI, icons, animations, getValidRecentListens functions,
+  playTrackById function (asa@3fz.org)
+- listen history in database, scrobble manager class, scrobble settings
+  (asa@3fz.org)
+- phase 1 plan (asa@3fz.org)
+- feasibility study (asa@3fz.org)
+
 * Wed Dec 31 2025 Asa DeGroff <asa@3fz.org> 2.5.2-1
 - reword changelog (asa@3fz.org)
 - version bump and changelog (asa@3fz.org)
