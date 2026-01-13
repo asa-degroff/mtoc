@@ -208,7 +208,7 @@ Item {
 
                                 Label {
                                     Layout.fillWidth: true
-                                    text: "• Your plays are now recorded to a history list\n• Use history to quickly access recently played tracks\n• In addition to the buttons, click to the left and right of the album art to open the history and queue, respectively\n• History can be enabled or disabled in settings"
+                                    text: "\nYour plays are now recorded to a history list. Use the history button to the left of the playback controls to quickly access recently played tracks. Up to 100 tracks are remembered. The clear button can be used to clear your history.\n\nIn addition to the buttons, click to the left and right of the album art to open the history and queue, respectively.\n\nHistory can be toggled on or off in settings."
                                     wrapMode: Text.WordWrap
                                     font.pixelSize: 14
                                     color: Theme.secondaryText
