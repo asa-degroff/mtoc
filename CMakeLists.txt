@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(mtoc VERSION 2.5.2 LANGUAGES CXX)
+project(mtoc VERSION 2.6 LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -69,6 +69,8 @@ set(PROJECT_SOURCES
         src/backend/playlist/VirtualPlaylistModel.cpp
         src/backend/settings/settingsmanager.h
         src/backend/settings/settingsmanager.cpp
+        src/backend/scrobble/scrobblemanager.h
+        src/backend/scrobble/scrobblemanager.cpp
         src/backend/system/mprismanager.h
         src/backend/system/mprismanager.cpp
         src/backend/utility/metadataextractor.h
@@ -117,6 +119,9 @@ qt_add_qml_module(mtoc
         src/qml/Components/QueueActionDialog.qml
         src/qml/Components/QueueListView.qml
         src/qml/Components/QueuePopup.qml
+        src/qml/Components/HistoryHeader.qml
+        src/qml/Components/HistoryListView.qml
+        src/qml/Components/HistoryPopup.qml
         src/qml/Components/ResizeHandler.qml
         src/qml/Components/SearchBar.qml
         src/qml/Components/StyledMenu.qml

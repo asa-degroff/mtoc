@@ -50,6 +50,14 @@ QtObject {
     property color edgeLineColor: isDark ? Qt.rgba(1, 1, 1, 0.1) : Qt.rgba(0, 0, 0, 0.1)
     property real edgeLineOpacity: 0.6
 
+    // Overlay colors (for UI elements displayed over dark backgrounds like album art)
+    property color overlayPrimaryText: "#ffffff"
+    property color overlaySecondaryText: "#aaaaaa"
+    property color overlayTertiaryText: "#c0c0c0"
+    property color overlayHoverBackground: Qt.rgba(1, 1, 1, 0.04)
+    property color overlayDefaultBackground: Qt.rgba(1, 1, 1, 0.02)
+    property color overlayBorderColor: Qt.rgba(1, 1, 1, 0.04)
+
     // Carousel gradient
     property color upperGradientColor: isDark ? Qt.rgba(0, 0, 0, 0.5) : Qt.rgba(0, 0, 0, 0.35)
     property color lowerGradientColor: isDark ? Qt.rgba(0, 0, 0, 1.0) : Qt.rgba(0, 0, 0, 1.0)

@@ -48,7 +48,9 @@ class SettingsManager : public QObject
     Q_PROPERTY(QStringList albumArtistDelimiters READ albumArtistDelimiters WRITE setAlbumArtistDelimiters NOTIFY albumArtistDelimitersChanged)
     Q_PROPERTY(bool nowPlayingQueueVisible READ nowPlayingQueueVisible WRITE setNowPlayingQueueVisible NOTIFY nowPlayingQueueVisibleChanged)
     Q_PROPERTY(bool nowPlayingLyricsVisible READ nowPlayingLyricsVisible WRITE setNowPlayingLyricsVisible NOTIFY nowPlayingLyricsVisibleChanged)
+    Q_PROPERTY(bool nowPlayingHistoryVisible READ nowPlayingHistoryVisible WRITE setNowPlayingHistoryVisible NOTIFY nowPlayingHistoryVisibleChanged)
     Q_PROPERTY(bool playlistsEnabled READ playlistsEnabled WRITE setPlaylistsEnabled NOTIFY playlistsEnabledChanged)
+    Q_PROPERTY(bool scrobblingEnabled READ scrobblingEnabled WRITE setScrobblingEnabled NOTIFY scrobblingEnabledChanged)
 
 public:
     enum QueueAction {
@@ -129,7 +131,9 @@ public:
     QStringList albumArtistDelimiters() const { return m_albumArtistDelimiters; }
     bool nowPlayingQueueVisible() const { return m_nowPlayingQueueVisible; }
     bool nowPlayingLyricsVisible() const { return m_nowPlayingLyricsVisible; }
+    bool nowPlayingHistoryVisible() const { return m_nowPlayingHistoryVisible; }
     bool playlistsEnabled() const { return m_playlistsEnabled; }
+    bool scrobblingEnabled() const { return m_scrobblingEnabled; }
 
     // Setters
     void setQueueActionDefault(QueueAction action);
@@ -168,7 +172,9 @@ public:
     void setAlbumArtistDelimiters(const QStringList& delimiters);
     void setNowPlayingQueueVisible(bool visible);
     void setNowPlayingLyricsVisible(bool visible);
+    void setNowPlayingHistoryVisible(bool visible);
     void setPlaylistsEnabled(bool enabled);
+    void setScrobblingEnabled(bool enabled);
 
 protected:
     bool event(QEvent *event) override;
@@ -212,7 +218,9 @@ signals:
     void albumArtistDelimitersChanged(const QStringList& delimiters);
     void nowPlayingQueueVisibleChanged(bool visible);
     void nowPlayingLyricsVisibleChanged(bool visible);
+    void nowPlayingHistoryVisibleChanged(bool visible);
     void playlistsEnabledChanged(bool enabled);
+    void scrobblingEnabledChanged(bool enabled);
 
 private slots:
     void onColorSchemeChanged(Qt::ColorScheme scheme);
@@ -264,7 +272,9 @@ private:
     QStringList m_albumArtistDelimiters;
     bool m_nowPlayingQueueVisible;
     bool m_nowPlayingLyricsVisible;
+    bool m_nowPlayingHistoryVisible;
     bool m_playlistsEnabled;
+    bool m_scrobblingEnabled;
 };
 
 #endif // SETTINGSMANAGER_H

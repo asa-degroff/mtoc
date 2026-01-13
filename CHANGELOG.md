@@ -1,3 +1,10 @@
+# 2.6
+## Playback History
+- Your plays are now recorded to a history list
+- Use history to quickly access recently played tracks
+- In addition to the buttons, click to the left and right of the album art to open the history and queue, respectively
+- History can be enabled or disabled in settings
+
 # 2.5.2
 ### Spacebar shortcut and playlists toggle
 - Added spacebar as a keyboard shortcut for play/pause

@@ -20,15 +20,21 @@ Item {
     signal seekRequested(real position)
     signal queueToggled()
     signal lyricsToggled()
+    signal historyToggled()
     signal repeatToggled()
     signal shuffleToggled()
     signal favoriteToggled()
 
     property bool queueVisible: false
     property bool lyricsVisible: false
+    property bool historyVisible: false
     property bool repeatEnabled: MediaPlayer.repeatEnabled
     property bool shuffleEnabled: MediaPlayer.shuffleEnabled
     property bool isFavorite: false
+
+    // External hover control (for extended hitboxes in NowPlayingPane)
+    property bool externalHistoryHover: false
+    property bool externalQueueHover: false
     
     function formatTime(milliseconds) {
         if (isNaN(milliseconds) || milliseconds < 0) {
@@ -49,16 +55,17 @@ Item {
         property string iconPressedSource: ""
         property bool isPressed: false
         property bool isHovered: false
+        property bool externalHover: false  // External hover trigger (for extended hitboxes)
         property bool addShadow: false
         property bool enableTint: false
         property color tintColor: "transparent"
         property real tintAmount: 0.8
         signal clicked()
-        
-        scale: isPressed ? 0.9 : (isHovered ? 1.1 : 1.0)
-        
+
+        scale: isPressed ? 0.9 : ((isHovered || externalHover) ? 1.1 : 1.0)
+
         Behavior on scale {
-            enabled: buttonRoot.isHovered || buttonRoot.isPressed
+            enabled: buttonRoot.isHovered || buttonRoot.isPressed || buttonRoot.externalHover
             NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
         }
         
@@ -97,18 +104,40 @@ Item {
         }
     }
     
+    // Detect narrow width for compact layout
+    property bool isNarrow: width < 480
+
     ColumnLayout {
         anchors.fill: parent
         spacing: Math.max(8, parent.height * 0.1)  // Dynamic spacing: 10% of height, min 8px
-        
+
         // Playback buttons
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.leftMargin: 0
             Layout.rightMargin: 0
-            spacing: Math.max(12, parent.width * 0.02)  // Dynamic spacing: 2% of width, min 12px
-            
+            // Reduced minimum spacing at narrow widths
+            spacing: root.isNarrow ? Math.max(4, parent.width * 0.01) : Math.max(12, parent.width * 0.02)
+
+            // History button (simple icon, no container) - only visible when history is enabled
+            IconButton {
+                id: historyButton
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 26
+                Layout.alignment: Qt.AlignVCenter
+                visible: SettingsManager.scrobblingEnabled
+                iconSource: "qrc:/resources/icons/history.svg"
+                opacity: root.historyVisible ? 1.0 : 0.6
+                addShadow: true
+                externalHover: root.externalHistoryHover
+                onClicked: root.historyToggled()
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 200 }
+                }
+            }
+
             // Repeat/Shuffle pill container
             Rectangle {
                 Layout.preferredWidth: 94
@@ -203,30 +232,30 @@ Item {
             
             IconButton {
                 id: previousButton
-                Layout.preferredWidth: 60
-                Layout.preferredHeight: 60
+                Layout.preferredWidth: root.isNarrow ? 50 : 60
+                Layout.preferredHeight: root.isNarrow ? 50 : 60
                 iconSource: "qrc:/resources/icons/previous-button-normal.svg"
                 iconPressedSource: "qrc:/resources/icons/previous-button-pressed.svg"
                 onClicked: root.previousClicked()
             }
-            
+
             IconButton {
                 id: playPauseButton
-                Layout.preferredWidth: 80
-                Layout.preferredHeight: 80
-                iconSource: MediaPlayer.state === MediaPlayer.PlayingState ? 
-                    "qrc:/resources/icons/pause-button-normal.svg" : 
+                Layout.preferredWidth: root.isNarrow ? 65 : 80
+                Layout.preferredHeight: root.isNarrow ? 65 : 80
+                iconSource: MediaPlayer.state === MediaPlayer.PlayingState ?
+                    "qrc:/resources/icons/pause-button-normal.svg" :
                     "qrc:/resources/icons/play-button-normal.svg"
-                iconPressedSource: MediaPlayer.state === MediaPlayer.PlayingState ? 
-                    "qrc:/resources/icons/pause-button-pressed.svg" : 
+                iconPressedSource: MediaPlayer.state === MediaPlayer.PlayingState ?
+                    "qrc:/resources/icons/pause-button-pressed.svg" :
                     "qrc:/resources/icons/play-button-pressed.svg"
                 onClicked: root.playPauseClicked()
             }
-            
+
             IconButton {
                 id: nextButton
-                Layout.preferredWidth: 60
-                Layout.preferredHeight: 60
+                Layout.preferredWidth: root.isNarrow ? 50 : 60
+                Layout.preferredHeight: root.isNarrow ? 50 : 60
                 enabled: MediaPlayer.hasNext
                 opacity: enabled ? 1.0 : 0.3
                 iconSource: "qrc:/resources/icons/skip-button-normal.svg"
@@ -235,7 +264,14 @@ Item {
             }
             
             Item { Layout.fillWidth: true }
-            
+
+            // Balance spacer to match history button width on left side (hidden at narrow widths or when history disabled)
+            Item {
+                Layout.preferredWidth: root.isNarrow ? 0 : 26
+                Layout.preferredHeight: 1
+                visible: !root.isNarrow && SettingsManager.scrobblingEnabled
+            }
+
             // Favorite, Lyrics and Queue button container
             Item {
                 id: rightButtonContainer
@@ -313,6 +349,7 @@ Item {
                     iconSource: "qrc:/resources/icons/queue.svg"
                     opacity: root.queueVisible ? 1.0 : 0.6
                     addShadow: true
+                    externalHover: root.externalQueueHover
                     onClicked: root.queueToggled()
 
                     Behavior on x {

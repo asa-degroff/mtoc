@@ -1595,6 +1595,115 @@ void MediaPlayer::clearUndoQueue()
     }
 }
 
+void MediaPlayer::playTrackById(int trackId)
+{
+    if (!m_libraryManager || !m_libraryManager->databaseManager()) {
+        qWarning() << "[MediaPlayer::playTrackById] No library/database manager";
+        return;
+    }
+
+    QVariantMap trackData = m_libraryManager->databaseManager()->getTrack(trackId);
+    if (trackData.isEmpty()) {
+        qWarning() << "[MediaPlayer::playTrackById] Track not found:" << trackId;
+        return;
+    }
+
+    playTrackFromData(trackData);
+}
+
+void MediaPlayer::enqueueTrackById(int trackId)
+{
+    if (!m_libraryManager || !m_libraryManager->databaseManager()) {
+        qWarning() << "[MediaPlayer::enqueueTrackById] No library/database manager";
+        return;
+    }
+
+    QVariantMap trackData = m_libraryManager->databaseManager()->getTrack(trackId);
+    if (trackData.isEmpty()) {
+        qWarning() << "[MediaPlayer::enqueueTrackById] Track not found:" << trackId;
+        return;
+    }
+
+    playTrackLast(trackData);
+}
+
+void MediaPlayer::playTracksById(const QVariantList& trackIds)
+{
+    if (trackIds.isEmpty()) {
+        qWarning() << "[MediaPlayer::playTracksById] Empty track ID list";
+        return;
+    }
+
+    if (!m_libraryManager || !m_libraryManager->databaseManager()) {
+        qWarning() << "[MediaPlayer::playTracksById] No library/database manager";
+        return;
+    }
+
+    // Clear any restoration state
+    clearRestorationState();
+    clearSavedPosition();
+
+    // Clear current queue
+    clearQueue();
+
+    // Look up each track and add to queue
+    int loadedCount = 0;
+    for (const QVariant& idVariant : trackIds) {
+        int trackId = idVariant.toInt();
+        QVariantMap trackData = m_libraryManager->databaseManager()->getTrack(trackId);
+
+        if (trackData.isEmpty()) {
+            qDebug() << "[MediaPlayer::playTracksById] Track not found, skipping:" << trackId;
+            continue;
+        }
+
+        QString filePath = trackData.value("filePath").toString();
+        if (filePath.isEmpty()) {
+            qDebug() << "[MediaPlayer::playTracksById] Empty filePath for track:" << trackId;
+            continue;
+        }
+
+        // Create a new Track object from the data
+        Mtoc::Track* track = Mtoc::Track::fromMetadata(trackData, this);
+
+        m_playbackQueue.append(track);
+        loadedCount++;
+    }
+
+    if (m_playbackQueue.isEmpty()) {
+        qWarning() << "[MediaPlayer::playTracksById] No valid tracks found";
+        return;
+    }
+
+    qDebug() << "[MediaPlayer::playTracksById] Loaded" << loadedCount << "tracks from history";
+
+    // Set up queue tracking
+    m_currentQueueIndex = 0;
+    setQueueModified(true);
+
+    // Clear any playlist/album context since this is from history
+    m_currentPlaylistName.clear();
+    m_queueSourceAlbumName.clear();
+    m_queueSourceAlbumArtist.clear();
+    m_isVirtualPlaylist = false;
+    m_virtualPlaylistName.clear();
+
+    // Generate shuffle order if enabled
+    if (m_shuffleEnabled) {
+        generateShuffleOrder(true);  // Put current track first
+        m_shuffleIndex = 0;
+    }
+
+    emit playbackQueueChanged();
+    emit currentPlaylistNameChanged(QString());
+    emit queueSourceAlbumNameChanged(QString());
+    emit queueSourceAlbumArtistChanged(QString());
+    emit virtualPlaylistNameChanged(QString());
+
+    // Play the first track
+    playTrack(m_playbackQueue.first());
+}
+
 void MediaPlayer::playTrackNext(const QVariant& trackData)
 {
     // Clear undo queue when adding new items
@@ -2269,6 +2378,7 @@ void MediaPlayer::saveState()
         for (Mtoc::Track* track : m_playbackQueue) {
             if (track) {
                 QVariantMap trackMap;
+                trackMap["id"] = track->id();
                 trackMap["filePath"] = track->filePath();
                 trackMap["title"] = track->title();
                 trackMap["artist"] = track->artist();
@@ -2276,6 +2386,8 @@ void MediaPlayer::saveState()
                 trackMap["albumArtist"] = track->albumArtist();
                 trackMap["trackNumber"] = track->trackNumber();
                 trackMap["duration"] = track->duration();
+                trackMap["lyrics"] = track->lyrics();
+                trackMap["isFavorite"] = track->isFavorite();
                 queueData.append(trackMap);
             }
         }

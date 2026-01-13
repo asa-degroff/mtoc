@@ -289,7 +289,33 @@ ApplicationWindow {
                         isOpen: compactNowPlayingBar.queuePopupVisible
                         onClosed: compactNowPlayingBar.queuePopupVisible = false
                     }
-                    
+
+                    // History popup for compact mode - parented to library pane container
+                    HistoryPopup {
+                        id: historyPopup
+                        parent: parent
+                        isOpen: compactNowPlayingBar.historyPopupVisible
+                        onClosed: compactNowPlayingBar.historyPopupVisible = false
+
+                        onPlayTrack: function(historyItem, clickedIndex) {
+                            if (historyItem.track_id) {
+                                MediaPlayer.playTrackById(historyItem.track_id)
+                            }
+                        }
+
+                        onGoToAlbum: function(albumName, artistName) {
+                            libraryPaneCompact.jumpToAlbum(artistName, albumName)
+                        }
+
+                        onGoToArtist: function(artistName) {
+                            libraryPaneCompact.jumpToArtist(artistName)
+                        }
+
+                        onAddToQueue: function(trackId) {
+                            MediaPlayer.enqueueTrackById(trackId)
+                        }
+                    }
+
                     // Album art popup for compact mode - parented to library pane container
                     AlbumArtPopup {
                         id: albumArtPopup

@@ -534,6 +534,7 @@ QVariantList PlaylistManager::readM3UFile(const QString& filepath)
                     
                     if (track) {
                         QVariantMap trackMap;
+                        trackMap["id"] = track->id();
                         trackMap["filePath"] = track->filePath();
                         trackMap["title"] = track->title();
                         trackMap["artist"] = track->artist();
@@ -543,7 +544,9 @@ QVariantList PlaylistManager::readM3UFile(const QString& filepath)
                         trackMap["trackNumber"] = track->trackNumber();
                         trackMap["duration"] = track->duration();
                         trackMap["year"] = track->year();
-                        
+                        trackMap["lyrics"] = track->lyrics();
+                        trackMap["isFavorite"] = track->isFavorite();
+
                         // Get fileSize from database since Track class doesn't have it
                         if (m_libraryManager->databaseManager()) {
                             int trackId = m_libraryManager->databaseManager()->getTrackIdByPath(track->filePath());
@@ -554,8 +557,8 @@ QVariantList PlaylistManager::readM3UFile(const QString& filepath)
                                 }
                             }
                         }
-                        
-                        qDebug() << "PlaylistManager: Found track in library:" << track->title() 
+
+                        qDebug() << "PlaylistManager: Found track in library:" << track->title()
                                  << "Album:" << track->album() << "AlbumArtist:" << track->albumArtist();
                         tracks.append(trackMap);
                         continue;

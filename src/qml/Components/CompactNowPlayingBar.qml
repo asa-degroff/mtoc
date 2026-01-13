@@ -1,6 +1,6 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 import QtQuick.Effects
 import Mtoc.Backend 1.0
 
@@ -14,6 +14,7 @@ Rectangle {
     property url albumArtUrl: ""
     property url thumbnailUrl: ""
     property bool queuePopupVisible: false
+    property bool historyPopupVisible: false
     property bool albumArtPopupVisible: false
     property bool lyricsPopupVisible: false
     
@@ -173,6 +174,9 @@ Rectangle {
                     // Close other popups if open
                     if (root.queuePopupVisible) {
                         root.queuePopupVisible = false
+                    }
+                    if (root.historyPopupVisible) {
+                        root.historyPopupVisible = false
                     }
                     if (root.lyricsPopupVisible) {
                         root.lyricsPopupVisible = false
@@ -668,6 +672,33 @@ Rectangle {
                 }
             }
 
+            // History button (toggle) - only visible when history is enabled
+            IconButton {
+                Layout.preferredWidth: 24
+                Layout.preferredHeight: 24
+                visible: SettingsManager.scrobblingEnabled
+                iconSource: Theme.isDark ? "qrc:/resources/icons/history.svg" : "qrc:/resources/icons/history-dark.svg"
+                opacity: root.historyPopupVisible ? 1.0 : 0.6
+                addShadow: true
+                onClicked: {
+                    // Close other popups if open
+                    if (root.albumArtPopupVisible) {
+                        root.albumArtPopupVisible = false
+                    }
+                    if (root.queuePopupVisible) {
+                        root.queuePopupVisible = false
+                    }
+                    if (root.lyricsPopupVisible) {
+                        root.lyricsPopupVisible = false
+                    }
+                    root.historyPopupVisible = !root.historyPopupVisible
+                }
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 200 }
+                }
+            }
+
             // Queue button (toggle)
             IconButton {
                 Layout.preferredWidth: 24
@@ -679,6 +710,9 @@ Rectangle {
                     // Close other popups if open
                     if (root.albumArtPopupVisible) {
                         root.albumArtPopupVisible = false
+                    }
+                    if (root.historyPopupVisible) {
+                        root.historyPopupVisible = false
                     }
                     if (root.lyricsPopupVisible) {
                         root.lyricsPopupVisible = false
@@ -703,6 +737,9 @@ Rectangle {
                     // Close other popups if open
                     if (root.albumArtPopupVisible) {
                         root.albumArtPopupVisible = false
+                    }
+                    if (root.historyPopupVisible) {
+                        root.historyPopupVisible = false
                     }
                     if (root.queuePopupVisible) {
                         root.queuePopupVisible = false

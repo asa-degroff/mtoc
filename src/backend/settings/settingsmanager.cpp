@@ -29,7 +29,9 @@ SettingsManager::SettingsManager(QObject *parent)
     , m_albumArtistDelimiters({";", "|"})  // Default delimiters: semicolon and pipe (whitespace-insensitive)
     , m_nowPlayingQueueVisible(false)
     , m_nowPlayingLyricsVisible(false)
+    , m_nowPlayingHistoryVisible(false)
     , m_playlistsEnabled(true)  // Default to enabled for backward compatibility
+    , m_scrobblingEnabled(true)  // Default to enabled
 {
     loadSettings();
     setupSystemThemeDetection();
@@ -388,11 +390,29 @@ void SettingsManager::setNowPlayingLyricsVisible(bool visible)
     }
 }
 
+void SettingsManager::setNowPlayingHistoryVisible(bool visible)
+{
+    if (m_nowPlayingHistoryVisible != visible) {
+        m_nowPlayingHistoryVisible = visible;
+        emit nowPlayingHistoryVisibleChanged(visible);
+        saveSettings();
+    }
+}
+
 void SettingsManager::setPlaylistsEnabled(bool enabled)
 {
     if (m_playlistsEnabled != enabled) {
         m_playlistsEnabled = enabled;
         emit playlistsEnabledChanged(enabled);
+        saveSettings();
+    }
+}
+
+void SettingsManager::setScrobblingEnabled(bool enabled)
+{
+    if (m_scrobblingEnabled != enabled) {
+        m_scrobblingEnabled = enabled;
+        emit scrobblingEnabledChanged(enabled);
         saveSettings();
     }
 }
@@ -464,10 +484,12 @@ void SettingsManager::loadSettings()
     m_settings.beginGroup("NowPlayingPane");
     m_nowPlayingQueueVisible = m_settings.value("queueVisible", false).toBool();
     m_nowPlayingLyricsVisible = m_settings.value("lyricsVisible", false).toBool();
+    m_nowPlayingHistoryVisible = m_settings.value("historyVisible", false).toBool();
     m_settings.endGroup();
 
     m_settings.beginGroup("Features");
     m_playlistsEnabled = m_settings.value("playlistsEnabled", true).toBool();
+    m_scrobblingEnabled = m_settings.value("scrobblingEnabled", true).toBool();
     m_settings.endGroup();
 
     qDebug() << "SettingsManager: Loaded settings - Queue action:" << m_queueActionDefault
@@ -540,10 +562,12 @@ void SettingsManager::saveSettings()
     m_settings.beginGroup("NowPlayingPane");
     m_settings.setValue("queueVisible", m_nowPlayingQueueVisible);
     m_settings.setValue("lyricsVisible", m_nowPlayingLyricsVisible);
+    m_settings.setValue("historyVisible", m_nowPlayingHistoryVisible);
     m_settings.endGroup();
 
     m_settings.beginGroup("Features");
     m_settings.setValue("playlistsEnabled", m_playlistsEnabled);
+    m_settings.setValue("scrobblingEnabled", m_scrobblingEnabled);
     m_settings.endGroup();
 
     m_settings.sync();

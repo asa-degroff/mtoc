@@ -13,16 +13,50 @@ Item {
     property url thumbnailUrl: ""
     property var libraryPane: null
     property bool queueVisible: SettingsManager.nowPlayingQueueVisible
+    property bool historyVisible: SettingsManager.nowPlayingHistoryVisible
     property var uniqueAlbumCovers: []
+    property var uniqueHistoryAlbumCovers: []
+    property var displayedAlbumCovers: []  // Latches to last shown covers during fade-out
+    property var historyModel: []
     property bool showPlaylistSavedMessage: false
     property string savedPlaylistName: ""
     property bool lyricsVisible: SettingsManager.nowPlayingLyricsVisible
 
     onQueueVisibleChanged: {
         SettingsManager.nowPlayingQueueVisible = queueVisible
+        if (queueVisible) {
+            displayedAlbumCovers = uniqueAlbumCovers
+        }
+    }
+    onHistoryVisibleChanged: {
+        SettingsManager.nowPlayingHistoryVisible = historyVisible
+        if (historyVisible) {
+            refreshHistoryModel()
+            displayedAlbumCovers = uniqueHistoryAlbumCovers
+        }
     }
     onLyricsVisibleChanged: {
         SettingsManager.nowPlayingLyricsVisible = lyricsVisible
+    }
+
+    function refreshHistoryModel() {
+        historyModel = ScrobbleManager.getValidRecentListens(100)
+        updateUniqueHistoryAlbumCovers()
+    }
+
+    // Refresh history when a new listen is recorded
+    Connections {
+        target: ScrobbleManager
+        function onListenRecorded() {
+            if (root.historyVisible) {
+                root.refreshHistoryModel()
+            }
+            root.updateUniqueHistoryAlbumCovers()
+        }
+        function onHistoryCleared() {
+            root.historyModel = []
+            root.uniqueHistoryAlbumCovers = []
+        }
     }
 
     // Keyboard shortcut for undo
@@ -43,7 +77,16 @@ Item {
         id: albumCoverUpdateTimer
         interval: 300
         repeat: false
-        onTriggered: updateUniqueAlbumCovers()
+        onTriggered: {
+            updateUniqueAlbumCovers()
+            updateUniqueHistoryAlbumCovers()
+            // Update displayed covers if a panel is currently visible
+            if (queueVisible) {
+                displayedAlbumCovers = uniqueAlbumCovers
+            } else if (historyVisible) {
+                displayedAlbumCovers = uniqueHistoryAlbumCovers
+            }
+        }
     }
     
     // Timer to hide playlist saved message
@@ -108,7 +151,45 @@ Item {
         
         uniqueAlbumCovers = covers
     }
-    
+
+    // Get up to 3 unique album covers: current album + 2 from history
+    function updateUniqueHistoryAlbumCovers() {
+        var covers = []
+        var seenAlbums = new Set()
+
+        // First, add the current playing track's album
+        if (MediaPlayer.currentTrack && MediaPlayer.currentTrack.albumArtist && MediaPlayer.currentTrack.album) {
+            var currentKey = MediaPlayer.currentTrack.albumArtist + "||" + MediaPlayer.currentTrack.album
+            covers.push({
+                albumArtist: MediaPlayer.currentTrack.albumArtist,
+                album: MediaPlayer.currentTrack.album,
+                isCurrent: true
+            })
+            seenAlbums.add(currentKey)
+        }
+
+        // Then go through history to find previous unique albums
+        for (var i = 0; i < historyModel.length && covers.length < 3; i++) {
+            var item = historyModel[i]
+            // Use albumArtist from backend, fall back to artist_name for legacy records
+            var albumArtist = item.albumArtist || item.artist_name
+            var album = item.album_name
+            if (albumArtist && album) {
+                var albumKey = albumArtist + "||" + album
+                if (!seenAlbums.has(albumKey)) {
+                    covers.push({
+                        albumArtist: albumArtist,
+                        album: album,
+                        isCurrent: false
+                    })
+                    seenAlbums.add(albumKey)
+                }
+            }
+        }
+
+        uniqueHistoryAlbumCovers = covers
+    }
+
     function formatQueueDuration(totalSeconds) {
         if (isNaN(totalSeconds) || totalSeconds < 0) {
             return "0:00"
@@ -216,20 +297,118 @@ Item {
                 // Use manual positioning instead of RowLayout to avoid layout jumps
                 Item {
                     anchors.fill: parent
-                    
+
+                    // History container (slides in from left)
+                    Item {
+                        id: historyContainer
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: historyVisible ? parent.width * 0.7 - 16 : 0
+                        opacity: historyVisible ? 1.0 : 0.0
+                        visible: opacity > 0 || width > 1
+                        clip: true
+
+                        Behavior on width {
+                            NumberAnimation {
+                                duration: 300
+                                easing.type: Easing.InOutCubic
+                            }
+                        }
+
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: 300
+                                easing.type: Easing.InOutCubic
+                            }
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            color: Qt.rgba(0, 0, 0, 0.3)
+                            radius: 8
+                            border.width: 1
+                            border.color: Qt.rgba(1, 1, 1, 0.1)
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: 12
+                                spacing: 8
+
+                                HistoryHeader {
+                                    Layout.fillWidth: true
+                                    historyCount: historyListView.count
+                                    forceLightText: true
+                                    showCloseButton: false
+
+                                    onClearHistoryRequested: {
+                                        ScrobbleManager.clearHistory()
+                                    }
+                                }
+
+                                HistoryListView {
+                                    id: historyListView
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    historyModel: root.historyModel
+                                    forceLightText: true
+
+                                    onTrackClicked: function(historyItem, clickedIndex) {
+                                        // Build list of track IDs from clicked position through history
+                                        // Only include tracks that are still available in the library
+                                        // Limit to 50 tracks to avoid enqueueing an absurdly large amount
+                                        var trackIds = []
+                                        var limit = 50
+                                        var endIndex = Math.min(clickedIndex + limit, root.historyModel.length)
+
+                                        for (var i = clickedIndex; i < endIndex; i++) {
+                                            var item = root.historyModel[i]
+                                            if (item && item.track_id > 0 && item.track_available !== false) {
+                                                trackIds.push(item.track_id)
+                                            }
+                                        }
+
+                                        if (trackIds.length > 0) {
+                                            MediaPlayer.playTracksById(trackIds)
+                                        }
+                                    }
+
+                                    onGoToAlbumRequested: function(albumName, artistName) {
+                                        if (libraryPane && albumName && artistName) {
+                                            libraryPane.jumpToAlbum(artistName, albumName)
+                                        }
+                                    }
+
+                                    onGoToArtistRequested: function(artistName) {
+                                        if (libraryPane && artistName) {
+                                            libraryPane.jumpToArtist(artistName)
+                                        }
+                                    }
+
+                                    onAddToQueueRequested: function(trackId) {
+                                        MediaPlayer.enqueueTrackById(trackId)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Album art container
                     Item {
                         id: albumArtContainer
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
-                        width: queueVisible ? parent.width * 0.24 : parent.width * 0.9
-                        
+                        // Width: 24% when either panel is visible, 90% when centered
+                        width: (queueVisible || historyVisible) ? parent.width * 0.24 : parent.width * 0.9
+
                         // Calculate target width for proper x position calculation
-                        property real targetWidth: queueVisible ? parent.width * 0.24 : parent.width * 0.9
-                        
-                        // Position based on queue visibility - centered when hidden, left-aligned when visible
-                        // Use targetWidth instead of current width to ensure smooth simultaneous animation
-                        x: queueVisible ? 0 : (parent.width - targetWidth) / 2
+                        property real targetWidth: (queueVisible || historyVisible) ? parent.width * 0.24 : parent.width * 0.9
+
+                        // Position based on panel visibility:
+                        // - Queue visible: left at 0
+                        // - History visible: right aligned
+                        // - Neither: centered
+                        x: queueVisible ? 0 : (historyVisible ? parent.width - targetWidth : (parent.width - targetWidth) / 2)
                         
                         Behavior on width {
                             NumberAnimation { 
@@ -245,14 +424,18 @@ Item {
                             }
                         }
                         
-                        // Column to show multiple album covers when queue is visible
+                        // Column to show multiple album covers when queue or history is visible
                         Column {
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: parent.width
                             height: parent.height
-                            spacing: queueVisible ? 10 : 0
-                            opacity: (queueVisible && uniqueAlbumCovers.length > 0) ? 1.0 : 0.0
+                            spacing: (queueVisible || historyVisible) ? 10 : 0
+                            opacity: {
+                                if (queueVisible && uniqueAlbumCovers.length > 0) return 1.0
+                                if (historyVisible && uniqueHistoryAlbumCovers.length > 0) return 1.0
+                                return 0.0
+                            }
                             visible: opacity > 0
                             
                             Behavior on spacing {
@@ -270,11 +453,11 @@ Item {
                             }
                             
                             Repeater {
-                                model: uniqueAlbumCovers
-                                
+                                model: displayedAlbumCovers
+
                                 Image {
                                     width: parent.width
-                                    height: (parent.height - (parent.spacing * (uniqueAlbumCovers.length - 1))) / uniqueAlbumCovers.length
+                                    height: (parent.height - (parent.spacing * (displayedAlbumCovers.length - 1))) / displayedAlbumCovers.length
                                     source: {
                                         if (modelData.albumArtist && modelData.album) {
                                             var encodedArtist = encodeURIComponent(modelData.albumArtist)
@@ -316,6 +499,7 @@ Item {
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
                                             root.queueVisible = false
+                                            root.historyVisible = false
                                         }
                                     }
                                 }
@@ -332,7 +516,7 @@ Item {
                             source: albumArtUrl
                             fillMode: Image.PreserveAspectFit
                             cache: true
-                            opacity: (!queueVisible || uniqueAlbumCovers.length === 0) ? 1.0 : 0.0
+                            opacity: ((!queueVisible && !historyVisible) || uniqueAlbumCovers.length === 0) ? 1.0 : 0.0
                             visible: opacity > 0
                             
                             Behavior on opacity {
@@ -439,6 +623,60 @@ Item {
                                 }
                             }
                         }
+                        }
+                    }
+
+                    // Left invisible hitbox (opens history)
+                    // Extends from pane edge to actual visible album art edge
+                    MouseArea {
+                        id: historyHitbox
+                        property real layoutMargin: Math.max(32, root.height * 0.04)
+                        // Calculate actual image width (square album art with PreserveAspectFit)
+                        property real actualImageWidth: Math.min(albumArtContainer.width, albumArtContainer.height)
+                        property real imagePadding: (albumArtContainer.width - actualImageWidth) / 2
+                        property real actualImageLeft: albumArtContainer.x + imagePadding
+
+                        x: -layoutMargin
+                        y: 0
+                        width: actualImageLeft + layoutMargin
+                        height: parent.height
+                        visible: SettingsManager.scrobblingEnabled && !historyVisible && width > 10  // Hide when history disabled, open, or area too small
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+
+                        onEntered: playbackControls.externalHistoryHover = true
+                        onExited: playbackControls.externalHistoryHover = false
+                        onClicked: {
+                            if (root.queueVisible) root.queueVisible = false
+                            if (root.lyricsVisible) root.lyricsVisible = false
+                            root.historyVisible = true
+                        }
+                    }
+
+                    // Right invisible hitbox (opens queue)
+                    // Extends from actual visible album art edge to pane edge
+                    MouseArea {
+                        id: queueHitbox
+                        property real layoutMargin: Math.max(16, root.height * 0.04)
+                        // Calculate actual image width (square album art with PreserveAspectFit)
+                        property real actualImageWidth: Math.min(albumArtContainer.width, albumArtContainer.height)
+                        property real imagePadding: (albumArtContainer.width - actualImageWidth) / 2
+                        property real actualImageRight: albumArtContainer.x + albumArtContainer.width - imagePadding
+
+                        x: actualImageRight
+                        y: 0
+                        width: parent.width - actualImageRight + layoutMargin
+                        height: parent.height
+                        visible: !queueVisible && width > 10  // Hide when queue is open or area is too small
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+
+                        onEntered: playbackControls.externalQueueHover = true
+                        onExited: playbackControls.externalQueueHover = false
+                        onClicked: {
+                            if (root.historyVisible) root.historyVisible = false
+                            if (root.lyricsVisible) root.lyricsVisible = false
+                            root.queueVisible = true
                         }
                     }
                 }
@@ -701,11 +939,13 @@ Item {
         
         // Playback controls
         PlaybackControls {
+            id: playbackControls
             Layout.fillWidth: true
             Layout.preferredHeight: 80
 
             queueVisible: root.queueVisible
             lyricsVisible: root.lyricsVisible
+            historyVisible: root.historyVisible
             isFavorite: MediaPlayer.currentTrack ? MediaPlayer.currentTrack.isFavorite : false
 
             onPlayPauseClicked: MediaPlayer.togglePlayPause()
@@ -715,16 +955,26 @@ Item {
                 MediaPlayer.seek(position)
             }
             onQueueToggled: {
-                // Auto-hide lyrics when showing queue
-                if (!root.queueVisible && root.lyricsVisible) {
-                    root.lyricsVisible = false
+                // Auto-hide lyrics and history when showing queue
+                if (!root.queueVisible) {
+                    if (root.lyricsVisible) root.lyricsVisible = false
+                    if (root.historyVisible) root.historyVisible = false
                 }
                 root.queueVisible = !root.queueVisible
             }
+            onHistoryToggled: {
+                // Auto-hide queue and lyrics when showing history
+                if (!root.historyVisible) {
+                    if (root.queueVisible) root.queueVisible = false
+                    if (root.lyricsVisible) root.lyricsVisible = false
+                }
+                root.historyVisible = !root.historyVisible
+            }
             onLyricsToggled: {
-                // Auto-hide queue when showing lyrics
-                if (!root.lyricsVisible && root.queueVisible) {
-                    root.queueVisible = false
+                // Auto-hide queue and history when showing lyrics
+                if (!root.lyricsVisible) {
+                    if (root.queueVisible) root.queueVisible = false
+                    if (root.historyVisible) root.historyVisible = false
                 }
                 root.lyricsVisible = !root.lyricsVisible
             }
