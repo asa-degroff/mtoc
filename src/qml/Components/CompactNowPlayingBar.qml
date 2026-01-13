@@ -677,7 +677,7 @@ Rectangle {
                 Layout.preferredWidth: 24
                 Layout.preferredHeight: 24
                 visible: SettingsManager.scrobblingEnabled
-                iconSource: Theme.isDark ? "qrc:/resources/icons/history.svg" : "qrc:/resources/icons/history-dark.svg"
+                iconSource: "qrc:/resources/icons/history.svg"
                 opacity: root.historyPopupVisible ? 1.0 : 0.6
                 addShadow: true
                 onClicked: {
