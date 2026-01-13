@@ -2378,6 +2378,7 @@ void MediaPlayer::saveState()
         for (Mtoc::Track* track : m_playbackQueue) {
             if (track) {
                 QVariantMap trackMap;
+                trackMap["id"] = track->id();
                 trackMap["filePath"] = track->filePath();
                 trackMap["title"] = track->title();
                 trackMap["artist"] = track->artist();

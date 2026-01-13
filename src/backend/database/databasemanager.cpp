@@ -2853,7 +2853,7 @@ QVariantList DatabaseManager::getValidRecentListens(int limit)
     query.prepare(
         "SELECT l.id, l.track_id, l.track_name, l.artist_name, l.album_name, "
         "l.duration_seconds, l.listened_at, l.listen_duration, "
-        "(l.track_id IS NOT NULL AND t.id IS NOT NULL) as track_available, "
+        "t.id as resolved_track_id, "
         "aa.name as album_artist "
         "FROM listens l "
         "LEFT JOIN tracks t ON l.track_id = t.id "
@@ -2874,7 +2874,11 @@ QVariantList DatabaseManager::getValidRecentListens(int limit)
             listen["duration_seconds"] = query.value("duration_seconds");
             listen["listened_at"] = query.value("listened_at");
             listen["listen_duration"] = query.value("listen_duration");
-            listen["track_available"] = query.value("track_available").toBool();
+            // Compute track_available in C++: track exists if both track_id and resolved join succeeded
+            QVariant trackIdVar = query.value("track_id");
+            QVariant resolvedIdVar = query.value("resolved_track_id");
+            bool trackAvailable = !trackIdVar.isNull() && !resolvedIdVar.isNull();
+            listen["track_available"] = trackAvailable;
             listen["albumArtist"] = query.value("album_artist");
             listens.append(listen);
         }

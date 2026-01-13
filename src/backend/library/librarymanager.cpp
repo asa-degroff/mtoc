@@ -1676,6 +1676,7 @@ void LibraryManager::savePlaybackState(const QString &filePath, qint64 position,
             settings.setValue("albumArtist", trackData["albumArtist"]);
             settings.setValue("trackNumber", trackData["trackNumber"]);
             settings.setValue("duration", trackData["duration"]);
+            settings.setValue("id", trackData["id"]);
         }
         settings.endArray();
     } else {
@@ -1752,7 +1753,8 @@ QVariantMap LibraryManager::loadPlaybackState() const
                     trackData["albumArtist"] = settings.value("albumArtist").toString();
                     trackData["trackNumber"] = settings.value("trackNumber").toInt();
                     trackData["duration"] = settings.value("duration").toInt();
-                    
+                    trackData["id"] = settings.value("id").toInt();
+
                     // Only add to queue if file still exists
                     QFileInfo trackFile(trackData["filePath"].toString());
                     if (trackFile.exists()) {
