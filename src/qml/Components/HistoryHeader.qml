@@ -26,13 +26,13 @@ RowLayout {
         Layout.fillWidth: true
     }
 
-    // Track count label
-    Label {
-        Layout.alignment: Qt.AlignVCenter
-        text: historyCount + " track" + (historyCount !== 1 ? "s" : "") + " played"
-        font.pixelSize: 12
-        color: forceLightText ? "#808080" : Theme.secondaryText
-    }
+    // Track count label (disabled for now)
+    // Label {
+    //     Layout.alignment: Qt.AlignVCenter
+    //     text: historyCount + " track" + (historyCount !== 1 ? "s" : "") + " played"
+    //     font.pixelSize: 12
+    //     color: forceLightText ? "#808080" : Theme.secondaryText
+    // }
 
     // Clear history button
     Rectangle {
