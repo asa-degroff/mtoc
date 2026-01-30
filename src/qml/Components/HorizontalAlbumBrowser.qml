@@ -1064,11 +1064,15 @@ Item {
                 
                 // Update reflection when position changes (handles recycling case)
                 onXChanged: {
-                    if (!root.isDestroying && reflection && reflection.live && reflection.sourceItem) {
-                        // Set back to static mode after recycling position update
+                    if (root.isDestroying || !reflection) return
+
+                    // For non-center items with valid reflections, schedule an update after position change
+                    if (!isCenterAlbum && reflection.sourceItem && shouldHaveValidReflection) {
                         Qt.callLater(function() {
                             if (!delegateItem || root.isDestroying || !reflection) return
-                            reflection.live = false
+                            if (reflection.sourceItem && albumImage && albumImage.status === Image.Ready) {
+                                reflection.scheduleUpdate()
+                            }
                         })
                     }
                 }
@@ -1081,26 +1085,32 @@ Item {
                     
                     function onContentXChanged() {
                         if (root.isDestroying || !delegateItem || delegateItem.ListView.isPooled) return
-                        
+
                         // When scrolling, check if this delegate's reflection state should change
                         if (reflection) {
                             var shouldHaveReflection = absDistance < (listView.width / 2)
-                            var hasReflection = reflection.sourceItem !== null
-                            
-                            // Update reflection visibility and source based on distance and art availability  
+
+                            // Update reflection visibility and source based on distance and art availability
                             if (shouldHaveReflection) {
                                 if (shouldHaveValidReflection) {
                                     // Show real reflection for albums with art
-                                    reflection.sourceItem = albumContainer
+                                    var needsSourceUpdate = reflection.sourceItem !== albumContainer
+                                    if (needsSourceUpdate) {
+                                        reflection.sourceItem = albumContainer
+                                    }
                                     reflection.visible = true
                                     placeholderReflection.visible = false
-                                    
-                                    if (albumImage && albumImage.status === Image.Ready) {
-                                        reflection.scheduleUpdate()
-                                    }
-                                    // Ensure it's not in live mode
-                                    if (reflection.live) {
-                                        reflection.live = false
+
+                                    // Only schedule update for non-center albums (center uses live mode)
+                                    // and only when the image is confirmed ready
+                                    if (!isCenterAlbum && albumImage && albumImage.status === Image.Ready) {
+                                        // Use callLater to ensure the image frame is fully rendered
+                                        Qt.callLater(function() {
+                                            if (!delegateItem || root.isDestroying || !reflection) return
+                                            if (reflection.sourceItem && albumImage && albumImage.status === Image.Ready) {
+                                                reflection.scheduleUpdate()
+                                            }
+                                        })
                                     }
                                 } else {
                                     // Show placeholder reflection for albums without art
@@ -1136,10 +1146,13 @@ Item {
                 
                 // Check if this album should have a valid reflection (has art and image is ready)
                 property bool shouldHaveValidReflection: {
-                    return albumData && albumData.hasArt && 
+                    return albumData && albumData.hasArt &&
                            albumImage && albumImage.status === Image.Ready &&
                            !placeholderRect.visible
                 }
+
+                // Track if this is the center album (for live reflection mode)
+                property bool isCenterAlbum: absDistance < 15
                 
                 property real horizontalOffset: {
                     if (!isVisible) return 0
@@ -1443,7 +1456,9 @@ Item {
                             anchors.fill: parent
                             sourceItem: null  // Managed by Connections element
                             visible: sourceItem !== null  // Only visible when sourceItem is set
-                            live: false  // Static reflection for better performance
+                            // Use live mode for center album to prevent black reflections from cache eviction
+                            // Static mode for non-center albums for better performance
+                            live: isCenterAlbum && sourceItem !== null
                             recursive: false
                             smooth: true  // Enable antialiasing for reflection
                             mipmap: false  // Maintain sharpness
@@ -1511,11 +1526,33 @@ Item {
                             id: albumImageConnection
                             target: albumImage
                             enabled: !root.isDestroying && reflection && !delegateItem.ListView.isPooled
-                            
+
                             function onStatusChanged() {
                                 if (root.isDestroying || !delegateItem || delegateItem.ListView.isPooled) return
-                                if (albumImage && albumImage.status === Image.Ready && reflection && reflection.sourceItem) {
-                                    reflection.scheduleUpdate()
+                                if (!albumImage || !reflection) return
+
+                                if (albumImage.status === Image.Ready) {
+                                    // Image just became ready - ensure reflection is properly set up
+                                    var shouldHaveReflection = absDistance < (listView.width / 2)
+                                    if (shouldHaveReflection && shouldHaveValidReflection) {
+                                        // Set sourceItem if not already set (handles reload after cache eviction)
+                                        if (reflection.sourceItem !== albumContainer) {
+                                            reflection.sourceItem = albumContainer
+                                            reflection.visible = true
+                                            placeholderReflection.visible = false
+                                        }
+                                        // Always schedule update when image becomes ready
+                                        // Use callLater to ensure the image is fully rendered first
+                                        Qt.callLater(function() {
+                                            if (!delegateItem || root.isDestroying || !reflection) return
+                                            if (reflection.sourceItem && albumImage && albumImage.status === Image.Ready) {
+                                                reflection.scheduleUpdate()
+                                            }
+                                        })
+                                    }
+                                } else if (albumImage.status === Image.Loading) {
+                                    // Image is reloading (cache eviction) - for non-center items,
+                                    // schedule an update when it completes via the Ready branch above
                                 }
                             }
                         }
