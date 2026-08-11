@@ -267,6 +267,18 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("Mtoc.Backend", 1, 0, "MediaPlayer", mediaPlayer);
     qDebug() << "Main: MediaPlayer registered";
     
+    // Handle command-line file arguments (e.g., from KDE Search or file manager)
+    QStringList args = QCoreApplication::arguments();
+    for (int i = 1; i < args.size(); ++i) {
+        QString arg = args.at(i);
+        if (!arg.startsWith("--")) {
+            QUrl url = QUrl::fromUserInput(arg);
+            if (url.isValid() && url.isLocalFile()) {
+                mediaPlayer->playUrl(url);
+            }
+        }
+    }
+
     // Register PlaylistManager singleton
     qDebug() << "Main: Creating PlaylistManager...";
     PlaylistManager *playlistManager = PlaylistManager::instance();
